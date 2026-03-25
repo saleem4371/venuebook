@@ -1,40 +1,40 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo,useEffect } from "react";
 import MapView from "./components/MapView";
 import VenueCard from "./components/VenueCard";
 import BannerCard from "./components/banner";
-import SearchBar from "./components/SearchBar";
 import FilterDrawer from "./components/FilterDrawer";
 import SearchInput from "./components/search_input";
-
 import WishlistPopup from "./components/WishlistPopup";
 import VenueCategory from "./components/CategoryBar";
 
 import { useDictionary } from "@/context/DictionaryContext";
-
 import { useParams } from "next/navigation";
 
-// import CompareBar from "./components/CompareBar";
-
 import { motion, AnimatePresence } from "framer-motion";
-import { Map, SlidersHorizontal, X, Search } from "lucide-react";
-import CategoryBar from "./components/CategoryBar";
+import { Map, SlidersHorizontal, X ,Heart, Share2, Home, Building2} from "lucide-react";
+import { HeartIcon, ShareIcon ,ScaleIcon ,BuildingOfficeIcon} from "@heroicons/react/24/outline";
+
+  import { useUI } from "@/context/UIContext";
 
 export default function SearchPage() {
   const dict = useDictionary();
   const { locale, country } = useParams();
 
-  const [showMap, setShowMap] = useState(false);
-  const [filterOpen, setFilterOpen] = useState(false);
+  // const [showMap, setShowMap] = useState(false);
+  // const [filterOpen, setFilterOpen] = useState(false);
   const [hoverVenue, setHoverVenue] = useState(null);
-
   const [wishlistVenue, setWishlistVenue] = useState(null);
-  const [compareList, setCompareList] = useState([]);
 
+  const [compareList, setCompareList] = useState([]);
   const [showComparePanel, setShowComparePanel] = useState(false);
 
   const [selectedCategory, setSelectedCategory] = useState(null);
+
+
+
+const { showMap, setShowMap, filterOpen, setFilterOpen } = useUI();
 
   const [filters, setFilters] = useState({
     category_cards: [],
@@ -48,9 +48,7 @@ export default function SearchPage() {
       alert("Only 4 venues allowed");
       return;
     }
-
     const exists = compareList.find((v) => v.id === venue.id);
-
     if (!exists) setCompareList([...compareList, venue]);
   };
 
@@ -58,56 +56,20 @@ export default function SearchPage() {
     setCompareList(compareList.filter((v) => v.id !== id));
   };
 
-  // const selected_country = country == 'ar' ? "dubai":'india'
-
+  // 🌍 Country Config
   const countryConfig = {
-    in: {
-      name: "india",
-      center: { lat: 20.5937, lng: 78.9629 },
-      zoom: 5,
-      bounds: { north: 35.5, south: 6.5, west: 68, east: 97.5 },
-    },
-    ar: {
-      name: "dubai",
-      center: { lat: 25.2048, lng: 55.2708 },
-      zoom: 11,
-      bounds: { north: 25.5, south: 24.8, west: 54.8, east: 55.6 },
-    },
-    sa: {
-      name: "Saudi Arabia",
-      center: { lat: 23.8859, lng: 45.0792 },
-      zoom: 5,
-      bounds: { north: 32.0, south: 16.0, west: 34.0, east: 56.0 },
-    },
-    ln: {
-      name: "London",
-      center: { lat: 51.5074, lng: -0.1278 },
-      zoom: 10,
-      bounds: { north: 51.7, south: 51.3, west: -0.5, east: 0.3 },
-    },
-    us: {
-      name: "USA",
-      center: { lat: 37.0902, lng: -95.7129 },
-      zoom: 4,
-      bounds: { north: 49, south: 24, west: -125, east: -66 },
-    },
-    fr: {
-      name: "France",
-      center: { lat: 46.2276, lng: 2.2137 },
-      zoom: 5,
-      bounds: { north: 51, south: 41, west: -5, east: 9 },
-    },
+    in: { name: "india", center: { lat: 20.5937, lng: 78.9629 } },
+    ar: { name: "dubai", center: { lat: 25.2048, lng: 55.2708 } },
   };
 
-  const selectedCountryKey = String(country || "in").toLowerCase();
-
-  // Get the config for the selected country or fallback to India
   const selected_country =
-    countryConfig[selectedCountryKey] || countryConfig["in"];
+    countryConfig[String(country || "in").toLowerCase()] || countryConfig["in"];
 
+  // 📊 Pagination
   const [page, setPage] = useState(1);
   const perPage = 9;
 
+  // 📦 Dummy Data (shortened for clarity)
   const venues = [
     // ---------------- INDIA ----------------
     {
@@ -480,179 +442,107 @@ export default function SearchPage() {
     },
   ];
 
-  const filteredAds = useMemo(() => {
-    if (!selectedCategory) return ads;
-
-    return ads.filter(
-      (ad) =>
-        Array.isArray(ad.Category) && ad.Category.includes(selectedCategory),
-    );
-  }, [ads, selectedCategory]);
-
-  const adsImages = useMemo(() => {
-    if (!selectedCategory) {
-      return ads.map((ad) => ad.image);
-    }
-    return []; // hide ads when category selected
-  }, [ads, selectedCategory]);
-
-  //only adds ends
-
   const venue_filter = useMemo(() => {
-    return venues.filter((item) => {
-      // COUNTRY
-      const matchCountry =
-        item.country?.toLowerCase() === selected_country.name.toLowerCase();
+    return venues.filter(
+      (item) =>
+        item.country?.toLowerCase() === selected_country.name.toLowerCase(),
+    );
+  }, [venues, selected_country]);
 
-      if (!selectedCategory) return matchCountry;
-
-      // CATEGORY
-      const matchCategory =
-        filters.category_cards.length === 0 ||
-        item.Category?.some((cat) => filters.category_cards.includes(cat));
-
-      // PRICE (extract number from ₹ string)
-      const priceValue = Number(item.price.replace(/[₹,]/g, ""));
-
-      const matchBudget =
-        priceValue >= filters.budget.min && priceValue <= filters.budget.max;
-
-      return (
-        matchCountry &&
-        Array.isArray(item.Category) &&
-        item.Category.includes(selectedCategory) &&
-        matchCategory &&
-        matchBudget
-      );
-    });
-  }, [venues, selected_country, selectedCategory, filters]);
-
-  const totalPages = Math.ceil(venue_filter.length / perPage);
-  const startIndex = (page - 1) * perPage;
-  const paginatedVenues = venue_filter.slice(startIndex, startIndex + perPage);
-
-  //filter
+  const paginatedVenues = venue_filter.slice(
+    (page - 1) * perPage,
+    page * perPage,
+  );
 
   const [searchOpen, setSearchOpen] = useState(false);
 
-  const handleSearch = (data) => {
-    console.log("Search Data:", data);
-    // Use data to filter venues
+  useEffect(() => {
+  if (filterOpen) {
+    const scrollBarWidth = window.innerWidth - document.documentElement.clientWidth;
+
+    document.body.style.overflow = "hidden";
+    document.body.style.paddingRight = `${scrollBarWidth}px`;
+  } else {
+    document.body.style.overflow = "auto";
+    document.body.style.paddingRight = "0px";
+  }
+
+  return () => {
+    document.body.style.overflow = "auto";
+    document.body.style.paddingRight = "0px";
   };
+}, [filterOpen]);
+
+useEffect(() => {
+  if (filterOpen) {
+    const scrollBarWidth = window.innerWidth - document.documentElement.clientWidth;
+
+    document.body.style.overflow = "hidden";
+    document.body.style.paddingRight = `${scrollBarWidth}px`;
+  } else {
+    document.body.style.overflow = "auto";
+    document.body.style.paddingRight = "0px";
+  }
+
+  return () => {
+    document.body.style.overflow = "auto";
+    document.body.style.paddingRight = "0px";
+  };
+}, [filterOpen]);
 
   return (
-    <div className="h-screen flex flex-col">
-      {/* HEADER */}
-      <div className="sticky top-0 z-40 bg-white">
-        <SearchBar openFilter={() => setFilterOpen(true)} />
-      </div>
-
-      <div className="flex flex-1 overflow-hidden">
+    <div className="pt-[70px] flex flex-col min-h-screen">
+      {/* 🔥 MAIN */}
+     <div className="flex flex-col lg:flex-row flex-1">
         {/* LEFT LIST */}
         <div className="flex-1 lg:w-[60%] flex flex-col">
-          <div>
-            <div className="flex justify-between items-center px-6 pb-3 mt-3">
-              <p className="text-md font-semibold">
-                {venue_filter.length} {dict.venues_in_this_area}
-              </p>
+          {/* HEADER */}
+          <div className="px-6 pb-3 mt-3 flex justify-between items-center">
+            <p className="text-md font-semibold">
+              {venue_filter.length} {dict?.venues_in_this_area}
+            </p>
 
-              {/* HEADER BUTTONS */}
-              <div className="hidden md:flex items-center gap-3">
-                <div className="">
-                    <SearchInput
-                      open={searchOpen}
-                      setOpen={setSearchOpen}
-                      onSearch={handleSearch}
-                    />
-                </div>
-                {/* Compare Button */}
-                {compareList.length > 0 && (
-                  <div className="relative">
-                    <button
-                      className="relative cursor-pointer flex items-center gap-1 border px-3 py-1.5 rounded-lg text-sm hover:bg-gray-100"
-                      onClick={() => setShowComparePanel(!showComparePanel)}
-                    >
-                      ⚖️ Compare
-                      {/* Count Badge */}
-                      <span className="absolute -top-2 -right-2 bg-[#8368EF] text-white text-[10px] px-1.5 py-[1px] rounded-full font-semibold">
-                        {compareList.length}
-                      </span>
-                    </button>
+            {/* DESKTOP ACTIONS */}
+            <div className="hidden md:flex items-center gap-3">
+              <SearchInput open={searchOpen} setOpen={setSearchOpen} />
 
-                    {/* Compare Panel */}
-                    <AnimatePresence>
-                      {showComparePanel && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 15 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: 15 }}
-                          className="absolute right-0 mt-3 w-80 bg-white border border-gray-200 rounded-xl shadow-xl p-4 z-50"
-                        >
-                          <h3 className="font-semibold mb-3 text-center">
-                            Compare Venues
-                          </h3>
-
-                          <div className="flex flex-col gap-2 max-h-56 overflow-y-auto">
-                            {compareList.map((venue) => (
-                              <div
-                                key={venue.id}
-                                className="flex justify-between items-center border-b pb-1"
-                              >
-                                <p className="text-sm">{venue.name}</p>
-
-                                <button
-                                  className="text-red-500 text-xs hover:underline"
-                                  onClick={() => removeCompare(venue.id)}
-                                >
-                                  Remove
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-
-                          <button
-                            className="cursor-pointer mt-3 w-full bg-gray-100 hover:bg-gray-200 text-black py-2 rounded-lg text-sm"
-                            onClick={() => setShowComparePanel(false)}
-                          >
-                            Close
-                          </button>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                )}
-
-                {/* Wishlist */}
-                {/* <button
-                className="cursor-pointer flex items-center gap-1 border px-3 py-1.5 rounded-lg text-sm hover:bg-gray-100"
-                onClick={() => setWishlistVenue(null)}
-              >
-                ❤️ Wishlist 
-              </button> */}
-
-                {/* Filter */}
+              {compareList.length > 0 && (
                 <button
-                  className="cursor-pointer flex items-center gap-1 border px-3 py-1.5 rounded-lg text-sm hover:bg-gray-100"
-                  onClick={() => setFilterOpen(true)}
+                  onClick={() => setShowComparePanel(!showComparePanel)}
+                  className="border px-3 py-1.5 rounded-lg text-sm"
                 >
-                  <SlidersHorizontal size={16} /> Filter
+                  Compare ({compareList.length})
                 </button>
-              </div>
-            </div>
-            <div className="w-[460px] md:w-full hide-scrollbar">
-              <VenueCategory
-                selectedCategory={selectedCategory}
-                setSelectedCategory={setSelectedCategory}
-              />
+              )}
+
+              <button
+                onClick={() => setFilterOpen(true)}
+                className="flex items-center gap-1 border px-3 py-1.5 rounded-lg text-sm"
+              >
+                <SlidersHorizontal size={16} /> Filter
+              </button>
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-4 pb-32 hide-scrollbar">
-            <div className="mb-4">
-              {/* <BannerCard ads={adsImages} /> */}
-              {!selectedCategory && <BannerCard ads={adsImages} />}
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-5">
+          {/* CATEGORY */}
+          <div className="w-full overflow-x-auto px-4">
+            <VenueCategory
+              selectedCategory={selectedCategory}
+              setSelectedCategory={setSelectedCategory}
+            />
+          </div>
+
+          {/* LIST */}
+          <div className="flex-1 overflow-y-auto px-4 pb-40">
+            {/* ADS */}
+            {!selectedCategory && (
+              <div className="mb-4">
+                <BannerCard ads={ads.map((a) => a.image)} />
+              </div>
+            )}
+
+            {/* CARDS */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
               {paginatedVenues.map((venue) => (
                 <VenueCard
                   key={venue.id}
@@ -665,60 +555,39 @@ export default function SearchPage() {
                   country={country}
                 />
               ))}
-
-              <WishlistPopup
-                venue={wishlistVenue}
-                open={!!wishlistVenue}
-                onClose={() => setWishlistVenue(null)}
-              />
-
-              {/* <CompareBar
-        compareList={compareList}
-        removeCompare={removeCompare}
-      /> */}
             </div>
 
-            {/* PAGINATION */}
-            <div className="flex justify-center gap-2 mt-10">
-              {Array.from({ length: totalPages }).map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => setPage(index + 1)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium
-                  ${
-                    page === index + 1
-                      ? "bg-[#8368EF] text-white"
-                      : "bg-gray-100"
-                  }`}
-                >
-                  {index + 1}
-                </button>
-              ))}
-            </div>
+            {/* WISHLIST */}
+            <WishlistPopup
+              venue={wishlistVenue}
+              open={!!wishlistVenue}
+              onClose={() => setWishlistVenue(null)}
+            />
           </div>
         </div>
 
-        {/* MAP */}
-        <div className="hidden lg:block w-[40%] h-full p-3">
-          <div className="sticky top-20 h-[calc(100vh-90px)] rounded-2xl overflow-hidden">
-            <MapView
-              venues={venue_filter}
-              hoverVenue={hoverVenue}
-              country={selected_country.name}
-            />
+        {/* 🗺️ DESKTOP MAP */}
+        <div className="hidden lg:block w-[40%]">
+          <div className="sticky top-[80px] h-[calc(100vh-80px)] pr-3">
+            <div className="w-full h-full rounded-2xl overflow-hidden shadow-lg">
+              <MapView
+                venues={venue_filter}
+                hoverVenue={hoverVenue}
+                country={selected_country.name}
+              />
+            </div>
           </div>
         </div>
       </div>
 
-      {/* MOBILE MAP */}
+      {/* 📱 MOBILE MAP FULLSCREEN */}
       <AnimatePresence>
         {showMap && (
           <motion.div
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
-            transition={{ duration: 0.35 }}
-            className="fixed inset-0 z-50 bg-white lg:hidden rounded-2xl"
+            className="fixed inset-0 z-50 bg-white lg:hidden"
           >
             <MapView
               venues={venue_filter}
@@ -736,17 +605,70 @@ export default function SearchPage() {
         )}
       </AnimatePresence>
 
-      {/* MOBILE BUTTONS */}
-      <div className="lg:hidden sticky bottom-16 left-0 right-0 flex justify-center gap-4 z-40">
+      {/* 📱 MOBILE BOTTOM BAR */}
+      {/* <div className="fixed bottom-0 left-0 right-0 md:hidden bg-white border-t p-3 flex justify-between items-center z-50 shadow-lg">
         <button
           onClick={() => setShowMap(true)}
-          className="flex items-center gap-2 bg-black text-white px-5 py-3 rounded-full shadow-lg"
+          className="flex-1 flex justify-center items-center gap-1 text-sm"
         >
-          <Map size={18} />
-          Map
+          <Map size={16} /> Map
         </button>
-      </div>
 
+        <button
+          onClick={() => setFilterOpen(true)}
+          className="flex-1 mx-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white py-2 rounded-lg text-sm flex justify-center items-center gap-1"
+        >
+          <SlidersHorizontal size={16} /> Filters
+        </button>
+
+        <button className="flex-1 text-sm">Sort</button>
+      </div> */}
+
+
+      {/* 📱 MOBILE FLOATING ACTIONS (Instagram Style) */}
+<div className="fixed right-3 bottom-28 z-50 flex flex-col gap-3 md:hidden">
+
+  {/* ❤️ Wishlist */}
+  <button className="bg-white/70 backdrop-blur-xl shadow-lg rounded-full p-3 active:scale-90 transition ">
+    <ScaleIcon className="w-5" />
+    <span className="absolute -top-1 -right-1 bg-purple-600 text-white text-[10px] px-1.5 py-[1px] rounded-full font-semibold shadow">
+        2
+      </span>
+  </button>
+
+  {/* 🔗 Share */}
+  <button
+    onClick={() => {
+      if (navigator.share) {
+        navigator.share({
+          title: "Check this venue",
+          url: window.location.href,
+        });
+      }
+    }}
+    className="bg-white/70 backdrop-blur-xl shadow-lg rounded-full p-3 active:scale-90 transition"
+  >
+    <ShareIcon className="w-5" />
+  </button>
+
+  {/* 🏡 Farmstay */}
+  <button className="bg-white/70 backdrop-blur-xl shadow-lg rounded-full px-3 py-2 text-xs font-semibold">
+    <BuildingOfficeIcon className="w-5" />
+  </button>
+
+  {/* 🏛️ Venue */}
+  <button className="bg-white/70 backdrop-blur-xl shadow-lg rounded-full px-3 py-2 text-xs font-semibold">
+   <Home className="w-5" />
+  </button>
+
+</div>
+
+
+
+
+
+
+      {/* FILTER DRAWER */}
       <FilterDrawer
         open={filterOpen}
         setOpen={setFilterOpen}

@@ -1,16 +1,35 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { MagnifyingGlassIcon } from "@heroicons/react/24/solid";
 import { useState, useEffect } from "react";
 import MobileSearchSheet from "./MobileSearchSheet";
+import LocationAutoComplete from "./LocationAutoComplete";
+
+const words = ["Farmstays", "Venues"];
 
 export default function HeroSection() {
   const [activeTab, setActiveTab] = useState("venues");
   const [openSearch, setOpenSearch] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [index, setIndex] = useState(0);
 
-  // ✅ SSR-safe mobile detection
+  // ✅ Fix SSR hydration
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // ✅ Word animation loop
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIndex((prev) => (prev + 1) % words.length);
+    }, 2800);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // ✅ Mobile detection
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
     check();
@@ -18,11 +37,13 @@ export default function HeroSection() {
     return () => window.removeEventListener("resize", check);
   }, []);
 
+  if (!mounted) return null; // 🔥 avoid hydration flicker
+
   return (
     <>
       <section className="relative min-h-[82vh] md:min-h-[86vh] md:flex md:items-center overflow-hidden">
- 
-        {/* 📱 MOBILE IMAGE (HALF SCREEN) */}
+        
+        {/* 📱 MOBILE IMAGE */}
         {isMobile && (
           <div
             className="w-full h-[40vh] bg-cover bg-center"
@@ -56,29 +77,42 @@ export default function HeroSection() {
 
         {/* 🔥 CONTENT */}
         <div
-  className={`relative z-10 w-full px-4 md:px-20 transition-all duration-500
-  ${
-    isMobile
-      ? "bg-white text-black pt-6 pb-10 rounded-t-[30px] -mt-14 shadow-2xl"
-      : "text-white pt-32 md:pt-40 pb-10"
-  }`}
->
-          {/* TITLE */}
+          className={`relative z-10 w-full px-4 md:px-20 transition-all duration-500
+          ${
+            isMobile
+              ? "bg-white text-black pt-6 pb-10 rounded-t-[30px] -mt-14 shadow-2xl"
+              : "text-white pt-32 md:pt-40 pb-10"
+          }`}
+        >
+          {/* 🔥 TITLE */}
           <motion.h1
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7 }}
-            className={`font-bold leading-tight max-w-3xl
-              ${
-                isMobile
-                  ? "text-2xl sm:text-3xl"
-                  : "text-4xl md:text-6xl"
-              }`}
+            className={`font-bold leading-tight max-w-3xl ${
+              isMobile ? "text-2xl sm:text-3xl" : "text-4xl md:text-6xl"
+            }`}
           >
             Your Next Great Story <br />
             Starts with the Right{" "}
-            <span className="text-purple-500 md:text-purple-400">
-              Farmstays
+
+            {/* ✨ Animated Word */}
+            <span className="relative inline-block min-w-[140px] h-[1.2em] align-bottom">
+              <AnimatePresence mode="wait">
+                <motion.span
+                  key={words[index]}
+                  initial={{ opacity: 0, y: 20, filter: "blur(6px)" }}
+                  animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                  exit={{ opacity: 0, y: -20, filter: "blur(6px)" }}
+                  transition={{
+                    duration: 0.6,
+                    ease: "easeInOut",
+                  }}
+                  className="absolute left-0 top-0 bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent"
+                >
+                  {words[index]}
+                </motion.span>
+              </AnimatePresence>
             </span>
           </motion.h1>
 
@@ -87,12 +121,11 @@ export default function HeroSection() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
-            className={`mt-3 md:mt-4 max-w-xl
-              ${
-                isMobile
-                  ? "text-sm text-gray-600"
-                  : "text-base text-gray-300"
-              }`}
+            className={`mt-3 md:mt-4 max-w-xl ${
+              isMobile
+                ? "text-sm text-gray-600"
+                : "text-base text-gray-300"
+            }`}
           >
             Find the perfect, personal space—from unique city hideaways to
             inspiring country escapes.
@@ -141,10 +174,7 @@ export default function HeroSection() {
           >
             <div className="flex-1">
               <p className="text-xs text-gray-300">Location</p>
-              <input
-                placeholder="Bengaluru"
-                className="bg-transparent outline-none text-white w-full"
-              />
+             <LocationAutoComplete />
             </div>
 
             <div className="h-10 w-px bg-white/20" />
@@ -185,7 +215,7 @@ export default function HeroSection() {
         </div>
       </section>
 
-      {/* 📱 MOBILE BOTTOM SHEET */}
+      {/* 📱 MOBILE SHEET */}
       <MobileSearchSheet open={openSearch} setOpen={setOpenSearch} />
     </>
   );
