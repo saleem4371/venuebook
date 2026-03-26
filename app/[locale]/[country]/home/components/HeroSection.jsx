@@ -49,7 +49,7 @@ export default function HeroSection() {
             className="w-full h-[40vh] bg-cover bg-center"
             style={{
               backgroundImage:
-                "url('https://beta.venuebook.in/img/sintra.6885ed95.png')",
+                "url('https://www.venuebook.in/img/sintra.6885ed95.png')", 
             }}
           />
         )}
@@ -64,7 +64,7 @@ export default function HeroSection() {
             className="absolute inset-0 w-full h-full object-cover scale-105"
           >
             <source
-              src="https://apitest.venuebook.in/Upload/Video/HomePage.mp4"
+              src="https://api.venuebook.in/Upload/Video/HomePage.mp4"
               type="video/mp4"
             />
           </video>

@@ -1,34 +1,45 @@
 "use client";
 
-import { useState } from "react";
-import { Globe } from "lucide-react";
-import { useRouter, usePathname, useParams } from "next/navigation";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useDropdown } from "@/context/DropdownContext";
+import { useRouter, usePathname, useParams } from "next/navigation";
 
-const languages = [
-  { code: "en", label: "English", short: "EN", flag: "🇺🇸" },
-  { code: "hi", label: "Hindi", short: "HI", flag: "🇮🇳" },
+const countries = [
+  { name: "India", flag: "🇮🇳", code: "in" },
+  { name: "UAE", flag: "🇦🇪", code: "ae" },
+  { name: "USA", flag: "🇺🇸", code: "us" },
 ];
 
-export default function LanguageDropdown() {
+export default function CountryDropdown() {
   const { openDropdown, toggleDropdown, closeAll } = useDropdown();
 
   const router = useRouter();
   const pathname = usePathname();
   const params = useParams();
 
-  const currentLocale = params?.locale || "en";
+  const currentCountry = params?.country || "in";
 
-  // find current language
-  const currentLang =
-    languages.find((l) => l.code === currentLocale) || languages[0];
+  const [selected, setSelected] = useState(countries[0]);
 
-  const isOpen = openDropdown === "language";
+  // sync selected with URL
+  useEffect(() => {
+    const found = countries.find((c) => c.code === currentCountry);
+    if (found) setSelected(found);
+  }, [currentCountry]);
 
-  const changeLanguage = (lang) => {
+  const isOpen = openDropdown === "country";
+
+  const handleSelect = (country) => {
+    setSelected(country);
     closeAll();
-    const newPath = pathname.replace(`/${currentLocale}`, `/${lang.code}`);
+
+    // replace country in URL
+    const newPath = pathname.replace(
+      `/${currentCountry}`,
+      `/${country.code}`
+    );
+
     router.push(newPath);
   };
 
@@ -36,20 +47,15 @@ export default function LanguageDropdown() {
     <div className="relative">
       {/* BUTTON */}
       <button
-        onClick={() => toggleDropdown("language")}
-        className="flex items-center gap-2 border border-gray-200  px-3 py-2 rounded-full hover:shadow-md transition"
+        onClick={() => toggleDropdown("country")}
+        className="flex items-center gap-2 border border-gray-200 px-3 py-2 rounded-full hover:shadow-md transition"
       >
-        <Globe size={16} />
+        <span className="text-lg">{selected.flag}</span>
 
-        {/* Show name */}
         <span className="text-sm font-medium hidden md:block">
-          {currentLang.label}
+          {selected.name}
         </span>
 
-        {/* Mobile short */}
-        <span className="text-xs md:hidden">{currentLang.short}</span>
-
-        {/* Arrow */}
         <motion.span
           animate={{ rotate: isOpen ? 180 : 0 }}
           className="text-xs"
@@ -68,18 +74,18 @@ export default function LanguageDropdown() {
             transition={{ duration: 0.18 }}
             className="absolute right-0 mt-3 w-52 bg-white border border-gray-200 rounded-2xl shadow-xl z-50 overflow-hidden"
           >
-            {languages.map((lang) => (
+            {countries.map((c) => (
               <button
-                key={lang.code}
-                onClick={() => changeLanguage(lang)}
+                key={c.code}
+                onClick={() => handleSelect(c)}
                 className={`w-full px-4 py-3 text-left flex items-center gap-3 hover:bg-gray-100 transition ${
-                  currentLang.code === lang.code
+                  selected.code === c.code
                     ? "bg-purple-50 text-purple-600 font-medium"
                     : "text-gray-700"
                 }`}
               >
-                <span className="text-lg">{lang.flag}</span>
-                {lang.label}
+                <span className="text-lg">{c.flag}</span>
+                {c.name}
               </button>
             ))}
           </motion.div>

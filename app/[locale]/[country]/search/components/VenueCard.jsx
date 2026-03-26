@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 import Link from "next/link";
 
-const VenueCard = ({ venue, onHover, onLeave, onCompare, onWishlist ,locale ,country  })  => {
+const VenueCard = ({ venue, onHover, onLeave, onCompare, onWishlist ,locale ,country  ,  compareList, setCompareList})  => {
 
   const [currentImage, setCurrentImage] = useState(0);
   const [hovered, setHovered] = useState(false);
@@ -20,8 +20,11 @@ const VenueCard = ({ venue, onHover, onLeave, onCompare, onWishlist ,locale ,cou
   const [wishlistCount, setWishlistCount] = useState(0);
   const [newCategoryName, setNewCategoryName] = useState("");
 
+  const [loadingCompare, setLoadingCompare] = useState(false);
+
+
   // compare state (max 4)
-  const [compareList, setCompareList] = useState([]);
+  // const [compareList, setCompareList] = useState([]);
 
   console.log()
 
@@ -73,20 +76,31 @@ const VenueCard = ({ venue, onHover, onLeave, onCompare, onWishlist ,locale ,cou
   };
 
   // compare toggle (max 4 venues)
-  const toggleCompare = (e) => {
+let clickTimeout = null;
 
-    e.preventDefault();
-    e.stopPropagation();
+const toggleCompare = (e) => {
+  e.preventDefault();
+  e.stopPropagation();
 
-    if (compareList.includes(venue.id)) {
-      setCompareList(compareList.filter((id) => id !== venue.id));
+  if (clickTimeout) return;
+
+  clickTimeout = setTimeout(() => {
+    clickTimeout = null;
+  }, 250);
+
+  setCompareList((prev) => {
+    if (prev.includes(venue.id)) {
+      return prev.filter((id) => id !== venue.id);
     } else {
-      if (compareList.length >= 4) return;
-      setCompareList([...compareList, venue.id]);
+      if (prev.length >= 4) return prev;
+      return [...prev, venue.id];
     }
+  });
+};
 
-    onCompare && onCompare(venue);
-  };
+
+const isDisabled =
+  !compareList.includes(venue.id) && compareList.length >= 4;
 
   return (
     <Link
@@ -194,15 +208,20 @@ const VenueCard = ({ venue, onHover, onLeave, onCompare, onWishlist ,locale ,cou
 
         {/* COMPARE BUTTON */}
         <button
-          onClick={toggleCompare}
-          className={`absolute bottom-3 left-1/2 -translate-x-1/2 text-sm font-semibold px-4 py-2 rounded-full shadow transition z-20
+           onClick={toggleCompare}
+  disabled={isDisabled || loadingCompare}
+          className={`absolute bottom-3 left-1/2 -translate-x-1/2 text-sm font-semibold px-4 py-2 rounded-full shadow transition z-20 cursor-pointer
           ${
             compareList.includes(venue.id)
               ? "bg-[#8368EF] text-white"
               : "bg-white bg-opacity-90 hover:bg-[#8368EF] hover:text-white"
-          }`}
+          } ${
+    isDisabled ? "opacity-50 cursor-not-allowed" : ""
+  }`}
         >
           {compareList.includes(venue.id) ? "✓ Compared" : "Compare"}
+
+         
         </button>
 
       </div>

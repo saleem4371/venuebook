@@ -2,6 +2,14 @@
 
 /* price markers */
 
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
 .priceMarkerWrapper {
   background: transparent;
 }

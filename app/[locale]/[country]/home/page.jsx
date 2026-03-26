@@ -113,7 +113,7 @@ export default function Home() {
         <DestinationSection/>
       </div>
       <SubscribeSection/>
-      <PremiumFooter/>
+      {/* <PremiumFooter/> */}
 
 
       <BottomMenu />
