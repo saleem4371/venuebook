@@ -57,7 +57,7 @@ export default function PremiumNavbar() {
         <div className="hidden md:flex items-center gap-2 relative">
           {menuItems.map((item) => {
             const Icon = item.icon;
-            const active = pathname === item.href;
+           const active = pathname.startsWith(item.href);
 
             return (
               <Link key={item.label} href={item.href}>

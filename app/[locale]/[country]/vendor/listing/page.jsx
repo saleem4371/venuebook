@@ -11,6 +11,7 @@ export default function ListingPage() {
 
   const venues = [
     {
+      id:1,
       name: "Royal Palace",
       location: "Bangalore",
       status: "ACTIVE",
@@ -18,6 +19,7 @@ export default function ListingPage() {
       image: "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2",
     },
     {
+      id:2,
       name: "Sunset Garden",
       location: "Mysore",
       status: "INACTIVE",
