@@ -2,6 +2,8 @@
 import Navbar from "./components/Navbar";
 import BottomDock from "./components/BottomNav";
 import MessageFAB from "./components/MessageFAB";
+import StandardFooter from "./components/StandardFooter";
+
 
 
 export default function AdminLayout({ children }) {
@@ -13,6 +15,9 @@ export default function AdminLayout({ children }) {
       </main>
       <MessageFAB />
       <BottomDock />
+      <StandardFooter 
+  vendorType="STANDARD" 
+/>
     </div>
   );
 }
