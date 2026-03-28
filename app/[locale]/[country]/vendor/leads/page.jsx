@@ -1,7 +1,8 @@
 "use client";
-import { useState } from 'react'
+import { useState } from "react";
 import { Search, Mail, Phone, MapPin, Eye } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
+import GlobalModal from "../components/GlobalModal";
 
 const leads = [
   {
@@ -46,12 +47,12 @@ const statusColor = {
 };
 
 export default function LeadsPage() {
-
-    const [selectedLead, setSelectedLead] = useState(null);
-    const [addLead, setAddLead] = useState(null);
+  const [selectedLead, setSelectedLead] = useState(null);
+  const [addLead, setAddLead] = useState(false);
 
   return (
-   <div className="">
+    <>
+    <div className="relative">
       <Toaster position="top-right" />
 
       {/* Stats */}
@@ -67,9 +68,7 @@ export default function LeadsPage() {
             className="bg-white/70 backdrop-blur-md rounded-2xl p-4 shadow hover:shadow-xl transition"
           >
             <p className="text-gray-500 text-sm">{item.label}</p>
-            <h2 className="text-xl font-bold text-gray-800 mt-2">
-              {item.value}
-            </h2>
+            <h2 className="text-xl font-bold text-gray-800 mt-2">{item.value}</h2>
           </div>
         ))}
       </div>
@@ -90,10 +89,14 @@ export default function LeadsPage() {
           <option>In Progress</option>
           <option>New</option>
         </select>
+
         <div>
-            <button 
-            className="rounded-xl px-4 py-2 shadow bg-indigo-600 text-white text-sm hover:bg-indigo-700" 
-             onClick={() => setAddLead(true)}  >Add</button>
+          <button
+            className="rounded-xl px-4 py-2 shadow bg-indigo-600 text-white text-sm hover:bg-indigo-700"
+            onClick={() => setAddLead(true)}
+          >
+            Add
+          </button>
         </div>
       </div>
 
@@ -107,12 +110,9 @@ export default function LeadsPage() {
             {/* Header */}
             <div className="flex justify-between items-start mb-3">
               <div>
-                <h3 className="font-semibold text-gray-800">
-                  {lead.name}
-                </h3>
+                <h3 className="font-semibold text-gray-800">{lead.name}</h3>
                 <p className="text-sm text-gray-500">{lead.date}</p>
               </div>
-
               <span
                 className={`text-xs px-3 py-1 rounded-full font-medium ${statusColor[lead.status]}`}
               >
@@ -147,10 +147,7 @@ export default function LeadsPage() {
 
             {/* Footer */}
             <div className="flex justify-between items-center mt-4">
-              <span className="text-xs bg-gray-100 px-2 py-1 rounded-lg">
-                {lead.tag}
-              </span>
-
+              <span className="text-xs bg-gray-100 px-2 py-1 rounded-lg">{lead.tag}</span>
               <div className="flex gap-2">
                 <button
                   onClick={() => setSelectedLead(lead)}
@@ -170,182 +167,122 @@ export default function LeadsPage() {
           </div>
         ))}
       </div>
-    {addLead && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center">
 
-    {/* BACKGROUND BLUR */}
-    <div
-      className="absolute inset-0 backdrop-blur-2xl bg-black/40"
+     
+    </div>
+    <GlobalModal open={addLead} onClose={() => setAddLead(false)}>
+
+  {/* HEADER */}
+  <div className="flex justify-between items-center mb-5">
+    <h2 className="text-lg font-semibold text-gray-900">Add New Lead</h2>
+   
+  </div>
+
+  {/* FORM */}
+  <div className="space-y-4">
+    <input placeholder="Full Name" className="input" />
+    <input placeholder="Email Address" className="input" />
+    <input placeholder="Phone Number" className="input" />
+    <input placeholder="Venue Name" className="input" />
+    <input type="number" placeholder="Number of Guests" className="input" />
+
+    <select className="input">
+      <option>NEW</option>
+      <option>IN PROGRESS</option>
+      <option>CONFIRMED</option>
+    </select>
+  </div>
+
+  {/* FOOTER */}
+  <div className="flex justify-end gap-3 mt-6">
+    <button
       onClick={() => setAddLead(false)}
-    ></div>
+      className="px-4 py-2 rounded-xl border hover:bg-gray-100"
+    >
+      Cancel
+    </button>
 
-    {/* MODAL */}
-    <div className="relative z-10 w-[95%] md:w-[500px]">
-
-      {/* Glow Border */}
-      <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 opacity-30 blur"></div>
-
-      <div className="relative bg-white rounded-2xl shadow-2xl p-6 animate-modal">
-
-        {/* Header */}
-        <div className="flex justify-between items-center mb-5">
-          <h2 className="text-lg font-semibold text-gray-800">
-            Add New Lead
-          </h2>
-
-          <button
-            onClick={() => setAddLead(false)}
-            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100"
-          >
-            ✕
-          </button>
-        </div>
-
-        {/* FORM */}
-        <div className="space-y-4">
-
-          {/* Name */}
-          <input
-            placeholder="Full Name"
-            className="w-full px-4 py-2 rounded-xl border focus:ring-2 focus:ring-indigo-400 outline-none"
-          />
-
-          {/* Email */}
-          <input
-            placeholder="Email Address"
-            className="w-full px-4 py-2 rounded-xl border focus:ring-2 focus:ring-indigo-400 outline-none"
-          />
-
-          {/* Phone */}
-          <input
-            placeholder="Phone Number"
-            className="w-full px-4 py-2 rounded-xl border focus:ring-2 focus:ring-indigo-400 outline-none"
-          />
-
-          {/* Venue */}
-          <input
-            placeholder="Venue Name"
-            className="w-full px-4 py-2 rounded-xl border focus:ring-2 focus:ring-indigo-400 outline-none"
-          />
-
-          {/* Guests */}
-          <input
-            type="number"
-            placeholder="Number of Guests"
-            className="w-full px-4 py-2 rounded-xl border focus:ring-2 focus:ring-indigo-400 outline-none"
-          />
-
-          {/* Status */}
-          <select className="w-full px-4 py-2 rounded-xl border focus:ring-2 focus:ring-indigo-400 outline-none">
-            <option>NEW</option>
-            <option>IN PROGRESS</option>
-            <option>CONFIRMED</option>
-          </select>
-        </div>
-
-        {/* FOOTER */}
-        <div className="flex justify-end gap-3 mt-6">
-
-          <button
-            onClick={() => setAddLead(false)}
-            className="px-4 py-2 rounded-xl border hover:bg-gray-100 transition"
-          >
-            Cancel
-          </button>
-
-          <button
-            onClick={() => {
-              toast.success("Lead Added 🚀");
-              setAddLead(false);
-            }}
-            className="px-5 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg hover:scale-105 transition"
-          >
-            Save Lead
-          </button>
-        </div>
-      </div>
-    </div>
+    <button
+      onClick={() => {
+        toast.success("Lead Added 🚀");
+        setAddLead(false);
+      }}
+      className="px-5 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 shadow"
+    >
+      Save Lead
+    </button>
   </div>
-)}
-    
-    {selectedLead && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center">
 
-    {/* FULL BACKGROUND BLUR */}
-    <div
-      className="absolute inset-0 backdrop-blur-xl bg-black/30"
+</GlobalModal>
+
+<GlobalModal open={!!selectedLead} onClose={() => setSelectedLead(null)}>
+
+  {/* HEADER */}
+  <div className="flex justify-between items-center mb-5">
+    <h2 className="text-lg font-semibold text-gray-900">Lead Details</h2>
+ 
+  </div>
+
+  {/* CONTENT */}
+  {selectedLead && (
+    <div className="space-y-3 text-gray-700 text-sm">
+      <div className="flex justify-between">
+        <span className="font-medium">Name</span>
+        <span>{selectedLead.name}</span>
+      </div>
+
+      <div className="flex justify-between">
+        <span className="font-medium">Date</span>
+        <span>{selectedLead.date}</span>
+      </div>
+
+      <div className="flex justify-between">
+        <span className="font-medium">Status</span>
+        <span>{selectedLead.status}</span>
+      </div>
+
+      <div className="border-t my-2"></div>
+
+      <p className="flex gap-2 items-center">
+        <Mail size={16} /> {selectedLead.email}
+      </p>
+
+      <p className="flex gap-2 items-center">
+        <Phone size={16} /> {selectedLead.phone}
+      </p>
+
+      <p className="flex gap-2 items-center">
+        <MapPin size={16} /> {selectedLead.venue}
+      </p>
+    </div>
+  )}
+
+  {/* FOOTER */}
+  <div className="flex justify-end mt-6">
+    <button
       onClick={() => setSelectedLead(null)}
-    ></div>
-
-    {/* MODAL (NO BLUR HERE) */}
-    <div className="relative z-10 w-[95%] md:w-[500px]">
-
-      {/* Glow Border */}
-      <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 opacity-30 blur"></div>
-
-      <div className="relative bg-white rounded-2xl shadow-2xl p-6 animate-modal">
-
-        {/* Header */}
-        <div className="flex justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-800">
-            Lead Details
-          </h2>
-
-          <button
-            onClick={() => setSelectedLead(null)}
-            className="text-gray-400 hover:text-gray-600"
-          >
-            ✕
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="space-y-3 text-sm text-gray-700">
-          <div className="flex justify-between">
-            <span>Name</span>
-            <span>{selectedLead.name}</span>
-          </div>
-
-          <div className="flex justify-between">
-            <span>Date</span>
-            <span>{selectedLead.date}</span>
-          </div>
-
-          <div className="flex justify-between">
-            <span>Status</span>
-            <span>{selectedLead.status}</span>
-          </div>
-
-          <div className="border-t"></div>
-
-          <p className="flex gap-2">
-            <Mail size={14} /> {selectedLead.email}
-          </p>
-
-          <p className="flex gap-2">
-            <Phone size={14} /> {selectedLead.phone}
-          </p>
-
-          <p className="flex gap-2">
-            <MapPin size={14} /> {selectedLead.venue}
-          </p>
-        </div>
-
-        {/* Footer */}
-        <div className="flex justify-end mt-6">
-          <button
-            onClick={() => setSelectedLead(null)}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-xl"
-          >
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
+      className="px-6 py-2 bg-indigo-600 text-white rounded-xl shadow"
+    >
+      Close
+    </button>
   </div>
-)}
-    </div>
 
-    
+</GlobalModal>
+    </>
   );
 }
+
+<style jsx>{`
+  .input {
+    width: 100%;
+    padding: 10px;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    font-size: 14px;
+    outline: none;
+  }
+  .input:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+  }
+`}</style>

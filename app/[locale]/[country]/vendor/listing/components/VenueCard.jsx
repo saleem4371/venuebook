@@ -9,6 +9,7 @@ export default function VenueCard({ venue }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
+
   const basePath = `/${params?.locale}/${params?.country}/vendor/listing`;
 
   // 🔥 PREFETCH (instant feel)
