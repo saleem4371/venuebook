@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useParams, useRouter } from "next/navigation";
 
 export default function MessageFAB() {
   const [open, setOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
@@ -13,6 +15,13 @@ export default function MessageFAB() {
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
   }, []);
+
+  const params = useParams();
+  const basePath = `/${params?.locale}/${params?.country}/vendor/chat`;
+
+  const chatmessage = () => {
+    router.push(basePath);
+  };
 
   return (
     <>
@@ -38,27 +47,18 @@ export default function MessageFAB() {
           fixed z-50 flex items-center justify-center cursor-pointer
           ${isMobile ? "right-4 bottom-24" : "bottom-6 right-6"}
           w-14 h-14 rounded-full
-          
-          /* Glassmorphism */
           bg-white/20 backdrop-blur-xl border border-white/30
-          
           shadow-lg hover:shadow-xl transition-all duration-300
         `}
       >
-        {/* ICON ANIMATION */}
         <motion.div
           animate={{ rotate: open ? 180 : 0 }}
           transition={{ duration: 0.3 }}
           className="relative w-6 h-6"
         >
-          {open ? (
-            <span className="text-white text-xl">✕</span>
-          ) : (
-            <span className="text-white text-xl">💬</span>
-          )}
+          {open ? <span className="text-white text-xl">✕</span> : <span className="text-white text-xl">💬</span>}
         </motion.div>
 
-        {/* NOTIFICATION BADGE */}
         {!open && (
           <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full animate-pulse">
             5
@@ -79,8 +79,8 @@ export default function MessageFAB() {
               bg-white/70 backdrop-blur-2xl border border-white/30 
               shadow-2xl z-50 overflow-hidden"
             >
-              <Header />
-              <ChatList />
+              <Header chatmessage={chatmessage} />
+              <ChatList chatmessage={chatmessage} />
             </motion.div>
           )}
         </AnimatePresence>
@@ -99,12 +99,9 @@ export default function MessageFAB() {
               bg-white/80 backdrop-blur-xl rounded-t-3xl 
               shadow-2xl z-50 overflow-hidden"
             >
-              {/* Drag Handle */}
               <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mt-3 mb-2" />
-
-              <Header mobile />
-
-              <ChatList />
+              <Header mobile chatmessage={chatmessage} />
+              <ChatList chatmessage={chatmessage} />
             </motion.div>
           )}
         </AnimatePresence>
@@ -112,15 +109,18 @@ export default function MessageFAB() {
     </>
   );
 }
-function Header({ mobile }) {
+
+// --- Header Component ---
+function Header({ mobile, chatmessage }) {
   return (
     <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200/50">
-      <h2 className="font-semibold text-gray-800">
-        Messages
-      </h2>
+      <h2 className="font-semibold text-gray-800">Messages</h2>
 
       {!mobile && (
-        <button className="text-xs text-blue-600 hover:underline">
+        <button
+          className="text-xs text-blue-600 hover:underline"
+          onClick={chatmessage} 
+        >
           View All
         </button>
       )}
@@ -128,7 +128,8 @@ function Header({ mobile }) {
   );
 }
 
-function ChatList() {
+// --- Chat List Component ---
+function ChatList({ chatmessage }) {
   const chats = [
     { name: "Venue Team", unread: 3 },
     { name: "Bookings", unread: 1 },
@@ -142,24 +143,17 @@ function ChatList() {
           key={i}
           whileHover={{ scale: 1.02 }}
           className="flex items-center justify-between p-4 cursor-pointer transition rounded-xl mx-2 my-1 hover:bg-white/60"
+          onClick={() => chatmessage()}
         >
           <div className="flex items-center gap-3">
-            {/* Avatar */}
             <div className="w-10 h-10 rounded-full bg-gradient-to-r from-indigo-400 to-purple-500 text-white flex items-center justify-center font-semibold">
               {chat.name.charAt(0)}
             </div>
-
             <div>
-              <p className="text-sm font-medium text-gray-800">
-                {chat.name}
-              </p>
-              <p className="text-xs text-gray-400">
-                Tap to open chat
-              </p>
+              <p className="text-sm font-medium text-gray-800">{chat.name}</p>
+              <p className="text-xs text-gray-400">Tap to open chat</p>
             </div>
           </div>
-
-          {/* Badge */}
           {chat.unread > 0 && (
             <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full shadow">
               {chat.unread}

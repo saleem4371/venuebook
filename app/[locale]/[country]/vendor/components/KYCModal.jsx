@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import toast, { Toaster } from "react-hot-toast";
 
 import PremiumButton from "./PremiumButton";
+import GlobalModal from "./GlobalModal";
 
 export default function KYCModal({ open, setOpen }) {
   const [step, setStep] = useState(1);
@@ -149,25 +150,14 @@ export default function KYCModal({ open, setOpen }) {
     <>
       <Toaster position="top-right" />
 
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            className="fixed inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-50"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <motion.div
-              className="w-full max-w-lg p-6 rounded-2xl bg-white backdrop-blur-xl shadow-xl border border-white/20"
-              initial={{ scale: 0.9 }}
-              animate={{ scale: 1 }}
-            >
+       <GlobalModal open={open} onClose={() => setOpen(false)}>
+
+       
               {/* Header */}
               <div className="flex justify-between mb-4">
                 <h2 className="text-xl font-semibold">
                   KYC Verification
                 </h2>
-                <button onClick={() => setOpen(false)}>✕</button>
               </div>
 
               {/* Steps */}
@@ -210,10 +200,7 @@ export default function KYCModal({ open, setOpen }) {
   )}
 </div>
 
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </GlobalModal>
     </>
   );
 }
