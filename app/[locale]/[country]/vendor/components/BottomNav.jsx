@@ -33,9 +33,9 @@ export default function BottomDock() {
     { label: "Leads", href: `${basePath}/leads`, icon: Users, badge: 12 },
     { label: "Bookings", href: `${basePath}/bookings`, icon: Calendar, badge: 2 },
     { label: "Calendar", href: `${basePath}/calendar`, icon: CalendarCheck },
-    { label: "Addons", href: `${basePath}/reports`, icon: Layers },
-    { label: "Packages", href: `${basePath}/reports`, icon: Package },
-    { label: "Settings", href: `${basePath}/reports`, icon:   Settings},
+    { label: "Addons", href: `${basePath}/addons`, icon: Layers },
+    { label: "Packages", href: `${basePath}/package`, icon: Package },
+    { label: "Settings", href: `${basePath}/settings`, icon:   Settings},
     { label: "Reports", href: `${basePath}/reports`, icon: BarChart3 },
   ];
 
