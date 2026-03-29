@@ -4,11 +4,12 @@ import Navbar from "./components/Navbar";
 import BottomDock from "./components/BottomNav";
 import MessageFAB from "./components/MessageFAB";
 import StandardFooter from "./components/StandardFooter";
+import { VendorUIProvider } from "@/context/VendorUIContext";
 
 export default function AdminLayout({ children }) {
   return (
     <div className="min-h-screen bg-gray-50">
-
+<VendorUIProvider>
       {/* NAVBAR */}
       <Navbar />
 
@@ -25,7 +26,7 @@ export default function AdminLayout({ children }) {
 
       {/* FOOTER */}
       <StandardFooter vendorType="STANDARD" />
-
+</VendorUIProvider>
     </div>
   );
 }

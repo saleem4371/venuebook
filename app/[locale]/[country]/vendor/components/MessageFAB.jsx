@@ -3,11 +3,22 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useParams, useRouter } from "next/navigation";
+import { useUI } from "@/context/VendorUIContext";
 
 export default function MessageFAB() {
   const [open, setOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const router = useRouter();
+  const params = useParams();
+
+  const { setIsFabOpen, isModalOpen } = useUI(); // 🔥 context
+
+  const basePath = `/${params?.locale}/${params?.country}/vendor/chat`;
+
+  // 🔥 Update context when FAB opens/closes
+  useEffect(() => {
+    setIsFabOpen(open);
+  }, [open, setIsFabOpen]);
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
@@ -15,9 +26,6 @@ export default function MessageFAB() {
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
   }, []);
-
-  const params = useParams();
-  const basePath = `/${params?.locale}/${params?.country}/vendor/chat`;
 
   const chatmessage = () => {
     router.push(basePath);
@@ -39,35 +47,37 @@ export default function MessageFAB() {
       </AnimatePresence>
 
       {/* FAB BUTTON */}
-      <motion.button
-        onClick={() => setOpen(!open)}
-        whileTap={{ scale: 0.9 }}
-        whileHover={{ scale: 1.05 }}
-        className={`
-          fixed z-50 flex items-center justify-center cursor-pointer
-          ${isMobile ? "right-4 bottom-24" : "bottom-6 right-6"}
-          w-14 h-14 rounded-full
-          bg-white/20 backdrop-blur-xl border border-white/30
-          shadow-lg hover:shadow-xl transition-all duration-300
-        `}
-      >
-        <motion.div
-          animate={{ rotate: open ? 180 : 0 }}
-          transition={{ duration: 0.3 }}
-          className="relative w-6 h-6"
+      {!isModalOpen && ( // 🔥 hide FAB if modal open
+        <motion.button
+          onClick={() => setOpen(!open)}
+          whileTap={{ scale: 0.9 }}
+          whileHover={{ scale: 1.05 }}
+          className={`
+            fixed z-50 flex items-center justify-center cursor-pointer
+            ${isMobile ? "right-4 bottom-24" : "bottom-6 right-6"}
+            w-14 h-14 rounded-full
+            bg-white/20 backdrop-blur-xl border border-white/30
+            shadow-lg hover:shadow-xl transition-all duration-300
+          `}
         >
-          {open ? <span className="text-white text-xl">✕</span> : <span className="text-white text-xl">💬</span>}
-        </motion.div>
+          <motion.div
+            animate={{ rotate: open ? 180 : 0 }}
+            transition={{ duration: 0.3 }}
+            className="relative w-6 h-6"
+          >
+            {open ? <span className="text-white text-xl">✕</span> : <span className="text-white text-xl">💬</span>}
+          </motion.div>
 
-        {!open && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full animate-pulse">
-            5
-          </span>
-        )}
-      </motion.button>
+          {!open && (
+            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full animate-pulse">
+              5
+            </span>
+          )}
+        </motion.button>
+      )}
 
       {/* DESKTOP POPUP */}
-      {!isMobile && (
+      {!isMobile && !isModalOpen && (
         <AnimatePresence>
           {open && (
             <motion.div
@@ -87,7 +97,7 @@ export default function MessageFAB() {
       )}
 
       {/* MOBILE BOTTOM SHEET */}
-      {isMobile && (
+      {isMobile && !isModalOpen && (
         <AnimatePresence>
           {open && (
             <motion.div

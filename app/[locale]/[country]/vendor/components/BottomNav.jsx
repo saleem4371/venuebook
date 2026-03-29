@@ -10,12 +10,20 @@ import {
   CalendarCheck,
   BarChart2,
   MoreHorizontal,
+    Package,
+  Layers,
+  Settings,
+  BarChart3
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 
-export default function BottomDock({ hideDock }) {
+import { useUI } from "@/context/VendorUIContext";
+
+export default function BottomDock() {
   const pathname = usePathname();
   const params = useParams();
+ const {  setShowDock, hideBottomMenu } = useUI();
+ 
 
   const basePath = `/${params?.locale}/${params?.country}/vendor`;
 
@@ -25,7 +33,10 @@ export default function BottomDock({ hideDock }) {
     { label: "Leads", href: `${basePath}/leads`, icon: Users, badge: 12 },
     { label: "Bookings", href: `${basePath}/bookings`, icon: Calendar, badge: 2 },
     { label: "Calendar", href: `${basePath}/calendar`, icon: CalendarCheck },
-    { label: "Reports", href: `${basePath}/reports`, icon: BarChart2 },
+    { label: "Addons", href: `${basePath}/reports`, icon: Layers },
+    { label: "Packages", href: `${basePath}/reports`, icon: Package },
+    { label: "Settings", href: `${basePath}/reports`, icon:   Settings},
+    { label: "Reports", href: `${basePath}/reports`, icon: BarChart3 },
   ];
 
   const visibleItems = menuItems.slice(0, 4);
@@ -34,13 +45,10 @@ export default function BottomDock({ hideDock }) {
   const [showMore, setShowMore] = useState(false);
 
   // 🔥 SCROLL SMART CONTROL
-  const [showDock, setShowDock] = useState(true);
   const lastScrollY = useRef(0);
-
   useEffect(() => {
     const handleScroll = () => {
       const current = window.scrollY;
-
       if (Math.abs(current - lastScrollY.current) < 8) return;
 
       if (current > lastScrollY.current && current > 80) {
@@ -48,74 +56,55 @@ export default function BottomDock({ hideDock }) {
       } else {
         setShowDock(true);
       }
-
       lastScrollY.current = current;
     };
-
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  }, [setShowDock]);
 
   // 🔥 ACTIVE PILL
   const itemRefs = useRef([]);
   const [activeStyle, setActiveStyle] = useState({ left: 0, width: 0 });
-
   useEffect(() => {
     const index = visibleItems.findIndex((i) => i.href === pathname);
-
     if (index !== -1 && itemRefs.current[index]) {
       const el = itemRefs.current[index];
-
       requestAnimationFrame(() => {
-        setActiveStyle({
-          left: el.offsetLeft,
-          width: el.offsetWidth,
-        });
+        setActiveStyle({ left: el.offsetLeft, width: el.offsetWidth });
       });
     }
   }, [pathname]);
+
+  // Hide dock completely if modal or FAB is open
+  const isHidden = hideBottomMenu;
 
   return (
     <motion.div
       initial={{ y: 120, opacity: 0, scale: 0.9 }}
       animate={{
-        y: showDock && !hideDock ? 0 : 140,
-        opacity: showDock && !hideDock ? 1 : 0,
-        scale: showDock && !hideDock ? 1 : 0.92,
+        y: !isHidden ? 0 : 140,
+        opacity: !isHidden ? 1 : 0,
+        scale: !isHidden ? 1 : 0.92,
       }}
-      transition={{
-        type: "spring",
-        stiffness: 140,
-        damping: 20,
-        mass: 0.7,
-      }}
+      transition={{ type: "spring", stiffness: 140, damping: 20, mass: 0.7 }}
       className="fixed bottom-5 left-1/2 -translate-x-1/2 md:hidden z-50"
     >
       {/* 🌟 DOCK */}
-      <div className="relative flex items-center gap-3 px-5 py-3 rounded-full backdrop-blur-2xl bg-white/30 border border-white/20 shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
-
+      <div className="relative flex items-center gap-3 px-5 py-3 border rounded-full backdrop-blur-2xl bg-white/30 border-white/20 shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
         {/* ✨ Glow Layer */}
         <div className="absolute inset-0 rounded-full bg-gradient-to-r from-indigo-500/20 via-purple-500/20 to-pink-500/20 blur-xl"></div>
 
         {/* 🔥 ACTIVE PILL */}
         <motion.div
           className="absolute top-1 h-12 rounded-full bg-white/80 backdrop-blur-md border border-white/50 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]"
-          animate={{
-            left: activeStyle.left,
-            width: activeStyle.width,
-          }}
-          transition={{
-            type: "spring",
-            stiffness: 500,
-            damping: 35,
-          }}
+          animate={{ left: activeStyle.left, width: activeStyle.width }}
+          transition={{ type: "spring", stiffness: 500, damping: 35 }}
         />
 
-        {/* 🔥 ITEMS */}
+        {/* 🔥 VISIBLE ITEMS */}
         {visibleItems.map((item, index) => {
           const Icon = item.icon;
           const active = pathname === item.href;
-
           return (
             <Link
               key={item.label}
@@ -140,17 +129,12 @@ export default function BottomDock({ hideDock }) {
                   }`}
                 />
               </motion.div>
-
               <motion.span
                 className="text-[10px] mt-1 font-medium"
-                animate={{
-                  opacity: active ? 1 : 0.6,
-                  y: active ? -1 : 2,
-                }}
+                animate={{ opacity: active ? 1 : 0.6, y: active ? -1 : 2 }}
               >
                 {item.label}
               </motion.span>
-
               {item.badge > 0 && (
                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] px-1.5 rounded-full">
                   {item.badge}
@@ -160,7 +144,7 @@ export default function BottomDock({ hideDock }) {
           );
         })}
 
-        {/* 🔥 MORE */}
+        {/* 🔥 MORE MENU */}
         {moreItems.length > 0 && (
           <div className="relative z-10">
             <motion.div
@@ -188,7 +172,7 @@ export default function BottomDock({ hideDock }) {
               )}
             </AnimatePresence>
 
-            {/* MENU */}
+            {/* MORE ITEMS MENU */}
             <AnimatePresence>
               {showMore && (
                 <motion.div
@@ -200,7 +184,6 @@ export default function BottomDock({ hideDock }) {
                 >
                   {moreItems.map((item) => {
                     const Icon = item.icon;
-
                     return (
                       <Link
                         key={item.label}

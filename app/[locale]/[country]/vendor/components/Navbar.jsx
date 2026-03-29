@@ -11,6 +11,9 @@ import {
   BarChart2,
   Bell,
   Settings,
+  Package,
+  Layers,
+  MoreHorizontal
 } from "lucide-react";
 import { useState } from "react";
 
@@ -32,8 +35,16 @@ export default function PremiumNavbar() {
     { label: "Leads", href: `${basePath}/leads`, icon: Users, badge: 12 },
     { label: "Bookings", href: `${basePath}/bookings`, icon: Calendar, badge: 2 },
     { label: "Calendar", href: `${basePath}/calendar`, icon: CalendarCheck },
+  
+    { label: "Addons", href: `${basePath}/addons`, icon: Layers },
+    { label: "Packages", href: `${basePath}/package`, icon: Package },
+    { label: "Settings", href: `${basePath}/settings`, icon: Settings },
     { label: "Reports", href: `${basePath}/reports`, icon: BarChart2 },
   ];
+
+  const visibleItems = menuItems.slice(0, 5);
+const moreItems = menuItems.slice(5);
+const [showMore, setShowMore] = useState(false);
 
   // ✅ SAMPLE NOTIFICATIONS
   const notifications = [
@@ -55,40 +66,99 @@ export default function PremiumNavbar() {
 
         {/* DESKTOP MENU */}
         <div className="hidden md:flex items-center gap-2 relative">
-          {menuItems.map((item) => {
+
+  {/* MAIN ITEMS */}
+  {visibleItems.map((item) => {
+    const Icon = item.icon;
+    const active = pathname.startsWith(item.href);
+
+    return (
+      <Link key={item.label} href={item.href}>
+        <div className="relative px-4 py-2 rounded-xl cursor-pointer">
+
+          {active && (
+            <motion.div
+              layoutId="activeTab"
+              className="absolute inset-0 bg-white/60 rounded-xl shadow-md"
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            />
+          )}
+
+          <div className="relative flex items-center gap-2 z-10">
+            <Icon size={18} />
+            <span className="text-sm font-medium">{item.label}</span>
+
+            {item.badge > 0 && (
+              <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
+                {item.badge}
+              </span>
+            )}
+          </div>
+        </div>
+      </Link>
+    );
+  })}
+
+  {/* 🔥 MORE BUTTON */}
+  <div className="relative">
+    <motion.div
+      whileTap={{ scale: 0.9 }}
+      whileHover={{ scale: 1.05 }}
+      onClick={() => setShowMore(!showMore)}
+      className="px-4 py-2 rounded-xl cursor-pointer flex items-center gap-2 bg-white/40 backdrop-blur-md"
+    >
+      <MoreHorizontal size={18} />
+      <span className="text-sm font-medium">More</span>
+    </motion.div>
+
+    {/* BACKDROP */}
+    <AnimatePresence>
+      {showMore && (
+        <motion.div
+          className="fixed inset-0 z-40"
+          onClick={() => setShowMore(false)}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        />
+      )}
+    </AnimatePresence>
+
+    {/* DROPDOWN */}
+    <AnimatePresence>
+      {showMore && (
+        <motion.div
+          initial={{ opacity: 0, y: 10, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 10, scale: 0.95 }}
+          transition={{ type: "spring", stiffness: 260, damping: 20 }}
+          className="absolute right-0 mt-3 w-52 
+          bg-white/80 backdrop-blur-2xl 
+          border border-white/30 
+          rounded-2xl shadow-2xl p-2 z-50"
+        >
+          {moreItems.map((item) => {
             const Icon = item.icon;
-           const active = pathname.startsWith(item.href);
+            const active = pathname.startsWith(item.href);
 
             return (
-              <Link key={item.label} href={item.href}>
-                <div className="relative px-4 py-2 rounded-xl cursor-pointer">
-
-                  {/* Active Animation */}
-                  {active && (
-                    <motion.div
-                      layoutId="activeTab"
-                      className="absolute inset-0 bg-white/60 rounded-xl shadow-md"
-                      transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                    />
-                  )}
-
-                  <div className="relative flex items-center gap-2 z-10">
-                    <Icon size={18} />
-                    <span className="text-sm font-medium">
-                      {item.label}
-                    </span>
-
-                    {item.badge > 0 && (
-                      <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
-                        {item.badge}
-                      </span>
-                    )}
-                  </div>
-                </div>
+              <Link
+                key={item.label}
+                href={item.href}
+                onClick={() => setShowMore(false)}
+                className={`flex items-center gap-3 px-3 py-2 rounded-xl transition
+                ${active ? "bg-indigo-500/10 text-indigo-600" : "hover:bg-white/60"}`}
+              >
+                <Icon size={18} />
+                <span className="text-sm">{item.label}</span>
               </Link>
             );
           })}
-        </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  </div>
+</div>
 
         {/* RIGHT SIDE */}
         <div className="flex items-center gap-4 relative">
