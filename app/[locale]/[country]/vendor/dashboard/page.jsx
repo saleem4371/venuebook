@@ -58,14 +58,8 @@ export default function Dashboard() {
     { name: "Sylvester Miranda", id: 4111, date: "15 Apr 2026", amount: 20478 },
   ];
 
- const backtoDashboard = () => {
-
-
-  if (!params?.locale || !params?.country) return; // safety check
-  // Replace /locale with /country in the path
-  const newPath = pathname.replace(`/${params.country}`, `/${params.locale}`);
-
-  router.push(newPath);
+const backtoDashboard = () => {
+ router.push("/");
 };
 
   return (

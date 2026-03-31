@@ -1,10 +1,20 @@
 "use client";
-
+import {useEffect } from 'react'
 import { motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
+import { useUI } from "@/context/VendorUIContext";
 
 export default function GlobalModal({ open, onClose, children }) {
   if (typeof window === "undefined") return null;
+
+const { setIsModalOpen } = useUI();
+
+  useEffect(() => {
+    setIsModalOpen(open);
+    return () => setIsModalOpen(false);
+  }, [open]);
+
+  if (!open) return null;
 
   return createPortal(
     <AnimatePresence>

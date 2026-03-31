@@ -37,6 +37,7 @@ export default function BottomDock() {
     { label: "Packages", href: `${basePath}/package`, icon: Package },
     { label: "Settings", href: `${basePath}/settings`, icon:   Settings},
     { label: "Reports", href: `${basePath}/reports`, icon: BarChart3 },
+    { label: "Teams", href: `${basePath}/teams`, icon: Users },
   ];
 
   const visibleItems = menuItems.slice(0, 4);

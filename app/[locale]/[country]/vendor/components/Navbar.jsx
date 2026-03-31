@@ -40,6 +40,7 @@ export default function PremiumNavbar() {
     { label: "Packages", href: `${basePath}/package`, icon: Package },
     { label: "Settings", href: `${basePath}/settings`, icon: Settings },
     { label: "Reports", href: `${basePath}/reports`, icon: BarChart2 },
+     { label: "Teams", href: `${basePath}/teams`, icon: Users },
   ];
 
   const visibleItems = menuItems.slice(0, 5);
