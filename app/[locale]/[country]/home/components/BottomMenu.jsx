@@ -13,6 +13,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useUI } from "@/context/UIContext";
 
 export default function BottomMenu() {
+  
   const { setShowMap, hideBottomMenu , setLoginOpen} = useUI();
 
   const [visible, setVisible] = useState(true);
@@ -21,13 +22,19 @@ export default function BottomMenu() {
   const pathname = usePathname();
   const router = useRouter();
 
-  // 🔥 Extract locale + country dynamically
-  const segments = pathname.split("/");
-  const locale = segments[1];
-  const country = segments[2];
+  // 🔥 Extract locale + country
+  const segments = pathname.split("/").filter(Boolean);
+  const locale = segments[0];
+  const country = segments[1];
 
   const isSearchPage =
     pathname.includes("/search") || pathname.includes("/venues");
+
+  // ✅ 🔥 DETAIL PAGE DETECTION (IMPORTANT)
+  const isDetailPage =
+    segments.length === 4 &&
+    segments[2] === "search" &&
+    !["venues", "farmstay"].includes(segments[3]);
 
   // 🔥 Scroll hide/show
   useEffect(() => {
@@ -54,7 +61,7 @@ export default function BottomMenu() {
 
   return (
     <AnimatePresence>
-      {visible && !hideBottomMenu && (
+      {visible && !hideBottomMenu && !isDetailPage && (
         <motion.div
           initial={{ y: 100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -92,14 +99,12 @@ export default function BottomMenu() {
               onClick={() => setLoginOpen(true)}
             />
 
-            {/*  onClick={() => go("/profile")} */}
-
+            {/* MAP only on listing */}
             {isSearchPage && (
               <NavItem
                 icon={<MapIcon className="w-5" />}
                 label="Map"
                 onClick={() => setShowMap(true)}
-               
               />
             )}
 
@@ -110,7 +115,7 @@ export default function BottomMenu() {
   );
 }
 
-// 🔥 NavItem Component with Active State
+// 🔥 NavItem Component
 function NavItem({ icon, label, onClick, active }) {
   return (
     <button

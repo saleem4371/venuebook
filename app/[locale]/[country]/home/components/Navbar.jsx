@@ -24,6 +24,10 @@ export default function Navbar() {
   const [isMobile, setIsMobile] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
+   // 🔥 NEW STATES
+  const [showHeader, setShowHeader] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
+
   const { setFilterOpen, setLoginOpen, loginOpen } = useUI();
   const { openDropdown, toggleDropdown, closeAll } = useDropdown();
   const [activeTab, setActiveTab] = useState("venue");
@@ -38,10 +42,39 @@ export default function Navbar() {
   const isSearchPage =
     pathname.includes("/search") || pathname.includes("/venues");
 
+      // ✅ DETAIL PAGE DETECTION (FIXED)
+  const segments = pathname.split("/").filter(Boolean);
+
+
+  const isDetailPage =
+    segments.length === 4 &&
+    segments[2] === "search" &&
+    !["venues", "farmstay"].includes(segments[3]);
+
   /* ---------------- RESPONSIVE ---------------- */
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
-    const handleScroll = () => setScrolled(window.scrollY > 10);
+
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+
+      setScrolled(currentScrollY > 10);
+
+      if (isDetailPage) {
+        // 🔥 smooth threshold (prevents flicker)
+        if (Math.abs(currentScrollY - lastScrollY) > 5) {
+          if (currentScrollY > lastScrollY) {
+            setShowHeader(false); // scroll down
+          } else {
+            setShowHeader(true); // scroll up
+          }
+        }
+      } else {
+        setShowHeader(true); // always visible
+      }
+
+      setLastScrollY(currentScrollY);
+    };
 
     check();
     window.addEventListener("resize", check);
@@ -51,7 +84,7 @@ export default function Navbar() {
       window.removeEventListener("resize", check);
       window.removeEventListener("scroll", handleScroll);
     };
-  }, []);
+  }, [lastScrollY, isDetailPage]);
 
   /* ---------------- BODY LOCK ---------------- */
   useEffect(() => {
@@ -88,11 +121,18 @@ export default function Navbar() {
   router.push(`/${currentLocale}/${currentLang}/search/${routeType}`);
 };
 
+const switch_to_vendor =() =>{
+   router.push(`/${currentLocale}/${currentLang}/vendor/dashboard`);
+}
+
   return (
     <>
       {/* ================= HEADER ================= */}
-      <header
-        className={`fixed top-0 w-full z-50 transition ${
+      <motion.header
+        initial={{ y: 0 }}
+        animate={{ y: showHeader ? 0 : -100 }}
+        transition={{ duration: 0.25 }}
+        className={`fixed top-0 w-full z-50 ${
           scrolled ? "bg-white/80 backdrop-blur shadow-md" : "bg-white"
         }`}
       >
@@ -101,7 +141,8 @@ export default function Navbar() {
           {isMobile && isSearchPage ? (
             <>
               <ArrowLeftIcon className="w-5" />
-
+{!isDetailPage && (
+  <>
               <div className="flex-1 flex items-center bg-gray-100 rounded-full px-4 py-2 mx-2">
                 <MagnifyingGlassIcon className="w-5 text-gray-500 mr-2" />
                 <input
@@ -112,21 +153,25 @@ export default function Navbar() {
 
               <button
                 onClick={() => setFilterOpen(true)}
-                className="p-2 border rounded-full"
+                className="cursor-pointer p-2 border rounded-full"
               >
                 <AdjustmentsHorizontalIcon className="w-5" />
               </button>
+              </>
+)}
             </>
+
+            
           ) : (
             <>
               {/* LOGO */}
               <img
                 src="https://www.venuebook.in/img/logo.490f6c58.svg"
-                className="w-32 md:w-40"
+                className="cursor-pointer w-32 md:w-40"
               />
 
               {/* 🔥 CENTER TOGGLE (DESKTOP ONLY) */}
-{isSearchPage && (
+{isSearchPage && !isDetailPage && (
   <div className="hidden md:flex absolute left-1/2 -translate-x-1/2">
     <div className="relative flex items-center bg-gray-100 p-1 rounded-full shadow-inner">
 
@@ -143,7 +188,7 @@ export default function Navbar() {
       {/* VENUE */}
       <button
         onClick={() => handleTabChange("venue")}
-        className={`relative z-10 flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium transition  cursor-pointer ${
+        className={`cursor-pointer relative z-10 flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium transition  cursor-pointer ${
           activeTab === "venue"
             ? "text-white"
             : "text-gray-600 hover:text-black"
@@ -156,7 +201,7 @@ export default function Navbar() {
       {/* FARMSTAY */}
       <button
         onClick={() => handleTabChange("farmstay")}
-        className={`relative z-10 flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium transition  cursor-pointer ${
+        className={`cursor-pointer relative z-10 flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium transition  cursor-pointer ${
           activeTab === "farmstay"
             ? "text-white"
             : "text-gray-600 hover:text-black"
@@ -170,7 +215,7 @@ export default function Navbar() {
 )}
 
               {/* DESKTOP */}
-              {/* DESKTOP */}
+              {/* onClick={() => setLoginOpen(true)} */}
 <div className="hidden md:flex items-center gap-6">
 
   {/* 🔥 PREMIUM TOGGLE (ONLY SEARCH PAGE) */}
@@ -179,28 +224,28 @@ export default function Navbar() {
   <button className="hover:text-purple-600">Explore</button>
 
   <button
-    onClick={() => setLoginOpen(true)}
-    className="px-4 py-2 border border-gray-200 rounded-full hover:bg-purple-600 hover:text-white"
+    onClick={() => switch_to_vendor()}
+    className=" cursor-pointer px-4 py-2 border border-gray-200 rounded-full hover:bg-purple-600 hover:text-white"
   >
     Switch to Vendor
   </button>
 
   <CountryDropdown />
   <LanguageDropdown />
-  <UserDropdown />
+  <UserDropdown open={loginOpen} setOpen={setLoginOpen} />
 </div>
 
               {/* MOBILE MENU */}
               <button
                 onClick={() => setOpenMenu(true)}
-                className="md:hidden"
+                className="cursor-pointer md:hidden"
               >
                 <Bars3Icon className="w-7 h-7" />
               </button>
             </>
           )}
         </div>
-      </header>
+      </motion.header>
 
       {/* ================= MOBILE DRAWER ================= */}
       <AnimatePresence>
@@ -226,14 +271,12 @@ export default function Navbar() {
               </div>
 
               <div className="flex-1 p-5 space-y-4">
-                <button className="w-full text-left">Explore</button>
+                <button className="cursor-pointer w-full text-left">Explore</button>
 
                 <button
-                  onClick={() => {
-                    setLoginOpen(true);
-                    setOpenMenu(false);
-                  }}
-                  className="w-full text-left text-purple-600"
+                  
+                   onClick={() => switch_to_vendor()}
+                  className="cursor-pointer w-full text-left text-purple-600"
                 >
                   Switch to Vendor
                 </button>
@@ -249,7 +292,7 @@ export default function Navbar() {
                       setOpenMenu(false);
                       setTimeout(() => toggleDropdown("country"), 200);
                     }}
-                    className="w-full flex justify-between py-3"
+                    className="cursor-pointer w-full flex justify-between py-3"
                   >
                     🌍 Country <span>India</span>
                   </button>
@@ -259,7 +302,7 @@ export default function Navbar() {
                       setOpenMenu(false);
                       setTimeout(() => toggleDropdown("language"), 200);
                     }}
-                    className="w-full flex justify-between py-3"
+                    className="cursor-pointer w-full flex justify-between py-3"
                   >
                     🌐 Language <span>English</span>
                   </button>
@@ -269,7 +312,7 @@ export default function Navbar() {
                       setOpenMenu(false);
                       setTimeout(() => toggleDropdown("user"), 200);
                     }}
-                    className="w-full flex justify-between py-3"
+                    className="cursor-pointer w-full flex justify-between py-3"
                   >
                     👤 Account
                   </button>
@@ -309,14 +352,14 @@ export default function Navbar() {
 
             <button
               onClick={() => changeLanguage("en")}
-              className="w-full py-3 border-b text-left"
+              className="cursor-pointer w-full py-3 border-b text-left"
             >
               English 🇺🇸
             </button>
 
             <button
               onClick={() => changeLanguage("hi")}
-              className="w-full py-3 text-left"
+              className="cursor-pointer w-full py-3 text-left"
             >
               Hindi 🇮🇳
             </button>
@@ -337,21 +380,21 @@ export default function Navbar() {
 
             <button
               onClick={() => changeCountry("in")}
-              className="w-full py-3 border-b text-left"
+              className="cursor-pointer w-full py-3 border-b text-left"
             >
               🇮🇳 India
             </button>
 
             <button
               onClick={() => changeCountry("ae")}
-              className="w-full py-3 border-b text-left"
+              className="cursor-pointer w-full py-3 border-b text-left"
             >
               🇦🇪 UAE
             </button>
 
             <button
               onClick={() => changeCountry("us")}
-              className="w-full py-3 text-left"
+              className="cursor-pointer w-full py-3 text-left"
             >
               🇺🇸 USA
             </button>
@@ -370,24 +413,23 @@ export default function Navbar() {
           >
             <p className="text-lg font-semibold mb-4">Account</p>
 
-            <button className="w-full py-3 border-b text-left">
+            <button className="cursor-pointer w-full py-3 border-b text-left">
               My Bookings
             </button>
 
-            <button className="w-full py-3 border-b text-left">
+            <button className="cursor-pointer w-full py-3 border-b text-left">
               Wishlist
             </button>
 
             <button className="w-full py-3 border-b text-left">
               Settings
             </button>
-
             <button
               onClick={() => {
                 closeAll();
                 setLoginOpen(true);
               }}
-              className="w-full mt-4 bg-purple-600 text-white py-3 rounded-full"
+              className="cursor-pointer w-full mt-4 bg-purple-600 text-white py-3 rounded-full"
             >
               Login
             </button>

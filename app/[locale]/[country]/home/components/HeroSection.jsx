@@ -37,11 +37,11 @@ export default function HeroSection() {
     return () => window.removeEventListener("resize", check);
   }, []);
 
-  if (!mounted) return null; // 🔥 avoid hydration flicker
-
+  if (!mounted) return null; // 🔥 avoid hydration flicker min-h-[82vh]
+  
   return (
     <>
-      <section className="relative min-h-[82vh] md:min-h-[86vh] md:flex md:items-center overflow-hidden">
+      <section className="relative  md:min-h-[86vh] md:flex md:items-center overflow-hidden">
         
         {/* 📱 MOBILE IMAGE */}
         {isMobile && (
@@ -80,7 +80,7 @@ export default function HeroSection() {
           className={`relative z-10 w-full px-4 md:px-20 transition-all duration-500
           ${
             isMobile
-              ? "bg-white text-black pt-6 pb-10 rounded-t-[30px] -mt-14 shadow-2xl"
+              ? "bg-white text-black pt-6 pb-10 rounded-t-[30px] -mt-14"
               : "text-white pt-32 md:pt-40 pb-10"
           }`}
         >
