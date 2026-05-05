@@ -1,17 +1,21 @@
 import { getDictionary } from "@/lib/getDictionary";
 import { DictionaryProvider } from "@/context/DictionaryContext";
+import { GoogleOAuthProvider } from "@react-oauth/google";
 
 export default async function LocaleLayout({ children, params }) {
   const { locale } = await params;
 
   const dict = await getDictionary(locale);
 
-  const dir = locale === "ar" ? "rtl" : "ltr";
+  const dir = 'ltr';//locale === "ar" ? "rtl" : "ltr";
 
 return (
   <DictionaryProvider dict={dict}>
     <div dir={dir}>
-      {children}
+        <GoogleOAuthProvider clientId="774185917573-vrjso023g1tjnceasenfrvh7v8qntmho.apps.googleusercontent.com">
+ {children}
+        </GoogleOAuthProvider>
+     
     </div>
   </DictionaryProvider>
 );
