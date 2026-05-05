@@ -1,20 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Navbar from "./components/Navbar";
 import HeroSection from "./components/HeroSection";
 import MobileSearchSheet from "./components/MobileSearchSheet";
-import BottomMenu from "./components/BottomMenu";
 
-import RecentViews from "./components/RecentViews";
-import PopularVenues from "./components/PopularVenues";
 import Categories from "./components/Categories";
-import SponsoredVenues from "./components/SponsoredVenues";
-import TopDesignation from "./components/TopDesignation";
 import AdvertiseBanner from "./components/AdvertiseBanner";
 import DestinationSection from "./components/DestinationSection";
 import SubscribeSection from "./components/SubscribeSection";
-import PremiumFooter from "./components/PremiumFooter";
 
 import VenueSection from "./components/VenueSection";
 
@@ -98,7 +91,6 @@ export default function Home() {
 
   return (
     <>
-      <Navbar />
       <HeroSection setOpenSearch={setOpenSearch} />
       <MobileSearchSheet open={openSearch} setOpen={setOpenSearch} />
 
@@ -113,10 +105,6 @@ export default function Home() {
         <DestinationSection/>
       </div>
       <SubscribeSection/>
-      {/* <PremiumFooter/> */}
-
-
-      <BottomMenu />
     </>
   );
 }

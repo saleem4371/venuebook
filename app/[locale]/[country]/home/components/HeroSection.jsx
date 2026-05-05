@@ -49,7 +49,7 @@ export default function HeroSection() {
             className="w-full h-[40vh] bg-cover bg-center"
             style={{
               backgroundImage:
-                "url('https://www.venuebook.in/img/sintra.6885ed95.png')", 
+                "url('https://vb-venue-images.s3.eu-north-1.amazonaws.com/vb_video/HomePage+(1).mp4')", 
             }}
           />
         )}

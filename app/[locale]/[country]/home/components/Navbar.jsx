@@ -1,444 +1,661 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import Link from "next/link";
 import { usePathname, useRouter, useParams } from "next/navigation";
-import {
-  Bars3Icon,
-  XMarkIcon,
-  MagnifyingGlassIcon,
-  AdjustmentsHorizontalIcon,
-  ArrowLeftIcon,
-} from "@heroicons/react/24/outline";
 import { motion, AnimatePresence } from "framer-motion";
-import { HomeIcon, BuildingOffice2Icon } from "@heroicons/react/24/outline";
 
-import LoginModal from "./LoginModal";
-import LanguageDropdown from "./LanguageDropdown";
-import CountryDropdown from "./CountryDropdown";
-import UserDropdown from "./UserDropdown";
-import { useUI } from "@/context/UIContext";
+import LoginModal          from "./LoginModal";
+import UserDropdown        from "./UserDropdown";
+import RegionLanguageModal from "./RegionLanguageModal";
+
+import lightLogo from "@/assets/logo.svg";
+import darkLogo  from "@/assets/logo.png";
+
+import { useUI }       from "@/context/UIContext";
 import { useDropdown } from "@/context/DropdownContext";
+import { useAuth }     from "@/context/AuthContext";
+
+import { getCookie } from "@/lib/cookie";
+
+
+
+/* ------------------------------------------------------------------ */
+/*  Constants                                                          */
+/* ------------------------------------------------------------------ */
+
+const SCROLL_DELTA    = 6;   // px — direction-change threshold
+const SCROLL_SHADOW_AT = 8;  // px — when to show shadow/border
+const MOBILE_BP       = 768; // px — md breakpoint
+
+/* ------------------------------------------------------------------ */
+/*  Hooks                                                              */
+/* ------------------------------------------------------------------ */
+
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const mql  = window.matchMedia(`(max-width: ${MOBILE_BP - 1}px)`);
+    const sync = () => setIsMobile(mql.matches);
+    sync();
+    mql.addEventListener("change", sync);
+    return () => mql.removeEventListener("change", sync);
+  }, []);
+
+  return isMobile;
+}
+
+function useScrollHeader(hideOnScroll) {
+  const [scrolled, setScrolled] = useState(false);
+  const [visible,  setVisible]  = useState(true);
+  const lastY = useRef(0);
+
+  useEffect(() => {
+    const onScroll = () => {
+      const y = window.scrollY;
+      setScrolled(y > SCROLL_SHADOW_AT);
+
+      if (!hideOnScroll) {
+        setVisible(true);
+        lastY.current = y;
+        return;
+      }
+
+      if (Math.abs(y - lastY.current) > SCROLL_DELTA) {
+        setVisible(y < lastY.current || y < 80);
+        lastY.current = y;
+      }
+    };
+
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [hideOnScroll]);
+
+  return { scrolled, visible };
+}
+
+function useLockBodyScroll(locked) {
+  useEffect(() => {
+    if (!locked) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, [locked]);
+}
+
+function useTheme() {
+  // Default: light — state only ever changes via toggleTheme, never from system
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("theme");
+    // If nothing saved, or anything other than "dark" → force light
+    const dark = stored === "dark";
+    if (!dark) {
+      localStorage.setItem("theme", "light");
+      document.documentElement.classList.remove("dark");
+      setIsDark(false);
+    } else {
+      setIsDark(true);
+      document.documentElement.classList.add("dark");
+    }
+  }, []);
+
+  const toggleTheme = useCallback(() => {
+    setIsDark((prev) => {
+      const next = !prev;
+      localStorage.setItem("theme", next ? "dark" : "light");
+      document.documentElement.classList.toggle("dark", next);
+      return next;
+    });
+  }, []);
+
+  return { isDark, toggleTheme };
+}
+
+/* ------------------------------------------------------------------ */
+/*  Navbar                                                             */
+/* ------------------------------------------------------------------ */
 
 export default function Navbar() {
-  const [openMenu, setOpenMenu] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
+  const pathname = usePathname();
+  const router   = useRouter();
+  const params   = useParams();
 
-   // 🔥 NEW STATES
-  const [showHeader, setShowHeader] = useState(true);
-  const [lastScrollY, setLastScrollY] = useState(0);
+  const locale  = params?.locale  || "en";
+  const country = params?.country || "in";
 
   const { setFilterOpen, setLoginOpen, loginOpen } = useUI();
-  const { openDropdown, toggleDropdown, closeAll } = useDropdown();
-  const [activeTab, setActiveTab] = useState("venue");
+  const { openDropdown }                           = useDropdown();
+  const { isLoggedIn, isListed }                   = useAuth();
 
-  const pathname = usePathname();
-  const router = useRouter();
-  const params = useParams();
+  const [activeTab,       setActiveTab]       = useState("venue");
+  const [regionModalOpen, setRegionModalOpen] = useState(false);
+  const { isDark, toggleTheme }               = useTheme();
 
-  const currentLocale = params?.locale || "en";
-  const currentLang = params?.country || "in";
+   const [loading, setLoading] = useState(false);
 
-  const isSearchPage =
-    pathname.includes("/search") || pathname.includes("/venues");
+  const isMobile = useIsMobile();
 
-      // ✅ DETAIL PAGE DETECTION (FIXED)
-  const segments = pathname.split("/").filter(Boolean);
+  /* ---------- Page shape detection ---------- */
+  const segments = useMemo(
+    () => pathname.split("/").filter(Boolean),
+    [pathname]
+  );
 
-
+  const isSearchPage = pathname.includes("/search") || pathname.includes("/venues");
   const isDetailPage =
     segments.length === 4 &&
     segments[2] === "search" &&
     !["venues", "farmstay"].includes(segments[3]);
 
-  /* ---------------- RESPONSIVE ---------------- */
+  const { scrolled, visible } = useScrollHeader(isDetailPage);
+
+  /* ---------- Sync tab from URL ---------- */
   useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768);
+    if (segments[3] === "farmstay") setActiveTab("farmstay");
+    else if (segments[3] === "venues") setActiveTab("venue");
+  }, [segments]);
 
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY;
+  /* ---------- Body lock ---------- */
+  useLockBodyScroll(regionModalOpen);
 
-      setScrolled(currentScrollY > 10);
+  /* ---------- Navigation helpers ---------- */
+  // const goVendor = useCallback(
+  //   () => router.push(`/${locale}/${country}/vendor/dashboard`),
+  //   [router, locale, country]
+  // );
 
-      if (isDetailPage) {
-        // 🔥 smooth threshold (prevents flicker)
-        if (Math.abs(currentScrollY - lastScrollY) > 5) {
-          if (currentScrollY > lastScrollY) {
-            setShowHeader(false); // scroll down
-          } else {
-            setShowHeader(true); // scroll up
-          }
-        }
-      } else {
-        setShowHeader(true); // always visible
-      }
-
-      setLastScrollY(currentScrollY);
-    };
-
-    check();
-    window.addEventListener("resize", check);
-    window.addEventListener("scroll", handleScroll);
-
-    return () => {
-      window.removeEventListener("resize", check);
-      window.removeEventListener("scroll", handleScroll);
-    };
-  }, [lastScrollY, isDetailPage]);
-
-  /* ---------------- BODY LOCK ---------------- */
-  useEffect(() => {
-    document.body.style.overflow = openMenu ? "hidden" : "auto";
-  }, [openMenu]);
-
-  /* ---------------- COUNTRY CHANGE ---------------- */
-  const changeCountry = (code) => {
-    closeAll();
-
-    const segments = pathname.split("/").filter(Boolean);
-
-    if (segments.length === 0) {
-      router.push(`/${code}`);
-      return;
-    }
-
-    segments[0] = code;
-    router.push("/" + segments.join("/"));
-  };
-
-  /* ---------------- LANGUAGE CHANGE ---------------- */
-  const changeLanguage = (locale) => {
-    closeAll();
-    router.push(pathname.replace(`/${currentLocale}`, `/${locale}`));
-  };
-
-  /* ----------------CHANGE TYPE----------------------- */
-  const handleTabChange = (type) => {
-  setActiveTab(type);
-
-  const routeType = type === "venue" ? "venues" : "farmstay";
-
-  router.push(`/${currentLocale}/${currentLang}/search/${routeType}`);
+  const handleVendorClick = () => {
+ 
+ setLoading(true);
+  if (isListed) {
+    router.push(`/${locale}/${country}/vendor/dashboard`);
+  } else {
+    router.push(`/${locale}/${country}/list`);
+  }
+  setLoading(false);
 };
 
-const switch_to_vendor =() =>{
-   router.push(`/${currentLocale}/${currentLang}/vendor/dashboard`);
-}
+  
 
+  const handleTabChange = useCallback(
+    (type) => {
+      setActiveTab(type);
+      const route = type === "venue" ? "venues" : "farmstay";
+      router.push(`/${locale}/${country}/search/${route}`);
+    },
+    [router, locale, country]
+  );
+
+  const handleExplore = useCallback(
+    () => router.push(`/${locale}/${country}/search/venues`),
+    [router, locale, country]
+  );
+
+  /* ---------- Vendor CTA ---------- */
+  const vendorLabel = isLoggedIn && isListed ? "Switch to vendor" : "List your property";
+
+  /* ---------- Layout branches ---------- */
+  const showMobileSearchBar = isMobile && isSearchPage && !isDetailPage;
+  const showCenterToggle    = !isMobile && isSearchPage && !isDetailPage;
+
+
+   const [token, setToken] = useState(null);
+
+  useEffect(() => {
+    const t = getCookie("token");
+    setToken(t);
+  }, []);
+
+  /* ================================================================ */
   return (
     <>
-      {/* ================= HEADER ================= */}
+      {/* ── Header ───────────────────────────────────────────────── */}
       <motion.header
-        initial={{ y: 0 }}
-        animate={{ y: showHeader ? 0 : -100 }}
-        transition={{ duration: 0.25 }}
-        className={`fixed top-0 w-full z-50 ${
-          scrolled ? "bg-white/80 backdrop-blur shadow-md" : "bg-white"
-        }`}
+        initial={false}
+        animate={{ y: visible ? 0 : -70 }}
+        transition={{ duration: 0.25, ease: "easeOut" }}
+        className={[
+          "fixed inset-x-0 top-0 z-40 w-full",
+          "transition-[background-color,border-color,box-shadow] duration-200",
+          scrolled
+            ? "bg-white/95 dark:bg-gray-950/95 backdrop-blur-md border-b border-gray-200/80 dark:border-gray-800/80 shadow-sm"
+            : "bg-white dark:bg-gray-950 border-b border-transparent",
+        ].join(" ")}
+        role="banner"
       >
-        <div className="relative flex items-center justify-between px-4 md:px-10 py-3">
-          {/* MOBILE SEARCH */}
-          {isMobile && isSearchPage ? (
-            <>
-              <ArrowLeftIcon className="w-5" />
-{!isDetailPage && (
-  <>
-              <div className="flex-1 flex items-center bg-gray-100 rounded-full px-4 py-2 mx-2">
-                <MagnifyingGlassIcon className="w-5 text-gray-500 mr-2" />
-                <input
-                  placeholder="Search venues..."
-                  className="bg-transparent outline-none w-full text-sm"
-                />
-              </div>
-
-              <button
-                onClick={() => setFilterOpen(true)}
-                className="cursor-pointer p-2 border rounded-full"
-              >
-                <AdjustmentsHorizontalIcon className="w-5" />
-              </button>
-              </>
-)}
-            </>
-
-            
+        <nav
+          aria-label="Primary navigation"
+          className="flex h-[64px] md:h-[72px] w-full items-center px-5 sm:px-8 lg:px-10"
+        >
+          {/* ── Branch: Mobile search bar on search pages ──────── */}
+          {showMobileSearchBar ? (
+            <MobileSearchBar
+              onBack={() => router.back()}
+              onFilter={() => setFilterOpen(true)}
+            />
           ) : (
             <>
-              {/* LOGO */}
-              <img
-                src="https://www.venuebook.in/img/logo.490f6c58.svg"
-                className="cursor-pointer w-32 md:w-40"
-              />
+              {/* Logo */}
+              <Brand href={`/${locale}/${country}/home`} isDark={isDark} />
 
-              {/* 🔥 CENTER TOGGLE (DESKTOP ONLY) */}
-{isSearchPage && !isDetailPage && (
-  <div className="hidden md:flex absolute left-1/2 -translate-x-1/2">
-    <div className="relative flex items-center bg-gray-100 p-1 rounded-full shadow-inner">
+              {/* Center: search-type tabs (desktop search pages) */}
+              {showCenterToggle && (
+                <div className="absolute left-1/2 -translate-x-1/2 hidden md:block">
+                  <SearchTabs active={activeTab} onChange={handleTabChange} />
+                </div>
+              )}
 
-      {/* Animated Background */}
-      <motion.div
-        layout
-        transition={{ type: "spring", stiffness: 300, damping: 30 }}
-        className="absolute top-1 bottom-1 w-1/2 rounded-full bg-purple-600"
-        style={{
-          left: activeTab === "venue" ? "4px" : "50%",
-        }}
-      />
+              {/* ── Right cluster ──────────────────────────────── */}
+              <div className="ml-auto flex items-center gap-1">
 
-      {/* VENUE */}
-      <button
-        onClick={() => handleTabChange("venue")}
-        className={`cursor-pointer relative z-10 flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium transition  cursor-pointer ${
-          activeTab === "venue"
-            ? "text-white"
-            : "text-gray-600 hover:text-black"
-        }`}
-      >
-        <BuildingOffice2Icon className="w-4 h-4" />
-        Venue
-      </button>
-
-      {/* FARMSTAY */}
-      <button
-        onClick={() => handleTabChange("farmstay")}
-        className={`cursor-pointer relative z-10 flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium transition  cursor-pointer ${
-          activeTab === "farmstay"
-            ? "text-white"
-            : "text-gray-600 hover:text-black"
-        }`}
-      >
-        <HomeIcon className="w-4 h-4" />
-        Farmstay
-      </button>
-    </div>
-  </div>
-)}
-
-              {/* DESKTOP */}
-              {/* onClick={() => setLoginOpen(true)} */}
-<div className="hidden md:flex items-center gap-6">
-
-  {/* 🔥 PREMIUM TOGGLE (ONLY SEARCH PAGE) */}
- 
-
-  <button className="hover:text-purple-600">Explore</button>
-
-  <button
-    onClick={() => switch_to_vendor()}
-    className=" cursor-pointer px-4 py-2 border border-gray-200 rounded-full hover:bg-purple-600 hover:text-white"
-  >
-    Switch to Vendor
-  </button>
-
-  <CountryDropdown />
-  <LanguageDropdown />
-  <UserDropdown open={loginOpen} setOpen={setLoginOpen} />
-</div>
-
-              {/* MOBILE MENU */}
-              <button
-                onClick={() => setOpenMenu(true)}
-                className="cursor-pointer md:hidden"
-              >
-                <Bars3Icon className="w-7 h-7" />
-              </button>
-            </>
-          )}
-        </div>
-      </motion.header>
-
-      {/* ================= MOBILE DRAWER ================= */}
-      <AnimatePresence>
-        {openMenu && (
-          <>
-            <motion.div
-              className="fixed inset-0 bg-black/40 z-40"
-              onClick={() => setOpenMenu(false)}
-            />
-
-            <motion.div
-              initial={{ x: "100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              className="fixed right-0 top-0 w-[85%] max-w-sm h-full bg-white z-50 flex flex-col"
-            >
-              <div className="flex justify-between p-5 border-b">
-                <p className="font-semibold">Menu</p>
-                <XMarkIcon
-                  className="w-6"
-                  onClick={() => setOpenMenu(false)}
-                />
-              </div>
-
-              <div className="flex-1 p-5 space-y-4">
-                <button className="cursor-pointer w-full text-left">Explore</button>
-
+                {/* Explore — hidden on mobile, minimal icon on md+ */}
                 <button
-                  
-                   onClick={() => switch_to_vendor()}
-                  className="cursor-pointer w-full text-left text-purple-600"
+                  type="button"
+                  onClick={handleExplore}
+                  aria-label="Explore venues"
+                  className={[
+                    "hidden md:inline-flex items-center gap-1.5 rounded-full",
+                    "px-3 py-2 text-sm font-medium",
+                    "text-gray-700 dark:text-gray-300",
+                    "transition hover:bg-gray-100 dark:hover:bg-gray-800/70",
+                    "focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2",
+                  ].join(" ")}
                 >
-                  Switch to Vendor
+                  <ExploreSearchIcon className="h-[15px] w-[15px] shrink-0" />
+                  <span>Explore</span>
                 </button>
 
-                {/* Preferences */}
-                <div className="border-t pt-4">
-                  <p className="text-xs text-gray-500 mb-3 uppercase">
-                    Preferences
-                  </p>
+                {/* Vendor CTA — visible md+ (also in profile dropdown on mobile) */}
+                {/* <button
+                  type="button"
+                   onClick={handleVendorClick}
+                  className={[
+                    "hidden md:inline-flex items-center gap-2 rounded-full",
+                    "border border-gray-200 dark:border-gray-700",
+                    "px-4 py-2 text-sm font-medium",
+                    "text-gray-800 dark:text-gray-200",
+                    "transition",
+                    "hover:bg-gray-50 dark:hover:bg-gray-800/60",
+                    "hover:border-gray-300 dark:hover:border-gray-600",
+                    "focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2",
+                  ].join(" ")}
+                >
+                  {isLoggedIn && isListed ? (
+                    <VendorSwitchIcon className="h-4 w-4 shrink-0" />
+                  ) : (
+                    <ListPropertyIcon className="h-4 w-4 shrink-0" />
+                  )}
+                  <span>{vendorLabel}</span> 
 
-                  <button
-                    onClick={() => {
-                      setOpenMenu(false);
-                      setTimeout(() => toggleDropdown("country"), 200);
-                    }}
-                    className="cursor-pointer w-full flex justify-between py-3"
-                  >
-                    🌍 Country <span>India</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setOpenMenu(false);
-                      setTimeout(() => toggleDropdown("language"), 200);
-                    }}
-                    className="cursor-pointer w-full flex justify-between py-3"
-                  >
-                    🌐 Language <span>English</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setOpenMenu(false);
-                      setTimeout(() => toggleDropdown("user"), 200);
-                    }}
-                    className="cursor-pointer w-full flex justify-between py-3"
-                  >
-                    👤 Account
-                  </button>
-                </div>
-              </div>
-
-              <div className="p-5 border-t text-sm text-gray-500">
-                © 2026 VenueBook
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-
-      {/* ================= OVERLAY ================= */}
-      <AnimatePresence>
-  {openDropdown && isMobile && (
-    <motion.div
-      onClick={closeAll}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 0.3 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black z-[60]"
-    />
+                  
+                </button> */}
+<button
+  type="button"
+  onClick={handleVendorClick}
+  disabled={loading}
+  className="hidden md:inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium relative"
+>
+  {/* Spinner */}
+  {loading && (
+    <span className="flex items-center justify-center">
+      <span className="h-4 w-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+    </span>
   )}
-</AnimatePresence>
-      {/* ================= LANGUAGE SHEET ================= */}
-      <AnimatePresence>
-        {openDropdown === "language" && isMobile && (
-          <motion.div
-            initial={{ y: "100%" }}
-            animate={{ y: 0 }}
-            exit={{ y: "100%" }}
-            className="fixed bottom-0 left-0 right-0 bg-white p-5 rounded-t-3xl z-[70]"
-          >
-            <p className="text-lg font-semibold mb-4">Language</p>
 
-            <button
-              onClick={() => changeLanguage("en")}
-              className="cursor-pointer w-full py-3 border-b text-left"
-            >
-              English 🇺🇸
-            </button>
+  {/* Icon + Text */}
+  <span className="flex items-center gap-2 text-gray-800 dark:text-gray-200">
+    {!loading && (
+      isLoggedIn && isListed ? (
+        <VendorSwitchIcon className="h-4 w-4 shrink-0" />
+      ) : (
+        <ListPropertyIcon className="h-4 w-4 shrink-0" />
+      )
+    )}
 
-            <button
-              onClick={() => changeLanguage("hi")}
-              className="cursor-pointer w-full py-3 text-left"
-            >
-              Hindi 🇮🇳
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+    <span>
+      {loading ? "Processing..." : vendorLabel}
+    </span>
+  </span>
+</button>
 
-      {/* ================= COUNTRY SHEET ================= */}
-      <AnimatePresence>
-        {openDropdown === "country" && isMobile && (
-          <motion.div
-            initial={{ y: "100%" }}
-            animate={{ y: 0 }}
-            exit={{ y: "100%" }}
-            className="fixed bottom-0 left-0 right-0 bg-white p-5 rounded-t-3xl z-[70]"
-          >
-            <p className="text-lg font-semibold mb-4">Country</p>
+                {/* Separator — desktop only */}
+                <span
+                  className="mx-1 hidden md:block h-5 w-px bg-gray-200 dark:bg-gray-700"
+                  aria-hidden="true"
+                />
 
-            <button
-              onClick={() => changeCountry("in")}
-              className="cursor-pointer w-full py-3 border-b text-left"
-            >
-              🇮🇳 India
-            </button>
+                {/* Theme toggle */}
+                <button
+                  type="button"
+                  onClick={toggleTheme}
+                  aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+                  className={[
+                    "inline-flex h-10 w-10 items-center justify-center rounded-full",
+                    "text-gray-600 dark:text-gray-400",
+                    "transition hover:bg-gray-100 dark:hover:bg-gray-800/70",
+                    "focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2",
+                  ].join(" ")}
+                >
+                  {/* light mode → moon (click to go dark) | dark mode → sun (click to go light) */}
+                  {isDark
+                    ? <SunIcon  className="h-[18px] w-[18px]" />
+                    : <MoonIcon className="h-[18px] w-[18px]" />
+                  }
+                </button>
 
-            <button
-              onClick={() => changeCountry("ae")}
-              className="cursor-pointer w-full py-3 border-b text-left"
-            >
-              🇦🇪 UAE
-            </button>
+                {/* Region & Language globe */}
+                <button
+                  type="button"
+                  onClick={() => setRegionModalOpen(true)}
+                  aria-label="Change region or language"
+                  className={[
+                    "inline-flex h-10 w-10 items-center justify-center rounded-full",
+                    "text-gray-600 dark:text-gray-400",
+                    "transition hover:bg-gray-100 dark:hover:bg-gray-800/70",
+                    "focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2",
+                  ].join(" ")}
+                >
+                  <GlobeNavIcon className="h-[19px] w-[19px]" />
+                </button>
 
-            <button
-              onClick={() => changeCountry("us")}
-              className="cursor-pointer w-full py-3 text-left"
-            >
-              🇺🇸 USA
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                {/* Profile / User dropdown */}
+                <UserDropdown onOpenRegionModal={() => setRegionModalOpen(true)}  token = { token } />
 
-      {/* ================= USER SHEET ================= */}
-      <AnimatePresence>
-        {openDropdown === "user" && isMobile && (
-          <motion.div
-            initial={{ y: "100%" }}
-            animate={{ y: 0 }}
-            exit={{ y: "100%" }}
-            className="fixed bottom-0 left-0 right-0 bg-white p-5 rounded-t-3xl z-[70]"
-          >
-            <p className="text-lg font-semibold mb-4">Account</p>
+              </div>
+            </>
+          )}
+        </nav>
+      </motion.header>
 
-            <button className="cursor-pointer w-full py-3 border-b text-left">
-              My Bookings
-            </button>
+      {/* ── Region & Language modal ──────────────────────────────── */}
+      <RegionLanguageModal
+        open={regionModalOpen}
+        onClose={() => setRegionModalOpen(false)}
+      />
 
-            <button className="cursor-pointer w-full py-3 border-b text-left">
-              Wishlist
-            </button>
-
-            <button className="w-full py-3 border-b text-left">
-              Settings
-            </button>
-            <button
-              onClick={() => {
-                closeAll();
-                setLoginOpen(true);
-              }}
-              className="cursor-pointer w-full mt-4 bg-purple-600 text-white py-3 rounded-full"
-            >
-              Login
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* LOGIN */}
+      {/* ── Login modal ──────────────────────────────────────────── */}
       <LoginModal open={loginOpen} setOpen={setLoginOpen} />
     </>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Sub-components                                                     */
+/* ------------------------------------------------------------------ */
+
+function Brand({ href, isDark }) {
+  return (
+    <Link
+      href={href}
+      aria-label="VenueBook home"
+      className="mr-1 shrink-0 inline-flex items-center rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2"
+    >
+      <img
+        src={isDark ? darkLogo.src ?? darkLogo : lightLogo.src ?? lightLogo}
+        alt="VenueBook"
+        width={140}
+        height={28}
+        loading="eager"
+        decoding="async"
+        className="h-7 w-auto md:h-8"
+      />
+    </Link>
+  );
+}
+
+/* ---------- Search-type tabs (desktop) ---------- */
+function SearchTabs({ active, onChange }) {
+  const tabs = [
+    { id: "venue",    label: "Venues",    Icon: VenueTabIcon    },
+    { id: "farmstay", label: "Farmstays", Icon: FarmstayTabIcon },
+  ];
+
+  return (
+    <div
+      role="tablist"
+      aria-label="Listing type"
+      className="relative flex items-center rounded-full bg-gray-100 dark:bg-gray-800 p-1"
+    >
+      <motion.span
+        layout
+        transition={{ type: "spring", stiffness: 340, damping: 30 }}
+        aria-hidden="true"
+        className="absolute inset-y-1 w-[calc(50%-4px)] rounded-full bg-purple-600 shadow-sm"
+        style={{ left: active === "venue" ? 4 : "calc(50% + 0px)" }}
+      />
+      {tabs.map(({ id, label, Icon }) => {
+        const isActive = active === id;
+        return (
+          <button
+            key={id}
+            role="tab"
+            type="button"
+            aria-selected={isActive}
+            onClick={() => onChange(id)}
+            className={[
+              "relative z-10 inline-flex items-center gap-2 rounded-full px-5 py-2 text-sm font-medium transition",
+              "focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500",
+              isActive
+                ? "text-white"
+                : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200",
+            ].join(" ")}
+          >
+            <Icon className="h-4 w-4 shrink-0" />
+            {label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ---------- Mobile search bar (on search pages) ---------- */
+function MobileSearchBar({ onBack, onFilter }) {
+  return (
+    <div className="flex w-full items-center gap-2">
+      <button
+        type="button"
+        onClick={onBack}
+        aria-label="Go back"
+        className={[
+          "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
+          "text-gray-700 dark:text-gray-300",
+          "transition hover:bg-gray-100 dark:hover:bg-gray-800",
+          "focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500",
+        ].join(" ")}
+      >
+        <BackArrowIcon className="h-5 w-5" />
+      </button>
+
+      <label className={[
+        "flex h-10 flex-1 items-center gap-2 rounded-full",
+        "bg-gray-100 dark:bg-gray-800 px-4",
+        "focus-within:bg-gray-200/70 dark:focus-within:bg-gray-700",
+        "transition-colors",
+      ].join(" ")}>
+        <ExploreSearchIcon className="h-4 w-4 shrink-0 text-gray-500 dark:text-gray-400" />
+        <span className="sr-only">Search venues</span>
+        <input
+          type="search"
+          placeholder="Search venues…"
+          className={[
+            "w-full bg-transparent border-none text-sm",
+            "text-gray-900 dark:text-gray-100",
+            "placeholder:text-gray-500 dark:placeholder:text-gray-400",
+            "focus:outline-none",
+          ].join(" ")}
+        />
+      </label>
+
+      <button
+        type="button"
+        onClick={onFilter}
+        aria-label="Open filters"
+        className={[
+          "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
+          "border border-gray-200 dark:border-gray-700",
+          "text-gray-700 dark:text-gray-300",
+          "transition hover:bg-gray-50 dark:hover:bg-gray-800",
+          "focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500",
+        ].join(" ")}
+      >
+        <FilterIcon className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Inline SVG icon components                                         */
+/* ------------------------------------------------------------------ */
+
+const svg = (path, extra = "") => {
+  const Comp = ({ className }) => (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {typeof path === "string"
+        ? <path d={path} />
+        : path}
+      {extra && <path d={extra} />}
+    </svg>
+  );
+  return Comp;
+};
+
+/* Explore / Search icon — thin stroke, no fill */
+function ExploreSearchIcon({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"
+      aria-hidden="true">
+      <circle cx="10.5" cy="10.5" r="7" />
+      <line x1="21" y1="21" x2="15.8" y2="15.8" />
+    </svg>
+  );
+}
+
+/* Globe icon for header */
+function GlobeNavIcon({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      aria-hidden="true">
+      <circle cx="12" cy="12" r="10" />
+      <line x1="2" y1="12" x2="22" y2="12" />
+      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+    </svg>
+  );
+}
+
+/* Vendor icons */
+function ListPropertyIcon({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      aria-hidden="true">
+      <rect x="2" y="7" width="20" height="14" rx="2" />
+      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+    </svg>
+  );
+}
+
+function VendorSwitchIcon({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      aria-hidden="true">
+      <path d="M3 9l1-5h16l1 5" />
+      <path d="M3 9a2 2 0 0 0 2 2 2 2 0 0 0 2-2 2 2 0 0 0 2 2 2 2 0 0 0 2-2 2 2 0 0 0 2 2 2 2 0 0 0 2-2" />
+      <path d="M5 21V11" /><path d="M19 21V11" />
+      <rect x="9" y="14" width="6" height="7" />
+    </svg>
+  );
+}
+
+/* Search-tab icons */
+function VenueTabIcon({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      aria-hidden="true">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+      <polyline points="9 22 9 12 15 12 15 22" />
+    </svg>
+  );
+}
+
+function FarmstayTabIcon({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      aria-hidden="true">
+      <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 0 0 1 1h3m10-11l2 2m-2-2v10a1 1 0 0 1-1 1h-3m-6 0a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1m-6 0h6" />
+    </svg>
+  );
+}
+
+/* Back arrow */
+function BackArrowIcon({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      aria-hidden="true">
+      <line x1="19" y1="12" x2="5" y2="12" />
+      <polyline points="12 19 5 12 12 5" />
+    </svg>
+  );
+}
+
+/* Theme toggle icons */
+function SunIcon({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      aria-hidden="true">
+      <circle cx="12" cy="12" r="5" />
+      <line x1="12" y1="1"  x2="12" y2="3"  />
+      <line x1="12" y1="21" x2="12" y2="23" />
+      <line x1="4.22" y1="4.22"  x2="5.64" y2="5.64"  />
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+      <line x1="1"  y1="12" x2="3"  y2="12" />
+      <line x1="21" y1="12" x2="23" y2="12" />
+      <line x1="4.22"  y1="19.78" x2="5.64"  y2="18.36" />
+      <line x1="18.36" y1="5.64"  x2="19.78" y2="4.22"  />
+    </svg>
+  );
+}
+
+function MoonIcon({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      aria-hidden="true">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+    </svg>
+  );
+}
+
+/* Filter / sliders */
+function FilterIcon({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      aria-hidden="true">
+      <line x1="4" y1="6"  x2="20" y2="6"  />
+      <line x1="8" y1="12" x2="16" y2="12" />
+      <line x1="11" y1="18" x2="13" y2="18" />
+    </svg>
   );
 }
