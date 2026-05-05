@@ -1,20 +1,55 @@
 import "./globals.css";
-import Script from "next/script";
+import { Plus_Jakarta_Sans } from "next/font/google";
 
-<Script
-  src={`https://maps.googleapis.com/maps/api/js?key=AIzaSyAzQBQV6-t21jRrYTU9WGOnAO0iz-fpGEI&libraries=places`}
-  strategy="beforeInteractive"
-/>
+/* ── Airbnb-style font — Plus Jakarta Sans is the closest open match
+      to Airbnb Cereal: rounded, modern, highly legible at all sizes  ── */
+const jakarta = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--font-jakarta",
+  weight: ["300", "400", "500", "600", "700", "800"],
+  display: "swap",
+});
 
 export const metadata = {
-  title: "Venue Platform",
-  description: "Find and book the best venues",
+  title: "VenueBook",
+  description: "Discover and book venues, farmstays, studios, workspaces & rentals",
 };
 
 export default function RootLayout({ children }) {
   return (
-    <html suppressHydrationWarning>
-      <body className="min-h-screen bg-gray-50 antialiased">
+    /*
+      suppressHydrationWarning — the inline script below adds the `dark` class
+      before hydration, creating an intentional server/client mismatch.
+    */
+    <html suppressHydrationWarning className={jakarta.variable}>
+      <head>
+        {/*
+          Runs synchronously before any paint — zero flicker.
+          Reads ONLY localStorage key 'theme'. No system/OS theme involved.
+        */}
+
+         <script
+          src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAzQBQV6-t21jRrYTU9WGOnAO0iz-fpGEI&libraries=places"
+          async
+          defer
+        ></script>
+
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){
+  try {
+    var t = localStorage.getItem('theme');
+    if (t === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  } catch(e) {}
+})();`,
+          }}
+        />
+      </head>
+      <body className="min-h-screen bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 antialiased font-sans">
         {children}
       </body>
     </html>

@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+/*
+  Tailwind v4 CSS-first mode does NOT auto-read tailwind.config.js.
+  @config explicitly loads it so that darkMode: 'class' is respected,
+  replacing the default @media (prefers-color-scheme: dark) behaviour
+  with class-based detection on <html class="dark">.
+*/
+@config "../tailwind.config.js";
+
 /* price markers */
 
 * {
@@ -7,7 +15,7 @@
 }
 
 html {
-  scroll-behavior: smooth;
+  scroll-behavior: smooth; 
 }
 
 .priceMarkerWrapper {
