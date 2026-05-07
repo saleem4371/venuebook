@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslations } from "next-intl";
 
 import venueImg      from "@/assets/Properties/Venue.png";
 import farmstayImg   from "@/assets/Properties/Farmstay.png";
@@ -16,70 +17,34 @@ import experienceImg from "@/assets/Properties/Experience.png";
 /*  Data                                                                */
 /* ─────────────────────────────────────────────────────────────────── */
 
+/* label + desc removed — sourced from listing.category.{id}.{label|desc} translations */
 const CATEGORIES = [
-  {
-    id: "venue",
-    label: "Venues",
-    desc: "Banquet halls, event spaces & party venues",
-    image: venueImg,
-    stat: { earning: "₹85K/mo", hosts: "1,200+", time: "~25 min", guests: "12,000+" },
-  },
-  {
-    id: "farmstay",
-    label: "Farmstays",
-    desc: "Farms, nature retreats & countryside escapes",
-    image: farmstayImg,
-    stat: { earning: "₹52K/mo", hosts: "800+",   time: "~20 min", guests: "8,000+"  },
-  },
-  {
-    id: "studio",
-    label: "Studios",
-    desc: "Photo studios, music rooms & film sets",
-    image: studioImg,
-    stat: { earning: "₹38K/mo", hosts: "600+",   time: "~15 min", guests: "5,000+"  },
-  },
-  {
-    id: "workspace",
-    label: "Workspaces",
-    desc: "Offices, co-working & meeting rooms",
-    image: workspaceImg,
-    stat: { earning: "₹28K/mo", hosts: "400+",   time: "~10 min", guests: "4,000+"  },
-  },
-  {
-    id: "rental",
-    label: "Rentals",
-    desc: "Villas, apartments & holiday homes",
-    image: rentalImg,
-    stat: { earning: "₹45K/mo", hosts: "900+",   time: "~18 min", guests: "9,000+"  },
-  },
-  {
-    id: "experience",
-    label: "Experiences",
-    desc: "Workshops, tours, events & unique activities",
-    image: experienceImg,
-    stat: { earning: "₹22K/mo", hosts: "350+",   time: "~12 min", guests: "6,000+"  },
-  },
+  { id: "venue",      image: venueImg,      stat: { earning: "₹85K/mo", hosts: "1,200+", time: "~25 min", guests: "12,000+" } },
+  { id: "farmstay",   image: farmstayImg,   stat: { earning: "₹52K/mo", hosts: "800+",   time: "~20 min", guests: "8,000+"  } },
+  { id: "studio",     image: studioImg,     stat: { earning: "₹38K/mo", hosts: "600+",   time: "~15 min", guests: "5,000+"  } },
+  { id: "workspace",  image: workspaceImg,  stat: { earning: "₹28K/mo", hosts: "400+",   time: "~10 min", guests: "4,000+"  } },
+  { id: "rental",     image: rentalImg,     stat: { earning: "₹45K/mo", hosts: "900+",   time: "~18 min", guests: "9,000+"  } },
+  { id: "experience", image: experienceImg, stat: { earning: "₹22K/mo", hosts: "350+",   time: "~12 min", guests: "6,000+"  } },
 ];
 
-const STAT_LABELS = [
-  { key: "earning", label: "Avg Earning" },
-  { key: "hosts",   label: "Active Hosts" },
-  { key: "time",    label: "Setup Time" },
-  { key: "guests",  label: "Monthly Guests" },
-];
+/* label removed — sourced from listing.stat.{key} translations */
+const STAT_KEYS = ["earning", "hosts", "time", "guests"];
 
 /* ─────────────────────────────────────────────────────────────────── */
 /*  Page                                                                */
 /* ─────────────────────────────────────────────────────────────────── */
 
 export default function ListYourPropertyPage() {
+  const t = useTranslations("listing");
+
   const [selected, setSelected] = useState("venue");
   const params  = useParams();
   const locale  = params?.locale  || "en";
   const country = params?.country || "in";
 
   const category = CATEGORIES.find((c) => c.id === selected);
-  const ctaHref  = `/${locale}/${country}/vendor/dashboard`;
+  const isComingSoon = selected === "experience";
+  const ctaHref  = `/${locale}/${country}/start-listing/${selected}`;
 
   return (
     <main className="bg-white dark:bg-gray-950">
@@ -121,7 +86,7 @@ export default function ListYourPropertyPage() {
               <motion.img
                 key={selected}
                 src={category.image.src}
-                alt={category.label}
+                alt={t(`category.${selected}.label`)}
                 /* object-contain: full image always visible, no cropping */
                 className="w-full h-full object-contain drop-shadow-md"
                 initial={{ opacity: 0, y: 10, scale: 0.97 }}
@@ -146,13 +111,13 @@ export default function ListYourPropertyPage() {
           <div className="inline-flex items-center gap-2 rounded-full border border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/40 px-3.5 py-1.5 mb-6 self-start">
             <span className="h-1.5 w-1.5 rounded-full bg-violet-500 animate-pulse" />
             <span className="text-[11px] font-semibold uppercase tracking-widest text-violet-600 dark:text-violet-400">
-              For Property Owners
+              {t("eyebrow")}
             </span>
           </div>
 
           {/* Headline */}
           <h1 className="text-4xl sm:text-5xl lg:text-[48px] font-extrabold leading-[1.08] tracking-tight text-gray-900 dark:text-white mb-4">
-            Open your doors.{" "}
+            {t("headline_1")}{" "}
             <span
               className="block"
               style={{
@@ -162,38 +127,46 @@ export default function ListYourPropertyPage() {
                 backgroundClip: "text",
               }}
             >
-              Earn from them.
+              {t("headline_2")}
             </span>
           </h1>
 
           {/* Sub-copy */}
           <p className="text-base text-gray-500 dark:text-gray-400 leading-relaxed mb-7 max-w-[460px]">
-            List a farmstay, studio, workspace, rental, venue, or experience in just a few
-            steps. Free to list — we handle bookings &amp; payments.
+            {t("sub_copy")}
           </p>
 
           {/* Category tabs */}
           <div className="mb-7">
             <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">
-              What are you listing?
+              {t("what_listing")}
             </p>
             <div className="flex flex-wrap gap-2">
               {CATEGORIES.map((cat) => {
-                const active = cat.id === selected;
+                const active    = cat.id === selected;
+                const isComingSoon = cat.id === "experience";
                 return (
                   <button
                     key={cat.id}
                     type="button"
-                    onClick={() => setSelected(cat.id)}
+                    onClick={() => !isComingSoon && setSelected(cat.id)}
+                    disabled={isComingSoon}
                     className={[
-                      "rounded-full border px-4 py-2 text-sm font-medium",
-                      "transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500",
-                      active
-                        ? "bg-violet-600 border-violet-600 text-white shadow-sm scale-[1.03]"
-                        : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-violet-300 dark:hover:border-violet-700 hover:text-violet-600 dark:hover:text-violet-400",
+                      "relative rounded-full border px-4 py-2 text-sm font-medium ",
+                      "transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 ",
+                      isComingSoon
+                        ? "border-gray-200 dark:border-gray-800 text-gray-300 dark:text-gray-600 cursor-not-allowed opacity-60"
+                        : active
+                        ? "bg-violet-600 border-violet-600 text-white shadow-sm scale-[1.03] "
+                        : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-violet-300 dark:hover:border-violet-700 hover:text-violet-600 dark:hover:text-violet-400 cursor-pointer",
                     ].join(" ")}
                   >
-                    {cat.label}
+                    {t(`category.${cat.id}.label`)}
+                    {isComingSoon && (
+                      <span className="ml-1.5 text-[9px] font-bold uppercase tracking-wide text-gray-400 dark:text-gray-600">
+                        {t("coming_soon_badge")}
+                      </span>
+                    )}
                   </button>
                 );
               })}
@@ -208,42 +181,45 @@ export default function ListYourPropertyPage() {
                 transition={{ duration: 0.18 }}
                 className="mt-2.5 text-sm text-gray-400 dark:text-gray-500"
               >
-                {category.desc}
+                {t(`category.${selected}.desc`)}
               </motion.p>
             </AnimatePresence>
           </div>
 
           {/* CTA */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-8">
-            <Link
-              href={ctaHref}
-              className="inline-flex items-center gap-2.5 rounded-xl px-7 py-3.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 active:opacity-80 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 shrink-0"
-              style={{ background: "linear-gradient(242deg, #a44bf3, #499ce8)" }}
-            >
-              <AnimatePresence mode="wait">
-                <motion.span
-                  key={selected}
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -6 }}
-                  transition={{ duration: 0.18 }}
-                  className="flex items-center gap-2.5"
-                >
-                  Start listing your {category.label}
-                  <ArrowRightIcon />
-                </motion.span>
-              </AnimatePresence>
-            </Link>
+            {isComingSoon ? (
+              <div className="inline-flex items-center gap-2.5 rounded-xl px-7 py-3.5 text-sm font-semibold text-gray-400 dark:text-gray-600 cursor-not-allowed shrink-0 border border-gray-200 dark:border-gray-800">
+                {t("coming_soon_cta")}
+              </div>
+            ) : (
+              <Link
+                href={ctaHref}
+                className="inline-flex items-center gap-2.5 rounded-xl px-7 py-3.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 active:opacity-80 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 shrink-0"
+                style={{ background: "linear-gradient(242deg, #a44bf3, #499ce8)" }}
+              >
+                <AnimatePresence mode="wait">
+                  <motion.span
+                    key={selected}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.18 }}
+                    className="flex items-center gap-2.5"
+                  >
+                    {t("cta_button", { category: t(`category.${selected}.label`) })}
+                    <ArrowRightIcon />
+                  </motion.span>
+                </AnimatePresence>
+              </Link>
+            )}
 
-            {/* <p className="text-xs text-gray-400 dark:text-gray-500">
-              Free to list · No commission on first booking
-            </p> */}
           </div>
 
           {/* Stats */}
           <div className="pt-6 border-t border-gray-100 dark:border-gray-800 grid grid-cols-2 sm:grid-cols-4 gap-5">
             <AnimatePresence mode="wait">
-              {STAT_LABELS.map(({ key, label }) => (
+              {STAT_KEYS.map((key) => (
                 <motion.div
                   key={`${selected}-${key}`}
                   initial={{ opacity: 0, y: 8 }}
@@ -252,7 +228,7 @@ export default function ListYourPropertyPage() {
                   transition={{ duration: 0.2 }}
                 >
                   <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1">
-                    {label}
+                    {t(`stat.${key}`)}
                   </p>
                   <p className="text-xl font-bold text-gray-900 dark:text-white">
                     {category.stat[key]}
