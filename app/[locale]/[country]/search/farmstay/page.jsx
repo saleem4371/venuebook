@@ -10,7 +10,7 @@ import WishlistPopup from "../components/WishlistPopup";
 import VenueCategory from "../components/CategoryBar";
 import FloatingMenu from "../components/FloatingMenu";
 
-import { useDictionary } from "@/context/DictionaryContext";
+import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
 
 import { motion, AnimatePresence } from "framer-motion";
@@ -34,7 +34,7 @@ import {
 import { useUI } from "@/context/UIContext";
 
 export default function SearchPage() {
-  const dict = useDictionary();
+  const t = useTranslations();
   const { locale, country } = useParams();
 
   // const [showMap, setShowMap] = useState(false);
@@ -515,7 +515,7 @@ export default function SearchPage() {
           {/* HEADER */}
           <div className="px-6 pb-3 mt-3 flex justify-between items-center">
             <p className="text-md font-semibold">
-              {venue_filter.length} {dict?.farmstay_in_this_area}
+              {venue_filter.length} {t("farmstay_in_this_area")}
             </p>
 
             {/* DESKTOP ACTIONS */}

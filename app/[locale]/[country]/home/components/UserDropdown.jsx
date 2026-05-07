@@ -4,6 +4,7 @@ import { useRef, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { useParams, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 
 import { useDropdown } from "@/context/DropdownContext";
 import { useAuth }     from "@/context/AuthContext";
@@ -13,7 +14,7 @@ import { useUI }       from "@/context/UIContext";
 /*  UserDropdown                                                        */
 /* ------------------------------------------------------------------ */
 
-export default function UserDropdown({ onOpenRegionModal , token }) {
+export default function UserDropdown({ onOpenRegionModal }) {
   const { openDropdown, toggleDropdown, closeAll } = useDropdown();
   const { user, isLoggedIn, isListed, logout }     = useAuth();
   const { setLoginOpen }                           = useUI();
@@ -116,14 +117,12 @@ export default function UserDropdown({ onOpenRegionModal , token }) {
                 onClose={closeAll}
                 onLogout={handleLogout}
                 onVendor={handleVendor}
-                token={token}
               />
             ) : (
               <LoggedOutMenu
                 onLogin={handleLogin}
                 onVendor={handleVendor}
                 onRegion={handleRegion}
-                token={token}
               />
             )}
           </motion.div>
@@ -137,21 +136,23 @@ export default function UserDropdown({ onOpenRegionModal , token }) {
 /*  Before-login menu                                                   */
 /* ------------------------------------------------------------------ */
 
-function LoggedOutMenu({ onLogin, onVendor, onRegion ,token }) {
+function LoggedOutMenu({ onLogin, onVendor, onRegion }) {
+  const t = useTranslations("header");
+
   return (
     <nav aria-label="Guest menu">
       <ul className="py-1.5" role="none">
         <li role="none">
           <MenuItem
             icon={<BuildingIcon />}
-            label="List your property"
+            label={t("list_property")}
             onClick={onVendor}
           />
         </li>
         <li role="none">
           <MenuItem
             icon={<GlobeIcon />}
-            label="Region &amp; language"
+            label={t("region_language")}
             onClick={onRegion}
           />
         </li>
@@ -161,7 +162,7 @@ function LoggedOutMenu({ onLogin, onVendor, onRegion ,token }) {
         <li role="none">
           <MenuItem
             icon={<LoginIcon />}
-            label="Login / Sign up"
+            label={t("login_signup")}
             onClick={onLogin}
             variant="accent"
           />
@@ -175,7 +176,8 @@ function LoggedOutMenu({ onLogin, onVendor, onRegion ,token }) {
 /*  After-login menu                                                    */
 /* ------------------------------------------------------------------ */
 
-function LoggedInMenu({ user, isListed, locale, country, onClose, onLogout, onVendor ,token }) {
+function LoggedInMenu({ user, isListed, locale, country, onClose, onLogout, onVendor }) {
+  const t    = useTranslations("header");
   const base = `/${locale}/${country}`;
 
   return (
@@ -196,7 +198,7 @@ function LoggedInMenu({ user, isListed, locale, country, onClose, onLogout, onVe
         <li role="none">
           <MenuItem
             icon={isListed ? <StoreIcon /> : <BuildingIcon />}
-            label={isListed ? "Switch to vendor" : "List your property"}
+            label={isListed ? t("switch_to_vendor") : t("list_property")}
             onClick={onVendor}
             variant="accent"
           />
@@ -207,7 +209,7 @@ function LoggedInMenu({ user, isListed, locale, country, onClose, onLogout, onVe
         <li role="none">
           <MenuItem
             icon={<HeartIcon />}
-            label="Wishlist"
+            label={t("wishlist")}
             href={`${base}/wishlist`}
             onClick={onClose}
           />
@@ -215,7 +217,7 @@ function LoggedInMenu({ user, isListed, locale, country, onClose, onLogout, onVe
         <li role="none">
           <MenuItem
             icon={<CompareIcon />}
-            label="Compare"
+            label={t("compare")}
             href={`${base}/compare`}
             onClick={onClose}
           />
@@ -223,7 +225,7 @@ function LoggedInMenu({ user, isListed, locale, country, onClose, onLogout, onVe
         <li role="none">
           <MenuItem
             icon={<CalendarIcon />}
-            label="Bookings"
+            label={t("bookings")}
             href={`${base}/bookings`}
             onClick={onClose}
           />
@@ -231,7 +233,7 @@ function LoggedInMenu({ user, isListed, locale, country, onClose, onLogout, onVe
         <li role="none">
           <MenuItem
             icon={<BellIcon />}
-            label="Notifications"
+            label={t("notifications")}
             href={`${base}/notifications`}
             onClick={onClose}
           />
@@ -239,7 +241,7 @@ function LoggedInMenu({ user, isListed, locale, country, onClose, onLogout, onVe
         <li role="none">
           <MenuItem
             icon={<UserIcon />}
-            label="Profile"
+            label={t("profile")}
             href={`${base}/profile`}
             onClick={onClose}
           />
@@ -250,7 +252,7 @@ function LoggedInMenu({ user, isListed, locale, country, onClose, onLogout, onVe
         <li role="none">
           <MenuItem
             icon={<LogoutIcon />}
-            label="Log out"
+            label={t("logout")}
             onClick={onLogout}
             variant="danger"
           />

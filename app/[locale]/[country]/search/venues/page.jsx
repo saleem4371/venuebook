@@ -10,7 +10,7 @@ import WishlistPopup from "../components/WishlistPopup";
 import VenueCategory from "../components/CategoryBar";
 import FloatingMenu from "../components/FloatingMenu";
 
-import { useDictionary } from "@/context/DictionaryContext";
+import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
 
 import { motion, AnimatePresence } from "framer-motion";
@@ -20,7 +20,7 @@ import { HeartIcon, ShareIcon ,ScaleIcon ,BuildingOfficeIcon} from "@heroicons/r
   import { useUI } from "@/context/UIContext";
 
 export default function SearchPage() {
-  const dict = useDictionary();
+  const t = useTranslations();
   const { locale, country } = useParams();
 
   // const [showMap, setShowMap] = useState(false);
@@ -502,7 +502,7 @@ useEffect(() => {
           {/* HEADER */}
           <div className="px-6 pb-3 mt-3 flex justify-between items-center">
             <p className="text-md font-semibold">
-              {venue_filter.length} {dict?.venues_in_this_area}
+              {venue_filter.length} {t("venues_in_this_area")}
             </p>
 
             {/* DESKTOP ACTIONS */}

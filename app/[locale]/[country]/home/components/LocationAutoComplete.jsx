@@ -15,39 +15,24 @@ export default function LocationAutoComplete() {
   const [show, setShow] = useState(false);
   const [places, setPlaces] = useState([]);
   const [value, setValue] = useState("");
-  const [googleReady, setGoogleReady] = useState(false);
 
-  /* ✅ Wait until Google is loaded */
   useEffect(() => {
-    const interval = setInterval(() => {
-      if (window.google?.maps?.places) {
-        setGoogleReady(true);
-        clearInterval(interval);
-      }
-    }, 300);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  /* ✅ Get predictions safely */
-  useEffect(() => {
-    if (!googleReady) return;
-
-    if (!value || value.length === 0) {
-      setPlaces([]);
-      return;
-    }
+    if (!window.google) return;
 
     const autocompleteService =
       new window.google.maps.places.AutocompleteService();
 
-    autocompleteService.getPlacePredictions(
-      { input: value },
-      (predictions) => {
-        setPlaces(predictions || []);
-      }
-    );
-  }, [value, googleReady]);
+    if (value.length > 0) {
+      autocompleteService.getPlacePredictions(
+        { input: value },
+        (predictions) => {
+          setPlaces(predictions || []);
+        }
+      );
+    } else {
+      setPlaces([]);
+    }
+  }, [value]);
 
   return (
     <div className="relative w-full">
@@ -78,7 +63,9 @@ export default function LocationAutoComplete() {
                   key={i}
                   className="flex items-start gap-3 p-3 rounded-xl hover:bg-gray-100 cursor-pointer transition"
                 >
-                  <div className="bg-purple-100 p-2 rounded-lg">📍</div>
+                  <div className="bg-purple-100 p-2 rounded-lg">
+                    📍
+                  </div>
                   <div>
                     <p className="font-semibold text-gray-800">
                       {city.name}
@@ -108,18 +95,9 @@ export default function LocationAutoComplete() {
               ))}
 
             {/* EMPTY */}
-            {value.length > 0 &&
-              googleReady &&
-              places.length === 0 && (
-                <p className="text-center text-gray-400 py-3">
-                  No results found
-                </p>
-              )}
-
-            {/* LOADING */}
-            {!googleReady && value.length > 0 && (
+            {value.length > 0 && places.length === 0 && (
               <p className="text-center text-gray-400 py-3">
-                Loading places...
+                No results found
               </p>
             )}
           </motion.div>
