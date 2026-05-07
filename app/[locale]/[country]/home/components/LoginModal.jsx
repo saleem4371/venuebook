@@ -83,7 +83,7 @@ const handleLogin = async () => {
       password: form.password,
     });
 
-    document.cookie = `token=${res.data.access_token}; path=/`;
+    document.cookie = `token=${res.data.token}; path=/`;
    await fetchUser();
     close();
     router.push("/");
@@ -154,8 +154,8 @@ const handleVerifyOtp = async () => {
       otp: otp.join(""),
     });
 
-    document.cookie = `token=${res.data.access_token}; path=/`;
-   await fetchUser();
+    document.cookie = `token=${res.data.token}; path=/`;
+    await fetchUser();
     close();
     router.push("/");
 
@@ -175,7 +175,7 @@ const handleSocialLogin = async (provider) => {
 
     const res = await socialLoginApi(provider, fakeToken);
 
-    document.cookie = `token=${res.data.access_token}; path=/`;
+    document.cookie = `token=${res.data.token}; path=/`;
    await fetchUser();
     close();
     router.push("/");
@@ -189,26 +189,35 @@ const handleSocialLogin = async (provider) => {
 
 //gOOGLE LOGIN
 const googleLogin = useGoogleLogin({
+  scope: "openid email profile", // ✅ ADD THIS
+
   onSuccess: async (tokenResponse) => {
     try {
       setLoading(true);
 
+      console.log("TOKEN RESPONSE:", tokenResponse);
+
       const accessToken = tokenResponse.access_token;
-      
+
+      if (!accessToken) {
+        throw new Error("No access token received");
+      }
 
       const res = await socialLoginApi("google", accessToken);
 
-      document.cookie = `token=${res.data.access_token}; path=/`;
-
+      document.cookie = `token=${res.data.token}; path=/`;
+ await fetchUser();
       close();
-      router.push("/profile");
+      router.push("/");
 
     } catch (err) {
+      console.error(err);
       setError("Google login failed");
     } finally {
       setLoading(false);
     }
   },
+
   onError: () => {
     setError("Google login cancelled");
   },

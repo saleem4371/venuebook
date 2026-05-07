@@ -12,13 +12,15 @@ import RegionLanguageModal from "./RegionLanguageModal";
 import lightLogo from "@/assets/logo.svg";
 import darkLogo  from "@/assets/logo.png";
 
-import { useUI }       from "@/context/UIContext";
-import { useDropdown } from "@/context/DropdownContext";
-import { useAuth }     from "@/context/AuthContext";
+import { useTranslations } from "next-intl";
 
 import { getCookie } from "@/lib/cookie";
 
-
+import { useUI }           from "@/context/UIContext";
+import { useDropdown }     from "@/context/DropdownContext";
+import { useAuth }         from "@/context/AuthContext";
+import { useRegionContext } from "@/context/RegionContext";
+import { useCurrency }     from "@/hooks/useCurrency";
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
@@ -131,11 +133,14 @@ export default function Navbar() {
   const { openDropdown }                           = useDropdown();
   const { isLoggedIn, isListed }                   = useAuth();
 
+  const t = useTranslations("header");
+
   const [activeTab,       setActiveTab]       = useState("venue");
   const [regionModalOpen, setRegionModalOpen] = useState(false);
   const { isDark, toggleTheme }               = useTheme();
 
-   const [loading, setLoading] = useState(false);
+  const { regionConfig, mounted: regionMounted } = useRegionContext();
+  const { currency,    mounted: currencyMounted } = useCurrency();
 
   const isMobile = useIsMobile();
 
@@ -167,19 +172,17 @@ export default function Navbar() {
   //   () => router.push(`/${locale}/${country}/vendor/dashboard`),
   //   [router, locale, country]
   // );
-
-  const handleVendorClick = () => {
+   const handleVendorClick = () => {
  
- setLoading(true);
+//  setLoading(true);
   if (isListed) {
     router.push(`/${locale}/${country}/vendor/dashboard`);
   } else {
     router.push(`/${locale}/${country}/list`);
   }
-  setLoading(false);
+  // setLoading(false);
 };
 
-  
 
   const handleTabChange = useCallback(
     (type) => {
@@ -196,21 +199,22 @@ export default function Navbar() {
   );
 
   /* ---------- Vendor CTA ---------- */
-  const vendorLabel = isLoggedIn && isListed ? "Switch to vendor" : "List your property";
+  const vendorLabel = isLoggedIn && isListed ? t("switch_to_vendor") : t("list_property");
 
   /* ---------- Layout branches ---------- */
   const showMobileSearchBar = isMobile && isSearchPage && !isDetailPage;
   const showCenterToggle    = !isMobile && isSearchPage && !isDetailPage;
 
+  /* ================================================================ */
 
-   const [token, setToken] = useState(null);
+
+    const [token, setToken] = useState(null);
 
   useEffect(() => {
     const t = getCookie("token");
     setToken(t);
   }, []);
 
-  /* ================================================================ */
   return (
     <>
       {/* ── Header ───────────────────────────────────────────────── */}
@@ -256,7 +260,7 @@ export default function Navbar() {
                 <button
                   type="button"
                   onClick={handleExplore}
-                  aria-label="Explore venues"
+                  aria-label={t("explore_aria")}
                   className={[
                     "hidden md:inline-flex items-center gap-1.5 rounded-full",
                     "px-3 py-2 text-sm font-medium",
@@ -266,13 +270,13 @@ export default function Navbar() {
                   ].join(" ")}
                 >
                   <ExploreSearchIcon className="h-[15px] w-[15px] shrink-0" />
-                  <span>Explore</span>
+                  <span>{t("explore")}</span>
                 </button>
 
                 {/* Vendor CTA — visible md+ (also in profile dropdown on mobile) */}
-                {/* <button
+                <button
                   type="button"
-                   onClick={handleVendorClick}
+                  onClick={handleVendorClick}
                   className={[
                     "hidden md:inline-flex items-center gap-2 rounded-full",
                     "border border-gray-200 dark:border-gray-700",
@@ -289,38 +293,8 @@ export default function Navbar() {
                   ) : (
                     <ListPropertyIcon className="h-4 w-4 shrink-0" />
                   )}
-                  <span>{vendorLabel}</span> 
-
-                  
-                </button> */}
-<button
-  type="button"
-  onClick={handleVendorClick}
-  disabled={loading}
-  className="hidden md:inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium relative"
->
-  {/* Spinner */}
-  {loading && (
-    <span className="flex items-center justify-center">
-      <span className="h-4 w-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
-    </span>
-  )}
-
-  {/* Icon + Text */}
-  <span className="flex items-center gap-2 text-gray-800 dark:text-gray-200">
-    {!loading && (
-      isLoggedIn && isListed ? (
-        <VendorSwitchIcon className="h-4 w-4 shrink-0" />
-      ) : (
-        <ListPropertyIcon className="h-4 w-4 shrink-0" />
-      )
-    )}
-
-    <span>
-      {loading ? "Processing..." : vendorLabel}
-    </span>
-  </span>
-</button>
+                  <span>{vendorLabel}</span>
+                </button>
 
                 {/* Separator — desktop only */}
                 <span
@@ -332,7 +306,7 @@ export default function Navbar() {
                 <button
                   type="button"
                   onClick={toggleTheme}
-                  aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+                  aria-label={isDark ? t("theme_to_light") : t("theme_to_dark")}
                   className={[
                     "inline-flex h-10 w-10 items-center justify-center rounded-full",
                     "text-gray-600 dark:text-gray-400",
@@ -347,23 +321,33 @@ export default function Navbar() {
                   }
                 </button>
 
-                {/* Region & Language globe */}
+                {/* Region / Language / Currency pill */}
                 <button
                   type="button"
                   onClick={() => setRegionModalOpen(true)}
-                  aria-label="Change region or language"
+                  aria-label={t("region_aria")}
                   className={[
-                    "inline-flex h-10 w-10 items-center justify-center rounded-full",
-                    "text-gray-600 dark:text-gray-400",
-                    "transition hover:bg-gray-100 dark:hover:bg-gray-800/70",
+                    "inline-flex items-center gap-1.5 rounded-full cursor-pointer",
+                    "border border-gray-200 dark:border-gray-700",
+                    "px-3 py-2",
+                    "text-gray-700 dark:text-gray-300",
+                    "transition hover:bg-gray-100 dark:hover:bg-gray-800/70 hover:shadow-sm",
                     "focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2",
                   ].join(" ")}
                 >
-                  <GlobeNavIcon className="h-[19px] w-[19px]" />
+                  {/* Flag — show region flag once mounted, neutral globe until then */}
+                  <span className="text-base leading-none select-none" aria-hidden="true">
+                    {regionMounted ? (regionConfig?.flag ?? "🌍") : "🌍"}
+                  </span>
+
+                  {/* Currency code — desktop only */}
+                  <span className="hidden sm:block text-xs font-semibold tracking-wide">
+                    {currencyMounted ? currency : "···"}
+                  </span>
                 </button>
 
                 {/* Profile / User dropdown */}
-                <UserDropdown onOpenRegionModal={() => setRegionModalOpen(true)}  token = { token } />
+                <UserDropdown onOpenRegionModal={() => setRegionModalOpen(true)}  token = { token }  />
 
               </div>
             </>
@@ -392,7 +376,7 @@ function Brand({ href, isDark }) {
     <Link
       href={href}
       aria-label="VenueBook home"
-      className="mr-1 shrink-0 inline-flex items-center rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2"
+      className="mr-1 shrink-0 inline-flex items-center rounded-md cursor-pointer transition-opacity hover:opacity-75 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2"
     >
       <img
         src={isDark ? darkLogo.src ?? darkLogo : lightLogo.src ?? lightLogo}
