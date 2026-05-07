@@ -11,9 +11,6 @@ module.exports = {
         /* --font-jakarta is injected by Next.js font optimisation in layout.jsx */
         sans: ["var(--font-jakarta)", "ui-sans-serif", "system-ui", "sans-serif"],
       },
-       animation: {
-        "spin-slow": "spin 1.2s linear infinite",
-      },
     },
   },
   plugins: [],
