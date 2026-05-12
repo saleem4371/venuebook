@@ -1,22 +1,22 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, RotateCcw } from "lucide-react";
 
 /*
   WizardFooter — sticky, full-width bottom bar.
-  No max-width constraint on the outer shell.
-  Buttons: Back (outline, left) · Continue/Submit (gradient fill, auto-width, right).
-  Back is invisible on step 0 but occupies space so Continue doesn't shift.
 
-  Interaction rules:
-  - All clickable states: cursor-pointer (via globals.css)
-  - All disabled states:  cursor-not-allowed (via globals.css button:disabled rule)
-  - Submit button disabled + spinner while submitting to block double-clicks
-  - Continue button disabled (not just styled) when step is invalid
+  Props:
+    isFirst / isLast / isCurrentValid — step state
+    onBack / onNext / onSubmit       — navigation handlers
+    fromReview                       — true when the user arrived here via a
+                                       Review-step Edit button
+    onBackToReview                   — called when "Back to Review" is clicked
 */
 export default function WizardFooter({
-  isFirst, isLast, isCurrentValid, onBack, onNext, onSubmit,
+  isFirst, isLast, isCurrentValid,
+  onBack, onNext, onSubmit,
+  fromReview = false, onBackToReview,
 }) {
   const [submitting, setSubmitting] = useState(false);
 
@@ -30,16 +30,16 @@ export default function WizardFooter({
 
   return (
     <div className="sticky bottom-0 z-40 w-full bg-white/95 dark:bg-gray-950/95 backdrop-blur-md border-t border-gray-200 dark:border-gray-800">
-      <div className="w-full px-5 sm:px-10 py-4 flex items-center justify-between gap-4">
+      <div className="w-full px-5 sm:px-10 py-4 flex items-center justify-between gap-3">
 
-        {/* ── Back ─────────────────────────────────────────────────── */}
+        {/* ── Back ──────────────────────────────────────────────────── */}
         <button
           type="button"
           onClick={onBack}
           disabled={isFirst}
           aria-label="Previous step"
           className={[
-            "h-11 px-6 rounded-xl text-sm font-semibold border flex-shrink-0",
+            "min-h-[44px] px-6 rounded-xl text-sm font-semibold border flex-shrink-0",
             "inline-flex items-center transition-all duration-150",
             "focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500",
             isFirst
@@ -50,50 +50,74 @@ export default function WizardFooter({
           Back
         </button>
 
-        {/* ── Continue / Submit — auto-width, right-aligned ─────────── */}
-        {isLast ? (
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={submitting}
-            aria-label="Submit listing"
-            className={[
-              "h-11 px-8 rounded-xl text-sm font-semibold text-white",
-              "inline-flex items-center justify-center gap-2",
-              "transition-all duration-150",
-              "focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2",
-              submitting
-                ? "opacity-60"
-                : "hover:opacity-90 active:scale-[0.98] shadow-lg shadow-violet-200 dark:shadow-violet-950/50",
-            ].join(" ")}
-            style={{ background: "linear-gradient(242deg, #a44bf3, #499ce8)" }}
-          >
-            {submitting
-              ? <><Loader2 size={15} className="animate-spin" /> Submitting…</>
-              : "Submit Listing"
-            }
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={isCurrentValid ? onNext : undefined}
-            disabled={!isCurrentValid}
-            aria-label="Continue to next step"
-            className={[
-              "h-11 px-8 rounded-xl text-sm font-semibold",
-              "inline-flex items-center justify-center",
-              "transition-all duration-150",
-              "focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2",
-              isCurrentValid
-                ? "text-white hover:opacity-90 active:scale-[0.98] shadow-lg shadow-violet-200 dark:shadow-violet-950/50"
-                : "bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 shadow-none",
-            ].join(" ")}
-            style={isCurrentValid ? { background: "linear-gradient(242deg, #a44bf3, #499ce8)" } : {}}
-          >
-            Continue
-          </button>
-        )}
+        {/* ── Right-side actions ─────────────────────────────────────── */}
+        <div className="flex items-center gap-3 flex-shrink-0 ml-auto">
 
+          {/* "Back to Review" shortcut — shown when editing from review */}
+          {fromReview && !isLast && (
+            <button
+              type="button"
+              onClick={onBackToReview}
+              aria-label="Back to review step"
+              className={[
+                "min-h-[44px] px-5 rounded-xl text-sm font-semibold border flex-shrink-0",
+                "inline-flex items-center gap-2 transition-all duration-150",
+                "focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500",
+                "border-violet-300 dark:border-violet-700 text-violet-700 dark:text-violet-300",
+                "bg-violet-50 dark:bg-violet-950/30 hover:bg-violet-100 dark:hover:bg-violet-900/30 active:scale-[0.97]",
+              ].join(" ")}
+            >
+              <RotateCcw size={13} strokeWidth={2.2} />
+              <span className="hidden sm:inline">Back to Review</span>
+              <span className="sm:hidden">Review</span>
+            </button>
+          )}
+
+          {/* Continue / Submit */}
+          {isLast ? (
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={submitting}
+              aria-label="Submit listing"
+              className={[
+                "min-h-[44px] px-8 rounded-xl text-sm font-semibold text-white",
+                "inline-flex items-center justify-center gap-2",
+                "transition-all duration-150",
+                "focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2",
+                submitting
+                  ? "opacity-60"
+                  : "hover:opacity-90 active:scale-[0.98] shadow-lg shadow-violet-200 dark:shadow-violet-950/50",
+              ].join(" ")}
+              style={{ background: "linear-gradient(242deg, #a44bf3, #499ce8)" }}
+            >
+              {submitting
+                ? <><Loader2 size={15} className="animate-spin" /> Submitting…</>
+                : "Submit Listing"
+              }
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={isCurrentValid ? onNext : undefined}
+              disabled={!isCurrentValid}
+              aria-label="Continue to next step"
+              className={[
+                "min-h-[44px] px-8 rounded-xl text-sm font-semibold",
+                "inline-flex items-center justify-center",
+                "transition-all duration-150",
+                "focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2",
+                isCurrentValid
+                  ? "text-white hover:opacity-90 active:scale-[0.98] shadow-lg shadow-violet-200 dark:shadow-violet-950/50"
+                  : "bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 shadow-none",
+              ].join(" ")}
+              style={isCurrentValid ? { background: "linear-gradient(242deg, #a44bf3, #499ce8)" } : {}}
+            >
+              Continue
+            </button>
+          )}
+
+        </div>
       </div>
     </div>
   );

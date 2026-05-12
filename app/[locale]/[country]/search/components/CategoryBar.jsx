@@ -40,7 +40,7 @@ export default function CategoryBar({ selectedCategory, setSelectedCategory }) {
                 whileHover={{ scale: 1.1 }}
               />
 
-              <span className="text-[11px] mt-1 text-center leading-tight">
+              <span className="text-[11px] mt-1 text-center leading-normal">
                 {cat.name}
               </span>
 
