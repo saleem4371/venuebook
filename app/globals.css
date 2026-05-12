@@ -8,10 +8,67 @@
 */
 @config "../tailwind.config.js";
 
+/* ── Multilingual font routing ────────────────────────────────────
+   Routes each locale to its correct Noto Sans supplemental font
+   (CSS variables injected by layout.jsx). No line-height or
+   spacing changes — layout stays identical for every language.   */
+/* :lang(hi) { font-family: var(--font-devanagari), ui-sans-serif, system-ui, sans-serif; } */
+/* :lang(kn)  { font-family: var(--font-kannada),   ui-sans-serif, system-ui, sans-serif; } */
+:lang(ar)  { font-family: var(--font-arabic),    ui-sans-serif, system-ui, sans-serif; }
+
+/* ── Optical vertical centering for Indic scripts ─────────────────
+   Noto Sans Devanagari and Kannada have larger ascenders than Plus
+   Jakarta Sans. In flex `items-center` containers the visual glyph
+   appears above-center because the tall ascender shifts the line-box
+   upward. Setting line-height on interactive elements redistributes
+   the ascender/descender space so `items-center` produces correct
+   optical centering.
+   Scope: buttons, tabs, options, menu items only — no layout impact. */
+:lang(hi) button,
+:lang(hi) [role="tab"],
+:lang(hi) [role="option"],
+:lang(hi) [role="menuitem"] {
+  line-height: 1.5;
+}
+
+:lang(kn) button,
+:lang(kn) [role="tab"],
+:lang(kn) [role="option"],
+:lang(kn) [role="menuitem"] {
+  line-height: 1.6;
+}
+/* ────────────────────────────────────────────────────────────── */
+
 /* price markers */
 
 * {
   -webkit-tap-highlight-color: transparent;
+}
+
+/* Global cursor: pointer for all interactive elements */
+button,
+a,
+[role="button"],
+[role="tab"],
+[role="option"],
+[role="menuitem"],
+select,
+label[for],
+input[type="checkbox"],
+input[type="radio"],
+input[type="file"],
+summary {
+  cursor: pointer;
+}
+
+/* Disabled / non-clickable states */
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled,
+[disabled],
+[aria-disabled="true"] {
+  cursor: not-allowed;
 }
 
 html {
@@ -77,4 +134,12 @@ html {
 
 .animate-shimmer {
   animation: shimmer 1.5s infinite;
+}
+@keyframes vbPinIdle {
+  0%,100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-1.5px);
+  }
 }

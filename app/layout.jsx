@@ -1,14 +1,44 @@
 import "./globals.css";
-import { Plus_Jakarta_Sans } from "next/font/google";
+import {
+  Plus_Jakarta_Sans,
+  Noto_Sans_Devanagari,
+  Noto_Sans_Kannada,
+  Noto_Sans_Arabic,
+} from "next/font/google";
 import { headers }           from "next/headers";
 import { RTL_LOCALES, locales, defaultLocale } from "@/config/i18n";
 
-/* ── Airbnb-style font — Plus Jakarta Sans is the closest open match
-      to Airbnb Cereal: rounded, modern, highly legible at all sizes  ── */
+/* ── Primary: Airbnb-style font for Latin/Latin-ext ── */
 const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin", "latin-ext"],
   variable: "--font-jakarta",
   weight: ["300", "400", "500", "600", "700", "800"],
+  display: "swap",
+});
+
+/* ── Supplemental: script-specific fonts loaded only when needed ──
+   Each font uses `display: swap` so Latin text is never blocked.
+   CSS :lang() selectors in globals.css route each locale to the
+   correct font-family, preventing system-font metric mismatches
+   that cause glyph clipping in Hindi, Kannada, and Arabic.        ── */
+const devanagari = Noto_Sans_Devanagari({
+  subsets: ["devanagari"],
+  variable: "--font-devanagari",
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+});
+
+const kannada = Noto_Sans_Kannada({
+  subsets: ["kannada"],
+  variable: "--font-kannada",
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+});
+
+const arabic = Noto_Sans_Arabic({
+  subsets: ["arabic"],
+  variable: "--font-arabic",
+  weight: ["400", "500", "600", "700"],
   display: "swap",
 });
 
@@ -50,7 +80,12 @@ export default async function RootLayout({ children }) {
       lang={locale}
       dir={dir}
       suppressHydrationWarning
-      className={jakarta.variable}
+      className={[
+        jakarta.variable,
+        devanagari.variable,
+        kannada.variable,
+        arabic.variable,
+      ].join(" ")}
     >
       <head>
         {/*
