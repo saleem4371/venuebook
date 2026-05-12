@@ -2,36 +2,50 @@
 
 import { motion } from "framer-motion";
 
-export default function AdvertiseBanner() {
+const DEFAULT_HEADING = "Advertise your space on VenueBook";
+const DEFAULT_SUBTEXT = "Reach thousands of event planners, travellers and creators on India's #1 venue hire marketplace.";
+
+export default function AdvertiseBanner({
+  heading = DEFAULT_HEADING,
+  subtext  = DEFAULT_SUBTEXT,
+}) {
   return (
     <section className="w-full overflow-hidden">
-      
-      <div className="relative w-full h-[250px] sm:h-[320px] md:h-[380px] lg:h-[420px]">
-        
+
+      <div className="relative w-full h-[250px] sm:h-[300px] md:h-[360px]">
+
         {/* Background Image */}
         <img
-          src="https://beta.venuebook.in/img/top_venues_image.d6f9bad3.jpg" // replace with your image
+          src="https://beta.venuebook.in/img/top_venues_image.d6f9bad3.jpg"
           alt="Advertise Banner"
           className="absolute inset-0 w-full h-full object-cover"
         />
 
         {/* Dark Overlay */}
-        <div className="absolute inset-0 bg-black/50"></div>
+        <div className="absolute inset-0 bg-black/55" />
 
         {/* Content */}
         <div className="relative z-10 flex flex-col items-center justify-center text-center h-full px-4">
-          
+
           <motion.h2
-            initial={{ opacity: 0, y: 20 }}
+            key={heading}
+            initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-white font-bold text-xl sm:text-2xl md:text-4xl"
+            transition={{ duration: 0.3 }}
+            className="text-white font-bold text-xl sm:text-2xl md:text-3xl max-w-2xl"
           >
-            Advertise your venue to visitors
+            {heading}
           </motion.h2>
 
-          <p className="text-gray-200 mt-2 text-sm sm:text-base md:text-lg max-w-2xl">
-            Reach social, wedding and corporate clients on India's #1 venue hire marketplace.
-          </p>
+          <motion.p
+            key={subtext}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.1, duration: 0.3 }}
+            className="text-gray-200 mt-2 text-sm sm:text-base max-w-xl"
+          >
+            {subtext}
+          </motion.p>
 
           <motion.button
             whileHover={{ scale: 1.05 }}

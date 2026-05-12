@@ -50,7 +50,7 @@ export default function CountryDropdown() {
         onClick={() => toggleDropdown("country")}
         className="flex items-center gap-2 border border-gray-200 px-3 py-2 rounded-full hover:shadow-md transition"
       >
-        <span className="text-lg">{selected.flag}</span>
+        <span className="text-lg shrink-0">{selected.flag}</span>
 
         <span className="text-sm font-medium hidden md:block">
           {selected.name}
@@ -84,7 +84,7 @@ export default function CountryDropdown() {
                     : "text-gray-700"
                 }`}
               >
-                <span className="text-lg">{c.flag}</span>
+                <span className="text-lg shrink-0">{c.flag}</span>
                 {c.name}
               </button>
             ))}

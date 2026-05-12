@@ -139,8 +139,8 @@ export default function Navbar() {
   const [regionModalOpen, setRegionModalOpen] = useState(false);
   const { isDark, toggleTheme }               = useTheme();
 
-  const { regionConfig, mounted: regionMounted } = useRegionContext();
-  const { currency,    mounted: currencyMounted } = useCurrency();
+  useRegionContext(); // keeps RegionProvider mounted for modal
+  useCurrency();     // keeps currency context warm
 
   const isMobile = useIsMobile();
 
@@ -172,16 +172,19 @@ export default function Navbar() {
   //   () => router.push(`/${locale}/${country}/vendor/dashboard`),
   //   [router, locale, country]
   // );
-   const handleVendorClick = () => {
- 
-//  setLoading(true);
-  if (isListed) {
-    router.push(`/${locale}/${country}/vendor/dashboard`);
-  } else {
-    router.push(`/${locale}/${country}/list`);
-  }
-  // setLoading(false);
-};
+  const [vendorLoading, setVendorLoading] = useState(false);
+
+  const handleVendorClick = useCallback(() => {
+    if (vendorLoading) return;
+    setVendorLoading(true);
+    const dest = isListed
+      ? `/${locale}/${country}/vendor/dashboard`
+      : `/${locale}/${country}/list`;
+    setTimeout(() => {
+      setVendorLoading(false);
+      router.push(dest);
+    }, 650);
+  }, [vendorLoading, isListed, locale, country, router]);
 
 
   const handleTabChange = useCallback(
@@ -233,7 +236,7 @@ export default function Navbar() {
       >
         <nav
           aria-label="Primary navigation"
-          className="flex h-[64px] md:h-[72px] w-full items-center px-5 sm:px-8 lg:px-10"
+          className="flex h-[64px] md:h-[72px] w-full items-center justify-between px-5 sm:px-8 lg:px-10"
         >
           {/* ── Branch: Mobile search bar on search pages ──────── */}
           {showMobileSearchBar ? (
@@ -254,7 +257,7 @@ export default function Navbar() {
               )}
 
               {/* ── Right cluster ──────────────────────────────── */}
-              <div className="ml-auto flex items-center gap-1">
+              <div className="flex items-center gap-1">
 
                 {/* Explore — hidden on mobile, minimal icon on md+ */}
                 <button
@@ -273,28 +276,64 @@ export default function Navbar() {
                   <span>{t("explore")}</span>
                 </button>
 
-                {/* Vendor CTA — visible md+ (also in profile dropdown on mobile) */}
-                <button
-                  type="button"
-                  onClick={handleVendorClick}
+                {/* Vendor CTA — visible md+ */}
+                {/*
+                 * Two-layer AI-Mode border:
+                 *   OUTER — overflow-hidden + p-[1.5px] = 1.5 px border slot.
+                 *           Spinning conic-gradient lives here, fully isolated.
+                 *   INNER — solid bg covers the center. Text/icon are completely
+                 *           static; zero animation touches them.
+                 */}
+                <style>{`
+                  @keyframes vb-border-spin {
+                    from { transform: rotate(0deg); }
+                    to   { transform: rotate(360deg); }
+                  }
+                `}</style>
+
+                <span
                   className={[
-                    "hidden md:inline-flex items-center gap-2 rounded-full",
-                    "border border-gray-200 dark:border-gray-700",
-                    "px-4 py-2 text-sm font-medium",
-                    "text-gray-800 dark:text-gray-200",
-                    "transition",
-                    "hover:bg-gray-50 dark:hover:bg-gray-800/60",
-                    "hover:border-gray-300 dark:hover:border-gray-600",
-                    "focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2",
+                    "hidden md:inline-flex relative rounded-full overflow-hidden",
+                    vendorLoading ? "p-[1.5px]" : "",
                   ].join(" ")}
                 >
-                  {isLoggedIn && isListed ? (
-                    <VendorSwitchIcon className="h-4 w-4 shrink-0" />
-                  ) : (
-                    <ListPropertyIcon className="h-4 w-4 shrink-0" />
+                  {/* ── BORDER LAYER — only element that animates ── */}
+                  {vendorLoading && (
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-[-200%]"
+                      style={{
+                        background:
+                          "conic-gradient(from 0deg, transparent 0%, #a44bf3 20%, #499ce8 45%, transparent 70%)",
+                        animation: "vb-border-spin 1.4s linear infinite",
+                      }}
+                    />
                   )}
-                  <span>{vendorLabel}</span>
-                </button>
+
+                  {/* ── CONTENT LAYER — never animated, never transforms ── */}
+                  <button
+                    type="button"
+                    onClick={handleVendorClick}
+                    disabled={vendorLoading}
+                    className={[
+                      /* position:relative puts this above the spinning layer */
+                      "relative inline-flex items-center gap-2 rounded-full",
+                      "px-4 py-2 text-sm font-medium",
+                      "bg-white dark:bg-gray-950",
+                      "text-gray-800 dark:text-gray-200",
+                      "focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2",
+                      vendorLoading
+                        ? "cursor-not-allowed"
+                        : "border border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/60 hover:border-gray-300 dark:hover:border-gray-600",
+                    ].join(" ")}
+                  >
+                    {isLoggedIn && isListed
+                      ? <VendorSwitchIcon className="h-4 w-4 shrink-0" />
+                      : <ListPropertyIcon className="h-4 w-4 shrink-0" />
+                    }
+                    <span>{vendorLabel}</span>
+                  </button>
+                </span>
 
                 {/* Separator — desktop only */}
                 <span
@@ -321,29 +360,19 @@ export default function Navbar() {
                   }
                 </button>
 
-                {/* Region / Language / Currency pill */}
+                {/* Region / Language / Currency — globe icon */}
                 <button
                   type="button"
                   onClick={() => setRegionModalOpen(true)}
                   aria-label={t("region_aria")}
                   className={[
-                    "inline-flex items-center gap-1.5 rounded-full cursor-pointer",
-                    "border border-gray-200 dark:border-gray-700",
-                    "px-3 py-2",
-                    "text-gray-700 dark:text-gray-300",
-                    "transition hover:bg-gray-100 dark:hover:bg-gray-800/70 hover:shadow-sm",
+                    "inline-flex h-10 w-10 items-center justify-center rounded-full cursor-pointer",
+                    "text-gray-600 dark:text-gray-400",
+                    "transition hover:bg-gray-100 dark:hover:bg-gray-800",
                     "focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2",
                   ].join(" ")}
                 >
-                  {/* Flag — show region flag once mounted, neutral globe until then */}
-                  <span className="text-base leading-none select-none" aria-hidden="true">
-                    {regionMounted ? (regionConfig?.flag ?? "🌍") : "🌍"}
-                  </span>
-
-                  {/* Currency code — desktop only */}
-                  <span className="hidden sm:block text-xs font-semibold tracking-wide">
-                    {currencyMounted ? currency : "···"}
-                  </span>
+                  <GlobeNavIcon className="h-[18px] w-[18px]" />
                 </button>
 
                 {/* Profile / User dropdown */}
@@ -376,7 +405,7 @@ function Brand({ href, isDark }) {
     <Link
       href={href}
       aria-label="VenueBook home"
-      className="mr-1 shrink-0 inline-flex items-center rounded-md cursor-pointer transition-opacity hover:opacity-75 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2"
+      className="shrink-0 inline-flex items-center rounded-md cursor-pointer transition-opacity hover:opacity-75 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2"
     >
       <img
         src={isDark ? darkLogo.src ?? darkLogo : lightLogo.src ?? lightLogo}

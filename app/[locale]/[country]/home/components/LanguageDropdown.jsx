@@ -79,10 +79,10 @@ export default function LanguageDropdown() {
                     : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
                 }`}
               >
-                <span className="text-lg">{lang.flag}</span>
+                <span className="text-lg shrink-0">{lang.flag}</span>
                 <span className="flex flex-col min-w-0">
-                  <span className="truncate">{lang.label}</span>
-                  <span className="text-xs text-gray-400 dark:text-gray-500 truncate">
+                  <span className="truncate leading-normal">{lang.label}</span>
+                  <span className="text-xs text-gray-400 dark:text-gray-500 leading-normal">
                     {lang.native}
                   </span>
                 </span>

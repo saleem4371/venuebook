@@ -1,164 +1,479 @@
 "use client";
 
+/**
+ * PremiumFooter
+ *
+ * Props
+ *   variant  "full" (default) | "minimal"
+ *
+ * Full    — newsletter · brand · nav columns · contact · bottom bar
+ * Minimal — logo · copyright · localization pill (auth / flow pages)
+ *
+ * Architecture
+ *   · All text via useTranslations("footer")           — no hardcoded strings
+ *   · Region content via useRegion() + getFooterConfig() — no duplicated JSX
+ *   · Currency display via useCurrency()
+ *   · Logo switches light/dark via CSS dark: classes   — no JS theme read needed
+ *   · Mobile nav = accordion (CSS toggle, no Framer needed)
+ *   · Localization pill opens the shared RegionLanguageModal — no duplicate logic
+ *   · RTL — no hardcoded directional classes; grid/flex flip naturally
+ *   · Dark mode — full Tailwind dark: surface palette
+ */
+
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { motion } from "framer-motion";
+import { useTranslations } from "next-intl";
 import {
   Phone,
   Mail,
-  MapPin,
+  Clock,
+  Globe2,
+  ChevronDown,
   Facebook,
   Instagram,
-  Twitter,
   Linkedin,
-  Youtube,
-  Globe2,
-  ArrowRight,
 } from "lucide-react";
 
-/* ------------------------------------------------------------------ */
-/*  Static config                                                      */
-/* ------------------------------------------------------------------ */
-const NAV_GROUPS = [
-  {
-    heading: "Support",
-    links: [
-      { label: "Help Center", href: "#" },
-      { label: "Cancellation Policy", href: "#" },
-      { label: "Safety Information", href: "#" },
-      { label: "Report a Concern", href: "#" },
-    ],
-  },
-  {
-    heading: "Discover",
-    links: [
-      { label: "Wedding Venues", href: "#" },
-      { label: "Banquet Halls", href: "#" },
-      { label: "Farmstays", href: "#" },
-      { label: "Corporate Events", href: "#" },
-    ],
-  },
-  {
-    heading: "Hosting",
-    links: [
-      { label: "List Your Venue", href: "#" },
-      { label: "Host Resources", href: "#" },
-      { label: "Responsible Hosting", href: "#" },
-      { label: "How it Works", href: "#" },
-    ],
-  },
-  {
-    heading: "VenueBook",
-    links: [
-      { label: "About Us", href: "#" },
-      { label: "Careers", href: "#" },
-      { label: "Press", href: "#" },
-      { label: "Contact", href: "#" },
-    ],
-  },
-];
+import lightLogo from "@/assets/logo.svg";
+import darkLogo from "@/assets/logo.png";
+import { useRegion } from "@/hooks/useRegion";
+import { useCurrency } from "@/hooks/useCurrency";
+import { getFooterConfig } from "@/config/footerConfig";
+import RegionLanguageModal from "./RegionLanguageModal";
+
+/* ─────────────────────────────────────────────────────────────────────
+   X (formerly Twitter) inline SVG icon
+   Using official X logo mark — lucide Twitter is the legacy bird
+   ───────────────────────────────────────────────────────────────────── */
+
+function XIcon({ className, "aria-hidden": ariaHidden }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+      aria-hidden={ariaHidden}
+    >
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.26 5.632L18.244 2.25zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77z" />
+    </svg>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Static region-agnostic data
+   ───────────────────────────────────────────────────────────────────── */
 
 const SOCIAL_LINKS = [
-  { label: "Facebook", icon: Facebook, href: "#" },
-  { label: "Instagram", icon: Instagram, href: "#" },
-  { label: "Twitter", icon: Twitter, href: "#" },
-  { label: "LinkedIn", icon: Linkedin, href: "#" },
-  { label: "YouTube", icon: Youtube, href: "#" },
+  { label: "Facebook", Icon: Facebook },
+  { label: "Instagram", Icon: Instagram },
+  { label: "X", Icon: XIcon },
+  { label: "LinkedIn", Icon: Linkedin },
 ];
 
-const LEGAL_LINKS = [
-  { label: "Privacy", href: "#" },
-  { label: "Terms", href: "#" },
-  { label: "Sitemap", href: "#" },
-  { label: "Cookie Settings", href: "#" },
+const LEGAL_KEYS = [
+  { tKey: "legal.privacy" },
+  { tKey: "legal.terms" },
+  { tKey: "legal.sitemap" },
+  { tKey: "legal.cookies" },
 ];
 
-/* ------------------------------------------------------------------ */
-/*  Footer                                                             */
-/* ------------------------------------------------------------------ */
-export default function PremiumFooter() {
-  const params = useParams();
-  const locale = params?.locale || "en";
-  const country = params?.country || "in";
+/* Resolve StaticImport → plain URL string */
+const lightSrc =
+  typeof lightLogo === "object" ? (lightLogo.src ?? lightLogo) : lightLogo;
+const darkSrc =
+  typeof darkLogo === "object" ? (darkLogo.src ?? darkLogo) : darkLogo;
 
-  const localeLabel =
-    locale === "hi" ? "हिन्दी (IN)" : "English (US)";
-  const countryLabel = country?.toUpperCase();
+/* ─────────────────────────────────────────────────────────────────────
+   Shared atoms
+   ───────────────────────────────────────────────────────────────────── */
+
+/**
+ * Logo — switches between SVG (light) and PNG (dark) using Tailwind
+ * dark: visibility classes. No JS theme read required; the inline
+ * script in app/layout.jsx sets the `dark` class before first paint.
+ */
+function FooterLogo({ ariaLabel }) {
+  return (
+    <Link
+      href="/"
+      aria-label={ariaLabel}
+      className="inline-block rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2"
+    >
+      <Image
+        src={lightSrc}
+        alt="VenueBook"
+        width={130}
+        height={30}
+        priority
+        className="block dark:hidden"
+        style={{ width: "auto", height: "30px" }}
+      />
+      <Image
+        src={darkSrc}
+        alt="VenueBook"
+        width={130}
+        height={30}
+        priority
+        className="hidden dark:block"
+        style={{ width: "auto", height: "30px" }}
+      />
+    </Link>
+  );
+}
+
+/**
+ * Localization pill — shows Language (Region) · Currency.
+ * Clicking opens the shared RegionLanguageModal (same as header).
+ * Format example: "English (IN) · INR" or "العربية (UAE) · AED"
+ */
+function LocalizationPill({ t, region, currency, onOpenModal }) {
+  return (
+    <button
+      type="button"
+      onClick={onOpenModal}
+      aria-label={t("localization.change_region_sr")}
+      className="inline-flex cursor-pointer items-center gap-2 rounded-full text-sm font-medium
+                 text-gray-600 dark:text-gray-300
+                 transition-colors duration-200
+                 hover:text-gray-900 dark:hover:text-white
+                 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500
+                 focus-visible:ring-offset-2"
+    >
+      <Globe2 className="h-4 w-4 shrink-0" aria-hidden="true" />
+      <span>{t(`localization.${region}`)}</span>
+      <span aria-hidden="true">·</span>
+      <span>{currency}</span>
+    </button>
+  );
+}
+
+/** Inline copyright + legal link strip */
+function LegalStrip({ t }) {
+  const year = new Date().getFullYear();
+  return (
+    <div
+      className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm
+                    text-gray-500 dark:text-gray-400"
+    >
+      <span>{t("legal.copyright", { year })}</span>
+      <span aria-hidden="true">·</span>
+      {LEGAL_KEYS.map(({ tKey }, i) => (
+        <span key={tKey} className="inline-flex items-center gap-2">
+          <Link
+            href="#"
+            className="rounded transition-colors duration-200
+                       hover:text-gray-900 dark:hover:text-gray-100
+                       focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500
+                       focus-visible:ring-offset-2"
+          >
+            {t(tKey)}
+          </Link>
+          {i < LEGAL_KEYS.length - 1 && <span aria-hidden="true">·</span>}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Row of social icon-only buttons.
+ * Light: text-gray-500 → hover:text-gray-800
+ * Dark:  text-gray-400 → hover:text-gray-100
+ * No background change on hover — clean, minimal premium feel.
+ */
+function SocialRow({ t }) {
+  return (
+    <ul className="flex items-center gap-4" aria-label={t("social.aria_label")}>
+      {SOCIAL_LINKS.map(({ label, Icon }) => (
+        <li key={label}>
+          <a
+            href="#"
+            aria-label={label}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="inline-flex cursor-pointer items-center justify-center rounded
+                       text-gray-500 dark:text-gray-400
+                       transition-colors duration-200
+                       hover:text-gray-800 dark:hover:text-gray-100
+                       focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500
+                       focus-visible:ring-offset-2"
+          >
+            <Icon className="h-5 w-5" aria-hidden="true" />
+          </a>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Full-footer sub-components
+   ───────────────────────────────────────────────────────────────────── */
+
+/** Newsletter band — region-aware heading and subtext */
+function NewsletterBand({ t, region }) {
+  const [email, setEmail] = useState("");
+  const [status, setStatus] = useState("idle");
+
+  function handleSubmit(e) {
+    e.preventDefault();
+    if (!email.trim()) return;
+    setStatus("success");
+    setEmail("");
+    setTimeout(() => setStatus("idle"), 3500);
+  }
 
   return (
-    <footer
-      className="bg-gray-50 border-t border-gray-200 text-gray-700 "
-      aria-labelledby="site-footer-heading"
+    <section
+      aria-labelledby="footer-nl-heading"
+      className="border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900"
     >
-      <h2 id="site-footer-heading" className="sr-only">
-        Footer
+      <div
+        className="mx-auto flex lg:max-w-[1400px] flex-col items-start justify-between gap-6
+                      px-4 py-10 sm:px-6 md:flex-row md:items-center lg:px-8"
+      >
+        <div className="max-w-md">
+          <h3
+            id="footer-nl-heading"
+            className="text-xl font-semibold tracking-tight
+                       text-gray-900 dark:text-gray-50 md:text-2xl"
+          >
+            {t(`newsletter.${region}.heading`)}
+          </h3>
+          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+            {t(`newsletter.${region}.subtext`)}
+          </p>
+        </div>
+
+        <form
+          onSubmit={handleSubmit}
+          aria-describedby="footer-nl-status"
+          className="w-full max-w-sm md:w-auto"
+        >
+          <label htmlFor="footer-nl-email" className="sr-only">
+            {t("newsletter.email_placeholder")}
+          </label>
+          <div
+            className="flex items-center gap-1.5 rounded-full border
+                          border-gray-200 dark:border-gray-700
+                          bg-white dark:bg-gray-800 px-1 py-1
+                          transition-shadow duration-200
+                          focus-within:border-purple-400
+                          focus-within:ring-2 focus-within:ring-purple-400/25"
+          >
+            <input
+              id="footer-nl-email"
+              type="email"
+              required
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder={t("newsletter.email_placeholder")}
+              className="min-w-0 flex-1 border-none bg-transparent px-3 py-2 text-sm
+                         text-gray-900 dark:text-gray-100
+                         placeholder:text-gray-400 dark:placeholder:text-gray-500
+                         focus:outline-none"
+            />
+            <button
+              type="submit"
+              className="inline-flex shrink-0 items-center rounded-full
+                         bg-gray-900 dark:bg-gray-100 px-5 py-2 text-sm font-medium
+                         text-white dark:text-gray-900
+                         transition-colors duration-200
+                         hover:bg-gray-700 dark:hover:bg-gray-200
+                         focus:outline-none focus-visible:ring-2
+                         focus-visible:ring-purple-500 focus-visible:ring-offset-2"
+            >
+              {t("newsletter.subscribe")}
+            </button>
+          </div>
+          <p id="footer-nl-status" aria-live="polite" className="sr-only">
+            {status === "success" ? t("newsletter.success_sr") : ""}
+          </p>
+        </form>
+      </div>
+
+      {status === "success" && (
+        <p
+          className="mx-auto -mt-4 mb-5 lg:max-w-[1400px] px-4 text-xs
+                      text-emerald-600 dark:text-emerald-400 sm:px-6 lg:px-8"
+        >
+          {t("newsletter.success_msg")}
+        </p>
+      )}
+    </section>
+  );
+}
+
+/** Brand block: logo, region description, contact details */
+function BrandBlock({ t, region, config }) {
+  return (
+    <div className="py-8 md:py-0">
+      <FooterLogo ariaLabel={t("brand.sr_home")} />
+
+      <p
+        className="mt-4 max-w-[17rem] text-sm leading-relaxed
+                    text-gray-500 dark:text-gray-400"
+      >
+        {t(`brand.${region}.description`)}
+      </p>
+
+      <ul className="mt-5 space-y-2.5 text-sm">
+        <li className="flex items-start gap-2.5">
+          <Phone
+            className="mt-0.5 h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500"
+            aria-hidden="true"
+          />
+          <a
+            href={config.contact.phone.href}
+            className="text-gray-500 dark:text-gray-400 rounded transition-colors duration-200
+                       hover:text-gray-900 dark:hover:text-gray-100
+                       focus:outline-none focus-visible:ring-2
+                       focus-visible:ring-purple-500 focus-visible:ring-offset-2"
+          >
+            {t(`contact.${region}.phone`)}
+          </a>
+        </li>
+        <li className="flex items-start gap-2.5">
+          <Mail
+            className="mt-0.5 h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500"
+            aria-hidden="true"
+          />
+          <a
+            href={config.contact.email.href}
+            className="text-gray-500 dark:text-gray-400 rounded transition-colors duration-200
+                       hover:text-gray-900 dark:hover:text-gray-100
+                       focus:outline-none focus-visible:ring-2
+                       focus-visible:ring-purple-500 focus-visible:ring-offset-2"
+          >
+            {t(`contact.${region}.email`)}
+          </a>
+        </li>
+        <li className="flex items-start gap-2.5">
+          <Clock
+            className="mt-0.5 h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500"
+            aria-hidden="true"
+          />
+          <span className="text-gray-500 dark:text-gray-400">
+            {t(`contact.${region}.hours`)}
+          </span>
+        </li>
+      </ul>
+    </div>
+  );
+}
+
+/**
+ * Nav column — accordion on mobile, static column on desktop.
+ *
+ * Mobile  — heading is a toggle button with ChevronDown; links collapse
+ * Desktop — heading is a plain h3; links always visible
+ */
+function NavGroup({ group, t }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div
+      className="border-b border-gray-100 dark:border-gray-800/60
+                    last:border-b-0 md:border-none"
+    >
+      {/* Mobile accordion toggle */}
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="flex w-full items-center justify-between py-4 text-start
+                   focus:outline-none md:hidden"
+      >
+        <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+          {t(group.headingKey)}
+        </span>
+        <ChevronDown
+          aria-hidden="true"
+          className={`h-4 w-4 shrink-0 text-gray-400 transition-transform
+                      duration-200 ${open ? "rotate-180" : ""}`}
+        />
+      </button>
+
+      {/* Desktop static heading */}
+      <h3
+        className="hidden text-sm font-semibold
+                     text-gray-900 dark:text-gray-100 md:block"
+      >
+        {t(group.headingKey)}
+      </h3>
+
+      {/* Links — hidden on mobile unless open; always shown on md+ */}
+      <ul
+        className={`space-y-3 text-sm pb-4 md:mt-4 md:pb-0
+                    ${open ? "block" : "hidden md:block"}`}
+      >
+        {group.links.map(({ tKey, href }) => (
+          <li key={tKey}>
+            <Link
+              href={href}
+              className="rounded text-gray-500 dark:text-gray-400
+                         transition-colors duration-200
+                         hover:text-gray-900 dark:hover:text-gray-100
+                         focus:outline-none focus-visible:ring-2
+                         focus-visible:ring-purple-500 focus-visible:ring-offset-2"
+            >
+              {t(tKey)}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Variant layouts
+   ───────────────────────────────────────────────────────────────────── */
+
+function FullFooter({ t, region, currency, config, onOpenModal }) {
+  return (
+    <footer
+      className="bg-gray-50 dark:bg-gray-950
+                 border-t border-gray-100 dark:border-gray-800"
+      aria-labelledby="footer-full-label"
+    >
+      <h2 id="footer-full-label" className="sr-only">
+        {t("sr_label")}
       </h2>
 
-      {/* Newsletter band */}
-      <NewsletterBand />
+      <NewsletterBand t={t} region={region} />
 
-      {/* Main grid */}
-      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-2 gap-x-6 gap-y-10 md:grid-cols-4 lg:grid-cols-5">
-          {/* Brand block — full width on mobile */}
-          <BrandBlock className="col-span-2 md:col-span-4 lg:col-span-1" />
+      <div className="mx-auto lg:max-w-[1400px] px-4 sm:px-6 lg:px-8">
+        <div
+          className="grid grid-cols-1
+                        md:grid-cols-2 md:gap-x-8 md:py-12
+                        lg:grid-cols-4"
+        >
+          <BrandBlock t={t} region={region} config={config} />
 
-          {NAV_GROUPS.map((group) => (
-            <FooterGroup key={group.heading} {...group} />
+          {config.navGroups.map((group) => (
+            <NavGroup key={group.headingKey} group={group} t={t} />
           ))}
         </div>
       </div>
 
-      {/* Bottom bar */}
-      <div className="border-t border-gray-200">
-        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-6 text-sm text-gray-600 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-      
-            <span>© {new Date().getFullYear()} VenueBook, Inc.</span>
-            <span aria-hidden="true">·</span>
-            {LEGAL_LINKS.map((l, i) => (
-              <span key={l.label} className="flex items-center gap-2">
-                <Link
-                  href={l.href}
-                  className="rounded transition hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2"
-                >
-                  {l.label}
-                </Link>
-                {i < LEGAL_LINKS.length - 1 && (
-                  <span aria-hidden="true">·</span>
-                )}
-              </span>
-            ))}
-          </div>
-
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-            <button
-              type="button"
-              className="inline-flex items-center gap-2 rounded-full font-medium text-gray-800 transition hover:text-gray-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2"
-              aria-label="Change language and region"
-            >
-              <Globe2 className="h-4 w-4" aria-hidden="true" />
-              <span>{localeLabel}</span>
-              <span aria-hidden="true">·</span>
-              <span>{countryLabel}</span>
-            </button>
-
-            <ul className="flex items-center gap-1" aria-label="Social media">
-              {SOCIAL_LINKS.map(({ label, icon: Icon, href }) => (
-                <li key={label}>
-                  <a
-                    href={href}
-                    aria-label={label}
-                    target="_blank"
-                    rel="noreferrer noopener"
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-full text-gray-600 transition hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2"
-                  >
-                    <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
-                  </a>
-                </li>
-              ))}
-            </ul>
+      <div className="border-t border-gray-100 dark:border-gray-800">
+        <div
+          className="mx-auto flex lg:max-w-[1400px] flex-col gap-4
+                        px-4 py-6 sm:px-6
+                        lg:flex-row lg:items-center lg:justify-between lg:px-8"
+        >
+          <LegalStrip t={t} />
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+            <LocalizationPill
+              t={t}
+              region={region}
+              currency={currency}
+              onOpenModal={onOpenModal}
+            />
+            <SocialRow t={t} />
           </div>
         </div>
       </div>
@@ -166,159 +481,78 @@ export default function PremiumFooter() {
   );
 }
 
-/* ------------------------------------------------------------------ */
-/*  Sub-components                                                     */
-/* ------------------------------------------------------------------ */
-
-function NewsletterBand() {
-  const [email, setEmail] = useState("");
-  const [status, setStatus] = useState("idle"); // idle | success
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!email.trim()) return;
-    // Hook up to real API later
-    setStatus("success");
-    setEmail("");
-    setTimeout(() => setStatus("idle"), 3000);
-  };
-
+function MinimalFooter({ t, region, currency, onOpenModal }) {
   return (
-    <section
-      aria-labelledby="newsletter-heading"
-      className="border-b border-gray-200 bg-white"
+    <footer
+      className="border-t border-gray-100 dark:border-gray-800
+                 bg-white dark:bg-gray-950"
+      aria-labelledby="footer-minimal-label"
     >
-      <div className="mx-auto flex max-w-7xl flex-col items-start justify-between gap-6 px-4 py-10 sm:px-6 md:flex-row md:items-center lg:px-8">
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-50px" }}
-          transition={{ duration: 0.4 }}
-          className="max-w-xl"
-        >
-          <h3
-            id="newsletter-heading"
-            className="text-xl font-semibold tracking-tight text-gray-900 md:text-2xl"
-          >
-            Get inspired for your next event
-          </h3>
-          <p className="mt-2 text-sm text-gray-600">
-            Hand-picked venues, exclusive offers, and planning tips —
-            straight to your inbox.
-          </p>
-        </motion.div>
+      <h2 id="footer-minimal-label" className="sr-only">
+        {t("sr_label")}
+      </h2>
 
-        <form
-          onSubmit={handleSubmit}
-          className="flex w-full max-w-md items-center gap-2 md:w-auto"
-          aria-describedby="newsletter-status"
-        >
-          <label htmlFor="footer-email" className="sr-only">
-            Email address
-          </label>
-          <div className="flex w-full items-center gap-2 rounded-full border border-gray-200 bg-white px-1 py-1 transition focus-within:border-purple-500 focus-within:ring-2 focus-within:ring-purple-500/20">
-            <input
-              id="footer-email"
-              type="email"
-              required
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter your email"
-              className="w-full min-w-0 flex-1 border-none bg-transparent px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:outline-none"
-            />
-            <button
-              type="submit"
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2"
-            >
-              Subscribe
-              <ArrowRight className="h-4 w-4" aria-hidden="true" />
-            </button>
-          </div>
-        </form>
-
-        <p
-          id="newsletter-status"
-          aria-live="polite"
-          className="sr-only"
-        >
-          {status === "success"
-            ? "You are subscribed. Thanks!"
-            : ""}
-        </p>
-      </div>
-
-      {status === "success" && (
-        <p className="mx-auto -mt-6 mb-4 max-w-7xl px-4 text-xs text-emerald-700 sm:px-6 lg:px-8">
-          Thanks — you’re on the list.
-        </p>
-      )}
-    </section>
-  );
-}
-
-function BrandBlock({ className = "" }) {
-  return (
-    <div className={className}>
-      <Link
-        href="#"
-        className="inline-flex items-center rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2"
-        aria-label="VenueBook home"
+      <div
+        className="mx-auto flex lg:max-w-[1400px] flex-col items-center gap-4
+                      px-4 py-5 sm:px-6
+                      sm:flex-row sm:justify-between lg:px-8"
       >
-        <span className="text-xl font-semibold tracking-tight text-gray-900">
-          venuebook<span className="text-purple-600">.in</span>
+        <FooterLogo ariaLabel={t("brand.sr_home")} />
+
+        <span className="hidden text-sm text-gray-400 dark:text-gray-500 sm:block">
+          {t("legal.copyright", { year: new Date().getFullYear() })}
         </span>
-      </Link>
 
-      <p className="mt-3 max-w-xs text-sm leading-relaxed text-gray-600">
-        Discover and book amazing venues for weddings, corporate events,
-        and unforgettable celebrations.
-      </p>
-
-      <ul className="mt-5 space-y-2.5 text-sm text-gray-600">
-        <li className="flex items-start gap-2.5">
-          <Phone className="mt-0.5 h-4 w-4 shrink-0 text-gray-500" aria-hidden="true" />
-          <a
-            href="tel:+917338684444"
-            className="rounded transition hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2"
-          >
-            +91 733 868 4444
-          </a>
-        </li>
-        <li className="flex items-start gap-2.5">
-          <Mail className="mt-0.5 h-4 w-4 shrink-0 text-gray-500" aria-hidden="true" />
-          <a
-            href="mailto:hello@venuebook.in"
-            className="rounded transition hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2"
-          >
-            hello@venuebook.in
-          </a>
-        </li>
-        <li className="flex items-start gap-2.5">
-          <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-gray-500" aria-hidden="true" />
-          <span>Mon – Sat · 9:30 AM – 6:30 PM</span>
-        </li>
-      </ul>
-    </div>
+        <LocalizationPill
+          t={t}
+          region={region}
+          currency={currency}
+          onOpenModal={onOpenModal}
+        />
+      </div>
+    </footer>
   );
 }
 
-function FooterGroup({ heading, links }) {
+/* ─────────────────────────────────────────────────────────────────────
+   Public export
+   ───────────────────────────────────────────────────────────────────── */
+
+/**
+ * @param {{ variant?: "full" | "minimal" }} props
+ */
+export default function PremiumFooter({ variant = "full" }) {
+  const t = useTranslations("footer");
+  const { region } = useRegion();
+  const { currency } = useCurrency();
+  const config = getFooterConfig(region);
+
+  const [modalOpen, setModalOpen] = useState(false);
+
+  const onOpenModal = () => setModalOpen(true);
+  const onCloseModal = () => setModalOpen(false);
+
   return (
-    <div>
-      <h3 className="text-sm font-semibold text-gray-900">{heading}</h3>
-      <ul className="mt-4 space-y-3 text-sm">
-        {links.map((l) => (
-          <li key={l.label}>
-            <Link
-              href={l.href}
-              className="rounded text-gray-600 transition hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2"
-            >
-              {l.label}
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </div>
+    <>
+      {variant === "minimal" ? (
+        <MinimalFooter
+          t={t}
+          region={region}
+          currency={currency}
+          onOpenModal={onOpenModal}
+        />
+      ) : (
+        <FullFooter
+          t={t}
+          region={region}
+          currency={currency}
+          config={config}
+          onOpenModal={onOpenModal}
+        />
+      )}
+
+      {/* Shared modal — same instance used by header; no duplicate logic */}
+      <RegionLanguageModal open={modalOpen} onClose={onCloseModal} />
+    </>
   );
 }

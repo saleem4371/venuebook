@@ -1,35 +1,118 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { MagnifyingGlassIcon } from "@heroicons/react/24/solid";
-import { useState, useEffect } from "react";
-import MobileSearchSheet from "./MobileSearchSheet";
+import { MagnifyingGlassIcon, BellIcon, ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/solid";
+import { useState, useEffect, useRef, useCallback } from "react";
+
+import MobileSearchSheet   from "./MobileSearchSheet";
 import LocationAutoComplete from "./LocationAutoComplete";
+import GuestPicker          from "./GuestPicker";
+import DatePicker           from "./DatePicker";
 
-const words = ["Farmstays", "Venues"];
+import { CATEGORIES, CATEGORY_ORDER, CATEGORY_TINTS } from "@/config/categoryConfig";
+import { useCategory } from "@/context/CategoryContext";
 
+/* ─── Labels ────────────────────────────────────────────────── */
+const WORD_LABEL = {
+  venues:      "Venue",
+  farmstays:   "Farmstay",
+  studios:     "Studio",
+  rentals:     "Rental",
+  workspaces:  "Workspace",
+  experiences: "Experience",
+};
+const TAB_LABEL = {
+  venues:      "Venues",
+  farmstays:   "Farmstays",
+  studios:     "Studios",
+  rentals:     "Rentals",
+  workspaces:  "Workspaces",
+  experiences: "Experiences",
+};
+
+/* ─── Search field matrix ───────────────────────────────────── */
+/*
+ * types:
+ *   location   → LocationAutoComplete (category-aware)
+ *   date       → DatePicker (single)
+ *   daterange  → DatePicker (range) — occupies 2 columns visually
+ *   datetime   → DatePicker (with time)
+ *   guests     → GuestPicker (guestType controls which variant)
+ */
+const SEARCH_CONFIG = {
+  venues: [
+    { id: "location",  label: "Location",   type: "location",  placeholder: "City or area" },
+    { id: "date",      label: "Event Date",  type: "date"                                    },
+    { id: "guests",    label: "Guests",      type: "guests",    guestType: "guests"          },
+  ],
+  farmstays: [
+    { id: "location",  label: "Destination", type: "location",  placeholder: "Where to?"    },
+    { id: "checkin",   label: "Check In",    type: "date"                                    },
+    { id: "checkout",  label: "Check Out",   type: "date"                                    },
+    { id: "guests",    label: "Guests",      type: "guests",    guestType: "guests_detailed" },
+  ],
+  studios: [
+    { id: "location",  label: "Location",   type: "location",  placeholder: "City or area" },
+    { id: "startdate", label: "Start",       type: "datetime"                                },
+    { id: "enddate",   label: "End",         type: "datetime"                                },
+    { id: "guests",    label: "Team Size",   type: "guests",    guestType: "attendees"       },
+  ],
+  rentals: [
+    { id: "location",  label: "Location",   type: "location",  placeholder: "City or area" },
+    { id: "startdate", label: "Start Date",  type: "date"                                    },
+    { id: "enddate",   label: "End Date",    type: "date"                                    },
+    { id: "guests",    label: "Guests",      type: "guests",    guestType: "guests"          },
+  ],
+  workspaces: [
+    { id: "location",  label: "Location",   type: "location",  placeholder: "City or area" },
+    { id: "startdate", label: "Start Date",  type: "date"                                    },
+    { id: "enddate",   label: "End Date",    type: "date"                                    },
+    { id: "guests",    label: "Team Size",   type: "guests",    guestType: "attendees"       },
+  ],
+  experiences: null,
+};
+
+const WORDS = CATEGORY_ORDER.map((id) => WORD_LABEL[id]);
+
+/* ─── Component ─────────────────────────────────────────────── */
 export default function HeroSection() {
-  const [activeTab, setActiveTab] = useState("venues");
-  const [openSearch, setOpenSearch] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  const [index, setIndex] = useState(0);
+  const { activeCategory, setActiveCategory } = useCategory();
 
-  // ✅ Fix SSR hydration
-  useEffect(() => {
-    setMounted(true);
+  const [isMobile,    setIsMobile]    = useState(false);
+  const [mounted,     setMounted]     = useState(false);
+  const [openSearch,  setOpenSearch]  = useState(false);
+  const [wordIdx,     setWordIdx]     = useState(0);
+  const [dates,       setDates]       = useState({});
+
+  /* Category tab scroll state */
+  const tabsRef                       = useRef(null);
+  const [canTabLeft,  setCanTabLeft]  = useState(false);
+  const [canTabRight, setCanTabRight] = useState(false);
+
+  const updateTabScroll = useCallback(() => {
+    const el = tabsRef.current;
+    if (!el) return;
+    const { scrollLeft, scrollWidth, clientWidth } = el;
+    setCanTabLeft(scrollLeft > 4);
+    setCanTabRight(scrollLeft < scrollWidth - clientWidth - 4);
   }, []);
 
-  // ✅ Word animation loop
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setIndex((prev) => (prev + 1) % words.length);
-    }, 2800);
+  const scrollTabs = (dir) => {
+    const el = tabsRef.current;
+    if (!el) return;
+    el.scrollBy({ left: dir * 160, behavior: "smooth" });
+  };
 
-    return () => clearInterval(interval);
+  /* Hydration */
+  useEffect(() => setMounted(true), []);
+
+  /* Word rotation */
+  useEffect(() => {
+    const t = setInterval(() => setWordIdx((p) => (p + 1) % WORDS.length), 2800);
+    return () => clearInterval(t);
   }, []);
 
-  // ✅ Mobile detection
+  /* Mobile detection */
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
     check();
@@ -37,186 +120,344 @@ export default function HeroSection() {
     return () => window.removeEventListener("resize", check);
   }, []);
 
-  if (!mounted) return null; // 🔥 avoid hydration flicker min-h-[82vh]
-  
+  /* Tab scroll arrow visibility */
+  useEffect(() => {
+    const el = tabsRef.current;
+    if (!el) return;
+    updateTabScroll();
+    el.addEventListener("scroll", updateTabScroll, { passive: true });
+    const ro = new ResizeObserver(updateTabScroll);
+    ro.observe(el);
+    return () => { el.removeEventListener("scroll", updateTabScroll); ro.disconnect(); };
+  }, [updateTabScroll, mounted]);
+
+  /* Clear date values on category switch */
+  const handleTabClick = (id) => {
+    setActiveCategory(id);
+    setDates({});
+  };
+
+  if (!mounted) return null;
+
+  const tint        = CATEGORY_TINTS[activeCategory] ?? CATEGORY_TINTS.venues;
+  const fields      = SEARCH_CONFIG[activeCategory] ?? null;
+  const isComingSoon = CATEGORIES[activeCategory]?.comingSoon ?? false;
+
+  /* Tint-aware glass style for search bar */
+  const glassStyle = {
+    background:  `rgba(0,0,0,0.28)`,
+    borderColor:  tint.border,
+    boxShadow:   `0 8px 40px rgba(0,0,0,0.35), ${tint.glow}`,
+  };
+
   return (
     <>
-      <section className="relative  md:min-h-[86vh] md:flex md:items-center overflow-hidden">
-        
-        {/* 📱 MOBILE IMAGE */}
-        {isMobile && (
-          <div
-            className="w-full h-[40vh] bg-cover bg-center"
-            style={{
-              backgroundImage:
-                "url('https://www.venuebook.in/img/sintra.6885ed95.png')", 
-            }}
-          />
-        )}
+      {/*
+        overflow-hidden is on the inner background wrapper, NOT the section.
+        This lets absolutely-positioned dropdowns (z-50) escape without clipping.
+      */}
+      <section className="relative flex flex-col min-h-[45svh] md:min-h-[80vh]">
 
-        {/* 💻 DESKTOP VIDEO */}
-        {!isMobile && (
-          <video
-            autoPlay
-            muted
-            loop
-            playsInline
-            className="absolute inset-0 w-full h-full object-cover scale-105"
-          >
-            <source
-              src="https://api.venuebook.in/Upload/Video/HomePage.mp4"
-              type="video/mp4"
+        {/* Background — overflow-hidden scoped here so video scale-105 doesn't bleed */}
+        <div className="absolute inset-0 overflow-hidden">
+          {isMobile ? (
+            <div
+              className="absolute inset-0 bg-cover bg-center"
+              style={{ backgroundImage: "url('https://www.venuebook.in/img/sintra.6885ed95.png')" }}
             />
-          </video>
-        )}
+          ) : (
+            <video autoPlay muted loop playsInline className="absolute inset-0 w-full h-full object-cover scale-105">
+              <source src="https://vb-venue-images.s3.eu-north-1.amazonaws.com/vb_video/HomePage+(1).mp4" type="video/mp4" />
+            </video>
+          )}
+          {/* Overlay */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/55 to-black/80" />
+        </div>
 
-        {/* 🌑 OVERLAY */}
-        {!isMobile && (
-          <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/70 to-black/60 backdrop-blur-[2px]" />
-        )}
+        {/* Content */}
+        <div className="relative z-10 flex flex-col flex-1 justify-center w-full max-w-6xl mx-auto px-5 sm:px-8 md:px-12 lg:px-16 pt-32 md:pt-28 pb-8 md:pb-10">
 
-        {/* 🔥 CONTENT */}
-        <div
-          className={`relative z-10 w-full px-4 md:px-20 transition-all duration-500
-          ${
-            isMobile
-              ? "bg-white text-black pt-6 pb-10 rounded-t-[30px] -mt-14"
-              : "text-white pt-32 md:pt-40 pb-10"
-          }`}
-        >
-          {/* 🔥 TITLE */}
-          <motion.h1
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7 }}
-            className={`font-bold leading-tight max-w-3xl ${
-              isMobile ? "text-2xl sm:text-3xl" : "text-4xl md:text-6xl"
-            }`}
-          >
-            Your Next Great Story <br />
-            Starts with the Right{" "}
-
-            {/* ✨ Animated Word */}
-            <span className="relative inline-block min-w-[140px] h-[1.2em] align-bottom">
-              <AnimatePresence mode="wait">
-                <motion.span
-                  key={words[index]}
-                  initial={{ opacity: 0, y: 20, filter: "blur(6px)" }}
-                  animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-                  exit={{ opacity: 0, y: -20, filter: "blur(6px)" }}
-                  transition={{
-                    duration: 0.6,
-                    ease: "easeInOut",
-                  }}
-                  className="absolute left-0 top-0 bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent"
-                >
-                  {words[index]}
-                </motion.span>
-              </AnimatePresence>
-            </span>
-          </motion.h1>
-
-          {/* SUBTEXT */}
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            className={`mt-3 md:mt-4 max-w-xl ${
-              isMobile
-                ? "text-sm text-gray-600"
-                : "text-base text-gray-300"
-            }`}
-          >
-            Find the perfect, personal space—from unique city hideaways to
-            inspiring country escapes.
-          </motion.p>
-
-          {/* 🔥 TABS */}
-          <div className="flex gap-3 mt-5 md:mt-6">
-            <button
-              onClick={() => setActiveTab("venues")}
-              className={`px-4 md:px-5 py-2 rounded-full text-xs md:text-sm font-medium transition-all duration-300
-                ${
-                  activeTab === "venues"
-                    ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg scale-105"
-                    : isMobile
-                    ? "bg-gray-100 text-gray-700"
-                    : "bg-white/10 border border-white/20 text-white"
-                }`}
-            >
-              Venues
-            </button>
-
-            <button
-              onClick={() => setActiveTab("farm")}
-              className={`px-4 md:px-5 py-2 rounded-full text-xs md:text-sm font-medium flex items-center gap-2 transition-all duration-300
-                ${
-                  activeTab === "farm"
-                    ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg scale-105"
-                    : isMobile
-                    ? "bg-gray-100 text-gray-700"
-                    : "bg-white/10 border border-white/20 text-white"
-                }`}
-            >
-              Farmstay & Villas
-              <span className="text-[9px] md:text-[10px] bg-yellow-400 text-black px-2 py-0.5 rounded-full">
-                Coming Soon
-              </span>
-            </button>
-          </div>
-
-          {/* 💻 DESKTOP SEARCH */}
+          {/* Headline */}
           <motion.div
-            initial={{ opacity: 0, y: 60 }}
+            initial={{ opacity: 0, y: 28 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="hidden md:flex mt-10 bg-white/10 backdrop-blur-2xl border border-white/20 rounded-2xl p-4 gap-4 items-center max-w-4xl shadow-2xl"
+            transition={{ duration: 0.6, ease: "easeOut" }}
           >
-            <div className="flex-1">
-              <p className="text-xs text-gray-300">Location</p>
-             <LocationAutoComplete />
-            </div>
+            <h1 className="font-bold leading-[1.08] tracking-tight text-white text-[1.7rem] sm:text-4xl md:text-5xl lg:text-[3.25rem]">
+              Your Next Great Story
+              <br className="hidden sm:block" />{" "}
+              Starts with the Right{" "}
+              <span
+                className="relative inline-block align-bottom"
+                style={{ minWidth: "clamp(100px, 17vw, 200px)", height: "1.1em" }}
+              >
+                <AnimatePresence mode="wait">
+                  <motion.span
+                    key={WORDS[wordIdx]}
+                    initial={{ opacity: 0, y: 12, filter: "blur(5px)" }}
+                    animate={{ opacity: 1, y: 0,  filter: "blur(0px)" }}
+                    exit={{   opacity: 0, y: -12, filter: "blur(5px)" }}
+                    transition={{ duration: 0.42, ease: "easeInOut" }}
+                    className="absolute left-0 top-0 bg-gradient-to-r from-violet-400 via-fuchsia-400 to-pink-400 bg-clip-text text-transparent whitespace-nowrap"
+                  >
+                    {WORDS[wordIdx]}
+                  </motion.span>
+                </AnimatePresence>
+              </span>
+            </h1>
 
-            <div className="h-10 w-px bg-white/20" />
-
-            <div className="flex-1">
-              <p className="text-xs text-gray-300">Date</p>
-              <input
-                type="date"
-                className="bg-transparent text-white outline-none w-full"
-              />
-            </div>
-
-            <div className="h-10 w-px bg-white/20" />
-
-            <div className="flex-1">
-              <p className="text-xs text-gray-300">How Many</p>
-              <input
-                placeholder="4300 guests"
-                className="bg-transparent text-white outline-none w-full"
-              />
-            </div>
-
-            <button className="bg-gradient-to-r from-purple-500 to-pink-500 p-4 rounded-xl shadow-lg hover:scale-110 transition">
-              <MagnifyingGlassIcon className="w-5 text-white" />
-            </button>
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              className="mt-3 text-white/60 text-sm sm:text-base leading-relaxed max-w-lg"
+            >
+              Discover, compare, and instantly book venues, farmstays &amp; event spaces — all on one platform.
+            </motion.p>
           </motion.div>
 
-          {/* 📱 MOBILE SEARCH */}
-          <div className="md:hidden mt-6">
-            <button
-              onClick={() => setOpenSearch(true)}
-              className="w-full bg-white border border-gray-200 text-gray-500 rounded-xl p-4 flex justify-between items-center shadow-lg active:scale-95 transition"
+          {/* Category tabs — scrollable, fade edges + small arrows when overflowing */}
+          <motion.div
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.28 }}
+            className="mt-6 md:mt-7"
+          >
+            <div className="relative">
+              {/* Left arrow */}
+              {canTabLeft && (
+                <button
+                  type="button"
+                  onClick={() => scrollTabs(-1)}
+                  className="absolute start-0 top-1/2 -translate-y-1/2 z-20 w-6 h-6 rounded-full bg-white/15 backdrop-blur-sm border border-white/25 flex items-center justify-center text-white hover:bg-white/25 transition-all"
+                  aria-label="Scroll categories left"
+                >
+                  <ChevronLeftIcon className="w-3 h-3" />
+                </button>
+              )}
+
+              {/* Right arrow */}
+              {canTabRight && (
+                <button
+                  type="button"
+                  onClick={() => scrollTabs(1)}
+                  className="absolute end-0 top-1/2 -translate-y-1/2 z-20 w-6 h-6 rounded-full bg-white/15 backdrop-blur-sm border border-white/25 flex items-center justify-center text-white hover:bg-white/25 transition-all"
+                  aria-label="Scroll categories right"
+                >
+                  <ChevronRightIcon className="w-3 h-3" />
+                </button>
+              )}
+
+              {/* Left fade */}
+              {canTabLeft && (
+                <div
+                  className="absolute inset-y-0 start-0 w-10 pointer-events-none z-10"
+                />
+              )}
+              {/* Right fade */}
+              <div
+                className="absolute inset-y-0 end-0 w-12 pointer-events-none z-10"
+              />
+
+              <div
+                ref={tabsRef}
+                className="flex items-center gap-2 overflow-x-auto mb-1"
+                style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}
+              >
+                {/* Leading spacer when left arrow shows */}
+                {canTabLeft && <div className="shrink-0 w-4" />}
+
+                {CATEGORY_ORDER.map((id) => {
+                  const isActive = activeCategory === id;
+                  const isSoon   = CATEGORIES[id].comingSoon;
+                  const tabTint  = CATEGORY_TINTS[id];
+
+                  return (
+                    <button
+                      key={id}
+                      onClick={() => handleTabClick(id)}
+                      style={isActive ? {
+                        background:  tabTint.activeBg,
+                        borderColor: tabTint.activeBorder,
+                        color:       "#fff",
+                      } : {}}
+                      className={[
+                        "relative flex items-center gap-1.5 shrink-0 rounded-full px-4 py-2 border",
+                        "text-[13px] font-medium transition-all duration-200 whitespace-nowrap",
+                        "focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40",
+                        isActive
+                          ? "font-semibold"
+                          : "bg-white/[0.07] border-white/[0.15] text-white/80 hover:bg-white/[0.14] hover:border-white/30 active:scale-95",
+                      ].join(" ")}
+                    >
+                     
+                      {TAB_LABEL[id]}
+                      {isSoon && (
+                        <span className="text-[9px] font-bold bg-amber-400 text-black px-1.5 py-0.5 rounded-full uppercase tracking-wide leading-none">
+                          Soon
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+                {/* Trailing spacer so last chip clears the right fade/arrow */}
+                <div className="shrink-0 w-8" />
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Search area */}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeCategory}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              className="mt-4 md:mt-5"
             >
-              Search location, date, guests
-              <MagnifyingGlassIcon className="w-5" />
-            </button>
-          </div>
+              {isComingSoon ? (
+                /* Coming soon panel */
+                <div
+                  className="flex items-center gap-3 backdrop-blur-2xl rounded-2xl px-5 py-4 max-w-md border"
+                  style={glassStyle}
+                >
+                  <span className="text-xl">🔔</span>
+                  <div>
+                    <p className="text-white font-semibold text-sm">
+                      {TAB_LABEL[activeCategory]} launches soon
+                    </p>
+                    <p className="text-white/50 text-xs mt-0.5">
+                      Be the first to know when we go live.
+                    </p>
+                  </div>
+                  <button
+                    className="ms-auto flex items-center gap-1.5 shrink-0 bg-white font-semibold text-xs px-4 py-2 rounded-xl hover:bg-gray-100 active:scale-95 transition-all"
+                    style={{ color: tint.hex }}
+                  >
+                    <BellIcon className="w-3.5 h-3.5" />
+                    Get Notified
+                  </button>
+                </div>
+              ) : (
+                <>
+                  {/* Desktop search bar */}
+                  <div
+                    className="hidden md:flex backdrop-blur-2xl rounded-2xl border max-w-4xl overflow-visible"
+                    style={glassStyle}
+                  >
+                    {fields.map((field, i) => (
+                      <SearchField
+                        key={`${activeCategory}-${field.id}`}
+                        field={field}
+                        tint={tint}
+                        category={activeCategory}
+                        isLast={i === fields.length - 1}
+                        /* date state */
+                        dateValue={dates[field.id] ?? null}
+                        onDateChange={(v) => setDates((p) => ({ ...p, [field.id]: v }))}
+                      />
+                    ))}
+
+                    {/* Search button */}
+                    <div className="flex items-center px-3 py-2">
+                      <button
+                        className="flex items-center gap-2 font-semibold text-sm px-5 py-2.5 rounded-xl hover:opacity-90 active:scale-95 transition-all whitespace-nowrap text-white"
+                        style={{
+                          background: tint.hex,
+                          boxShadow:  tint.activeGlow,
+                        }}
+                      >
+                        <MagnifyingGlassIcon className="w-4 h-4" />
+                        Search
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Mobile search trigger */}
+                  <button
+                    onClick={() => setOpenSearch(true)}
+                    className="md:hidden w-full flex items-center justify-between backdrop-blur-xl border text-white rounded-xl px-4 py-3.5 transition active:scale-[0.98]"
+                    style={{
+                      background:  "rgba(0,0,0,0.25)",
+                      borderColor:  tint.border,
+                      boxShadow:    tint.glow,
+                    }}
+                  >
+                    <div className="flex flex-col items-start gap-0.5">
+                      <span className="text-[10px] font-semibold uppercase tracking-widest text-white/40">
+                        Where to?
+                      </span>
+                      <span className="text-sm text-white/70">
+                        Search location, date, guests…
+                      </span>
+                    </div>
+                    <div className="p-2 rounded-lg text-white" style={{ background: tint.hex }}>
+                      <MagnifyingGlassIcon className="w-4 h-4" />
+                    </div>
+                  </button>
+                </>
+              )}
+            </motion.div>
+          </AnimatePresence>
+
         </div>
       </section>
 
-      {/* 📱 MOBILE SHEET */}
       <MobileSearchSheet open={openSearch} setOpen={setOpenSearch} />
     </>
+  );
+}
+
+/* ─── Search field renderer ─────────────────────────────────── */
+function SearchField({ field, tint, category, isLast, dateValue, onDateChange }) {
+  return (
+    <div
+      /* overflow-visible so dropdowns escape the flex row */
+      className={[
+        "relative flex-1 min-w-0 px-5 py-3.5 overflow-visible",
+        !isLast ? "border-e" : "",
+      ].join(" ")}
+      style={!isLast ? { borderColor: "rgba(255,255,255,0.1)" } : {}}
+    >
+      <p className="text-[10px] font-semibold uppercase tracking-widest text-white/40 mb-1.5 whitespace-nowrap">
+        {field.label}
+      </p>
+
+      {field.type === "location" && (
+        <LocationAutoComplete
+          category={category}
+          tint={tint}
+          placeholder={field.placeholder}
+        />
+      )}
+
+      {field.type === "date" && (
+        <DatePicker
+          mode="single"
+          tint={tint}
+          startDate={dateValue}
+          onChangeStart={onDateChange}
+          placeholder="Select date"
+        />
+      )}
+
+      {field.type === "datetime" && (
+        <DatePicker
+          mode="datetime"
+          tint={tint}
+          startDate={dateValue}
+          onChangeStart={onDateChange}
+          placeholder="Select date & time"
+        />
+      )}
+
+      {field.type === "guests" && (
+        <GuestPicker
+          type={field.guestType ?? "guests"}
+          tint={tint}
+        />
+      )}
+    </div>
   );
 }

@@ -11,6 +11,30 @@ import { useAuth }     from "@/context/AuthContext";
 import { useUI }       from "@/context/UIContext";
 
 /* ------------------------------------------------------------------ */
+/*  Avatar color palette — one stable color per first letter            */
+/* ------------------------------------------------------------------ */
+
+const AVATAR_PALETTE = [
+  "bg-blue-500",    // A
+  "bg-violet-500",  // B
+  "bg-emerald-500", // C
+  "bg-orange-500",  // D
+  "bg-rose-500",    // E
+  "bg-cyan-500",    // F
+  "bg-amber-500",   // G
+  "bg-pink-500",    // H
+  "bg-teal-500",    // I
+  "bg-indigo-500",  // J
+];
+
+function getAvatarBg(name) {
+  if (!name) return "bg-violet-500";
+  const code = name.trim().toUpperCase().charCodeAt(0);
+  const idx = Math.max(0, (code - 65) % AVATAR_PALETTE.length);
+  return AVATAR_PALETTE[idx];
+}
+
+/* ------------------------------------------------------------------ */
 /*  UserDropdown                                                        */
 /* ------------------------------------------------------------------ */
 
@@ -58,7 +82,7 @@ export default function UserDropdown({ onOpenRegionModal }) {
   return (
     <div className="relative" ref={wrapRef}>
 
-      {/* ── Avatar trigger — 40×40, no outer border ──────── */}
+      {/* ── Avatar trigger — 40×40, no border ───────────── */}
       <button
         type="button"
         onClick={() => toggleDropdown("user")}
@@ -67,25 +91,28 @@ export default function UserDropdown({ onOpenRegionModal }) {
         aria-haspopup="menu"
         className={[
           "relative flex h-10 w-10 shrink-0 items-center justify-center",
-          "rounded-full overflow-hidden",
-          "transition hover:ring-2 hover:ring-violet-400/50 hover:ring-offset-1",
+          "rounded-full overflow-hidden cursor-pointer",
+          "transition hover:opacity-80",
           "focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2",
-          isLoggedIn && user?.avatar ? "" : "bg-violet-600",
+          isLoggedIn
+            ? (user?.avatar ? "" : getAvatarBg(user?.name))
+            : "bg-gray-100 dark:bg-gray-800",
         ].join(" ")}
       >
-        {isLoggedIn && user?.avatar ? (
-          <img
-            src={user.avatar}
-            alt={user.name ?? "Profile"}
-            className="h-full w-full object-cover"
-          />
+        {isLoggedIn ? (
+          user?.avatar ? (
+            <img
+              src={user.avatar}
+              alt={user.name ?? "Profile"}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <span className="select-none text-sm font-semibold text-white" aria-hidden="true">
+              {initials}
+            </span>
+          )
         ) : (
-          <span
-            className="select-none text-sm font-semibold text-white"
-            aria-hidden="true"
-          >
-            {initials}
-          </span>
+          <PersonIcon className="h-5 w-5 text-gray-500 dark:text-gray-400" />
         )}
       </button>
 
@@ -100,7 +127,7 @@ export default function UserDropdown({ onOpenRegionModal }) {
             exit={{   opacity: 0, scale: 0.95, y: -6  }}
             transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
             className={[
-              "absolute right-0 mt-6 w-64",
+              "absolute end-0 mt-6 w-64",
               "rounded-2xl overflow-hidden",
               "bg-white dark:bg-gray-900",
               "border border-gray-100 dark:border-gray-800",
@@ -117,6 +144,7 @@ export default function UserDropdown({ onOpenRegionModal }) {
                 onClose={closeAll}
                 onLogout={handleLogout}
                 onVendor={handleVendor}
+                onRegion={handleRegion}
               />
             ) : (
               <LoggedOutMenu
@@ -176,25 +204,44 @@ function LoggedOutMenu({ onLogin, onVendor, onRegion }) {
 /*  After-login menu                                                    */
 /* ------------------------------------------------------------------ */
 
-function LoggedInMenu({ user, isListed, locale, country, onClose, onLogout, onVendor }) {
+function LoggedInMenu({ user, isListed, locale, country, onClose, onLogout, onVendor, onRegion }) {
   const t    = useTranslations("header");
   const base = `/${locale}/${country}`;
 
+  /* Mini-avatar initials (same logic as trigger) */
+  const initials = user?.name
+    ? user.name.trim().split(/\s+/).map((w) => w[0]).join("").toUpperCase().slice(0, 2)
+    : "U";
+
   return (
     <nav aria-label="User menu">
-      {/* User identity */}
-      <div className="px-4 py-3.5 border-b border-gray-100 dark:border-gray-800">
-        <p className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">
-          {user.name}
-        </p>
-        <p className="truncate text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-          {user.email}
-        </p>
+      {/* ── Account header: mini avatar + name + email ── */}
+      <div className="px-4 py-4 border-b border-gray-100 dark:border-gray-800">
+        <div className="flex items-center gap-3">
+          <span
+            className={[
+              "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
+              "text-sm font-semibold text-white select-none",
+              getAvatarBg(user?.name),
+            ].join(" ")}
+            aria-hidden="true"
+          >
+            {initials}
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100 leading-snug">
+              {user.name}
+            </p>
+            <p className="truncate text-xs text-gray-500 dark:text-gray-400 leading-snug mt-0.5">
+              {user.email}
+            </p>
+          </div>
+        </div>
       </div>
 
       <ul className="py-1.5" role="none">
 
-        {/* Vendor / Listing — conditional */}
+        {/* Vendor / Listing */}
         <li role="none">
           <MenuItem
             icon={isListed ? <StoreIcon /> : <BuildingIcon />}
@@ -206,6 +253,15 @@ function LoggedInMenu({ user, isListed, locale, country, onClose, onLogout, onVe
 
         <Divider />
 
+        {/* Profile — first in nav links */}
+        <li role="none">
+          <MenuItem
+            icon={<UserIcon />}
+            label={t("profile")}
+            href={`${base}/profile`}
+            onClick={onClose}
+          />
+        </li>
         <li role="none">
           <MenuItem
             icon={<HeartIcon />}
@@ -238,12 +294,15 @@ function LoggedInMenu({ user, isListed, locale, country, onClose, onLogout, onVe
             onClick={onClose}
           />
         </li>
+
+        <Divider />
+
+        {/* Region & Language */}
         <li role="none">
           <MenuItem
-            icon={<UserIcon />}
-            label={t("profile")}
-            href={`${base}/profile`}
-            onClick={onClose}
+            icon={<GlobeIcon />}
+            label={t("region_language")}
+            onClick={onRegion}
           />
         </li>
 
@@ -431,6 +490,24 @@ function LogoutIcon() {
       <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
       <polyline points="16 17 21 12 16 7" />
       <line x1="21" y1="12" x2="9" y2="12" />
+    </svg>
+  );
+}
+
+function PersonIcon({ className }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
     </svg>
   );
 }

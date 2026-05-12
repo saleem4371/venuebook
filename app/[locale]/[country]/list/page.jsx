@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
 
@@ -13,21 +12,22 @@ import workspaceImg  from "@/assets/Properties/Workspace.png";
 import rentalImg     from "@/assets/Properties/Rental.png";
 import experienceImg from "@/assets/Properties/Experience.png";
 
+import { useAuth } from "@/context/AuthContext";
+import LoginModal   from "@/app/[locale]/[country]/home/components/LoginModal";
+
 /* ─────────────────────────────────────────────────────────────────── */
 /*  Data                                                                */
 /* ─────────────────────────────────────────────────────────────────── */
 
-/* label + desc removed — sourced from listing.category.{id}.{label|desc} translations */
 const CATEGORIES = [
-  { id: "venue",      image: venueImg,      stat: { earning: "₹85K/mo", hosts: "1,200+", time: "~25 min", guests: "12,000+" } },
-  { id: "farmstay",   image: farmstayImg,   stat: { earning: "₹52K/mo", hosts: "800+",   time: "~20 min", guests: "8,000+"  } },
-  { id: "studio",     image: studioImg,     stat: { earning: "₹38K/mo", hosts: "600+",   time: "~15 min", guests: "5,000+"  } },
-  { id: "workspace",  image: workspaceImg,  stat: { earning: "₹28K/mo", hosts: "400+",   time: "~10 min", guests: "4,000+"  } },
-  { id: "rental",     image: rentalImg,     stat: { earning: "₹45K/mo", hosts: "900+",   time: "~18 min", guests: "9,000+"  } },
-  { id: "experience", image: experienceImg, stat: { earning: "₹22K/mo", hosts: "350+",   time: "~12 min", guests: "6,000+"  } },
+  { id: "venue",      image: venueImg,      stat: { hosts: "1,200+", time: "~25 min", guests: "12,000+" } },
+  { id: "farmstay",   image: farmstayImg,   stat: { hosts: "800+",   time: "~20 min", guests: "8,000+"  } },
+  { id: "studio",     image: studioImg,     stat: { hosts: "600+",   time: "~15 min", guests: "5,000+"  } },
+  { id: "workspace",  image: workspaceImg,  stat: { hosts: "400+",   time: "~10 min", guests: "4,000+"  } },
+  { id: "rental",     image: rentalImg,     stat: { hosts: "900+",   time: "~18 min", guests: "9,000+"  } },
+  { id: "experience", image: experienceImg, stat: { hosts: "350+",   time: "~12 min", guests: "6,000+"  } },
 ];
 
-/* label removed — sourced from listing.stat.{key} translations */
 const STAT_KEYS = ["earning", "hosts", "time", "guests"];
 
 /* ─────────────────────────────────────────────────────────────────── */
@@ -39,55 +39,60 @@ export default function ListYourPropertyPage() {
 
   const [selected, setSelected] = useState("venue");
   const params  = useParams();
+  const router  = useRouter();
   const locale  = params?.locale  || "en";
   const country = params?.country || "in";
 
-  const category = CATEGORIES.find((c) => c.id === selected);
+  const region       = country.toUpperCase();
+  const category     = CATEGORIES.find((c) => c.id === selected);
   const isComingSoon = selected === "experience";
-  const ctaHref  = `/${locale}/${country}/start-listing/${selected}`;
+  const ctaHref      = `/${locale}/${country}/start-listing/${selected}`;
+
+  // Auth gate
+  const { isLoggedIn } = useAuth();
+  const [showLogin, setShowLogin] = useState(false);
+
+  // Click handler for the CTA button
+  const handleCtaClick = () => {
+    if (isComingSoon) return;
+    if (!isLoggedIn) {
+      setShowLogin(true);
+      return;
+    }
+    router.push(ctaHref);
+  };
+
+  // After successful login → navigate to the listing flow
+  const handleLoginSuccess = () => {
+    setShowLogin(false);
+    router.push(ctaHref);
+  };
 
   return (
     <main className="bg-white dark:bg-gray-950">
-      {/*
-        Desktop: exact remaining viewport height so the split-screen fills
-        the window without overflow or content hiding under the navbar.
-        Navbar is sticky (h-[64px] / md:h-[72px]), so the section starts
-        naturally below it — no padding-top needed.
+      {/* Login modal — shown when unauthenticated user clicks CTA */}
+      <LoginModal
+        open={showLogin}
+        setOpen={setShowLogin}
+        onSuccess={handleLoginSuccess}
+      />
 
-        Mobile: flex-col (stacked), height is auto so all content is reachable.
-      */}
-      {/*
-        lg: flex-row split — image column is sticky so it stays pinned
-        exactly below the navbar (top-[72px]) and is never obscured by it.
-        Content column scrolls normally beside it.
-        Mobile: flex-col, image on top with auto height.
-      */}
-      {/* pt-[64px]/md:pt-[72px] guarantees the section starts below the sticky
-          navbar on every screen size regardless of scroll state or browser quirks.
-          lg: the sticky image column also pins at top-[72px] so the two values align. */}
       <section className="flex flex-col lg:flex-row lg:min-h-[calc(100vh-72px)] pt-[64px] md:pt-[72px] w-full lg:max-w-[1400px] lg:mx-auto">
 
-        {/* ── RIGHT: illustration — top on mobile, sticky-right on desktop ── */}
+        {/* ── RIGHT: illustration ── */}
         <div className={[
           "order-first lg:order-last",
           "lg:w-1/2 lg:flex-shrink-0",
-          /* Sticky: section already offset by pt-[72px], so sticky top
-             stays at 72px to pin flush with the navbar bottom on scroll */
           "lg:sticky lg:top-[72px] lg:h-[calc(100vh-72px)]",
           "flex items-center justify-center lg:justify-start",
-          /* Clean background — no grey box */
           "bg-white dark:bg-gray-950",
         ].join(" ")}>
-
-          {/* Mobile: proportional height, no overflow
-              Desktop: fills sticky column — reduced left padding closes center gap */}
           <div className="w-full h-[62vw] min-h-[240px] max-h-[440px] lg:w-auto lg:max-w-full lg:h-full flex items-center justify-center p-4 sm:p-6 lg:p-8">
             <AnimatePresence mode="wait">
               <motion.img
                 key={selected}
                 src={category.image.src}
                 alt={t(`category.${selected}.label`)}
-                /* object-contain: full image always visible, no cropping */
                 className="w-full h-full object-contain drop-shadow-md"
                 initial={{ opacity: 0, y: 10, scale: 0.97 }}
                 animate={{ opacity: 1, y: 0,  scale: 1    }}
@@ -99,12 +104,7 @@ export default function ListYourPropertyPage() {
           </div>
         </div>
 
-        {/* ── LEFT: content — below image on mobile, left on desktop ── */}
-        {/*
-          overflow-y-auto on desktop: if content ever overflows the exact
-          column height it scrolls inside the column, not the page.
-        */}
-        {/* pr reduced on desktop to close the center gap toward the image */}
+        {/* ── LEFT: content ── */}
         <div className="order-last lg:order-first lg:w-1/2 flex flex-col justify-center lg:overflow-y-auto px-5 sm:px-8 lg:pl-10 lg:pr-6 xl:pl-16 xl:pr-8 py-10 lg:py-12">
 
           {/* Eyebrow */}
@@ -119,7 +119,7 @@ export default function ListYourPropertyPage() {
           <h1 className="text-4xl sm:text-5xl lg:text-[48px] font-extrabold leading-[1.08] tracking-tight text-gray-900 dark:text-white mb-4">
             {t("headline_1")}{" "}
             <span
-              className="block"
+              className="block py-3"
               style={{
                 background: "linear-gradient(242deg, #a44bf3, #499ce8)",
                 WebkitBackgroundClip: "text",
@@ -133,7 +133,7 @@ export default function ListYourPropertyPage() {
 
           {/* Sub-copy */}
           <p className="text-base text-gray-500 dark:text-gray-400 leading-relaxed mb-7 max-w-[460px]">
-            {t("sub_copy")}
+            {t(`sub_copy.${region}`)}
           </p>
 
           {/* Category tabs */}
@@ -144,17 +144,17 @@ export default function ListYourPropertyPage() {
             <div className="flex flex-wrap gap-2">
               {CATEGORIES.map((cat) => {
                 const active    = cat.id === selected;
-                const isComingSoon = cat.id === "experience";
+                const soon      = cat.id === "experience";
                 return (
                   <button
                     key={cat.id}
                     type="button"
-                    onClick={() => !isComingSoon && setSelected(cat.id)}
-                    disabled={isComingSoon}
+                    onClick={() => !soon && setSelected(cat.id)}
+                    disabled={soon}
                     className={[
-                      "relative rounded-full border px-4 py-2 text-sm font-medium ",
+                      "relative inline-flex items-center justify-center rounded-full border px-4 py-2 text-sm font-medium ",
                       "transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 ",
-                      isComingSoon
+                      soon
                         ? "border-gray-200 dark:border-gray-800 text-gray-300 dark:text-gray-600 cursor-not-allowed opacity-60"
                         : active
                         ? "bg-violet-600 border-violet-600 text-white shadow-sm scale-[1.03] "
@@ -162,7 +162,7 @@ export default function ListYourPropertyPage() {
                     ].join(" ")}
                   >
                     {t(`category.${cat.id}.label`)}
-                    {isComingSoon && (
+                    {soon && (
                       <span className="ml-1.5 text-[9px] font-bold uppercase tracking-wide text-gray-400 dark:text-gray-600">
                         {t("coming_soon_badge")}
                       </span>
@@ -181,7 +181,7 @@ export default function ListYourPropertyPage() {
                 transition={{ duration: 0.18 }}
                 className="mt-2.5 text-sm text-gray-400 dark:text-gray-500"
               >
-                {t(`category.${selected}.desc`)}
+                {t(`category.${selected}.desc.${region}`)}
               </motion.p>
             </AnimatePresence>
           </div>
@@ -190,11 +190,12 @@ export default function ListYourPropertyPage() {
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-8">
             {isComingSoon ? (
               <div className="inline-flex items-center gap-2.5 rounded-xl px-7 py-3.5 text-sm font-semibold text-gray-400 dark:text-gray-600 cursor-not-allowed shrink-0 border border-gray-200 dark:border-gray-800">
-                {t("coming_soon_cta")}
+                {t(`cta_button.${selected}`)}
               </div>
             ) : (
-              <Link
-                href={ctaHref}
+              <button
+                type="button"
+                onClick={handleCtaClick}
                 className="inline-flex items-center gap-2.5 rounded-xl px-7 py-3.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 active:opacity-80 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 shrink-0"
                 style={{ background: "linear-gradient(242deg, #a44bf3, #499ce8)" }}
               >
@@ -207,13 +208,12 @@ export default function ListYourPropertyPage() {
                     transition={{ duration: 0.18 }}
                     className="flex items-center gap-2.5"
                   >
-                    {t("cta_button", { category: t(`category.${selected}.label`) })}
+                    {t(`cta_button.${selected}`)}
                     <ArrowRightIcon />
                   </motion.span>
                 </AnimatePresence>
-              </Link>
+              </button>
             )}
-
           </div>
 
           {/* Stats */}
@@ -231,7 +231,7 @@ export default function ListYourPropertyPage() {
                     {t(`stat.${key}`)}
                   </p>
                   <p className="text-xl font-bold text-gray-900 dark:text-white">
-                    {category.stat[key]}
+                    {key === "earning" ? t(`earning.${region}`) : category.stat[key]}
                   </p>
                 </motion.div>
               ))}

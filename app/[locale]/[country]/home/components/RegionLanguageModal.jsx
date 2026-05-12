@@ -13,7 +13,8 @@
  * To add a new region or language, update the config files only.
  */
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter, usePathname, useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -37,6 +38,12 @@ export default function RegionLanguageModal({ open, onClose }) {
   const params   = useParams();
   const panelRef = useRef(null);
 
+  /* Active tab: "lang_region" | "currency" */
+  const [activeTab, setActiveTab] = useState("lang_region");
+
+  /* Pending selection — shows spinner, blocks further clicks */
+  const [pending, setPending] = useState(null); // { type: "region"|"language", value: string }
+
   const t = useTranslations("modal");
 
   const { setRegion }                       = useRegionContext();
@@ -50,6 +57,11 @@ export default function RegionLanguageModal({ open, onClose }) {
   const availableLanguages = (currentRegion?.languages || ["en"]).map(
     (code) => LANGUAGE_META[code]
   ).filter(Boolean);
+
+  /* Reset state on open */
+  useEffect(() => {
+    if (open) { setActiveTab("lang_region"); setPending(null); }
+  }, [open]);
 
   /* ── ESC to close ───────────────────────────────────────────── */
   useEffect(() => {
@@ -67,6 +79,15 @@ export default function RegionLanguageModal({ open, onClose }) {
     document.body.style.overflow = open ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [open]);
+
+  /* ── Helpers ────────────────────────────────────────────────── */
+
+  /* Show spinner on the clicked item for `delay` ms, then execute fn */
+  const withDelay = useCallback((fn, type, value, delay = 700) => {
+    if (pending) return;
+    setPending({ type, value });
+    setTimeout(() => { setPending(null); fn(); }, delay);
+  }, [pending]);
 
   /* ── Handlers ───────────────────────────────────────────────── */
   const handleLanguage = (code) => {
@@ -130,155 +151,229 @@ export default function RegionLanguageModal({ open, onClose }) {
             className={[
               "fixed left-1/2 top-1/2 z-[90]",
               "-translate-x-1/2 -translate-y-1/2",
-              "w-[calc(100%-2rem)] max-w-[500px]",
+              "w-[calc(100%-2rem)] max-w-[520px]",
+              /* Fixed height — shrinks on small viewports */
+              "h-[520px] max-h-[90vh]",
+              "flex flex-col",
               "rounded-2xl overflow-hidden outline-none",
               "bg-white dark:bg-gray-900",
-              "border border-gray-100 dark:border-gray-800",
-              "shadow-2xl shadow-black/20 dark:shadow-black/60",
+              "shadow-2xl shadow-black/15 dark:shadow-black/60",
             ].join(" ")}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800">
-              <div className="flex items-center gap-2.5">
-                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400">
-                  <GlobeIcon />
-                </span>
-                <h2 id="rl-title" className="text-base font-semibold text-gray-900 dark:text-gray-100">
-                  {t("title")}
-                </h2>
-              </div>
+            {/* ── Header ───────────────────────────────────── */}
+            <div className="shrink-0 flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800/60">
+              <h2 id="rl-title" className="text-[15px] font-semibold text-gray-900 dark:text-white">
+                {t("heading")}
+              </h2>
               <button
                 type="button"
                 onClick={onClose}
                 aria-label="Close"
-                className="inline-flex h-8 w-8 items-center justify-center rounded-full text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full cursor-pointer text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
               >
                 <CloseIcon />
               </button>
             </div>
 
-            <div className="px-6 py-5 space-y-6 max-h-[70vh] overflow-y-auto">
+            {/* ── Tabs ─────────────────────────────────────── */}
+            <div className="shrink-0 flex border-b border-gray-100 dark:border-gray-800" role="tablist">
+              {[
+                { id: "lang_region", label: t("title") },
+                { id: "currency",    label: t("currency") },
+              ].map((tab) => {
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    role="tab"
+                    type="button"
+                    aria-selected={isActive}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={[
+                      "flex-1 py-3 text-sm font-medium transition-colors cursor-pointer",
+                      "focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-violet-500",
+                      isActive
+                        ? "border-b-2 border-violet-600 text-violet-600 dark:text-violet-400 -mb-px"
+                        : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300",
+                    ].join(" ")}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
 
-              {/* ── Language Section ─────────────────────────── */}
-              <section>
-                <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">
-                  <LanguageIcon /> {t("language")}
-                </p>
-                <div className="grid grid-cols-2 gap-2">
-                  {availableLanguages.map((lang) => {
-                    const active = lang.code === currentLocale;
-                    return (
-                      <button
-                        key={lang.code}
-                        type="button"
-                        onClick={() => handleLanguage(lang.code)}
-                        className={[
-                          "relative flex items-center gap-3 rounded-xl border px-4 py-3 text-sm text-left",
-                          "transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500",
-                          active
-                            ? "border-violet-500 bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300"
-                            : "border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-violet-200 dark:hover:border-violet-800 hover:bg-violet-50/40 dark:hover:bg-violet-950/20",
-                        ].join(" ")}
-                      >
-                        <span className="text-xl leading-none select-none">{lang.flag}</span>
-                        <span className="flex flex-col min-w-0">
-                          <span className="font-medium leading-tight truncate">{lang.label}</span>
-                          <span className="text-xs leading-tight text-gray-400 dark:text-gray-500 truncate">
-                            {lang.native}
-                          </span>
-                        </span>
-                        {active && (
-                          <span className="ml-auto shrink-0 h-2 w-2 rounded-full bg-violet-500" aria-hidden="true" />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </section>
+            {/* ── Tab content ──────────────────────────────── */}
+            <div className="flex-1 overflow-y-auto px-5 py-5 space-y-6">
 
-              <div className="h-px bg-gray-100 dark:bg-gray-800" />
+              {activeTab === "lang_region" && (
+                <>
+                  {/* ── Region (first) ─────────────────────── */}
+                  <section>
+                    <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3 px-1">
+                      {t("region")}
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {ALL_REGIONS.map((region) => {
+                        const active    = region.countryCode === currentCountry;
+                        const isPending = pending?.type === "region" && pending?.value === region.countryCode;
+                        return (
+                          <button
+                            key={region.code}
+                            type="button"
+                            onClick={() => withDelay(() => handleRegion(region.countryCode), "region", region.countryCode)}
+                            disabled={!!pending}
+                            className={[
+                              "relative flex items-center gap-3 rounded-xl border px-4 py-3.5 text-sm text-start",
+                              "transition-all duration-200",
+                              "focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500",
+                              pending ? "cursor-not-allowed" : "cursor-pointer",
+                              active
+                                ? "bg-gray-50 dark:bg-gray-800/60 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white"
+                                : "bg-gray-50 dark:bg-gray-800/40 border-transparent text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800/70 hover:border-gray-200 dark:hover:border-gray-700",
+                            ].join(" ")}
+                          >
+                            <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center
+                                            rounded-lg bg-gray-100 dark:bg-gray-800 overflow-hidden">
+                              <Image
+                                src={region.flag}
+                                alt={region.name}
+                                width={28}
+                                height={20}
+                                className="object-contain"
+                              />
+                            </span>
+                            <span className="flex flex-col min-w-0">
+                              <span className="font-medium leading-normal text-[13px]">{region.name}</span>
+                              <span className="text-[11px] leading-normal text-gray-400 dark:text-gray-500 mt-0.5">
+                                {region.currency}
+                              </span>
+                            </span>
+                            <span className="ms-auto shrink-0">
+                              {isPending
+                                ? <ModalSpinner />
+                                : active
+                                  ? <span className="h-2 w-2 rounded-full bg-violet-500 block" aria-hidden="true" />
+                                  : null
+                              }
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </section>
 
-              {/* ── Region Section ───────────────────────────── */}
-              <section>
-                <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">
-                  <PinIcon /> {t("region")}
-                </p>
-                <div className="grid grid-cols-2 gap-2">
-                  {ALL_REGIONS.map((region) => {
-                    const active = region.countryCode === currentCountry;
-                    return (
-                      <button
-                        key={region.code}
-                        type="button"
-                        onClick={() => handleRegion(region.countryCode)}
-                        className={[
-                          "flex flex-col items-center gap-1.5 rounded-xl border px-3 py-3.5",
-                          "text-sm transition cursor-pointer",
-                          "focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500",
-                          active
-                            ? "border-violet-500 bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300"
-                            : "border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-violet-200 dark:hover:border-violet-800 hover:bg-violet-50/40 dark:hover:bg-violet-950/20",
-                        ].join(" ")}
-                      >
-                        <span className="text-[26px] leading-none select-none">{region.flag}</span>
-                        <span className="font-medium text-center leading-tight text-xs sm:text-sm">
-                          {region.name}
-                        </span>
-                        <span
+                  <div className="h-px bg-gray-100 dark:bg-gray-800/60" />
+
+                  {/* ── Language (second) ──────────────────── */}
+                  <section className="pb-1">
+                    <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3 px-1">
+                      {t("language")}
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {availableLanguages.map((lang) => {
+                        const active    = lang.code === currentLocale;
+                        const isPending = pending?.type === "language" && pending?.value === lang.code;
+                        return (
+                          <button
+                            key={lang.code}
+                            type="button"
+                            onClick={() => withDelay(() => handleLanguage(lang.code), "language", lang.code)}
+                            disabled={!!pending}
+                            className={[
+                              "relative flex items-center gap-3 rounded-xl border px-4 py-3.5 text-sm text-start",
+                              "transition-all duration-200",
+                              "focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500",
+                              pending ? "cursor-not-allowed" : "cursor-pointer",
+                              active
+                                ? "bg-gray-50 dark:bg-gray-800/60 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white"
+                                : "bg-gray-50 dark:bg-gray-800/40 border-transparent text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800/70 hover:border-gray-200 dark:hover:border-gray-700",
+                            ].join(" ")}
+                          >
+                            {/* Language ≠ Country — use a code badge instead of a flag */}
+                            <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center
+                                            rounded-lg bg-gray-100 dark:bg-gray-800"
+                                  aria-hidden="true">
+                              <span className="text-[11px] font-bold tracking-wide
+                                               text-gray-600 dark:text-gray-300">
+                                {lang.code.toUpperCase()}
+                              </span>
+                            </span>
+                            <span className="flex flex-col min-w-0">
+                              <span className="font-medium leading-normal text-[13px]">{lang.label}</span>
+                              <span className="text-[11px] leading-normal text-gray-400 dark:text-gray-500 mt-0.5">
+                                {lang.native}
+                              </span>
+                            </span>
+                            <span className="ms-auto shrink-0">
+                              {isPending
+                                ? <ModalSpinner />
+                                : active
+                                  ? <span className="h-2 w-2 rounded-full bg-violet-500 block" aria-hidden="true" />
+                                  : null
+                              }
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </section>
+                </>
+              )}
+
+              {activeTab === "currency" && (
+                <section className="pb-1">
+                  <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3 px-1">
+                    {t("currency")}
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {ALL_CURRENCIES.map((cur) => {
+                      const active = currencyMounted && currency === cur.code;
+                      return (
+                        <button
+                          key={cur.code}
+                          type="button"
+                          onClick={() => setCurrency(cur.code)}
                           className={[
-                            "text-[11px] font-medium leading-none px-1.5 py-0.5 rounded-full",
+                            "relative flex items-center gap-3 rounded-xl border px-4 py-3.5 text-sm text-start cursor-pointer",
+                            "transition-all duration-200",
+                            "focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500",
                             active
-                              ? "bg-violet-100 dark:bg-violet-900/50 text-violet-600 dark:text-violet-400"
-                              : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400",
+                              ? "bg-gray-50 dark:bg-gray-800/60 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white"
+                              : "bg-gray-50 dark:bg-gray-800/40 border-transparent text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800/70 hover:border-gray-200 dark:hover:border-gray-700",
                           ].join(" ")}
                         >
-                          {region.currency}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </section>
-
-              <div className="h-px bg-gray-100 dark:bg-gray-800" />
-
-              {/* ── Currency Section ─────────────────────────── */}
-              <section className="pb-1">
-                <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">
-                  <CurrencyIcon /> {t("currency")}
-                </p>
-                <div className="grid grid-cols-2 gap-2">
-                  {ALL_CURRENCIES.map((cur) => {
-                    const active = currencyMounted && currency === cur.code;
-                    return (
-                      <button
-                        key={cur.code}
-                        type="button"
-                        onClick={() => setCurrency(cur.code)}
-                        className={[
-                          "relative flex items-center gap-3 rounded-xl border px-4 py-3 text-sm text-left",
-                          "transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500",
-                          active
-                            ? "border-violet-500 bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300"
-                            : "border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-violet-200 dark:hover:border-violet-800 hover:bg-violet-50/40 dark:hover:bg-violet-950/20",
-                        ].join(" ")}
-                      >
-                        <span className="text-xl leading-none select-none">{cur.flag}</span>
-                        <span className="flex flex-col min-w-0">
-                          <span className="font-medium leading-tight truncate">{cur.code}</span>
-                          <span className="text-xs leading-tight text-gray-400 dark:text-gray-500 truncate">
-                            {cur.name}
+                          <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center
+                                          rounded-lg bg-gray-100 dark:bg-gray-800 overflow-hidden">
+                            <Image
+                              src={cur.flag}
+                              alt={cur.name}
+                              width={28}
+                              height={20}
+                              className="object-contain"
+                            />
                           </span>
-                        </span>
-                        {active && (
-                          <span className="ml-auto shrink-0 h-2 w-2 rounded-full bg-violet-500" aria-hidden="true" />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </section>
+                          <span className="flex flex-col min-w-0">
+                            {/* Primary: symbol + code — symbol sourced from config, never hardcoded here */}
+                            <span className="inline-flex items-baseline gap-1.5 leading-normal">
+                              <span className="font-semibold text-[14px]">{cur.symbol}</span>
+                              <span className="font-medium text-[13px]">{cur.code}</span>
+                            </span>
+                            {/* Secondary: full name */}
+                            <span className="text-[11px] leading-normal text-gray-400 dark:text-gray-500 mt-0.5">
+                              {cur.name}
+                            </span>
+                          </span>
+                          {active && (
+                            <span className="ms-auto shrink-0 h-2 w-2 rounded-full bg-violet-500" aria-hidden="true" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </section>
+              )}
 
             </div>
           </motion.div>
@@ -299,45 +394,16 @@ function CloseIcon() {
   );
 }
 
-function GlobeIcon() {
+function ModalSpinner() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <circle cx="12" cy="12" r="10" />
-      <line x1="2" y1="12" x2="22" y2="12" />
-      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-    </svg>
-  );
-}
-
-function LanguageIcon() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M5 8l6 6" /><path d="M4 14s1-1 2-1 2.5 2 2.5 2-1 1-2 1-2.5-2-2.5-2z" />
-      <path d="M12 4v4M8 4h8" /><path d="M13 4l4 8" /><path d="M13 12l4-8" />
-    </svg>
-  );
-}
-
-function PinIcon() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-      <circle cx="12" cy="10" r="3" />
-    </svg>
-  );
-}
-
-function CurrencyIcon() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <circle cx="12" cy="12" r="10" />
-      <path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8" />
-      <line x1="12" y1="6" x2="12" y2="8" />
-      <line x1="12" y1="16" x2="12" y2="18" />
+    <svg
+      className="h-3.5 w-3.5 animate-spin text-violet-500"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25" />
+      <path fill="currentColor" fillOpacity="0.8" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4z" />
     </svg>
   );
 }
