@@ -1,5 +1,5 @@
 {
-  "welcome": "مرحبًا بك في VenueBook",
+  "welcome": "مرحبًا بك في venuebook",
   "book_now": "احجز الآن",
   "search_placeholder": "ابحث عن الأماكن والمواقع...",
   "explore": "استكشف",
@@ -47,30 +47,225 @@
     "title": "المنطقة واللغة",
     "language": "اللغة",
     "region": "المنطقة",
-    "currency": "العملة"
+    "currency": "العملة",
+    "heading": "التفضيلات"
+  },
+  "auth": {
+    "welcomeBack": "مرحباً بعودتك",
+    "createAccount": "إنشاء حساب",
+    "newToVenueBook": "جديد على VenueBook؟",
+    "alreadyHaveAccount": "هل لديك حساب بالفعل؟",
+    "signUpFree": "إنشاء حساب مجاناً",
+    "login": "تسجيل الدخول",
+    "continueWithGoogle": "المتابعة باستخدام Google",
+    "continueWithFacebook": "المتابعة باستخدام Facebook",
+    "continueWithPhone": "المتابعة باستخدام الهاتف",
+    "orContinueWithEmail": "أو المتابعة باستخدام البريد الإلكتروني",
+    "fullName": "الاسم الكامل",
+    "emailAddress": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "confirmPassword": "تأكيد كلمة المرور",
+    "forgotPassword": "هل نسيت كلمة المرور؟",
+    "loggingIn": "جاري تسجيل الدخول...",
+    "creating": "جاري إنشاء الحساب...",
+    "phoneSignIn": "تسجيل الدخول عبر الهاتف",
+    "phoneSubtitle": "سنرسل رمز تحقق لمرة واحدة لتأكيد رقمك.",
+    "code": "الرمز",
+    "mobileNumber": "رقم الهاتف",
+    "sendOtp": "إرسال OTP",
+    "enterOtp": "أدخل OTP",
+    "codeSentTo": "تم إرسال الرمز إلى",
+    "verifyContinue": "تحقق واستمر",
+    "resendOtp": "لم تستلم OTP؟ أعد الإرسال",
+    "back": "رجوع",
+    "forgotPasswordTitle": "نسيت كلمة المرور",
+    "enterYourEmail": "أدخل بريدك الإلكتروني",
+    "sending": "جاري الإرسال...",
+    "resetPassword": "إعادة تعيين كلمة المرور",
+    "otpSentTo": "تم إرسال OTP إلى",
+    "enterOtpPlaceholder": "أدخل OTP",
+    "newPassword": "كلمة مرور جديدة",
+    "updatePassword": "تحديث كلمة المرور",
+    "updating": "جاري التحديث...",
+    "passwordUpdated": "تم تحديث كلمة المرور ✅",
+    "passwordUpdatedSubtitle": "يمكنك الآن تسجيل الدخول باستخدام كلمة المرور الجديدة.",
+    "backToLogin": "العودة إلى تسجيل الدخول",
+    "termsText": "بالمتابعة، فإنك توافق على",
+    "termsOfService": "شروط الخدمة",
+    "privacyPolicy": "سياسة الخصوصية",
+    "and": "و",
+    "venuesFarmstays": "أماكن · مزارع · استوديوهات · مساحات عمل · إيجارات",
+    "everySpace": "كل مساحة،",
+    "onePlatform": "منصة واحدة.",
+    "discoverText": "اكتشف واحجز فوراً الأماكن، المزارع، الاستوديوهات، مساحات العمل والإيجارات الفريدة — كل ذلك في مكان واحد.",
+    "featureVenues": "أماكن الفعاليات وقاعات الحفلات",
+    "featureFarmstays": "المزارع والاستوديوهات والإيجارات الإبداعية",
+    "featureWorkspaces": "مساحات العمل وغرف الاجتماعات"
   },
   "listing": {
     "eyebrow": "لأصحاب العقارات",
-    "headline_1": "افتح أبوابك.",
-    "headline_2": "اكسب منها.",
-    "sub_copy": "أدرج مزرعة، استوديو، مساحة عمل، إيجار، مكان أو تجربة في خطوات بسيطة. مجاني للإدراج — نتولى الحجوزات والمدفوعات.",
+    "sub_copy": {
+      "IN": "أدرج مكان فعاليتك أو إقامتك الريفية أو استوديوك أو مساحة عملك أو إيجارك في خطوات بسيطة.",
+      "AE": "اجذب ضيوفًا مميزين ومسافرين عالميين وشركات حديثة عبر منصة مصممة للمساحات الاستثنائية."
+    },
     "what_listing": "ما الذي تريد إدراجه؟",
     "coming_soon_badge": "قريبًا",
-    "coming_soon_cta": "التجارب — قريبًا",
-    "cta_button": "ابدأ إدراج {category}",
+    "cta_button": {
+      "venue": "ابدأ بإدراج مكانك",
+      "farmstay": "ابدأ بإدراج مزرعتك",
+      "studio": "ابدأ بإدراج الاستوديو الخاص بك",
+      "workspace": "ابدأ بإدراج مساحة العمل الخاصة بك",
+      "rental": "ابدأ بإدراج عقارك",
+      "experience": "قريباً"
+    },
     "stat": {
       "earning": "متوسط الأرباح",
       "hosts": "المضيفون النشطون",
       "time": "وقت الإعداد",
       "guests": "الضيوف الشهريون"
     },
+    "earning": {
+      "IN": "₹85K/شهر",
+      "AE": "AED 15K/شهر"
+    },
     "category": {
-      "venue":      { "label": "الأماكن",      "desc": "قاعات الأفراح والفعاليات وأماكن الحفلات" },
-      "farmstay":   { "label": "إقامات الريف", "desc": "مزارع ومنتجعات طبيعية وملاجئ ريفية" },
-      "studio":     { "label": "الاستوديوهات","desc": "استوديوهات تصوير وغرف موسيقى وأماكن تصوير" },
-      "workspace":  { "label": "مساحات العمل", "desc": "مكاتب ومساحات مشتركة وغرف اجتماعات" },
-      "rental":     { "label": "الإيجارات",    "desc": "فيلات وشقق ومنازل للعطلات" },
-      "experience": { "label": "التجارب",      "desc": "ورش عمل وجولات وفعاليات وأنشطة فريدة" }
+      "venue": {
+        "label": "أماكن الفعاليات",
+        "desc": {
+          "IN": "حوّل قاعة الأفراح أو اللون أو مكان الفعالية إلى وجهة للاحتفالات التي لا تُنسى.",
+          "AE": "اعرض قاعة البالروم الفاخرة أو مكانك الراقي لفعاليات عالمية المستوى وتجمعات النخبة."
+        }
+      },
+      "farmstay": {
+        "label": "إقامات الريف",
+        "desc": {
+          "IN": "رحّب بضيوف يبحثون عن هروب ريفي هادئ، ومنتجعات بجانب البحيرات، وإقامات في أحضان الطبيعة.",
+          "AE": "قدّم منتجعات صحراوية فاخرة وملاجئ جبلية وتجارب مزرعة مميزة للمسافرين حول العالم."
+        }
+      },
+      "studio": {
+        "label": "الاستوديوهات",
+        "desc": {
+          "IN": "أدرج استوديوك الإبداعي لجلسات التصوير والإنتاج والبودكاست وصانعي المحتوى.",
+          "AE": "أجّر استوديوك الإبداعي الراقي للعلامات التجارية الدولية والمبدعين وإنتاجات الميديا."
+        }
+      },
+      "workspace": {
+        "label": "مساحات العمل",
+        "desc": {
+          "IN": "ساعد الشركات الناشئة والمستقلين والفرق على اكتشاف مكاتب منتجة ومساحات عمل ملهِمة.",
+          "AE": "استضف غرف اجتماعات حديثة ومساحات عمل مشتركة راقية للمهنيين والشركات العالمية."
+        }
+      },
+      "rental": {
+        "label": "الإيجارات",
+        "desc": {
+          "IN": "حوّل فيلاتك وشققك وإقاماتك الفريدة إلى وجهات إيجارية عالية الطلب.",
+          "AE": "قدّم منازل فاخرة وبنتهاوسات وإقامات منتقاة لضيوف مميزين ومسافرين."
+        }
+      },
+      "experience": {
+        "label": "التجارب",
+        "desc": {
+          "IN": "قريبًا ستتمكن من استضافة أنشطة منتقاة وورش عمل وتجارب محلية.",
+          "AE": "تجارب فاخرة منتقاة وأنشطة مغامرة قادمة قريبًا."
+        }
+      }
+    },
+    "headline_1": "مساحتك. قصتك.",
+    "headline_2": "نجاحك."
+  },
+  "footer": {
+    "sr_label": "التذييل",
+    "brand": {
+      "sr_home": "الصفحة الرئيسية لـ venuebook",
+      "IN": {
+        "description": "Discover and book amazing venues for weddings, corporate events, and serene farmstays. Your perfect celebration starts here."
+      },
+      "AE": {
+        "description": "بوابتك نحو أرقى الأماكن والإقامات الريفية الفاخرة والاستوديوهات الإبداعية والتجارب الاستثنائية في الإمارات."
+      }
+    },
+    "newsletter": {
+      "IN": {
+        "heading": "Get inspired for your next event",
+        "subtext": "Hand-picked venues, exclusive offers, and planning tips — straight to your inbox."
+      },
+      "AE": {
+        "heading": "اكتشف الاستثنائي",
+        "subtext": "أماكن مختارة بعناية وإقامات فاخرة وتجارب فريدة — مباشرة إلى صندوق بريدك."
+      },
+      "email_placeholder": "أدخل بريدك الإلكتروني",
+      "subscribe": "اشترك",
+      "success_msg": "شكرًا — أنت في القائمة.",
+      "success_sr": "لقد اشتركت. شكرًا!"
+    },
+    "discover": {
+      "heading": "اكتشف",
+      "wedding_venues": "Wedding Venues",
+      "banquet_halls": "Banquet Halls",
+      "farmstays_lawns": "Farmstays & Lawns",
+      "corporate_events": "Corporate Events",
+      "venues_farmstays": "الأماكن والإقامات الريفية",
+      "studios_workspaces": "الاستوديوهات ومساحات العمل",
+      "luxury_rentals": "الإيجارات الفاخرة",
+      "unique_experiences": "تجارب فريدة"
+    },
+    "hosting": {
+      "heading": "الاستضافة",
+      "list_venue": "List Your Venue / Farmstay",
+      "host_resources": "Host Resources",
+      "responsible_hosting": "Responsible Hosting",
+      "list_space": "أدرج مساحتك / عقارك",
+      "uae_community": "مجتمع المضيفين في الإمارات",
+      "service_standards": "معايير الخدمة"
+    },
+    "support": {
+      "heading": "الدعم",
+      "how_it_works": "كيف يعمل",
+      "help_center": "Help Center",
+      "cancellation": "Cancellation Policy",
+      "safety": "Safety Information",
+      "report": "الإبلاغ عن مشكلة",
+      "global_help": "مركز المساعدة العالمي",
+      "booking_protections": "حماية الحجوزات",
+      "travel_safety": "سلامة السفر"
+    },
+    "contact": {
+      "IN": {
+        "phone": "+91 733 868 4444",
+        "email": "hello@venuebook.in",
+        "hours": "Mon–Sat · 9:30 AM – 6:30 PM (IST)"
+      },
+      "AE": {
+        "phone": "+971 54 198 7423",
+        "email": "global@venuebook.in",
+        "hours": "الأحد–الخميس · 9:00 صباحًا – 6:00 مساءً (بتوقيت الخليج)"
+      }
+    },
+    "localization": {
+      "IN": "English (IN)",
+      "AE": "العربية (UAE)",
+      "change_region_sr": "تغيير اللغة والمنطقة"
+    },
+    "legal": {
+      "copyright": "© {year} venuebook, Inc.",
+      "privacy": "الخصوصية",
+      "terms": "الشروط",
+      "sitemap": "خريطة الموقع",
+      "cookies": "إعدادات ملفات تعريف الارتباط"
+    },
+    "social": {
+      "aria_label": "وسائل التواصل الاجتماعي"
     }
+  },
+  "categories": {
+    "selectCategory": "اختر الفئة",
+    "venues": "أماكن الفعاليات",
+    "farmstays": "إقامات المزارع",
+    "studios": "استوديوهات",
+    "rentals": "تأجير",
+    "workspaces": "مساحات عمل",
+    "experiences": "تجارب"
   }
 }

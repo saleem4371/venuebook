@@ -80,7 +80,7 @@ export default function LanguageSwitcher() {
           open ? "border-violet-400 dark:border-violet-500 shadow-sm" : "",
         ].join(" ")}
       >
-        <span className="text-base leading-none" aria-hidden="true">
+        <span className="text-base" aria-hidden="true">
           {activeMeta.flag}
         </span>
         <span className="hidden sm:inline">{activeMeta.native}</span>
@@ -126,14 +126,14 @@ export default function LanguageSwitcher() {
                     : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800",
                 ].join(" ")}
               >
-                <span className="text-lg leading-none shrink-0" aria-hidden="true">
+                <span className="text-lg shrink-0" aria-hidden="true">
                   {lang.flag}
                 </span>
                 <span className="flex flex-col min-w-0">
-                  <span className="font-medium leading-tight truncate">
+                  <span className="font-medium leading-normal">
                     {lang.native}
                   </span>
-                  <span className="text-xs text-gray-400 dark:text-gray-500 leading-tight">
+                  <span className="text-xs text-gray-400 dark:text-gray-500 leading-normal">
                     {lang.label}
                   </span>
                 </span>

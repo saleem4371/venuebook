@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1900 1000">
+  <!-- 13 alternating stripes: red (1,3,5,7,9,11,13) white (2,4,6,8,10,12) -->
+  <rect width="1900" height="1000" fill="#B22234"/>
+  <rect y="76.9"  width="1900" height="76.9" fill="#FFFFFF"/>
+  <rect y="230.7" width="1900" height="76.9" fill="#FFFFFF"/>
+  <rect y="384.6" width="1900" height="76.9" fill="#FFFFFF"/>
+  <rect y="538.4" width="1900" height="76.9" fill="#FFFFFF"/>
+  <rect y="692.3" width="1900" height="76.9" fill="#FFFFFF"/>
+  <rect y="846.1" width="1900" height="76.9" fill="#FFFFFF"/>
+  <!-- Blue canton — covers top-left 7 stripes -->
+  <rect width="760" height="538.4" fill="#3C3B6E"/>
+  <!-- Stars: 9 rows alternating 6 and 5 stars → 50 total
+       Row spacing: 59.8px | Col spacing: 63.3px (6-star rows) / 79.2px (5-star rows)
+       Offset: first star at approx (63, 54) -->
+  <g fill="#FFFFFF">
+    <!-- Row 1 – 6 stars at y=54 -->
+    <circle cx="63"  cy="54"  r="19"/>
+    <circle cx="126" cy="54"  r="19"/>
+    <circle cx="190" cy="54"  r="19"/>
+    <circle cx="253" cy="54"  r="19"/>
+    <circle cx="316" cy="54"  r="19"/>
+    <circle cx="380" cy="54"  r="19"/>
+    <circle cx="443" cy="54"  r="19"/>
+    <circle cx="506" cy="54"  r="19"/>
+    <circle cx="570" cy="54"  r="19"/>
+    <circle cx="633" cy="54"  r="19"/>
+    <circle cx="696" cy="54"  r="19"/>
+    <!-- Row 2 – 5 stars (staggered) at y=114 -->
+    <circle cx="94"  cy="114" r="19"/>
+    <circle cx="158" cy="114" r="19"/>
+    <circle cx="221" cy="114" r="19"/>
+    <circle cx="284" cy="114" r="19"/>
+    <circle cx="348" cy="114" r="19"/>
+    <circle cx="411" cy="114" r="19"/>
+    <circle cx="475" cy="114" r="19"/>
+    <circle cx="538" cy="114" r="19"/>
+    <circle cx="601" cy="114" r="19"/>
+    <!-- Row 3 – 11 stars at y=174 -->
+    <circle cx="63"  cy="174" r="19"/>
+    <circle cx="126" cy="174" r="19"/>
+    <circle cx="190" cy="174" r="19"/>
+    <circle cx="253" cy="174" r="19"/>
+    <circle cx="316" cy="174" r="19"/>
+    <circle cx="380" cy="174" r="19"/>
+    <circle cx="443" cy="174" r="19"/>
+    <circle cx="506" cy="174" r="19"/>
+    <circle cx="570" cy="174" r="19"/>
+    <circle cx="633" cy="174" r="19"/>
+    <circle cx="696" cy="174" r="19"/>
+    <!-- Row 4 – 9 stars staggered at y=234 -->
+    <circle cx="94"  cy="234" r="19"/>
+    <circle cx="158" cy="234" r="19"/>
+    <circle cx="221" cy="234" r="19"/>
+    <circle cx="284" cy="234" r="19"/>
+    <circle cx="348" cy="234" r="19"/>
+    <circle cx="411" cy="234" r="19"/>
+    <circle cx="475" cy="234" r="19"/>
+    <circle cx="538" cy="234" r="19"/>
+    <circle cx="601" cy="234" r="19"/>
+    <!-- Row 5 – 11 stars at y=294 -->
+    <circle cx="63"  cy="294" r="19"/>
+    <circle cx="126" cy="294" r="19"/>
+    <circle cx="190" cy="294" r="19"/>
+    <circle cx="253" cy="294" r="19"/>
+    <circle cx="316" cy="294" r="19"/>
+    <circle cx="380" cy="294" r="19"/>
+    <circle cx="443" cy="294" r="19"/>
+    <circle cx="506" cy="294" r="19"/>
+    <circle cx="570" cy="294" r="19"/>
+    <circle cx="633" cy="294" r="19"/>
+    <circle cx="696" cy="294" r="19"/>
+    <!-- Row 6 – 9 stars staggered at y=354 -->
+    <circle cx="94"  cy="354" r="19"/>
+    <circle cx="158" cy="354" r="19"/>
+    <circle cx="221" cy="354" r="19"/>
+    <circle cx="284" cy="354" r="19"/>
+    <circle cx="348" cy="354" r="19"/>
+    <circle cx="411" cy="354" r="19"/>
+    <circle cx="475" cy="354" r="19"/>
+    <circle cx="538" cy="354" r="19"/>
+    <circle cx="601" cy="354" r="19"/>
+    <!-- Row 7 – 11 stars at y=414 -->
+    <circle cx="63"  cy="414" r="19"/>
+    <circle cx="126" cy="414" r="19"/>
+    <circle cx="190" cy="414" r="19"/>
+    <circle cx="253" cy="414" r="19"/>
+    <circle cx="316" cy="414" r="19"/>
+    <circle cx="380" cy="414" r="19"/>
+    <circle cx="443" cy="414" r="19"/>
+    <circle cx="506" cy="414" r="19"/>
+    <circle cx="570" cy="414" r="19"/>
+    <circle cx="633" cy="414" r="19"/>
+    <circle cx="696" cy="414" r="19"/>
+    <!-- Row 8 – 9 stars staggered at y=474 -->
+    <circle cx="94"  cy="474" r="19"/>
+    <circle cx="158" cy="474" r="19"/>
+    <circle cx="221" cy="474" r="19"/>
+    <circle cx="284" cy="474" r="19"/>
+    <circle cx="348" cy="474" r="19"/>
+    <circle cx="411" cy="474" r="19"/>
+    <circle cx="475" cy="474" r="19"/>
+    <circle cx="538" cy="474" r="19"/>
+    <circle cx="601" cy="474" r="19"/>
+  </g>
+</svg>

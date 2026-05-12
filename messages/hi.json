@@ -1,5 +1,5 @@
 {
-  "welcome": "VenueBook में आपका स्वागत है",
+  "welcome": "venuebook में आपका स्वागत है",
   "book_now": "अभी बुक करें",
   "search_placeholder": "स्थल, स्थान खोजें...",
   "explore": "एक्सप्लोर करें",
@@ -47,30 +47,225 @@
     "title": "क्षेत्र और भाषा",
     "language": "भाषा",
     "region": "क्षेत्र",
-    "currency": "मुद्रा"
+    "currency": "मुद्रा",
+    "heading": "प्राथमिकताएं"
+  },
+  "auth": {
+    "welcomeBack": "वापसी पर स्वागत है",
+    "createAccount": "खाता बनाएं",
+    "newToVenueBook": "venuebook पर नए हैं?",
+    "alreadyHaveAccount": "क्या आपके पास पहले से खाता है?",
+    "signUpFree": "मुफ़्त में साइन अप करें",
+    "login": "लॉग इन करें",
+    "continueWithGoogle": "Google के साथ जारी रखें",
+    "continueWithFacebook": "Facebook के साथ जारी रखें",
+    "continueWithPhone": "फ़ोन के साथ जारी रखें",
+    "orContinueWithEmail": "या ईमेल के साथ जारी रखें",
+    "fullName": "पूरा नाम",
+    "emailAddress": "ईमेल पता",
+    "password": "पासवर्ड",
+    "confirmPassword": "पासवर्ड की पुष्टि करें",
+    "forgotPassword": "पासवर्ड भूल गए?",
+    "loggingIn": "लॉग इन हो रहा है...",
+    "creating": "खाता बनाया जा रहा है...",
+    "phoneSignIn": "फ़ोन से साइन इन",
+    "phoneSubtitle": "हम आपके नंबर की पुष्टि के लिए एक OTP भेजेंगे।",
+    "code": "कोड",
+    "mobileNumber": "मोबाइल नंबर",
+    "sendOtp": "OTP भेजें",
+    "enterOtp": "OTP दर्ज करें",
+    "codeSentTo": "कोड भेजा गया",
+    "verifyContinue": "सत्यापित करें और जारी रखें",
+    "resendOtp": "OTP नहीं मिला? फिर से भेजें",
+    "back": "वापस",
+    "forgotPasswordTitle": "पासवर्ड भूल गए",
+    "enterYourEmail": "अपना ईमेल दर्ज करें",
+    "sending": "भेजा जा रहा है...",
+    "resetPassword": "पासवर्ड रीसेट करें",
+    "otpSentTo": "OTP भेजा गया",
+    "enterOtpPlaceholder": "OTP दर्ज करें",
+    "newPassword": "नया पासवर्ड",
+    "updatePassword": "पासवर्ड अपडेट करें",
+    "updating": "अपडेट हो रहा है...",
+    "passwordUpdated": "पासवर्ड अपडेट हो गया ✅",
+    "passwordUpdatedSubtitle": "अब आप अपने नए पासवर्ड से लॉग इन कर सकते हैं।",
+    "backToLogin": "लॉगिन पर वापस जाएं",
+    "termsText": "जारी रखकर, आप हमारी",
+    "termsOfService": "सेवा की शर्तों",
+    "privacyPolicy": "गोपनीयता नीति",
+    "and": "और",
+    "venuesFarmstays": "वेन्यू · फार्मस्टे · स्टूडियो · वर्कस्पेस · रेंटल",
+    "everySpace": "हर स्पेस,",
+    "onePlatform": "एक प्लेटफ़ॉर्म।",
+    "discoverText": "वेन्यू, आरामदायक फार्मस्टे, क्रिएटिव स्टूडियो, वर्कस्पेस और यूनिक रेंटल्स को तुरंत खोजें और बुक करें।",
+    "featureVenues": "इवेंट वेन्यू और बैंक्वेट हॉल",
+    "featureFarmstays": "फार्मस्टे, स्टूडियो और क्रिएटिव रेंटल्स",
+    "featureWorkspaces": "वर्कस्पेस और मीटिंग रूम"
   },
   "listing": {
     "eyebrow": "संपत्ति मालिकों के लिए",
-    "headline_1": "अपने दरवाजे खोलें।",
-    "headline_2": "उनसे कमाएं।",
-    "sub_copy": "फार्मस्टे, स्टूडियो, वर्कस्पेस, रेंटल, स्थल, या अनुभव को कुछ ही चरणों में सूचीबद्ध करें। सूचीबद्ध करना मुफ़्त — हम बुकिंग और भुगतान संभालते हैं।",
+    "sub_copy": {
+      "IN": "अपना स्थल, फार्मस्टे, स्टूडियो, वर्कस्पेस, या रेंटल कुछ आसान चरणों में सूचीबद्ध करें।",
+      "AE": "असाधारण स्थानों के लिए बने प्लेटफ़ॉर्म के साथ प्रीमियम अतिथियों, वैश्विक यात्रियों और आधुनिक व्यवसायों तक पहुंचें।"
+    },
     "what_listing": "आप क्या सूचीबद्ध कर रहे हैं?",
     "coming_soon_badge": "जल्द",
-    "coming_soon_cta": "अनुभव — जल्द आ रहा है",
-    "cta_button": "अपना {category} सूचीबद्ध करना शुरू करें",
+    "cta_button": {
+      "venue": "अपना वेन्यू सूचीबद्ध करना शुरू करें",
+      "farmstay": "अपना फार्मस्टे सूचीबद्ध करना शुरू करें",
+      "studio": "अपना स्टूडियो सूचीबद्ध करना शुरू करें",
+      "workspace": "अपना वर्कस्पेस सूचीबद्ध करना शुरू करें",
+      "rental": "अपना रेंटल सूचीबद्ध करना शुरू करें",
+      "experience": "जल्द आ रहा है"
+    },
     "stat": {
       "earning": "औसत आय",
       "hosts": "सक्रिय होस्ट",
       "time": "सेटअप समय",
       "guests": "मासिक अतिथि"
     },
+    "earning": {
+      "IN": "₹85K/माह",
+      "AE": "AED 15K/माह"
+    },
     "category": {
-      "venue":      { "label": "स्थल",      "desc": "बैंक्वेट हॉल, इवेंट स्पेस और पार्टी वेन्यू" },
-      "farmstay":   { "label": "फार्मस्टे", "desc": "खेत, प्रकृति रिट्रीट और ग्रामीण अवकाश" },
-      "studio":     { "label": "स्टूडियो",  "desc": "फोटो स्टूडियो, म्यूजिक रूम और फिल्म सेट" },
-      "workspace":  { "label": "वर्कस्पेस", "desc": "कार्यालय, को-वर्किंग और मीटिंग रूम" },
-      "rental":     { "label": "रेंटल",     "desc": "विला, अपार्टमेंट और हॉलिडे होम" },
-      "experience": { "label": "अनुभव",     "desc": "वर्कशॉप, टूर, इवेंट और अनूठी गतिविधियां" }
+      "venue": {
+        "label": "वेन्यू",
+        "desc": {
+          "IN": "अपने बैंक्वेट हॉल, लॉन, या इवेंट वेन्यू को यादगार समारोहों का केंद्र बनाएं।",
+          "AE": "अपने प्रीमियम बॉलरूम या लक्ज़री वेन्यू को विश्वस्तरीय इवेंट और एलीट गेटटुगेदर के लिए प्रस्तुत करें।"
+        }
+      },
+      "farmstay": {
+        "label": "फार्मस्टे",
+        "desc": {
+          "IN": "ग्रामीण शांति, झील किनारे रिट्रीट और प्रकृति से भरे ठहराव के लिए अतिथियों का स्वागत करें।",
+          "AE": "वैश्विक यात्रियों के लिए शानदार रेगिस्तानी रिट्रीट, पर्वतीय पलायन और प्रीमियम फार्म अनुभव प्रदान करें।"
+        }
+      },
+      "studio": {
+        "label": "स्टूडियो",
+        "desc": {
+          "IN": "फोटोशूट, प्रोडक्शन, पॉडकास्ट और कंटेंट क्रिएटर्स के लिए अपना क्रिएटिव स्टूडियो सूचीबद्ध करें।",
+          "AE": "अंतरराष्ट्रीय ब्रांड्स, क्रिएटर्स और मीडिया प्रोडक्शन के लिए अपना हाई-एंड स्टूडियो किराए पर दें।"
+        }
+      },
+      "workspace": {
+        "label": "वर्कस्पेस",
+        "desc": {
+          "IN": "स्टार्टअप, फ्रीलांसर और टीमों को उत्पादक कार्यालय और प्रेरणादायक वर्कस्पेस खोजने में मदद करें।",
+          "AE": "पेशेवरों और वैश्विक व्यवसायों के लिए आधुनिक मीटिंग रूम और प्रीमियम कोवर्किंग स्पेस होस्ट करें।"
+        }
+      },
+      "rental": {
+        "label": "रेंटल",
+        "desc": {
+          "IN": "अपने विला, अपार्टमेंट और अनोखे ठहराव को उच्च-मांग वाले किराया गंतव्यों में बदलें।",
+          "AE": "प्रीमियम अतिथियों और यात्रियों के लिए लक्ज़री होम, पेंटहाउस और क्यूरेटेड ठहराव प्रदान करें।"
+        }
+      },
+      "experience": {
+        "label": "अनुभव",
+        "desc": {
+          "IN": "जल्द ही आप क्यूरेटेड गतिविधियां, वर्कशॉप और स्थानीय अनुभव होस्ट कर सकेंगे।",
+          "AE": "क्यूरेटेड लक्ज़री अनुभव और एडवेंचर गतिविधियां जल्द आ रही हैं।"
+        }
+      }
+    },
+    "headline_1": "आपकी जगह। आपकी कहानी।",
+    "headline_2": "आपकी सफलता।"
+  },
+  "footer": {
+    "sr_label": "फ़ुटर",
+    "brand": {
+      "sr_home": "venuebook होम",
+      "IN": {
+        "description": "शादियों, कॉर्पोरेट इवेंट और फार्मस्टे के लिए अद्भुत स्थल खोजें और बुक करें। आपका परफेक्ट सेलिब्रेशन यहाँ से शुरू होता है।"
+      },
+      "AE": {
+        "description": "Your gateway to premier venues, luxury farmstays, creative studios, and extraordinary experiences across the UAE."
+      }
+    },
+    "newsletter": {
+      "IN": {
+        "heading": "अपने अगले इवेंट से प्रेरणा पाएं",
+        "subtext": "चुनिंदा स्थल, एक्सक्लूसिव ऑफर और प्लानिंग टिप्स — सीधे आपके इनबॉक्स में।"
+      },
+      "AE": {
+        "heading": "Explore the extraordinary",
+        "subtext": "Curated spaces, luxury stays, and unique experiences — delivered to your inbox."
+      },
+      "email_placeholder": "अपना ईमेल दर्ज करें",
+      "subscribe": "सब्सक्राइब करें",
+      "success_msg": "धन्यवाद — आप सूची में हैं।",
+      "success_sr": "आप सब्सक्राइब हो गए। धन्यवाद!"
+    },
+    "discover": {
+      "heading": "खोजें",
+      "wedding_venues": "वेडिंग वेन्यू",
+      "banquet_halls": "बैंक्वेट हॉल",
+      "farmstays_lawns": "फार्मस्टे & लॉन",
+      "corporate_events": "कॉर्पोरेट इवेंट",
+      "venues_farmstays": "Venues & Farmstays",
+      "studios_workspaces": "Studios & Workspaces",
+      "luxury_rentals": "Luxury Rentals",
+      "unique_experiences": "Unique Experiences"
+    },
+    "hosting": {
+      "heading": "होस्टिंग",
+      "list_venue": "अपना स्थल / फार्मस्टे लिस्ट करें",
+      "host_resources": "होस्ट संसाधन",
+      "responsible_hosting": "जिम्मेदार होस्टिंग",
+      "list_space": "List Your Space / Property",
+      "uae_community": "UAE Host Community",
+      "service_standards": "Service Standards"
+    },
+    "support": {
+      "heading": "सहायता",
+      "how_it_works": "यह कैसे काम करता है",
+      "help_center": "सहायता केंद्र",
+      "cancellation": "रद्दीकरण नीति",
+      "safety": "सुरक्षा जानकारी",
+      "report": "चिंता रिपोर्ट करें",
+      "global_help": "Global Help Center",
+      "booking_protections": "Booking Protections",
+      "travel_safety": "Travel Safety"
+    },
+    "contact": {
+      "IN": {
+        "phone": "+91 733 868 4444",
+        "email": "hello@venuebook.in",
+        "hours": "सोम–शनि · 9:30 AM – 6:30 PM (IST)"
+      },
+      "AE": {
+        "phone": "+971 54 198 7423",
+        "email": "global@venuebook.in",
+        "hours": "Sun–Thu · 9:00 AM – 6:00 PM (GST)"
+      }
+    },
+    "localization": {
+      "IN": "हिन्दी (IN)",
+      "AE": "English (UAE)",
+      "change_region_sr": "भाषा और क्षेत्र बदलें"
+    },
+    "legal": {
+      "copyright": "© {year} venuebook, Inc.",
+      "privacy": "गोपनीयता",
+      "terms": "नियम",
+      "sitemap": "साइटमैप",
+      "cookies": "कुकी सेटिंग"
+    },
+    "social": {
+      "aria_label": "सोशल मीडिया"
     }
+  },
+  "categories": {
+    "selectCategory": "श्रेणी चुनें",
+    "venues": "वेन्यू",
+    "farmstays": "फार्मस्टे",
+    "studios": "स्टूडियो",
+    "rentals": "रेंटल",
+    "workspaces": "वर्कस्पेस",
+    "experiences": "अनुभव"
   }
 }

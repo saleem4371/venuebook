@@ -17,10 +17,10 @@ export const defaultLocale = "en";
  * Used by LanguageSwitcher and RegionLanguageModal.
  */
 export const LANGUAGE_META = {
-  en: { code: "en", label: "English",  native: "English",    flag: "🇺🇸", dir: "ltr" },
-  hi: { code: "hi", label: "Hindi",    native: "हिन्दी",     flag: "🇮🇳", dir: "ltr" },
-  kn: { code: "kn", label: "Kannada",  native: "ಕನ್ನಡ",      flag: "🇮🇳", dir: "ltr" },
-  ar: { code: "ar", label: "Arabic",   native: "العربية",    flag: "🇦🇪", dir: "rtl" },
+  en: { code: "en", label: "English",  native: "English",    flag: "/flags/us.svg", dir: "ltr" },
+  hi: { code: "hi", label: "Hindi",    native: "हिन्दी",     flag: "/flags/in.svg", dir: "ltr" },
+  kn: { code: "kn", label: "Kannada",  native: "ಕನ್ನಡ",      flag: "/flags/in.svg", dir: "ltr" },
+  ar: { code: "ar", label: "Arabic",   native: "العربية",    flag: "/flags/ae.svg", dir: "rtl" },
 };
 
 /**

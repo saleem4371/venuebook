@@ -47,30 +47,225 @@
     "title": "Region & Language",
     "language": "Language",
     "region": "Region",
-    "currency": "Currency"
+    "currency": "Currency",
+    "heading": "Preferences"
+  },
+  "auth": {
+    "welcomeBack": "Welcome back",
+    "createAccount": "Create account",
+    "newToVenueBook": "New to VenueBook?",
+    "alreadyHaveAccount": "Already have an account?",
+    "signUpFree": "Sign up free",
+    "login": "Log in",
+    "continueWithGoogle": "Continue with Google",
+    "continueWithFacebook": "Continue with Facebook",
+    "continueWithPhone": "Continue with Phone",
+    "orContinueWithEmail": "or continue with email",
+    "fullName": "Full name",
+    "emailAddress": "Email address",
+    "password": "Password",
+    "confirmPassword": "Confirm password",
+    "forgotPassword": "Forgot password?",
+    "loggingIn": "Logging in...",
+    "creating": "Creating...",
+    "phoneSignIn": "Phone sign in",
+    "phoneSubtitle": "We'll send a one-time code to verify your number.",
+    "code": "Code",
+    "mobileNumber": "Mobile number",
+    "sendOtp": "Send OTP",
+    "enterOtp": "Enter OTP",
+    "codeSentTo": "Code sent to",
+    "verifyContinue": "Verify & Continue",
+    "resendOtp": "Didn't receive it? Resend OTP",
+    "back": "Back",
+    "forgotPasswordTitle": "Forgot Password",
+    "enterYourEmail": "Enter your email",
+    "sending": "Sending...",
+    "resetPassword": "Reset Password",
+    "otpSentTo": "OTP sent to",
+    "enterOtpPlaceholder": "Enter OTP",
+    "newPassword": "New password",
+    "updatePassword": "Update Password",
+    "updating": "Updating...",
+    "passwordUpdated": "Password Updated ✅",
+    "passwordUpdatedSubtitle": "You can now login with your new password.",
+    "backToLogin": "Back to Login",
+    "termsText": "By continuing, you agree to our",
+    "termsOfService": "Terms of Service",
+    "privacyPolicy": "Privacy Policy",
+    "and": "and",
+    "venuesFarmstays": "Venues · Farmstays · Studios · Workspaces · Rentals",
+    "everySpace": "Every Space,",
+    "onePlatform": "One Platform.",
+    "discoverText": "Discover and instantly book venues, cozy farmstays, creative studios, productive workspaces, and unique rentals — all in one place.",
+    "featureVenues": "Event venues & banquet halls",
+    "featureFarmstays": "Farmstays, studios & creative rentals",
+    "featureWorkspaces": "Workspaces & meeting rooms"
   },
   "listing": {
     "eyebrow": "For Property Owners",
-    "headline_1": "Open your doors.",
-    "headline_2": "Earn from them.",
-    "sub_copy": "List a farmstay, studio, workspace, rental, venue, or experience in just a few steps. Free to list — we handle bookings & payments.",
+    "sub_copy": {
+      "IN": "List your venue, farmstay, studio, workspace, or rental in just a few simple steps.",
+      "AE": "Reach premium guests, global travelers, and modern businesses with a platform built for extraordinary spaces."
+    },
     "what_listing": "What are you listing?",
     "coming_soon_badge": "Soon",
-    "coming_soon_cta": "Experiences — Coming Soon",
-    "cta_button": "Start listing your {category}",
+    "cta_button": {
+      "venue": "Start listing your venue",
+      "farmstay": "Start listing your farmstay",
+      "studio": "Start listing your studio",
+      "workspace": "Start listing your workspace",
+      "rental": "Start listing your rental",
+      "experience": "Coming Soon"
+    },
     "stat": {
       "earning": "Avg Earning",
       "hosts": "Active Hosts",
       "time": "Setup Time",
       "guests": "Monthly Guests"
     },
+    "earning": {
+      "IN": "₹85K/mo",
+      "AE": "AED 15K/mo"
+    },
     "category": {
-      "venue":      { "label": "Venues",      "desc": "Banquet halls, event spaces & party venues" },
-      "farmstay":   { "label": "Farmstays",   "desc": "Farms, nature retreats & countryside escapes" },
-      "studio":     { "label": "Studios",     "desc": "Photo studios, music rooms & film sets" },
-      "workspace":  { "label": "Workspaces",  "desc": "Offices, co-working & meeting rooms" },
-      "rental":     { "label": "Rentals",     "desc": "Villas, apartments & holiday homes" },
-      "experience": { "label": "Experiences", "desc": "Workshops, tours, events & unique activities" }
+      "venue": {
+        "label": "Venues",
+        "desc": {
+          "IN": "Turn your banquet hall, lawn, or event venue into the destination for unforgettable celebrations.",
+          "AE": "Showcase your premium ballroom or luxury venue for world-class events and elite gatherings."
+        }
+      },
+      "farmstay": {
+        "label": "Farmstays",
+        "desc": {
+          "IN": "Welcome guests to peaceful countryside escapes, lakeside retreats, and nature-filled stays.",
+          "AE": "Offer luxurious desert retreats, mountain escapes, and premium farm experiences for global travelers."
+        }
+      },
+      "studio": {
+        "label": "Studios",
+        "desc": {
+          "IN": "List your creative studio for photoshoots, productions, podcasts, and content creators.",
+          "AE": "Rent your high-end creative studio to international brands, creators, and media productions."
+        }
+      },
+      "workspace": {
+        "label": "Workspaces",
+        "desc": {
+          "IN": "Help startups, freelancers, and teams discover productive offices and inspiring workspaces.",
+          "AE": "Host modern meeting rooms and premium coworking spaces for professionals and global businesses."
+        }
+      },
+      "rental": {
+        "label": "Rentals",
+        "desc": {
+          "IN": "Turn your villas, apartments, and unique stays into high-demand rental destinations.",
+          "AE": "Offer luxury homes, penthouses, and curated stays for premium guests and travelers."
+        }
+      },
+      "experience": {
+        "label": "Experiences",
+        "desc": {
+          "IN": "Soon you'll be able to host curated activities, workshops, and local experiences.",
+          "AE": "Curated luxury experiences and adventure activities are coming soon."
+        }
+      }
+    },
+    "headline_1": "Your Space. Your Story.",
+    "headline_2": "Your Success."
+  },
+  "footer": {
+    "sr_label": "Footer",
+    "brand": {
+      "sr_home": "VenueBook home",
+      "IN": {
+        "description": "Discover and book amazing venues for weddings, corporate events, and serene farmstays. Your perfect celebration starts here."
+      },
+      "AE": {
+        "description": "Your gateway to premier venues, luxury farmstays, creative studios, and extraordinary experiences across the UAE."
+      }
+    },
+    "newsletter": {
+      "IN": {
+        "heading": "Get inspired for your next event",
+        "subtext": "Hand-picked venues, exclusive offers, and planning tips — straight to your inbox."
+      },
+      "AE": {
+        "heading": "Explore the extraordinary",
+        "subtext": "Curated spaces, luxury stays, and unique experiences — delivered to your inbox."
+      },
+      "email_placeholder": "Enter your email",
+      "subscribe": "Subscribe",
+      "success_msg": "You’re in — welcome to the list.",
+      "success_sr": "Successfully subscribed. Thank you!"
+    },
+    "discover": {
+      "heading": "Discover",
+      "wedding_venues": "Wedding Venues",
+      "banquet_halls": "Banquet Halls",
+      "farmstays_lawns": "Farmstays & Lawns",
+      "corporate_events": "Corporate Events",
+      "venues_farmstays": "Venues & Farmstays",
+      "studios_workspaces": "Studios & Workspaces",
+      "luxury_rentals": "Luxury Rentals",
+      "unique_experiences": "Unique Experiences"
+    },
+    "hosting": {
+      "heading": "Hosting",
+      "list_venue": "List Your Venue / Farmstay",
+      "host_resources": "Host Resources",
+      "responsible_hosting": "Responsible Hosting",
+      "list_space": "List Your Space / Property",
+      "uae_community": "UAE Host Community",
+      "service_standards": "Service Standards"
+    },
+    "support": {
+      "heading": "Support",
+      "how_it_works": "How it works",
+      "help_center": "Help Center",
+      "cancellation": "Cancellation Policy",
+      "safety": "Safety Information",
+      "report": "Report a Concern",
+      "global_help": "Global Help Center",
+      "booking_protections": "Booking Protections",
+      "travel_safety": "Travel Safety"
+    },
+    "contact": {
+      "IN": {
+        "phone": "+91 733 868 4444",
+        "email": "hello@venuebook.in",
+        "hours": "Mon–Sat · 9:30 AM – 6:30 PM (IST)"
+      },
+      "AE": {
+        "phone": "+971 54 198 7423",
+        "email": "global@venuebook.in",
+        "hours": "Sun–Thu · 9:00 AM – 6:00 PM (GST)"
+      }
+    },
+    "localization": {
+      "IN": "English (IN)",
+      "AE": "English (UAE)",
+      "change_region_sr": "Change language and region"
+    },
+    "legal": {
+      "copyright": "© {year} VenueBook, Inc.",
+      "privacy": "Privacy",
+      "terms": "Terms",
+      "sitemap": "Sitemap",
+      "cookies": "Cookie Settings"
+    },
+    "social": {
+      "aria_label": "Social media"
     }
+  },
+  "categories": {
+    "selectCategory": "Select Category",
+    "venues": "Venues",
+    "farmstays": "Farmstays",
+    "studios": "Studios",
+    "rentals": "Rentals",
+    "workspaces": "Workspaces",
+    "experiences": "Experiences"
   }
 }

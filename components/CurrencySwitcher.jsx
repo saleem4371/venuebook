@@ -74,7 +74,7 @@ export default function CurrencySwitcher({ sampleAmount = 5000 }) {
           open ? "border-violet-400 dark:border-violet-500 shadow-sm" : "",
         ].join(" ")}
       >
-        <span className="text-base leading-none" aria-hidden="true">
+        <span className="text-base" aria-hidden="true">
           {currencyConfig?.flag}
         </span>
         <span className="font-semibold tracking-wide">{currency}</span>
@@ -121,12 +121,12 @@ export default function CurrencySwitcher({ sampleAmount = 5000 }) {
                     : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800",
                 ].join(" ")}
               >
-                <span className="text-lg leading-none shrink-0" aria-hidden="true">
+                <span className="text-lg shrink-0" aria-hidden="true">
                   {cur.flag}
                 </span>
                 <span className="flex flex-col min-w-0 flex-1">
-                  <span className="font-semibold leading-tight">{cur.code}</span>
-                  <span className="text-xs text-gray-400 dark:text-gray-500 leading-tight truncate">
+                  <span className="font-semibold leading-normal">{cur.code}</span>
+                  <span className="text-xs text-gray-400 dark:text-gray-500 leading-normal">
                     {cur.name}
                   </span>
                 </span>
