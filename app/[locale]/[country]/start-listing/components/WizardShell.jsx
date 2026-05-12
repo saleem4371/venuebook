@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
@@ -21,23 +21,32 @@ import experienceImg from "@/assets/Properties/Experience.png";
 import ProgressBar         from "./ProgressBar";
 import WizardFooter        from "./WizardFooter";
 import { useListingWizard } from "./useListingWizard";
-import { CATEGORY_LABELS }  from "./wizardConfig";
+import { WIZARD_STEPS, CATEGORY_LABELS, STEP_TO_SLUG, SLUG_TO_STEP } from "./wizardConfig";
 
-import BasicsStep   from "./steps/BasicsStep";
-import LocationStep from "./steps/LocationStep";
-import DetailsStep  from "./steps/DetailsStep";
-import MediaStep    from "./steps/MediaStep";
-import PricingStep  from "./steps/PricingStep";
-import ReviewStep   from "./steps/ReviewStep";
+import BasicsStep    from "./steps/BasicsStep";
+import LocationStep  from "./steps/LocationStep";
+import AmenitiesStep from "./steps/AmenitiesStep";
+import CapacityStep  from "./steps/CapacityStep";
+import PricingStep   from "./steps/PricingStep";
+import MediaStep     from "./steps/MediaStep";
+import ReviewStep    from "./steps/ReviewStep";
+
+import { useAuth }   from "@/context/AuthContext";
+import LoginModal    from "@/app/[locale]/[country]/home/components/LoginModal";
+import { URL_COUNTRY_TO_CODE } from "./steps/config/locationConfig";
 
 /* ─────────────────────────────────────────────────────────────────────── */
 
 const STEP_COMPONENTS = {
-  basics: BasicsStep, location: LocationStep, details: DetailsStep,
-  media: MediaStep,   pricing: PricingStep,   review:  ReviewStep,
+  basics:    BasicsStep,
+  location:  LocationStep,
+  amenities: AmenitiesStep,
+  capacity:  CapacityStep,
+  pricing:   PricingStep,
+  media:     MediaStep,
+  review:    ReviewStep,
 };
 
-/* Category image map — thumbnail used in the header tag */
 const CAT_IMAGES = {
   venue: venueImg, farmstay: farmstayImg, studio: studioImg,
   workspace: workspaceImg, rental: rentalImg, experience: experienceImg,
@@ -57,10 +66,38 @@ export default function WizardShell({ initialCategory }) {
   const locale  = params?.locale  || "en";
   const country = params?.country || "in";
 
+  // ── Derive current step from URL slug ──────────────────────────────────
+  // rawSlug is null when visiting the bare /[category] URL (no step segment).
+  const rawSlugArr  = params?.slug;
+  const rawSlug     = Array.isArray(rawSlugArr) && rawSlugArr.length > 0 ? rawSlugArr[0] : null;
+  const slugParam   = rawSlug || "basic-details";
+  const isBareUrl   = rawSlug === null;
+
+  const currentStepKey = SLUG_TO_STEP[slugParam] || "basics";
+  const stepIndex      = WIZARD_STEPS.findIndex((s) => s.key === currentStepKey);
+  const currentStep    = WIZARD_STEPS[Math.max(0, stepIndex)];
+  const totalSteps     = WIZARD_STEPS.length;
+  const isFirst        = stepIndex === 0;
+  const isLast         = stepIndex === totalSteps - 1;
+
+  // ── URL helpers ────────────────────────────────────────────────────────
+  const stepUrl = (key) =>
+    `/${locale}/${country}/start-listing/${initialCategory}/${STEP_TO_SLUG[key]}`;
+
+  // ── Local UI state ─────────────────────────────────────────────────────
   const [dir,    setDir]    = useState(1);
   const [isDark, setIsDark] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // Auth
+  const { isLoggedIn } = useAuth();
+  const [showLogin, setShowLogin] = useState(false);
+  const pendingSave = useRef(false);
+
+  // ISO code for initial map center
+  const urlCountry = URL_COUNTRY_TO_CODE[(country).toLowerCase()] || "IN";
+
+  // Dark mode sync
   useEffect(() => {
     const sync = () => setIsDark(document.documentElement.classList.contains("dark"));
     sync();
@@ -69,22 +106,93 @@ export default function WizardShell({ initialCategory }) {
     return () => obs.disconnect();
   }, []);
 
+  // ── Wizard state ───────────────────────────────────────────────────────
   const {
-    stepIndex, totalSteps, currentStep, progress,
-    form, updateForm, attempted, isCurrentValid,
-    isFirst, isLast, goNext, goBack, goToStep,
+    form, updateForm, attempted, attemptStep, isStepValid,
+    hydrated, lastSavedKey,
+    reviewReached, markReviewReached,
     saveDraft, clearDraft,
-  } = useListingWizard(initialCategory);
+  } = useListingWizard(initialCategory, urlCountry);
 
-  const handleNext     = () => { setDir(1);  goNext(); };
-  const handleBack     = () => { setDir(-1); goBack(); };
-  const handleGoToStep = (i) => { setDir(i < stepIndex ? -1 : 1); goToStep(i); };
-  const handleSubmit   = () => { clearDraft(); router.push(`/${locale}/${country}/vendor/dashboard`); };
+  // ── Auto-restore: redirect to last active step on bare category URL ────
+  // Fires once after hydration. Uses router.replace so no extra history entry.
+  useEffect(() => {
+    if (!isBareUrl || !hydrated) return;
+    if (!lastSavedKey || lastSavedKey === "basics") return;
+    if (!STEP_TO_SLUG[lastSavedKey]) return;
+    router.replace(stepUrl(lastSavedKey));
+  }, [isBareUrl, hydrated, lastSavedKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleSaveAndExit = () => {
-    if (saving) return;
+  // ── Mark review reached on landing ────────────────────────────────────
+  // Fires whenever the user is on the review step (including on refresh or
+  // direct URL visit). markReviewReached is idempotent — safe to call every
+  // render while on the review step.
+  useEffect(() => {
+    if (currentStep.key === "review" && hydrated) {
+      markReviewReached();
+    }
+  }, [currentStep.key, hydrated, markReviewReached]);
+
+  const isCurrentValid = isStepValid(currentStep.key);
+
+  // ── Navigation ─────────────────────────────────────────────────────────
+  const handleNext = () => {
+    attemptStep(currentStep.key);
+    if (!isCurrentValid) return;
+
+    // Auto-save current step data on every successful Continue
+    saveDraft(currentStep.key);
+
+    const next = WIZARD_STEPS[stepIndex + 1];
+    if (!next) return;
+    setDir(1);
+    router.push(stepUrl(next.key));
+  };
+
+  const handleBack = () => {
+    if (isFirst) return;
+    const prev = WIZARD_STEPS[stepIndex - 1];
+    setDir(-1);
+    router.push(stepUrl(prev.key));
+  };
+
+  // Called by ReviewStep "Edit" buttons
+  const handleGoToStep = (index) => {
+    const step = WIZARD_STEPS[index];
+    if (!step) return;
+    setDir(index < stepIndex ? -1 : 1);
+    router.push(stepUrl(step.key));
+  };
+
+  // Footer "Back to Review" — navigate directly to review step
+  const handleBackToReview = () => {
+    setDir(1);
+    router.push(stepUrl("review"));
+  };
+
+  const handleSubmit = () => {
+    // Persist a lightweight listing snapshot so the payment page can display
+    // the listing name, category, and city without needing the full draft.
+    try {
+      localStorage.setItem(
+        `vb_pending_${initialCategory}`,
+        JSON.stringify({
+          title:       form.title       || "",
+          subcategory: form.subcategory || "",
+          city:        form.city        || "",
+          country:     form.country     || "",
+          submittedAt: Date.now(),
+        }),
+      );
+    } catch (_) {}
+    clearDraft();
+    router.push(`/${locale}/${country}/start-listing/${initialCategory}/payment`);
+  };
+
+  // ── Save & Exit (auth-gated) ───────────────────────────────────────────
+  const doSaveAndExit = () => {
     setSaving(true);
-    saveDraft();
+    saveDraft(currentStep.key);
     toast.success("Progress saved! Continue any time.", {
       icon: "🔖",
       style: { borderRadius: "12px", fontSize: "13px", fontWeight: "500" },
@@ -92,31 +200,54 @@ export default function WizardShell({ initialCategory }) {
     setTimeout(() => router.push(`/${locale}/${country}/list`), 800);
   };
 
+  const handleSaveAndExit = () => {
+    if (saving) return;
+    if (!isLoggedIn) {
+      pendingSave.current = true;
+      setShowLogin(true);
+      return;
+    }
+    doSaveAndExit();
+  };
+
+  const handleLoginSuccess = () => {
+    setShowLogin(false);
+    if (pendingSave.current) {
+      pendingSave.current = false;
+      doSaveAndExit();
+    }
+  };
+
   const catLabel      = CATEGORY_LABELS[form.category] || form.category || "";
   const catImage      = CAT_IMAGES[form.category] || null;
   const StepComponent = STEP_COMPONENTS[currentStep.key];
+
+  // "Back to Review" is shown on every non-review step once the user has
+  // reached the review step at least once (persisted across refresh).
+  const showBackToReview = reviewReached && !isLast;
 
   return (
     <div className="flex flex-col min-h-screen bg-white dark:bg-gray-950">
       <Toaster position="top-center" toastOptions={{ duration: 2000 }} />
 
+      <LoginModal
+        open={showLogin}
+        setOpen={setShowLogin}
+        onSuccess={handleLoginSuccess}
+      />
+
       {/* ══════════════════════════════════════════════════════════════
-          STICKY HEADER — full width, no max-w constraint
-          Mobile:  Row 1 = Logo + Save & Exit | Row 2 = Category tag
-          Desktop: Logo · Category (center) · Save & Exit
+          STICKY HEADER
       ══════════════════════════════════════════════════════════════ */}
       <header className="sticky top-0 z-40 w-full bg-white dark:bg-gray-950 border-b border-transparent">
 
         <div className="w-full px-5 sm:px-10 py-3.5 sm:py-4">
-
-          {/* ── Primary row: Logo + (desktop center slot) + Save & Exit ── */}
           <div className="flex items-center gap-3 sm:gap-6">
 
-            {/* Logo — flex-shrink-0 prevents compression */}
             <Link
               href={`/${locale}/${country}/home`}
               aria-label="VenueBook home"
-              className="flex-shrink-0 cursor-pointer transition-opacity hover:opacity-75 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 rounded-md"
+              className="flex-shrink-0 transition-opacity hover:opacity-75 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 rounded-md"
             >
               <Image
                 src={isDark ? darkLogo : lightLogo}
@@ -127,14 +258,12 @@ export default function WizardShell({ initialCategory }) {
               />
             </Link>
 
-            {/* Center slot — desktop only: category tag */}
             {catLabel && (
               <div className="hidden sm:flex flex-1 items-center justify-center">
                 <CategoryTag catImage={catImage} catLabel={catLabel} />
               </div>
             )}
 
-            {/* Save & Exit — pushed to far right */}
             <button
               type="button"
               onClick={handleSaveAndExit}
@@ -155,27 +284,22 @@ export default function WizardShell({ initialCategory }) {
             </button>
           </div>
 
-          {/* ── Secondary row: mobile-only category tag ── */}
           {catLabel && (
             <div className="flex sm:hidden items-center justify-center pt-3">
               <CategoryTag catImage={catImage} catLabel={catLabel} />
             </div>
           )}
-
         </div>
 
-        {/* Thin segmented progress bar — flush at header bottom */}
         <ProgressBar stepIndex={stepIndex} totalSteps={totalSteps} />
-
       </header>
 
       {/* ══════════════════════════════════════════════════════════════
-          SCROLLABLE CONTENT — max-w on content only
+          SCROLLABLE CONTENT
       ══════════════════════════════════════════════════════════════ */}
       <main className="flex-1 overflow-y-auto">
         <div className="max-w-[720px] mx-auto px-5 sm:px-8 pt-10 pb-12">
 
-          {/* Step heading */}
           <div className="mb-8">
             <h1 className="text-2xl sm:text-[28px] font-bold text-gray-900 dark:text-white leading-tight tracking-tight">
               {currentStep.title}
@@ -185,7 +309,6 @@ export default function WizardShell({ initialCategory }) {
             </p>
           </div>
 
-          {/* Animated step body */}
           <AnimatePresence mode="wait" custom={dir}>
             <motion.div
               key={currentStep.key}
@@ -209,7 +332,7 @@ export default function WizardShell({ initialCategory }) {
       </main>
 
       {/* ══════════════════════════════════════════════════════════════
-          STICKY FOOTER — full width
+          STICKY FOOTER
       ══════════════════════════════════════════════════════════════ */}
       <WizardFooter
         isFirst={isFirst}
@@ -218,30 +341,33 @@ export default function WizardShell({ initialCategory }) {
         onBack={handleBack}
         onNext={handleNext}
         onSubmit={handleSubmit}
+        fromReview={showBackToReview}
+        onBackToReview={handleBackToReview}
       />
     </div>
   );
 }
 
 /* ─────────────────────────────────────────────────────────────────────── */
-/*  Category tag — flat inline style: thumbnail + label, no card border   */
+/*  Category tag                                                            */
 /* ─────────────────────────────────────────────────────────────────────── */
 
 function CategoryTag({ catImage, catLabel }) {
   return (
-    <div className="inline-flex items-center gap-2.5 select-none">
+    <div className="inline-flex items-center gap-3 select-none">
       {catImage && (
-        <div className="w-9 h-9 rounded-xl overflow-hidden flex-shrink-0 bg-gray-100 dark:bg-gray-800">
+        <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0">
           <Image
             src={catImage}
             alt={catLabel}
-            width={36}
-            height={36}
-            className="w-full h-full object-cover"
+            width={48}
+            height={48}
+            quality={95}
+            className="w-full h-full object-contain"
           />
         </div>
       )}
-      <span className="text-[15px] font-semibold text-gray-800 dark:text-gray-100 truncate max-w-[150px] sm:max-w-none">
+      <span className="text-[15px] font-semibold text-gray-800 dark:text-gray-100 tracking-tight truncate max-w-[160px] sm:max-w-none">
         {catLabel}
       </span>
     </div>

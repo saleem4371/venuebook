@@ -1,0 +1,65 @@
+// ─────────────────────────────────────────────────────────────────────────────
+//  Subcategory options per listing category
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const SUBCATEGORIES = {
+  venue: [
+    "Banquet Hall",
+    "Rooftop Venue",
+    "Garden Venue",
+    "Poolside Venue",
+    "Conference Hall",
+    "Farm Venue",
+    "Heritage Venue",
+    "Party Hall",
+    "Terrace Venue",
+    "Indoor Venue",
+  ],
+  farmstay: [
+    "Working Farm",
+    "Eco Stay",
+    "Nature Retreat",
+    "Treehouse",
+    "Ranch / Stud Farm",
+    "Orchard Stay",
+    "Riverside Retreat",
+    "Hilltop Retreat",
+  ],
+  studio: [
+    "Photography Studio",
+    "Film / Video Studio",
+    "Music Studio",
+    "Podcast Studio",
+    "Dance / Rehearsal Studio",
+    "Art Studio",
+    "Recording Studio",
+  ],
+  workspace: [
+    "Co-working Space",
+    "Private Office",
+    "Meeting Room",
+    "Training Room",
+    "Board Room",
+    "Event Space",
+    "Hot Desk",
+  ],
+  rental: [
+    "Villa",
+    "Apartment",
+    "Bungalow",
+    "Cottage",
+    "Penthouse",
+    "Farmhouse",
+    "Service Apartment",
+    "Holiday Home",
+  ],
+  experience: [
+    "Workshop",
+    "Guided Tour",
+    "Adventure Activity",
+    "Wellness Session",
+    "Food & Dining",
+    "Cultural Experience",
+    "Sports & Fitness",
+  ],
+};
