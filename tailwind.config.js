@@ -8,10 +8,31 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        /* --font-jakarta is injected by Next.js font optimisation in layout.jsx */
-        sans: ["var(--font-jakarta)", "ui-sans-serif", "system-ui", "sans-serif"],
+        /* Primary: Plus Jakarta Sans for Latin/Latin-ext.
+           Supplemental Noto Sans fonts (--font-devanagari, --font-kannada,
+           --font-arabic) are applied via :lang() selectors in globals.css
+           so the browser loads only what the active locale requires.        */
+        sans: [
+          "var(--font-jakarta)",
+          "var(--font-devanagari)",
+          "var(--font-kannada)",
+          "var(--font-arabic)",
+          "ui-sans-serif",
+          "system-ui",
+          "sans-serif",
+        ],
       },
     },
   },
-  plugins: [],
+  plugins: [
+    function ({ addUtilities }) {
+      addUtilities({
+        ".no-scrollbar::-webkit-scrollbar": { display: "none" },
+        ".no-scrollbar": {
+          "-ms-overflow-style": "none",
+          "scrollbar-width": "none",
+        },
+      });
+    },
+  ],
 };
