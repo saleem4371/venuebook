@@ -10,7 +10,8 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   const isLoggedIn = !!user;
-  const isListed = user?.vendor_id ?? false;
+const isListed =
+  Number(user?.is_vendor) === 1;
 
   // ✅ Load user from backend (IMPORTANT)
   const fetchUser = useCallback(async () => {
@@ -29,8 +30,9 @@ export function AuthProvider({ children }) {
     setUser(userData);
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback( async() => {
     setUser(null);
+    await api.post("/auth/logout");
     document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT";
   }, []);
 

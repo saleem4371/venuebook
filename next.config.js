@@ -1,23 +1,25 @@
-/**
- * /next.config.js
- *
- * Next.js configuration with next-intl plugin.
- * The plugin wires up /i18n/request.js so that:
- *   - getTranslations() works in server components
- *   - getMessages() works in server layouts
- *   - NextIntlClientProvider receives messages automatically
- */
-
 const createNextIntlPlugin = require("next-intl/plugin");
-
 const withNextIntl = createNextIntlPlugin("./i18n/request.js");
+
+const withPWA = require("next-pwa")({
+  dest: "public",
+  register: true,
+  skipWaiting: true,
+  disable: process.env.NODE_ENV === "development",
+});
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  /* Images from external domains can be added here as needed */
+  reactStrictMode: true,
   images: {
-    remotePatterns: [],
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "lh3.googleusercontent.com",
+        pathname: "/**",
+      },
+    ],
   },
 };
 
-module.exports = withNextIntl(nextConfig);
+module.exports = withNextIntl(withPWA(nextConfig));

@@ -4,6 +4,9 @@ import api from "@/lib/axios";
 export const loginApi = async (data) => {
   return api.post("/auth/login", data);
 };
+export const logout = async (data) => {
+  return api.post("/auth/logout", data);
+};
 
 /* REGISTER */
 export const registerApi = async (data) => {
