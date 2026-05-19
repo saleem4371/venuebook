@@ -11,10 +11,9 @@ import VenueSection       from "./components/VenueSection";
 // import DestinationSection from "./components/DestinationSection";
 import {
   PremiumBanner,
-  SponsoredCategoryRow,
-  PopularCategoryRow,
+  SponsoredRow,
   HostSpotlight,
-  TopDestinations,
+  LuxuryStrip,
 } from "./components/InlineAdSection";
 
 import { useCategory }      from "@/context/CategoryContext";
@@ -23,12 +22,12 @@ import { CATEGORIES, CATEGORY_TINTS } from "@/config/categoryConfig";
 /* ── Category page content ──────────────────────────────────── */
 const CATEGORY_CONTENT = {
   venues: {
-    categoryLabel: "Venues",
     adHeading: "Advertise your venue to visitors",
     adSubtext: "Reach social, wedding and corporate clients on India's #1 venue hire marketplace.",
     sections: [
-      { key: "recommended", title: "Recommended Venues", subtitle: "Top-rated halls, banquets & event spaces near you" },
-      { key: "recent",      title: "Recently Viewed",    subtitle: "Pick up where you left off" },
+      { key: "recommended", title: "Recommended Venues",  subtitle: "Top-rated halls, banquets & event spaces near you" },
+      { key: "sponsored",   title: "Sponsored Venues",    subtitle: "Featured properties handpicked for your next event" },
+      { key: "recent",      title: "Recently Viewed",     subtitle: "Pick up where you left off" },
     ],
     premiumBanner: {
       badge: "Premium Partner",
@@ -52,20 +51,14 @@ const CATEGORY_CONTENT = {
       { name: "Heritage Palace",    location: "Jaipur",    badge: "5★",    image: "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400&q=75&fit=crop" },
       { name: "Skyline Terrace",    location: "Delhi",     badge: null,    image: "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=400&q=75&fit=crop" },
     ],
-    popularItems: [
-      { name: "Emerald Gardens",    location: "Bengaluru", price: "From ₹35,000", image: "https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=400&q=75&fit=crop" },
-      { name: "The Ivory Suite",    location: "Chennai",   price: "From ₹50,000", image: "https://images.unsplash.com/photo-1445991842772-097fea258e7b?w=400&q=75&fit=crop" },
-      { name: "Willow Creek Hall",  location: "Pune",      price: "From ₹28,000", image: "https://images.unsplash.com/photo-1469371670807-013ccf25f16a?w=400&q=75&fit=crop" },
-      { name: "Sunset Pavilion",    location: "Hyderabad", price: "From ₹42,000", image: "https://images.unsplash.com/photo-1519741497674-611481863552?w=400&q=75&fit=crop" },
-    ],
   },
   farmstays: {
-    categoryLabel: "Farmstays",
     adHeading: "List your farmstay or nature retreat",
     adSubtext: "Connect with thousands of travellers looking for authentic escapes across India.",
     sections: [
-      { key: "recommended", title: "Weekend Retreats", subtitle: "Nature stays & farm escapes near you" },
-      { key: "recent",      title: "Recently Viewed",  subtitle: "Pick up where you left off" },
+      { key: "recommended", title: "Weekend Retreats",   subtitle: "Nature stays & farm escapes near you" },
+      { key: "sponsored",   title: "Featured Farmstays", subtitle: "Handpicked heritage estates & nature properties" },
+      { key: "recent",      title: "Recently Viewed",    subtitle: "Pick up where you left off" },
     ],
     premiumBanner: {
       badge: "Curated Escapes",
@@ -89,20 +82,14 @@ const CATEGORY_CONTENT = {
       { name: "Riverside Bungalow",   location: "Kerala", badge: null,       image: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&q=75&fit=crop" },
       { name: "Heritage Haveli",      location: "Jaipur", badge: "Heritage", image: "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400&q=75&fit=crop" },
     ],
-    popularItems: [
-      { name: "Bamboo Forest Hut",    location: "Wayanad",  price: "From ₹4,200/night", image: "https://images.unsplash.com/photo-1500076656116-558758c991c1?w=400&q=75&fit=crop" },
-      { name: "Pondicherry Villa",    location: "Pondicherry", price: "From ₹7,500/night", image: "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=400&q=75&fit=crop" },
-      { name: "Spice Garden Stay",    location: "Coorg",    price: "From ₹5,000/night", image: "https://images.unsplash.com/photo-1587061949409-02df41d5e562?w=400&q=75&fit=crop" },
-      { name: "Himalayan Homestay",   location: "Manali",   price: "From ₹3,800/night", image: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=400&q=75&fit=crop" },
-    ],
   },
   studios: {
-    categoryLabel: "Studios",
     adHeading: "List your studio or creative space",
     adSubtext: "Reach photographers, podcasters and content creators looking for their next shoot space.",
     sections: [
-      { key: "recommended", title: "Creator Spaces", subtitle: "Photography, podcast & production studios near you" },
-      { key: "recent",      title: "Recently Viewed", subtitle: "Pick up where you left off" },
+      { key: "recommended", title: "Creator Spaces",   subtitle: "Photography, podcast & production studios near you" },
+      { key: "sponsored",   title: "Featured Studios", subtitle: "Top-rated recording & creative spaces" },
+      { key: "recent",      title: "Recently Viewed",  subtitle: "Pick up where you left off" },
     ],
     premiumBanner: {
       badge: "Creator Network",
@@ -126,20 +113,14 @@ const CATEGORY_CONTENT = {
       { name: "Glass Rooftop Studio",location: "Bengaluru", badge: null,   image: "https://images.unsplash.com/photo-1499750310107-5fef28a66643?w=400&q=75&fit=crop" },
       { name: "Heritage Art Space",  location: "Delhi",     badge: "Art",  image: "https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=400&q=75&fit=crop" },
     ],
-    popularItems: [
-      { name: "Podcast Booth Pro",   location: "Bengaluru", price: "₹600/hr",   image: "https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=400&q=75&fit=crop" },
-      { name: "Content Cave Pune",   location: "Pune",      price: "₹750/hr",   image: "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=400&q=75&fit=crop" },
-      { name: "The Green Room",      location: "Mumbai",    price: "₹1,800/hr", image: "https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=400&q=75&fit=crop" },
-      { name: "AudioBox Chennai",    location: "Chennai",   price: "₹500/hr",   image: "https://images.unsplash.com/photo-1542038784456-1ea8e935640e?w=400&q=75&fit=crop" },
-    ],
   },
   rentals: {
-    categoryLabel: "Rentals",
     adHeading: "List your rental space",
     adSubtext: "Reach event organizers and pop-up hosts across India looking for flexible spaces.",
     sections: [
-      { key: "recommended", title: "Popular Rentals", subtitle: "Flexible short-term spaces near you" },
-      { key: "recent",      title: "Recently Viewed", subtitle: "Pick up where you left off" },
+      { key: "recommended", title: "Popular Rentals",  subtitle: "Flexible short-term spaces near you" },
+      { key: "sponsored",   title: "Featured Rentals", subtitle: "Premium spaces for every occasion" },
+      { key: "recent",      title: "Recently Viewed",  subtitle: "Pick up where you left off" },
     ],
     premiumBanner: {
       badge: "Flexible Rentals",
@@ -163,20 +144,14 @@ const CATEGORY_CONTENT = {
       { name: "Rooftop Garden",    location: "Delhi",     badge: null,     image: "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=400&q=75&fit=crop" },
       { name: "Poolside Venue",    location: "Goa",       badge: "New",    image: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400&q=75&fit=crop" },
     ],
-    popularItems: [
-      { name: "The Loft Collective", location: "Bengaluru", price: "₹3,500/day",  image: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400&q=75&fit=crop" },
-      { name: "Khar Social Space",   location: "Mumbai",    price: "₹9,000/day",  image: "https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=400&q=75&fit=crop" },
-      { name: "Fort Courtyard",      location: "Jaipur",    price: "₹14,000/day", image: "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400&q=75&fit=crop" },
-      { name: "Whitefield Studio",   location: "Bengaluru", price: "₹4,500/day",  image: "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=400&q=75&fit=crop" },
-    ],
   },
   workspaces: {
-    categoryLabel: "Workspaces",
     adHeading: "List your workspace or office",
     adSubtext: "Connect with teams and freelancers looking for coworking desks and meeting rooms.",
     sections: [
-      { key: "recommended", title: "Coworking Spaces", subtitle: "Offices, meeting rooms & shared desks near you" },
-      { key: "recent",      title: "Recently Viewed",  subtitle: "Pick up where you left off" },
+      { key: "recommended", title: "Coworking Spaces",  subtitle: "Offices, meeting rooms & shared desks near you" },
+      { key: "sponsored",   title: "Featured Offices",  subtitle: "Premium workspaces for teams of every size" },
+      { key: "recent",      title: "Recently Viewed",   subtitle: "Pick up where you left off" },
     ],
     premiumBanner: {
       badge: "Enterprise Ready",
@@ -200,15 +175,8 @@ const CATEGORY_CONTENT = {
       { name: "Innovation Hub",     location: "Bengaluru", badge: null,      image: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=400&q=75&fit=crop" },
       { name: "Executive Boardroom",location: "Delhi",     badge: "New",     image: "https://images.unsplash.com/photo-1497366412874-3415097a27e7?w=400&q=75&fit=crop" },
     ],
-    popularItems: [
-      { name: "Regus BLR South",    location: "Bengaluru", price: "₹350/day",  image: "https://images.unsplash.com/photo-1497366412874-3415097a27e7?w=400&q=75&fit=crop" },
-      { name: "Awfis Andheri",      location: "Mumbai",    price: "₹550/day",  image: "https://images.unsplash.com/photo-1556761175-b413da4baf72?w=400&q=75&fit=crop" },
-      { name: "CoWrks CP",          location: "Delhi",     price: "₹400/day",  image: "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=400&q=75&fit=crop" },
-      { name: "Innov8 Hyderabad",   location: "Hyderabad", price: "₹300/day",  image: "https://images.unsplash.com/photo-1582192730841-2a682d7375f9?w=400&q=75&fit=crop" },
-    ],
   },
   experiences: {
-    categoryLabel: "Experiences",
     adHeading: "Offer an experience on VenueBook",
     adSubtext: "Join thousands of hosts offering curated activities, tours & events.",
     sections: [],
@@ -216,7 +184,6 @@ const CATEGORY_CONTENT = {
     sponsoredItems: [],
     host: null,
     luxuryItems: [],
-    popularItems: [],
   },
 };
 
@@ -269,7 +236,6 @@ export default function Home() {
                   title={content.sections[0].title}
                   subtitle={content.sections[0].subtitle}
                   venues={SAMPLE_VENUES}
-                  tint={tint}
                 />
               )}
 
@@ -278,44 +244,43 @@ export default function Home() {
                 <PremiumBanner tint={tint} {...content.premiumBanner} />
               )}
 
-              {/* Popular {category} — above sponsored, VenueCard style, mobile 2-col */}
-              {content.popularItems?.length > 0 && (
-                <PopularCategoryRow
-                  tint={tint}
-                  categoryLabel={content.categoryLabel ?? "Venues"}
-                  items={content.popularItems}
-                />
-              )}
-
-              {/* Sponsored {category} — scrollable carousel with arrows */}
-              {content.sponsoredItems?.length > 0 && (
-                <SponsoredCategoryRow
-                  tint={tint}
-                  categoryLabel={content.categoryLabel ?? "Venues"}
-                  items={content.sponsoredItems}
-                />
-              )}
-
-              {/* Host spotlight */}
-              {content.host && (
-                <HostSpotlight tint={tint} host={content.host} />
-              )}
-
-              {/* Section 2 — Recently Viewed */}
+              {/* Section 2 — Sponsored */}
               {content.sections[1] && (
                 <VenueSection
                   title={content.sections[1].title}
                   subtitle={content.sections[1].subtitle}
-                  venues={SAMPLE_VENUES.slice(0, 4)}
-                  tint={tint}
+                  venues={SAMPLE_VENUES}
                 />
               )}
 
-              {/* Top Destinations */}
-              {content.luxuryItems?.length > 0 && (
-                <TopDestinations
+              {/* Inline ad — Sponsored row */}
+              {content.sponsoredItems.length > 0 && (
+                <SponsoredRow
                   tint={tint}
-                  title="Top Destinations"
+                  title="Promoted Properties"
+                  items={content.sponsoredItems}
+                />
+              )}
+
+              {/* Inline ad — Host spotlight */}
+              {content.host && (
+                <HostSpotlight tint={tint} host={content.host} />
+              )}
+
+              {/* Section 3 — Recently Viewed */}
+              {content.sections[2] && (
+                <VenueSection
+                  title={content.sections[2].title}
+                  subtitle={content.sections[2].subtitle}
+                  venues={SAMPLE_VENUES.slice(0, 3)}
+                />
+              )}
+
+              {/* Inline ad — Luxury strip */}
+              {content.luxuryItems.length > 0 && (
+                <LuxuryStrip
+                  tint={tint}
+                  title="Luxury Collection"
                   items={content.luxuryItems}
                 />
               )}
@@ -334,10 +299,10 @@ export default function Home() {
             </div>
           )}
 
-          {/* Advertise banner */}
+          {/* Ad banner — category-aware copy */}
           {/* <AdvertiseBanner heading={content.adHeading} subtext={content.adSubtext} /> */}
 
-          {/* Destination section */}
+          {/* Destinations */}
           {/* <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <DestinationSection />
           </div> */}

@@ -32,9 +32,9 @@ function CalendarMonth({ year, month, start, end, hovered, onSelect, onHover, ti
 
   return (
     <div>
-      {/* <p className="text-center text-white/80 text-sm font-semibold mb-3">
+      <p className="text-center text-white/80 text-sm font-semibold mb-3">
         {MONTHS[month]} {year}
-      </p> */}
+      </p>
       <div className="grid grid-cols-7 gap-0.5 mb-1">
         {DAYS.map((d) => (
           <p key={d} className="text-center text-white/30 text-[10px] font-medium py-1">{d}</p>
@@ -128,7 +128,7 @@ function TimePicker({ value, onChange, label }) {
 
 /* ── Main DatePicker ─────────────────────────────────────────── */
 export default function DatePicker({
-  mode        = "single",   // "single" | "range" | "datetime"
+  mode      = "single",   // "single" | "range" | "datetime"
   startDate, endDate,
   onChangeStart, onChangeEnd,
   tint,
@@ -136,25 +136,23 @@ export default function DatePicker({
   label,
   textClass,
   placeholderClass,
-  /** When true, renders the calendar inline (no trigger button, no popup). For mobile sheets. */
-  alwaysOpen  = false,
 }) {
-  const [open,     setOpen]     = useState(false);
+  const [open,    setOpen]    = useState(false);
   const [viewDate, setViewDate] = useState(new Date());
-  const [hovered,  setHovered]  = useState(null);
-  const ref                     = useRef(null);
+  const [hovered, setHovered] = useState(null);
+  const ref                   = useRef(null);
 
-  const today      = new Date(); today.setHours(0,0,0,0);
+  const today = new Date(); today.setHours(0,0,0,0);
   const isRange    = mode === "range";
   const isDatetime = mode === "datetime";
 
-  /* Outside click (only in popup mode) */
+  /* Outside click */
   useEffect(() => {
-    if (alwaysOpen || !open) return;
+    if (!open) return;
     const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
     document.addEventListener("mousedown", h);
     return () => document.removeEventListener("mousedown", h);
-  }, [open, alwaysOpen]);
+  }, [open]);
 
   const handleSelect = (day) => {
     if (isRange) {
@@ -162,84 +160,17 @@ export default function DatePicker({
         onChangeStart?.(day); onChangeEnd?.(null);
       } else {
         if (day < startDate) { onChangeStart?.(day); onChangeEnd?.(null); }
-        else { onChangeEnd?.(day); if (!alwaysOpen) setOpen(false); }
+        else { onChangeEnd?.(day); setOpen(false); }
       }
     } else {
       onChangeStart?.(day);
-      if (!isDatetime && !alwaysOpen) setOpen(false);
+      if (!isDatetime) setOpen(false);
     }
   };
 
   const prevMonth = () => setViewDate((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1));
   const nextMonth = () => setViewDate((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1));
 
-  /* ── Calendar body (shared between inline + popup) ── */
-  const calendarBody = (
-    <>
-      <div className="flex items-center justify-between mb-4">
-        <button
-          type="button"
-          onClick={prevMonth}
-          className="p-1.5 rounded-lg hover:bg-white/10 text-white/60 hover:text-white transition"
-        >
-          <ChevronLeftIcon className="w-4 h-4" />
-        </button>
-        <span className="text-white/80 font-semibold text-sm">
-          {MONTHS[viewDate.getMonth()]} {viewDate.getFullYear()}
-        </span>
-        <button
-          type="button"
-          onClick={nextMonth}
-          className="p-1.5 rounded-lg hover:bg-white/10 text-white/60 hover:text-white transition"
-        >
-          <ChevronRightIcon className="w-4 h-4" />
-        </button>
-      </div>
-
-      <CalendarMonth
-        year={viewDate.getFullYear()}
-        month={viewDate.getMonth()}
-        start={startDate}
-        end={endDate}
-        hovered={hovered}
-        range={isRange}
-        minDate={today}
-        tint={tint}
-        onSelect={handleSelect}
-        onHover={isRange ? setHovered : undefined}
-      />
-
-      {isDatetime && startDate && (
-        <TimePicker value={startDate} onChange={onChangeStart} label="Start time" />
-      )}
-      {isDatetime && endDate && (
-        <TimePicker value={endDate} onChange={onChangeEnd} label="End time" />
-      )}
-
-      {isRange && startDate && !endDate && (
-        <p className="text-center text-white/35 text-[11px] mt-3">
-          Select checkout date
-        </p>
-      )}
-    </>
-  );
-
-  /* ── Inline / always-open mode (mobile sheet) ── */
-  if (alwaysOpen) {
-    return (
-      <div
-        className="rounded-2xl p-4 mt-1"
-        style={{
-          background: "rgba(10,10,16,0.97)",
-          border:     `1px solid ${tint?.border ?? "rgba(255,255,255,0.15)"}`,
-        }}
-      >
-        {calendarBody}
-      </div>
-    );
-  }
-
-  /* ── Popup mode (desktop hero search) ── */
   const displayText = (() => {
     if (isRange) {
       if (startDate && endDate) return `${toDisplay(startDate)} → ${toDisplay(endDate)}`;
@@ -250,7 +181,7 @@ export default function DatePicker({
   })();
 
   return (
-    <div ref={ref} className="w-full">
+    <div ref={ref} className="relative w-full">
       {/* Trigger */}
       <button
         type="button"
@@ -279,9 +210,64 @@ export default function DatePicker({
               boxShadow:        `0 20px 60px rgba(0,0,0,0.6), ${tint?.glow ?? "0 0 24px rgba(255,255,255,0.05)"}`,
               insetInlineStart: 0,
             }}
-            className="absolute top-full mt-1.5 z-[9999] rounded-2xl backdrop-blur-2xl p-4 min-w-[300px]"
+            className="absolute top-full mt-3 z-[9999] rounded-2xl backdrop-blur-2xl p-4 min-w-[300px]"
           >
-            {calendarBody}
+            {/* Month nav */}
+            <div className="flex items-center justify-between mb-4">
+              <button
+                type="button"
+                onClick={prevMonth}
+                className="p-1.5 rounded-lg hover:bg-white/10 text-white/60 hover:text-white transition"
+              >
+                <ChevronLeftIcon className="w-4 h-4" />
+              </button>
+              <span className="text-white/80 font-semibold text-sm">
+                {MONTHS[viewDate.getMonth()]} {viewDate.getFullYear()}
+              </span>
+              <button
+                type="button"
+                onClick={nextMonth}
+                className="p-1.5 rounded-lg hover:bg-white/10 text-white/60 hover:text-white transition"
+              >
+                <ChevronRightIcon className="w-4 h-4" />
+              </button>
+            </div>
+
+            <CalendarMonth
+              year={viewDate.getFullYear()}
+              month={viewDate.getMonth()}
+              start={startDate}
+              end={endDate}
+              hovered={hovered}
+              range={isRange}
+              minDate={today}
+              tint={tint}
+              onSelect={handleSelect}
+              onHover={isRange ? setHovered : undefined}
+            />
+
+            {/* Time picker for datetime mode */}
+            {isDatetime && startDate && (
+              <TimePicker
+                value={startDate}
+                onChange={onChangeStart}
+                label="Start time"
+              />
+            )}
+            {isDatetime && endDate && (
+              <TimePicker
+                value={endDate}
+                onChange={onChangeEnd}
+                label="End time"
+              />
+            )}
+
+            {/* Range hint */}
+            {isRange && startDate && !endDate && (
+              <p className="text-center text-white/35 text-[11px] mt-3">
+                Select checkout date
+              </p>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

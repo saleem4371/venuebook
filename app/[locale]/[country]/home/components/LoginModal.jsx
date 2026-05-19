@@ -49,6 +49,12 @@ export default function LoginModal({ open, setOpen, onSuccess }) {
   const [fpEmail, setFpEmail] = useState("");
   const [fpStep, setFpStep] = useState("email"); // email | sent
 
+
+  const [showGoogleConfirm, setShowGoogleConfirm] = useState(false);
+const [googleUserData, setGoogleUserData] = useState(null);
+const [googleAccessToken, setGoogleAccessToken] = useState("");
+const [googleProfile, setGoogleProfile] = useState(null);
+
   const { login, fetchUser } = useAuth();
 
   /* Strict body scroll lock */
@@ -207,39 +213,107 @@ export default function LoginModal({ open, setOpen, onSuccess }) {
   };
 
   //gOOGLE LOGIN
-  const googleLogin = useGoogleLogin({
-    scope: "openid email profile", // ✅ ADD THIS
+  // const googleLogin = useGoogleLogin({
+  //   scope: "openid email profile", // ✅ ADD THIS
 
-    onSuccess: async (tokenResponse) => {
-      try {
-        setLoading(true);
+  //   onSuccess: async (tokenResponse) => {
+  //     try {
+  //       setLoading(true);
 
-        console.log("TOKEN RESPONSE:", tokenResponse);
+  //       console.log("TOKEN RESPONSE:", tokenResponse);
 
-        const accessToken = tokenResponse.access_token;
+  //       const accessToken = tokenResponse.access_token;
 
-        if (!accessToken) {
-          throw new Error("No access token received");
+  //       if (!accessToken) {
+  //         throw new Error("No access token received");
+  //       }
+
+  //       const res = await socialLoginApi("google", accessToken);
+
+  //       document.cookie = `token=${res.data.token}; path=/`;
+  //       await fetchUser();
+  //       close();
+  //       if (onSuccess) onSuccess(); else router.push("/");
+  //     } catch (err) {
+  //       console.error(err);
+  //       setError("Google login failed");
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   },
+
+  //   onError: () => {
+  //     setError("Google login cancelled");
+  //   },
+  // });
+
+ const googleLogin = useGoogleLogin({
+  scope: "openid email profile",
+
+  onSuccess: async (tokenResponse) => {
+    try {
+      setLoading(true);
+
+      const accessToken = tokenResponse.access_token;
+
+      // GET GOOGLE PROFILE
+      const googleRes = await fetch(
+        "https://www.googleapis.com/oauth2/v3/userinfo",
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
         }
+      );
 
-        const res = await socialLoginApi("google", accessToken);
+      const profile = await googleRes.json();
 
-        document.cookie = `token=${res.data.token}; path=/`;
-        await fetchUser();
-        close();
-        if (onSuccess) onSuccess(); else router.push("/");
-      } catch (err) {
-        console.error(err);
-        setError("Google login failed");
-      } finally {
-        setLoading(false);
-      }
-    },
+      // SAVE TEMP DATA
+      setGoogleAccessToken(accessToken);
+      setGoogleProfile(profile);
 
-    onError: () => {
-      setError("Google login cancelled");
-    },
-  });
+      // OPEN CONFIRM MODAL
+      setShowGoogleConfirm(true);
+
+    } catch (err) {
+      console.error(err);
+      setError("Google login failed");
+    } finally {
+      setLoading(false);
+    }
+  },
+
+  onError: () => {
+    setError("Google login cancelled");
+  },
+});
+
+const handleGoogleContinue = async () => {
+  try {
+    setLoading(true);
+
+    const res = await socialLoginApi(
+      "google",
+      googleAccessToken
+    );
+
+    document.cookie = `token=${res.data.token}; path=/`;
+
+    await fetchUser();
+
+    setShowGoogleConfirm(false);
+
+    close();
+
+    if (onSuccess) onSuccess();
+    else router.push("/");
+
+  } catch (err) {
+    setError("Google registration failed");
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleForgotEmail = async () => {
     setError("");
@@ -296,6 +370,12 @@ export default function LoginModal({ open, setOpen, onSuccess }) {
       setLoading(false);
     }
   };
+
+  const avatar =
+  googleProfile?.picture ||
+  `https://ui-avatars.com/api/?name=${encodeURIComponent(
+    googleProfile?.name || "User"
+  )}`;
 
   return (
     <AnimatePresence>
@@ -783,8 +863,63 @@ export default function LoginModal({ open, setOpen, onSuccess }) {
           </motion.div>
         </>
       )}
+      {showGoogleConfirm && (
+  <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+    
+    <div className="w-full max-w-md rounded-3xl bg-white dark:bg-gray-900 p-6 shadow-2xl">
+
+      <div className="text-center">
+
+     <img
+  src={avatar}
+  alt="profile"
+  className="w-20 h-20 rounded-full mx-auto mb-4 border-4 border-white shadow-lg"
+/>
+
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+          Continue with Google
+        </h2>
+
+        <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">
+          Continue as
+        </p>
+
+        <div className="mt-4 rounded-2xl bg-gray-50 dark:bg-gray-800 p-4">
+          <p className="font-semibold text-gray-900 dark:text-white">
+            {googleProfile?.name}
+          </p>
+
+          <p className="text-sm text-gray-500">
+            {googleProfile?.email}
+          </p>
+        </div>
+
+        <div className="mt-6 flex gap-3">
+
+          <button
+            onClick={() => setShowGoogleConfirm(false)}
+            className="flex-1 rounded-2xl border border-gray-200 dark:border-gray-700 px-4 py-3 text-sm font-medium"
+          >
+            Cancel
+          </button>
+
+          <button
+            onClick={handleGoogleContinue}
+            className="flex-1 rounded-2xl bg-violet-600 hover:bg-violet-700 px-4 py-3 text-sm font-medium text-white"
+          >
+            Continue
+          </button>
+
+        </div>
+      </div>
+    </div>
+  </div>
+)}
     </AnimatePresence>
+
+    
   );
+  
 }
 
 /* ─────────────────────────────────────────────────────────────────── */

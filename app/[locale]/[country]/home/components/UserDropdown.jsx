@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect , useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { useParams, useRouter } from "next/navigation";
@@ -50,6 +50,8 @@ export default function UserDropdown({ onOpenRegionModal }) {
   const country = params?.country || "in";
   const isOpen  = openDropdown === "user";
 
+  const [confirmLogout, setConfirmLogout] = useState(false);
+
   /* ---------- Close on outside click ---------- */
   useEffect(() => {
     if (!isOpen) return;
@@ -78,6 +80,32 @@ export default function UserDropdown({ onOpenRegionModal }) {
     router.push(dest);
   };
   const handleRegion = () => { closeAll(); onOpenRegionModal?.(); };
+
+  const handleLogoutClick = () => {
+  closeAll();
+  setConfirmLogout(true);
+};
+
+const confirmLogoutAction = () => {
+  setConfirmLogout(false);
+  logout();
+};
+
+useEffect(() => {
+  if (!confirmLogout) return;
+
+  const originalStyle = window.getComputedStyle(document.body).overflow;
+
+  document.body.style.overflow = "hidden";
+  document.body.style.position = "fixed";
+  document.body.style.width = "100%";
+
+  return () => {
+    document.body.style.overflow = originalStyle;
+    document.body.style.position = "";
+    document.body.style.width = "";
+  };
+}, [confirmLogout]);
 
   return (
     <div className="relative" ref={wrapRef}>
@@ -142,7 +170,7 @@ export default function UserDropdown({ onOpenRegionModal }) {
                 locale={locale}
                 country={country}
                 onClose={closeAll}
-                onLogout={handleLogout}
+                onLogout={handleLogoutClick}
                 onVendor={handleVendor}
                 onRegion={handleRegion}
               />
@@ -155,7 +183,36 @@ export default function UserDropdown({ onOpenRegionModal }) {
             )}
           </motion.div>
         )}
+
+        
       </AnimatePresence>
+
+      {confirmLogout && (
+ <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/30 backdrop-blur-xl">
+    <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl w-[320px] shadow-xl">
+      <h2 className="text-lg font-semibold mb-2">Confirm Logout</h2>
+      <p className="text-sm text-gray-500 mb-5">
+        Are you sure you want to logout?
+      </p>
+
+      <div className="flex gap-3 justify-end">
+        <button
+          onClick={() => setConfirmLogout(false)}
+          className="px-4 py-2 rounded-lg border text-sm"
+        >
+          Cancel
+        </button>
+
+        <button
+          onClick={confirmLogoutAction}
+          className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm"
+        >
+          Logout
+        </button>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 }

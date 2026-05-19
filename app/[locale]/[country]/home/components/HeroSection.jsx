@@ -1,8 +1,8 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { MagnifyingGlassIcon, BellIcon, ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/solid";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { MagnifyingGlassIcon, BellIcon } from "@heroicons/react/24/solid";
+import { useState, useEffect, useRef } from "react";
 
 import MobileSearchSheet   from "./MobileSearchSheet";
 import LocationAutoComplete from "./LocationAutoComplete";
@@ -11,6 +11,9 @@ import DatePicker           from "./DatePicker";
 
 import { CATEGORIES, CATEGORY_ORDER, CATEGORY_TINTS } from "@/config/categoryConfig";
 import { useCategory } from "@/context/CategoryContext";
+
+import { useGeo } from "@/context/GeoContext";
+
 
 /* ─── Labels ────────────────────────────────────────────────── */
 const WORD_LABEL = {
@@ -82,26 +85,8 @@ export default function HeroSection() {
   const [mounted,     setMounted]     = useState(false);
   const [openSearch,  setOpenSearch]  = useState(false);
   const [wordIdx,     setWordIdx]     = useState(0);
+  /* date / guest values keyed by field id */
   const [dates,       setDates]       = useState({});
-
-  /* Category tab scroll state */
-  const tabsRef                       = useRef(null);
-  const [canTabLeft,  setCanTabLeft]  = useState(false);
-  const [canTabRight, setCanTabRight] = useState(false);
-
-  const updateTabScroll = useCallback(() => {
-    const el = tabsRef.current;
-    if (!el) return;
-    const { scrollLeft, scrollWidth, clientWidth } = el;
-    setCanTabLeft(scrollLeft > 4);
-    setCanTabRight(scrollLeft < scrollWidth - clientWidth - 4);
-  }, []);
-
-  const scrollTabs = (dir) => {
-    const el = tabsRef.current;
-    if (!el) return;
-    el.scrollBy({ left: dir * 160, behavior: "smooth" });
-  };
 
   /* Hydration */
   useEffect(() => setMounted(true), []);
@@ -119,17 +104,6 @@ export default function HeroSection() {
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
   }, []);
-
-  /* Tab scroll arrow visibility */
-  useEffect(() => {
-    const el = tabsRef.current;
-    if (!el) return;
-    updateTabScroll();
-    el.addEventListener("scroll", updateTabScroll, { passive: true });
-    const ro = new ResizeObserver(updateTabScroll);
-    ro.observe(el);
-    return () => { el.removeEventListener("scroll", updateTabScroll); ro.disconnect(); };
-  }, [updateTabScroll, mounted]);
 
   /* Clear date values on category switch */
   const handleTabClick = (id) => {
@@ -150,13 +124,15 @@ export default function HeroSection() {
     boxShadow:   `0 8px 40px rgba(0,0,0,0.35), ${tint.glow}`,
   };
 
+   const { country, loading } = useGeo();
+
   return (
     <>
       {/*
         overflow-hidden is on the inner background wrapper, NOT the section.
         This lets absolutely-positioned dropdowns (z-50) escape without clipping.
       */}
-      <section className="relative flex flex-col min-h-[45svh] md:min-h-[80vh]">
+      <section className="relative flex flex-col min-h-[55svh] md:min-h-[80vh]">
 
         {/* Background — overflow-hidden scoped here so video scale-105 doesn't bleed */}
         <div className="absolute inset-0 overflow-hidden">
@@ -167,7 +143,7 @@ export default function HeroSection() {
             />
           ) : (
             <video autoPlay muted loop playsInline className="absolute inset-0 w-full h-full object-cover scale-105">
-              <source src="https://vb-venue-images.s3.eu-north-1.amazonaws.com/vb_video/HomePage+(1).mp4" type="video/mp4" />
+              <source src="https://api.venuebook.in/Upload/Video/HomePage.mp4" type="video/mp4" />
             </video>
           )}
           {/* Overlay */}
@@ -175,7 +151,7 @@ export default function HeroSection() {
         </div>
 
         {/* Content */}
-        <div className="relative z-10 flex flex-col flex-1 justify-center w-full max-w-6xl mx-auto px-5 sm:px-8 md:px-12 lg:px-16 pt-32 md:pt-28 pb-8 md:pb-10">
+        <div className="relative z-10 flex flex-col flex-1 justify-center w-full max-w-6xl mx-auto px-5 sm:px-8 md:px-12 lg:px-16 pt-24 md:pt-28 pb-8 md:pb-10">
 
           {/* Headline */}
           <motion.div
@@ -216,93 +192,50 @@ export default function HeroSection() {
             </motion.p>
           </motion.div>
 
-          {/* Category tabs — scrollable, fade edges + small arrows when overflowing */}
+          {/* Category tabs */}
           <motion.div
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.28 }}
             className="mt-6 md:mt-7"
           >
-            <div className="relative">
-              {/* Left arrow */}
-              {canTabLeft && (
-                <button
-                  type="button"
-                  onClick={() => scrollTabs(-1)}
-                  className="absolute start-0 top-1/2 -translate-y-1/2 z-20 w-6 h-6 rounded-full bg-white/15 backdrop-blur-sm border border-white/25 flex items-center justify-center text-white hover:bg-white/25 transition-all"
-                  aria-label="Scroll categories left"
-                >
-                  <ChevronLeftIcon className="w-3 h-3" />
-                </button>
-              )}
+            <div
+              className="flex items-center gap-2 overflow-x-auto pb-0.5"
+              style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+            >
+              {CATEGORY_ORDER.map((id) => {
+                const isActive = activeCategory === id;
+                const isSoon   = CATEGORIES[id].comingSoon;
+                const tabTint  = CATEGORY_TINTS[id];
 
-              {/* Right arrow */}
-              {canTabRight && (
-                <button
-                  type="button"
-                  onClick={() => scrollTabs(1)}
-                  className="absolute end-0 top-1/2 -translate-y-1/2 z-20 w-6 h-6 rounded-full bg-white/15 backdrop-blur-sm border border-white/25 flex items-center justify-center text-white hover:bg-white/25 transition-all"
-                  aria-label="Scroll categories right"
-                >
-                  <ChevronRightIcon className="w-3 h-3" />
-                </button>
-              )}
-
-              {/* Left fade */}
-              {canTabLeft && (
-                <div
-                  className="absolute inset-y-0 start-0 w-10 pointer-events-none z-10"
-                />
-              )}
-              {/* Right fade */}
-              <div
-                className="absolute inset-y-0 end-0 w-12 pointer-events-none z-10"
-              />
-
-              <div
-                ref={tabsRef}
-                className="flex items-center gap-2 overflow-x-auto mb-1"
-                style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}
-              >
-                {/* Leading spacer when left arrow shows */}
-                {canTabLeft && <div className="shrink-0 w-4" />}
-
-                {CATEGORY_ORDER.map((id) => {
-                  const isActive = activeCategory === id;
-                  const isSoon   = CATEGORIES[id].comingSoon;
-                  const tabTint  = CATEGORY_TINTS[id];
-
-                  return (
-                    <button
-                      key={id}
-                      onClick={() => handleTabClick(id)}
-                      style={isActive ? {
-                        background:  tabTint.activeBg,
-                        borderColor: tabTint.activeBorder,
-                        color:       "#fff",
-                      } : {}}
-                      className={[
-                        "relative flex items-center gap-1.5 shrink-0 rounded-full px-4 py-2 border",
-                        "text-[13px] font-medium transition-all duration-200 whitespace-nowrap",
-                        "focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40",
-                        isActive
-                          ? "font-semibold"
-                          : "bg-white/[0.07] border-white/[0.15] text-white/80 hover:bg-white/[0.14] hover:border-white/30 active:scale-95",
-                      ].join(" ")}
-                    >
-                     
-                      {TAB_LABEL[id]}
-                      {isSoon && (
-                        <span className="text-[9px] font-bold bg-amber-400 text-black px-1.5 py-0.5 rounded-full uppercase tracking-wide leading-none">
-                          Soon
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-                {/* Trailing spacer so last chip clears the right fade/arrow */}
-                <div className="shrink-0 w-8" />
-              </div>
+                return (
+                  <button
+                    key={id}
+                    onClick={() => handleTabClick(id)}
+                    style={isActive ? {
+                      background:  tabTint.activeBg,
+                      borderColor: tabTint.activeBorder,
+                      color:       "#fff",
+                      boxShadow:   `${tabTint.activeGlow}, 0 2px 8px rgba(0,0,0,0.3)`,
+                    } : {}}
+                    className={[
+                      "relative flex items-center gap-1.5 shrink-0 rounded-full px-4 py-2 border",
+                      "text-[13px] font-medium transition-all duration-200 whitespace-nowrap",
+                      "focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40",
+                      isActive
+                        ? "font-semibold"
+                        : "bg-white/[0.07] border-white/[0.15] text-white/80 hover:bg-white/[0.14] hover:border-white/30 active:scale-95",
+                    ].join(" ")}
+                  >
+                    {TAB_LABEL[id]}
+                    {isSoon && (
+                      <span className="text-[9px] font-bold bg-amber-400 text-black px-1.5 py-0.5 rounded-full uppercase tracking-wide leading-none">
+                        Soon   {loading ? "Loading..." : `Country: ${country}`}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </motion.div>
 

@@ -3,7 +3,6 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useCategory } from "@/context/CategoryContext";
 import { CATEGORY_TINTS } from "@/config/categoryConfig";
-import ScrollCarousel from "./ScrollCarousel";
 
 /* ── Realistic Unsplash images per category chip ──────────────────
    Replace img URLs with DB images once available.
@@ -282,7 +281,7 @@ export default function CategorySection() {
         </motion.div>
       </AnimatePresence>
 
-      {/* Chips — horizontal carousel */}
+      {/* Chips grid */}
       <AnimatePresence mode="wait">
         <motion.div
           key={activeCategory + "-chips"}
@@ -290,44 +289,46 @@ export default function CategorySection() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.18 }}
-          className="relative z-[1] max-w-7xl mx-auto"
+          className="relative z-[1] max-w-7xl mx-auto grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5"
         >
-          <ScrollCarousel gap="gap-2.5" scrollBy={320} fadeSize={40} lightFade="#ffffff" darkFade="#030712">
-            {chips.map((chip, i) => (
-              <motion.button
-                key={chip.title}
-                type="button"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.03, duration: 0.22 }}
-                whileHover={{ scale: 1.04 }}
-                whileTap={{ scale: 0.96 }}
-                className="group relative shrink-0 w-[130px] sm:w-[140px] rounded-xl overflow-hidden cursor-pointer bg-white dark:bg-gray-800/90 border border-gray-100/80 dark:border-white/[0.07] shadow-sm hover:shadow-md transition-all duration-200 text-start"
-              >
-                {/* Image */}
-                <div className="relative h-24 overflow-hidden">
-                  <img
-                    src={chip.img}
-                    alt={chip.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    loading="lazy"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/15 to-transparent" />
-                  <div
-                    className="absolute top-2 start-2 p-1.5 rounded-lg backdrop-blur-sm"
-                    style={{ background: tint.light }}
-                  >
-                    <span className="text-sm leading-none">{chip.icon}</span>
-                  </div>
+          {chips.map((chip, i) => (
+            <motion.button
+              key={chip.title}
+              type="button"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.03, duration: 0.25 }}
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.96 }}
+              className="group relative rounded-xl overflow-hidden cursor-pointer bg-white dark:bg-gray-800/90 border border-gray-100/80 dark:border-white/[0.07] shadow-sm hover:shadow-md transition-all duration-200 text-start"
+            >
+              {/* Image */}
+              <div className="relative h-24 overflow-hidden">
+                <img
+                  src={chip.img}
+                  alt={chip.title}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  loading="lazy"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/15 to-transparent" />
+
+                {/* Icon */}
+                <div
+                  className="absolute top-2 start-2 p-1.5 rounded-lg backdrop-blur-sm"
+                  style={{ background: tint.light }}
+                >
+                  <span className="text-sm leading-none">{chip.icon}</span>
                 </div>
-                <div className="px-2.5 py-2">
-                  <p className="text-gray-800 dark:text-gray-100 font-semibold text-[11px] leading-snug truncate">
-                    {chip.title}
-                  </p>
-                </div>
-              </motion.button>
-            ))}
-          </ScrollCarousel>
+              </div>
+
+              {/* Label */}
+              <div className="px-2.5 py-2">
+                <p className="text-gray-800 dark:text-gray-100 font-semibold text-[11px] md:text-xs leading-snug truncate">
+                  {chip.title}
+                </p>
+              </div>
+            </motion.button>
+          ))}
         </motion.div>
       </AnimatePresence>
     </section>

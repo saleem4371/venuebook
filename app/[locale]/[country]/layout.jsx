@@ -5,3 +5,4 @@ export default async function LocaleLayout({ children, params }) {
 
   return < ClientLayout locale={locale}>{children}</ClientLayout>;
 }
+
