@@ -16,12 +16,28 @@
  * longer a nested <div dir> wrapper — dir lives where it belongs: <html>.
  */
 
-import { NextIntlClientProvider }         from "next-intl";
-import { locales, defaultLocale }         from "@/config/i18n";
-import { HtmlDirSync }                    from "./HtmlDirSync";
+import { NextIntlClientProvider } from "next-intl";
+import { locales, defaultLocale } from "@/config/i18n";
+import { cookies, headers } from "next/headers";
+import { HtmlDirSync } from "./HtmlDirSync";
 import { GoogleOAuthProvider } from "@react-oauth/google";
-
+import { GlobalProvider } from "@/context/GlobalProvider";
+import { AuthProvider } from "@/context/AuthContext";
+import { GeoProvider } from "@/context/GeoContext";
 export default async function LocaleLayout({ children, params }) {
+
+   const cookieStore = await cookies();
+  const headerStore = headers();
+
+  const countryFromCookie = cookieStore.get("country")?.value;
+
+ 
+  const country = (
+    countryFromCookie ||
+    "in"
+  ).toLowerCase();
+
+
   const { locale: rawLocale } = await params;
 
   /* Validate locale — fall back to default if unknown */
@@ -44,9 +60,14 @@ export default async function LocaleLayout({ children, params }) {
       */}
       <HtmlDirSync locale={locale} />
       <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID}>
-   {children}
+        <AuthProvider>
+          <GlobalProvider>
+            <GeoProvider initialCountry={country}>
+  {children}
+</GeoProvider>
+           </GlobalProvider>
+        </AuthProvider>
       </GoogleOAuthProvider>
-   
     </NextIntlClientProvider>
   );
 }
