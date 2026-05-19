@@ -1,254 +1,639 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { usePathname, useParams } from "next/navigation";
+import { usePathname, useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import {
-  Home,
-  Users,
-  Calendar,
-  CalendarCheck,
-  BarChart2,
-  Bell,
-  Settings,
-  Package,
-  Layers,
-  MoreHorizontal
-} from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 
-export default function PremiumNavbar() {
-  const pathname = usePathname();
-  const params = useParams();
+import lightLogo from "@/assets/logo.svg";
+import darkLogo from "@/assets/logo.png";
 
-  const basePath = `/${params?.locale}/${params?.country}/vendor`;
+import RegionLanguageModal from "../../home/components/RegionLanguageModal";
+import { useAuth } from "@/context/AuthContext";
 
-  const [mobileOpen, setMobileOpen] = useState(false);
+/* ═══════════════════════════════════════════════════════════════
+   HOOKS
+═══════════════════════════════════════════════════════════════ */
+function useScrollHeader() {
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const fn = () => setScrolled(window.scrollY > 8);
+    fn();
+    window.addEventListener("scroll", fn, { passive: true });
+    return () => window.removeEventListener("scroll", fn);
+  }, []);
+  return { scrolled };
+}
 
-  // ✅ NEW STATES
-  const [showNotif, setShowNotif] = useState(false);
-  const [showProfile, setShowProfile] = useState(false);
+function useClickOutside(ref, cb) {
+  useEffect(() => {
+    const h = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) cb();
+    };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, [ref, cb]);
+}
 
-  const menuItems = [
-    { label: "Dashboard", href: `${basePath}/dashboard`, icon: Home },
-    { label: "Listing", href: `${basePath}/listing`, icon: Home },
-    { label: "Leads", href: `${basePath}/leads`, icon: Users, badge: 12 },
-    { label: "Bookings", href: `${basePath}/bookings`, icon: Calendar, badge: 2 },
-    { label: "Calendar", href: `${basePath}/calendar`, icon: CalendarCheck },
-  
-    { label: "Addons", href: `${basePath}/addons`, icon: Layers },
-    { label: "Packages", href: `${basePath}/package`, icon: Package },
-    { label: "Settings", href: `${basePath}/settings`, icon: Settings },
-    { label: "Reports", href: `${basePath}/reports`, icon: BarChart2 },
-     { label: "Teams", href: `${basePath}/teams`, icon: Users },
+function useTheme() {
+  const [isDark, setIsDark] = useState(false);
+  useEffect(() => {
+    const stored = localStorage.getItem("theme");
+    const dark = stored === "dark";
+    setIsDark(dark);
+    document.documentElement.classList.toggle("dark", dark);
+    if (!dark) localStorage.setItem("theme", "light");
+  }, []);
+  const toggle = useCallback(() => {
+    setIsDark((prev) => {
+      const next = !prev;
+      localStorage.setItem("theme", next ? "dark" : "light");
+      document.documentElement.classList.toggle("dark", next);
+      return next;
+    });
+  }, []);
+  return { isDark, toggle };
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   AVATAR
+═══════════════════════════════════════════════════════════════ */
+const PALETTE = [
+  "bg-blue-500",
+  "bg-violet-500",
+  "bg-emerald-500",
+  "bg-orange-500",
+  "bg-rose-500",
+  "bg-cyan-500",
+  "bg-amber-500",
+  "bg-pink-500",
+  "bg-teal-500",
+  "bg-indigo-500",
+];
+function avatarBg(name) {
+  if (!name) return "bg-violet-500";
+  return PALETTE[
+    Math.max(0, (name.trim().toUpperCase().charCodeAt(0) - 65) % PALETTE.length)
   ];
+}
+function initials(name) {
+  if (!name) return "V";
+  return name
+    .trim()
+    .split(/\s+/)
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+}
 
-  const visibleItems = menuItems.slice(0, 5);
-const moreItems = menuItems.slice(5);
-const [showMore, setShowMore] = useState(false);
+/* ═══════════════════════════════════════════════════════════════
+   DESIGN TOKENS
+═══════════════════════════════════════════════════════════════ */
+const DD = {
+  initial: { opacity: 0, scale: 0.95, y: -6 },
+  animate: { opacity: 1, scale: 1, y: 0 },
+  exit: { opacity: 0, scale: 0.95, y: -6 },
+  transition: { duration: 0.18, ease: [0.16, 1, 0.3, 1] },
+};
 
-  // ✅ SAMPLE NOTIFICATIONS
-  const notifications = [
-    "New lead received",
-    "Booking confirmed",
-    "Payment received",
-  ];
+const PANEL = [
+  "absolute end-0 mt-5 md:mt-6 z-50 will-change-transform",
+  "rounded-2xl overflow-hidden",
+  "bg-white dark:bg-gray-900",
+  "border border-gray-100 dark:border-gray-800",
+  "shadow-xl shadow-gray-300/40 dark:shadow-black/50",
+].join(" ");
+
+const IBTN = [
+  "inline-flex h-10 w-10 items-center justify-center rounded-full cursor-pointer",
+  "text-gray-600 dark:text-gray-400",
+  "transition hover:bg-gray-100 dark:hover:bg-gray-800/70",
+  "focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2",
+].join(" ");
+
+/* ═══════════════════════════════════════════════════════════════
+   MENU PRIMITIVES
+═══════════════════════════════════════════════════════════════ */
+function MenuItem({ icon, label, href, onClick, variant = "default", badge }) {
+  const base =
+    "flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-violet-500";
+  const varCls = {
+    default:
+      "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/60",
+    accent:
+      "text-violet-700 dark:text-violet-300 font-medium hover:bg-violet-50/60 dark:hover:bg-violet-950/30",
+    danger:
+      "text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30",
+  };
+  const icoVar = {
+    default: "shrink-0 text-gray-400 dark:text-gray-500",
+    accent: "shrink-0 text-violet-500 dark:text-violet-400",
+    danger: "shrink-0 text-red-500 dark:text-red-400",
+  };
+  const cls = `${base} ${varCls[variant]}`;
+  const body = (
+    <>
+      <span className={icoVar[variant]} aria-hidden="true">
+        {icon}
+      </span>
+      <span className="flex-1">{label}</span>
+      {badge > 0 && (
+        <span className="ml-auto inline-flex items-center justify-center h-4 min-w-[16px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold leading-none">
+          {badge}
+        </span>
+      )}
+    </>
+  );
+  return href ? (
+    <Link href={href} role="menuitem" onClick={onClick} className={cls}>
+      {body}
+    </Link>
+  ) : (
+    <button type="button" role="menuitem" onClick={onClick} className={cls}>
+      {body}
+    </button>
+  );
+}
+
+function Divider() {
+  return (
+    <div
+      role="separator"
+      className="my-1.5 h-px bg-gray-100 dark:bg-gray-800 mx-3"
+      aria-hidden="true"
+    />
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   AVATAR AREA (shared between desktop + mobile)
+   — wraps notif panel, profile dropdown, avatar trigger
+═══════════════════════════════════════════════════════════════ */
+function AvatarArea({
+  profileRef,
+  showProfile,
+  showNotif,
+  setShowProfile,
+  setShowNotif,
+  userName,
+  userEmail,
+  isLoggedIn,
+  user,
+  base,
+  onRegion,
+  onLogout,
+  notifications,
+}) {
+  const unread = notifications.length;
 
   return (
-    <div className="sticky top-0 z-50 bg-white/30 backdrop-blur-xl border-b border-gray-200 shadow-md">
-      <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-
-        {/* Logo */}
-        <img
-          src="https://www.venuebook.in/img/logo.490f6c58.svg"
-          className="w-32"
-          alt="logo"
-        />
-
-        {/* DESKTOP MENU */}
-        <div className="hidden md:flex items-center gap-2 relative">
-
-  {/* MAIN ITEMS */}
-  {visibleItems.map((item) => {
-    const Icon = item.icon;
-    const active = pathname.startsWith(item.href);
-
-    return (
-      <Link key={item.label} href={item.href}>
-        <div className="relative px-4 py-2 rounded-xl cursor-pointer">
-
-          {active && (
-            <motion.div
-              layoutId="activeTab"
-              className="absolute inset-0 bg-white/60 rounded-xl shadow-md"
-              transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            />
-          )}
-
-          <div className="relative flex items-center gap-2 z-10">
-            <Icon size={18} />
-            <span className="text-sm font-medium">{item.label}</span>
-
-            {item.badge > 0 && (
-              <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
-                {item.badge}
-              </span>
-            )}
-          </div>
-        </div>
-      </Link>
-    );
-  })}
-
-  {/* 🔥 MORE BUTTON */}
-  <div className="relative">
-    <motion.div
-      whileTap={{ scale: 0.9 }}
-      whileHover={{ scale: 1.05 }}
-      onClick={() => setShowMore(!showMore)}
-      className="px-4 py-2 rounded-xl cursor-pointer flex items-center gap-2 bg-white/40 backdrop-blur-md"
-    >
-      <MoreHorizontal size={18} />
-      <span className="text-sm font-medium">More</span>
-    </motion.div>
-
-    {/* BACKDROP */}
-    <AnimatePresence>
-      {showMore && (
-        <motion.div
-          className="fixed inset-0 z-40"
-          onClick={() => setShowMore(false)}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-        />
-      )}
-    </AnimatePresence>
-
-    {/* DROPDOWN */}
-    <AnimatePresence>
-      {showMore && (
-        <motion.div
-          initial={{ opacity: 0, y: 10, scale: 0.95 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 10, scale: 0.95 }}
-          transition={{ type: "spring", stiffness: 260, damping: 20 }}
-          className="absolute right-0 mt-3 w-52 
-          bg-white/80 backdrop-blur-2xl 
-          border border-white/30 
-          rounded-2xl shadow-2xl p-2 z-50"
-        >
-          {moreItems.map((item) => {
-            const Icon = item.icon;
-            const active = pathname.startsWith(item.href);
-
-            return (
-              <Link
-                key={item.label}
-                href={item.href}
-                onClick={() => setShowMore(false)}
-                className={`flex items-center gap-3 px-3 py-2 rounded-xl transition
-                ${active ? "bg-indigo-500/10 text-indigo-600" : "hover:bg-white/60"}`}
+    <div ref={profileRef} className="relative">
+      {/* ── Notifications panel — shown from profile dropdown ── */}
+      <AnimatePresence>
+        {showNotif && (
+          <motion.div {...DD} className={`${PANEL} w-72`}>
+            <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+              <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                Notifications
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowNotif(false)}
+                className="text-xs font-medium text-violet-600 dark:text-violet-400 hover:underline cursor-pointer"
               >
-                <Icon size={18} />
-                <span className="text-sm">{item.label}</span>
-              </Link>
-            );
-          })}
-        </motion.div>
-      )}
-    </AnimatePresence>
-  </div>
-</div>
+                Mark all read
+              </button>
+            </div>
+            <ul className="py-1.5" role="none">
+              {notifications.map((n, i) => (
+                <li key={i} role="none">
+                  <button
+                    type="button"
+                    className="flex w-full items-start gap-3 px-4 py-2.5 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors"
+                  >
+                    <span
+                      className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-violet-500"
+                      aria-hidden="true"
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-gray-800 dark:text-gray-200 leading-snug">
+                        {n.text}
+                      </span>
+                      <span className="block text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                        {n.time}
+                      </span>
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-        {/* RIGHT SIDE */}
-        <div className="flex items-center gap-4 relative">
+      {/* ── Avatar trigger ── */}
+      <button
+        type="button"
+        onClick={() => {
+          setShowProfile((p) => !p);
+          setShowNotif(false);
+        }}
+        aria-label="Account menu"
+        aria-expanded={showProfile}
+        aria-haspopup="menu"
+        className={[
+          "relative flex h-10 w-10 shrink-0 items-center justify-center",
+          "rounded-full overflow-hidden cursor-pointer",
+          "transition hover:opacity-80",
+          "focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2",
+          isLoggedIn && user?.avatar ? "" : avatarBg(userName),
+        ].join(" ")}
+      >
+        {isLoggedIn && user?.avatar ? (
+          <img
+            src={user.avatar}
+            alt={userName}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <span
+            className="select-none text-sm font-semibold text-white"
+            aria-hidden="true"
+          >
+            {initials(userName)}
+          </span>
+        )}
+      </button>
 
-          {/* 🔔 NOTIFICATION */}
-          <div className="relative">
-            <motion.div
-              whileTap={{ scale: 0.85 }}
-              className="p-2 rounded-full bg-white/30 backdrop-blur-md cursor-pointer"
-              onClick={() => setShowNotif(!showNotif)}
-            >
-              <Bell className="text-gray-700" size={18} />
-              
-              {/* Badge */}
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] px-1.5 rounded-full">
-                3
-              </span>
-            </motion.div>
-
-            <AnimatePresence>
-              {showNotif && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                  className="absolute right-0 mt-2 w-64 bg-white/80 backdrop-blur-xl border border-gray-200 rounded-2xl shadow-xl p-3"
+      {/* ── Profile dropdown ── */}
+      <AnimatePresence>
+        {showProfile && (
+          <motion.div
+            {...DD}
+            role="menu"
+            aria-label="Account menu"
+            className={`${PANEL} w-64`}
+          >
+            {/* User header */}
+            <div className="px-4 py-4 border-b border-gray-100 dark:border-gray-800">
+              <div className="flex items-center gap-3">
+                <span
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white select-none ${avatarBg(userName)}`}
+                  aria-hidden="true"
                 >
-                  <h4 className="font-semibold text-sm mb-2">
-                    Notifications
-                  </h4>
+                  {initials(userName)}
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100 leading-snug">
+                    {userName}
+                  </p>
+                  <p className="truncate text-xs text-gray-500 dark:text-gray-400 leading-snug mt-0.5">
+                    {userEmail}
+                  </p>
+                </div>
+              </div>
+            </div>
 
-                  <div className="space-y-2">
-                    {notifications.map((note, i) => (
-                      <div
-                        key={i}
-                        className="text-sm p-2 rounded-lg hover:bg-white/60 cursor-pointer"
-                      >
-                        {note}
-                      </div>
-                    ))}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+            {/* Items: Account, Region, Notifications, Settings, Logout */}
+            <ul className="py-1.5" role="none">
+              <li role="none">
+                <MenuItem
+                  icon={<UserIcon />}
+                  label="Account"
+                  href={`${base}/account`}
+                  onClick={() => setShowProfile(false)}
+                />
+              </li>
+              <li role="none">
+                <MenuItem
+                  icon={<GlobeIcon className="h-4 w-4" />}
+                  label="Region & Language"
+                  onClick={onRegion}
+                />
+              </li>
+              <li role="none">
+                <MenuItem
+                  icon={<BellIcon className="h-4 w-4" />}
+                  label="Notifications"
+                  badge={unread}
+                  onClick={() => {
+                    setShowProfile(false);
+                    setShowNotif(true);
+                  }}
+                />
+              </li>
+              <li role="none">
+                <MenuItem
+                  icon={<SettingsIcon />}
+                  label="Settings"
+                  href={`${base}/settings`}
+                  onClick={() => setShowProfile(false)}
+                />
+              </li>
+              <Divider />
+              <li role="none">
+                <MenuItem
+                  icon={<LogoutIcon />}
+                  label="Logout"
+                  href="/logout"
+                  onClick={onLogout}
+                  variant="danger"
+                />
+              </li>
+            </ul>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
 
-          {/* 👤 PROFILE */}
-          <div className="relative">
-            <img
-              src="https://i.pravatar.cc/100"
-              className="w-8 h-8 rounded-full cursor-pointer"
-              onClick={() => setShowProfile(!showProfile)}
+/* ═══════════════════════════════════════════════════════════════
+   MAIN COMPONENT
+═══════════════════════════════════════════════════════════════ */
+export default function PremiumNavbar() {
+  const params = useParams();
+  const router = useRouter();
+
+  const locale = params?.locale || "en";
+  const country = params?.country || "in";
+  const base = `/${locale}/${country}/vendor`;
+
+  const { scrolled } = useScrollHeader();
+  const { isDark, toggle: toggleTheme } = useTheme();
+  const { user, isLoggedIn } = useAuth();
+  const userName = user?.name || "Vendor";
+  const userEmail = user?.email || "vendor@venuebook.in";
+
+  const [showNotif, setShowNotif] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+  const [regionOpen, setRegionOpen] = useState(false);
+
+  /* Separate refs for desktop + mobile (both rendered but only one visible) */
+  const profileRefD = useRef(null);
+  const profileRefM = useRef(null);
+
+  const closeArea = useCallback(() => {
+    setShowNotif(false);
+    setShowProfile(false);
+  }, []);
+  useClickOutside(profileRefD, closeArea);
+  useClickOutside(profileRefM, closeArea);
+
+  const goCustomer = useCallback(
+    () => router.push(`/${locale}/${country}/home`),
+    [router, locale, country],
+  );
+
+  const notifications = [
+    { text: "New lead received", time: "2 min ago" },
+    { text: "Booking confirmed", time: "15 min ago" },
+    { text: "Payment received", time: "1 hr ago" },
+  ];
+
+  const sharedAreaProps = {
+    showProfile,
+    showNotif,
+    setShowProfile,
+    setShowNotif,
+    userName,
+    userEmail,
+    isLoggedIn,
+    user,
+    base,
+    notifications,
+    onRegion: () => {
+      setShowProfile(false);
+      setRegionOpen(true);
+    },
+    onLogout: () => setShowProfile(false),
+  };
+
+  return (
+    <>
+      <header
+        className={[
+          "fixed inset-x-0 top-0 z-50 w-full",
+          "transition-[background-color,border-color,box-shadow] duration-200",
+          scrolled
+            ? "bg-white/95 dark:bg-gray-950/95 backdrop-blur-md border-b border-gray-200/80 dark:border-gray-800/80"
+            : "bg-white dark:bg-gray-950 border-b border-gray-100 dark:border-gray-800/60",
+        ].join(" ")}
+      >
+        {/* ── Desktop: Logo + right cluster only (tabs live in secondary bar) ── */}
+        <nav
+          aria-label="Vendor header"
+          className="hidden md:flex h-[72px] w-full items-center justify-between px-8 lg:px-10"
+        >
+          <Brandlogo href={`${base}/dashboard`} isDark={isDark} />
+
+          <div className="flex items-center gap-1">
+            {/* Switch to Customer */}
+            <button
+              type="button"
+              onClick={goCustomer}
+              className={[
+                "inline-flex items-center gap-2 rounded-full cursor-pointer",
+                "px-4 py-2 text-sm font-medium",
+                "bg-white dark:bg-gray-950",
+                "text-gray-800 dark:text-gray-200",
+                "border border-gray-200 dark:border-gray-700",
+                "transition hover:bg-gray-50 dark:hover:bg-gray-800/60 hover:border-gray-300 dark:hover:border-gray-600",
+                "focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2",
+              ].join(" ")}
+            >
+              <HomeIcon className="h-4 w-4 shrink-0" />
+              <span>Switch to Customer</span>
+            </button>
+
+            <span
+              className="mx-1 h-5 w-px bg-gray-200 dark:bg-gray-700"
+              aria-hidden="true"
             />
 
-            <AnimatePresence>
-              {showProfile && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                  className="absolute right-0 mt-2 w-44 bg-white/80 backdrop-blur-xl border border-gray-200 rounded-2xl shadow-xl p-2 flex flex-col"
-                >
-                  <Link
-                    href={`${basePath}/profile`}
-                    className="px-3 py-2 rounded-lg hover:bg-white/60 text-sm"
-                  >
-                    Profile
-                  </Link>
-
-                  <Link
-                    href={`${basePath}/settings`}
-                    className="px-3 py-2 rounded-lg hover:bg-white/60 text-sm flex items-center gap-2"
-                  >
-                    <Settings size={16} /> Settings
-                  </Link>
-
-                  <Link
-                    href="/logout"
-                    className="px-3 py-2 rounded-lg hover:bg-white/60 text-sm"
-                  >
-                    Logout
-                  </Link>
-                </motion.div>
+            {/* Theme */}
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-label={isDark ? "Light mode" : "Dark mode"}
+              className={IBTN}
+            >
+              {isDark ? (
+                <SunIcon className="h-[18px] w-[18px]" />
+              ) : (
+                <MoonIcon className="h-[18px] w-[18px]" />
               )}
-            </AnimatePresence>
-          </div>
+            </button>
 
-        </div>
-      </div>
-    </div>
+            {/* Globe */}
+            <button
+              type="button"
+              onClick={() => {
+                setShowProfile(false);
+                setShowNotif(false);
+                setRegionOpen(true);
+              }}
+              aria-label="Region and language"
+              className={IBTN}
+            >
+              <GlobeIcon className="h-[18px] w-[18px]" />
+            </button>
+
+            {/* Avatar + profile dropdown + notif panel */}
+            <AvatarArea profileRef={profileRefD} {...sharedAreaProps} />
+          </div>
+        </nav>
+
+        {/* ── Mobile: Logo + Avatar only ── */}
+        <nav
+          aria-label="Mobile vendor header"
+          className="flex md:hidden h-[64px] w-full items-center justify-between px-5 sm:px-6"
+        >
+          <Brandlogo href={`${base}/dashboard`} isDark={isDark} />
+
+         <div className="flex items-center gap-1">
+          {/* Theme */}
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-label={isDark ? "Light mode" : "Dark mode"}
+              className={IBTN}
+            >
+              {isDark ? (
+                <SunIcon className="h-[18px] w-[18px]" />
+              ) : (
+                <MoonIcon className="h-[18px] w-[18px]" />
+              )}
+            </button>
+
+            {/* Globe */}
+            <button
+              type="button"
+              onClick={() => {
+                setShowProfile(false);
+                setShowNotif(false);
+                setRegionOpen(true);
+              }}
+              aria-label="Region and language"
+              className={IBTN}
+            >
+              <GlobeIcon className="h-[18px] w-[18px]" />
+            </button>
+          <AvatarArea profileRef={profileRefM} {...sharedAreaProps} />
+          </div>
+        </nav>
+      </header>
+
+      <RegionLanguageModal
+        open={regionOpen}
+        onClose={() => setRegionOpen(false)}
+      />
+    </>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SVG ICONS
+═══════════════════════════════════════════════════════════════ */
+const P = {
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: "2",
+  strokeLinecap: "round",
+  strokeLinejoin: "round",
+  "aria-hidden": "true",
+};
+
+function Brandlogo({ href, isDark }) {
+  return (
+    <Link
+      href={href}
+      aria-label="VenueBook Vendor"
+      className="shrink-0 inline-flex items-center rounded-md transition-opacity hover:opacity-75 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2"
+    >
+      <img
+        src={isDark ? (darkLogo.src ?? darkLogo) : (lightLogo.src ?? lightLogo)}
+        alt="VenueBook"
+        width={140}
+        height={28}
+        loading="eager"
+        decoding="async"
+        className="h-7 w-auto md:h-8"
+      />
+    </Link>
+  );
+}
+function HomeIcon({ className }) {
+  return (
+    <svg className={className} {...P}>
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+      <polyline points="9 22 9 12 15 12 15 22" />
+    </svg>
+  );
+}
+function GlobeIcon({ className }) {
+  return (
+    <svg className={className} {...P}>
+      <circle cx="12" cy="12" r="10" />
+      <line x1="2" y1="12" x2="22" y2="12" />
+      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+    </svg>
+  );
+}
+function BellIcon({ className }) {
+  return (
+    <svg className={className} {...P}>
+      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+    </svg>
+  );
+}
+function MoonIcon({ className }) {
+  return (
+    <svg className={className} {...P}>
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+    </svg>
+  );
+}
+function SunIcon({ className }) {
+  return (
+    <svg className={className} {...P}>
+      <circle cx="12" cy="12" r="5" />
+      <line x1="12" y1="1" x2="12" y2="3" />
+      <line x1="12" y1="21" x2="12" y2="23" />
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+      <line x1="1" y1="12" x2="3" y2="12" />
+      <line x1="21" y1="12" x2="23" y2="12" />
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+    </svg>
+  );
+}
+function UserIcon() {
+  return (
+    <svg width="16" height="16" {...P}>
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
+    </svg>
+  );
+}
+function SettingsIcon() {
+  return (
+    <svg width="16" height="16" {...P}>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    </svg>
+  );
+}
+function LogoutIcon() {
+  return (
+    <svg width="16" height="16" {...P}>
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <polyline points="16 17 21 12 16 7" />
+      <line x1="21" y1="12" x2="9" y2="12" />
+    </svg>
   );
 }

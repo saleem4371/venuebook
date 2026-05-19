@@ -1,83 +1,66 @@
-// RemindersVertical.jsx
 "use client";
-
 import { useEffect } from "react";
+import { motion } from "framer-motion";
+import { Bell, Clock, CalendarDays } from "lucide-react";
 
 export default function RemindersVertical({ reminders }) {
   useEffect(() => {
-    const audio = new Audio("/reminder-sound.mp3"); // Add your sound file in public folder
-
-    const interval = setInterval(() => {
-      // Play sound every 1 min
-      if (reminders.length > 0) {
-        audio.play().catch(() => console.log("Audio play failed"));
-      }
-    }, 60000); // 60000 ms = 1 minute
-
-    return () => clearInterval(interval);
+    const audio = new Audio("/reminder-sound.mp3");
+    const t = setInterval(() => {
+      if (reminders.length > 0) audio.play().catch(() => {});
+    }, 60000);
+    return () => clearInterval(t);
   }, [reminders]);
 
   return (
-    <div className="">
-      <h2 className="text-lg font-semibold mb-4 text-gray-800">Reminders</h2>
-      <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2">
-        {reminders.map((reminder, idx) => (
-          <div
-            key={idx}
-            className="bg-white border border-gray-200 rounded-xl p-4 shadow hover:shadow-xl transition-shadow duration-300 flex items-start space-x-4 animate-fade-in"
-          >
-            {/* Icon */}
-            <div className="flex-shrink-0 bg-purple-100 text-purple-600 p-3 rounded-full animate-pulse">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-                />
-              </svg>
-            </div>
-
-            {/* Content */}
-            <div className="flex-1">
-              <h3 className="text-sm font-medium text-gray-800">
-                {reminder.title}
-              </h3>
-              <p className="text-xs text-gray-500 mt-1">
-                Don’t forget your event scheduled for{" "}
-                <span className="font-semibold">
-                  {reminder.date} at {reminder.time}
-                </span>
-                .
-              </p>
-            </div>
-
-            {/* Bell Icon */}
-            <div className="flex-shrink-0 flex items-center text-gray-400">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-                />
-              </svg>
-            </div>
+    <div className="flex flex-col h-full bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl  p-5">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 bg-purple-50 dark:bg-purple-950/40 rounded-lg">
+            <Bell size={15} className="text-purple-600 dark:text-purple-400" />
           </div>
-        ))}
+          <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Reminders</h2>
+        </div>
+        <span className="text-xs font-medium text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/40 px-2 py-0.5 rounded-full">
+          {reminders.length} upcoming
+        </span>
       </div>
+
+      {reminders.length === 0 ? (
+        <div className="flex-1 flex flex-col items-center justify-center gap-3 py-8">
+          <div className="p-4 bg-gray-50 dark:bg-gray-800/60 rounded-full">
+            <CalendarDays size={28} className="text-gray-300 dark:text-gray-600" />
+          </div>
+          <div className="text-center">
+            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">No upcoming reminders</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Events will appear here</p>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1">
+          {reminders.map((r, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: i * 0.07 }}
+              className="flex items-start gap-3 p-3.5 rounded-xl bg-gray-50 dark:bg-gray-800/50 hover:bg-purple-50/60 dark:hover:bg-purple-950/20 border border-transparent hover:border-purple-100 dark:hover:border-purple-900/50 transition-all duration-200 group"
+            >
+              <div className="shrink-0 mt-0.5 p-2 bg-white dark:bg-gray-900 border border-purple-100 dark:border-purple-900/50 rounded-lg shadow-sm group-hover:border-purple-200 dark:group-hover:border-purple-800 transition-colors">
+                <Bell size={13} className="text-purple-500 dark:text-purple-400" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-gray-800 dark:text-gray-200 leading-snug truncate">{r.title}</p>
+                <div className="flex items-center gap-1.5 mt-1">
+                  <Clock size={11} className="text-gray-400 dark:text-gray-500 shrink-0" />
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{r.date} · {r.time}</p>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
