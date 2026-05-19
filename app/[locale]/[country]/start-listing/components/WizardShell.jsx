@@ -80,14 +80,11 @@ export default function WizardShell({ initialCategory }) {
   const country = params?.country || "in";
 
   // ── Derive current step from URL slug ──────────────────────────────────
-  // rawSlug is null when visiting the bare /[category] URL (no step segment).
-  const rawSlugArr = params?.slug;
-  const rawSlug =
-    Array.isArray(rawSlugArr) && rawSlugArr.length > 0 ? rawSlugArr[0] : null;
-  const slugParam = rawSlug || "basic-details";
-  const isBareUrl = rawSlug === null;
+const stepParam = params?.step || "basic-details";
 
-  const currentStepKey = SLUG_TO_STEP[slugParam] || "basics";
+const currentStepKey =
+  SLUG_TO_STEP[stepParam] || "basics";
+
   const stepIndex = WIZARD_STEPS.findIndex((s) => s.key === currentStepKey);
   const currentStep = WIZARD_STEPS[Math.max(0, stepIndex)];
   const totalSteps = WIZARD_STEPS.length;
@@ -141,12 +138,6 @@ export default function WizardShell({ initialCategory }) {
 
   // ── Auto-restore: redirect to last active step on bare category URL ────
   // Fires once after hydration. Uses router.replace so no extra history entry.
-  useEffect(() => {
-    if (!isBareUrl || !hydrated) return;
-    if (!lastSavedKey || lastSavedKey === "basics") return;
-    if (!STEP_TO_SLUG[lastSavedKey]) return;
-    router.replace(stepUrl(lastSavedKey));
-  }, [isBareUrl, hydrated, lastSavedKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Mark review reached on landing ────────────────────────────────────
   // Fires whenever the user is on the review step (including on refresh or
