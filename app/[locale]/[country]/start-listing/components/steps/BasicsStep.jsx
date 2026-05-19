@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState , useEffect } from "react";
 import { SUBCATEGORIES } from "./config/subcategoryConfig";
 
 // ─── Shared input class helper ─────────────────────────────────────────────
@@ -17,7 +17,13 @@ const inputCls = (invalid) => [
 //  BasicsStep — title, about, subcategory
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function BasicsStep({ form, updateForm, attempted }) {
+//API URL
+import { getPropertyName } from "@/services/global.service";
+
+
+ 
+
+export default function BasicsStep({ form, updateForm, attempted  }) {
   const [touched, setTouched] = useState({});
 
   const touch    = (f) => setTouched((p) => ({ ...p, [f]: true }));
@@ -26,7 +32,25 @@ export default function BasicsStep({ form, updateForm, attempted }) {
   const isTitleValid  = form.title?.trim().length > 3;
   const isDescValid   = form.description?.trim().length >= 10;
   const isSubcatValid = !!form.subcategory;
-  const subcategories = SUBCATEGORIES[form.category] || [];
+  // const subcategories = SUBCATEGORIES[form.category] || [];
+
+   //API
+   const [property, setProperty] = useState([]);
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const load = async () => {
+    try {
+      const res = await getPropertyName(form.category);
+      setProperty(res.data.data);
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+  
 
   return (
     <div className="space-y-8">
@@ -85,7 +109,7 @@ export default function BasicsStep({ form, updateForm, attempted }) {
       </div>
 
       {/* ── Subcategory / Type ── */}
-      {subcategories.length > 0 && (
+      {property.length > 0 && (
         <div>
           <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-1">
             Property type <span className="text-red-500">*</span>
@@ -95,13 +119,13 @@ export default function BasicsStep({ form, updateForm, attempted }) {
           </p>
 
           <div className="flex flex-wrap gap-2">
-            {subcategories.map((sub) => {
-              const active = form.subcategory === sub;
+            {property.map((sub) => {
+              const active = form.subcategory === sub.id;
               return (
                 <button
-                  key={sub}
+                  key={sub.id}
                   type="button"
-                  onClick={() => { updateForm({ subcategory: sub }); touch("subcategory"); }}
+                  onClick={() => { updateForm({ subcategory: sub.id }); touch("subcategory"); }}
                   className={[
                     "px-4 py-2 rounded-full border text-sm font-medium transition-all duration-150",
                     "focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500",
@@ -110,7 +134,7 @@ export default function BasicsStep({ form, updateForm, attempted }) {
                       : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-900 hover:border-violet-400 dark:hover:border-violet-600 hover:text-violet-700 dark:hover:text-violet-300",
                   ].join(" ")}
                 >
-                  {sub}
+                  {sub.name}
                 </button>
               );
             })}

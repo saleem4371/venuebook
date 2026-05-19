@@ -25,7 +25,7 @@ export default function WizardFooter({
     setSubmitting(true);
     await new Promise((r) => setTimeout(r, 1000));
     onSubmit?.();
-    setSubmitting(false);
+   // setSubmitting(false);
   };
 
   return (

@@ -67,42 +67,65 @@ export default function MediaStep({ form, updateForm, attempted }) {
   }, [images]);
 
   // ── File ingestion (dedup by name+size, max 10 MB) ──
-  const handleFiles = useCallback((files) => {
-    if (!files?.length) return;
-    const existingKeys = new Set(images.map((img) => img.dupKey));
-    const remaining    = MAX_PHOTOS - images.length;
+  const handleFiles = useCallback(async (files) => {
+  if (!files?.length) return;
 
-    const fileList = Array.from(files).filter((f) => {
-      if (!VALID_TYPES.includes(f.type))  return false;
-      if (f.size > 10 * 1024 * 1024)     return false;
+  const existingKeys = new Set(images.map((img) => img.dupKey));
+  const remaining = MAX_PHOTOS - images.length;
+
+  const fileList = Array.from(files)
+    .filter((f) => {
+      if (!VALID_TYPES.includes(f.type)) return false;
+      if (f.size > 10 * 1024 * 1024) return false;
+
       const key = `${f.name}__${f.size}`;
-      if (existingKeys.has(key))          return false;
+
+      if (existingKeys.has(key)) return false;
+
       existingKeys.add(key);
+
       return true;
-    }).slice(0, remaining);
+    })
+    .slice(0, remaining);
 
-    if (!fileList.length) return;
+  if (!fileList.length) return;
 
-    const incoming = fileList.map((file) => {
-      const id = `img-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-      // Persist blob to IndexedDB so it survives page refresh
-      saveBlob(`${category}/${id}`, file).catch(() => {});
+  const incoming = await Promise.all(
+    fileList.map(async (file) => {
+      const id = `img-${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2, 7)}`;
+
+      const localKey = `${category}/${id}`;
+
+      // Save to IndexedDB
+      await saveBlob(localKey, file);
+
       return {
         id,
-        url:    URL.createObjectURL(file),
-        name:   file.name,
-        size:   file.size,
+        localKey,
+        url: URL.createObjectURL(file),
+        name: file.name,
+        size: file.size,
         dupKey: `${file.name}__${file.size}`,
-        cover:  false,
+        cover: false,
+        uploaded: false,
       };
-    });
+    })
+  );
 
-    const updated = [...images, ...incoming];
-    if (!updated.some((img) => img.cover)) updated[0] = { ...updated[0], cover: true };
+  const updated = [...images, ...incoming];
 
-    updateForm({ images: updated });
-    incoming.forEach((img) => simulateUpload(img.id));
-  }, [images, category, updateForm, simulateUpload]);
+  if (!updated.some((img) => img.cover)) {
+    updated[0] = {
+      ...updated[0],
+      cover: true,
+    };
+  }
+
+  updateForm({ images: updated });
+
+}, [images, category, updateForm]);
 
   // ── CRUD helpers ──
   const removeImage = (id) => {

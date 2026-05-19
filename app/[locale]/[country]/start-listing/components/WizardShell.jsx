@@ -9,83 +9,97 @@ import { BookmarkCheck } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 
 import lightLogo from "@/assets/logo.svg";
-import darkLogo  from "@/assets/logo.png";
+import darkLogo from "@/assets/logo.png";
 
-import venueImg      from "@/assets/Properties/Venue.png";
-import farmstayImg   from "@/assets/Properties/Farmstay.png";
-import studioImg     from "@/assets/Properties/Studio.png";
-import workspaceImg  from "@/assets/Properties/Workspace.png";
-import rentalImg     from "@/assets/Properties/Rental.png";
+import venueImg from "@/assets/Properties/Venue.png";
+import farmstayImg from "@/assets/Properties/Farmstay.png";
+import studioImg from "@/assets/Properties/Studio.png";
+import workspaceImg from "@/assets/Properties/Workspace.png";
+import rentalImg from "@/assets/Properties/Rental.png";
 import experienceImg from "@/assets/Properties/Experience.png";
 
-import ProgressBar         from "./ProgressBar";
-import WizardFooter        from "./WizardFooter";
+import ProgressBar from "./ProgressBar";
+import WizardFooter from "./WizardFooter";
 import { useListingWizard } from "./useListingWizard";
-import { WIZARD_STEPS, CATEGORY_LABELS, STEP_TO_SLUG, SLUG_TO_STEP } from "./wizardConfig";
+import { getBlob, deleteBlob } from "./imageStore";
+import {
+  WIZARD_STEPS,
+  CATEGORY_LABELS,
+  STEP_TO_SLUG,
+  SLUG_TO_STEP,
+} from "./wizardConfig";
 
-import BasicsStep    from "./steps/BasicsStep";
-import LocationStep  from "./steps/LocationStep";
+import BasicsStep from "./steps/BasicsStep";
+import LocationStep from "./steps/LocationStep";
 import AmenitiesStep from "./steps/AmenitiesStep";
-import CapacityStep  from "./steps/CapacityStep";
-import PricingStep   from "./steps/PricingStep";
-import MediaStep     from "./steps/MediaStep";
-import ReviewStep    from "./steps/ReviewStep";
+import CapacityStep from "./steps/CapacityStep";
+import PricingStep from "./steps/PricingStep";
+import MediaStep from "./steps/MediaStep";
+import ReviewStep from "./steps/ReviewStep";
 
-import { useAuth }   from "@/context/AuthContext";
-import LoginModal    from "@/app/[locale]/[country]/home/components/LoginModal";
+import { useAuth } from "@/context/AuthContext";
+import LoginModal from "@/app/[locale]/[country]/home/components/LoginModal";
 import { URL_COUNTRY_TO_CODE } from "./steps/config/locationConfig";
+
+import { getProperty } from "@/services/global.service";
+import { listing_create } from "@/services/listing.service";
 
 /* ─────────────────────────────────────────────────────────────────────── */
 
 const STEP_COMPONENTS = {
-  basics:    BasicsStep,
-  location:  LocationStep,
+  basics: BasicsStep,
+  location: LocationStep,
   amenities: AmenitiesStep,
-  capacity:  CapacityStep,
-  pricing:   PricingStep,
-  media:     MediaStep,
-  review:    ReviewStep,
+  capacity: CapacityStep,
+  pricing: PricingStep,
+  media: MediaStep,
+  review: ReviewStep,
 };
 
 const CAT_IMAGES = {
-  venue: venueImg, farmstay: farmstayImg, studio: studioImg,
-  workspace: workspaceImg, rental: rentalImg, experience: experienceImg,
+  venue: venueImg,
+  farmstay: farmstayImg,
+  studio: studioImg,
+  workspace: workspaceImg,
+  rental: rentalImg,
+  experience: experienceImg,
 };
 
 const variants = {
-  enter:  (d) => ({ x: d > 0 ?  48 : -48, opacity: 0 }),
-  center:       { x: 0, opacity: 1 },
-  exit:   (d) => ({ x: d > 0 ? -48 :  48, opacity: 0 }),
+  enter: (d) => ({ x: d > 0 ? 48 : -48, opacity: 0 }),
+  center: { x: 0, opacity: 1 },
+  exit: (d) => ({ x: d > 0 ? -48 : 48, opacity: 0 }),
 };
 
 /* ─────────────────────────────────────────────────────────────────────── */
 
 export default function WizardShell({ initialCategory }) {
-  const params  = useParams();
-  const router  = useRouter();
-  const locale  = params?.locale  || "en";
+  const params = useParams();
+  const router = useRouter();
+  const locale = params?.locale || "en";
   const country = params?.country || "in";
 
   // ── Derive current step from URL slug ──────────────────────────────────
   // rawSlug is null when visiting the bare /[category] URL (no step segment).
-  const rawSlugArr  = params?.slug;
-  const rawSlug     = Array.isArray(rawSlugArr) && rawSlugArr.length > 0 ? rawSlugArr[0] : null;
-  const slugParam   = rawSlug || "basic-details";
-  const isBareUrl   = rawSlug === null;
+  const rawSlugArr = params?.slug;
+  const rawSlug =
+    Array.isArray(rawSlugArr) && rawSlugArr.length > 0 ? rawSlugArr[0] : null;
+  const slugParam = rawSlug || "basic-details";
+  const isBareUrl = rawSlug === null;
 
   const currentStepKey = SLUG_TO_STEP[slugParam] || "basics";
-  const stepIndex      = WIZARD_STEPS.findIndex((s) => s.key === currentStepKey);
-  const currentStep    = WIZARD_STEPS[Math.max(0, stepIndex)];
-  const totalSteps     = WIZARD_STEPS.length;
-  const isFirst        = stepIndex === 0;
-  const isLast         = stepIndex === totalSteps - 1;
+  const stepIndex = WIZARD_STEPS.findIndex((s) => s.key === currentStepKey);
+  const currentStep = WIZARD_STEPS[Math.max(0, stepIndex)];
+  const totalSteps = WIZARD_STEPS.length;
+  const isFirst = stepIndex === 0;
+  const isLast = stepIndex === totalSteps - 1;
 
   // ── URL helpers ────────────────────────────────────────────────────────
   const stepUrl = (key) =>
     `/${locale}/${country}/start-listing/${initialCategory}/${STEP_TO_SLUG[key]}`;
 
   // ── Local UI state ─────────────────────────────────────────────────────
-  const [dir,    setDir]    = useState(1);
+  const [dir, setDir] = useState(1);
   const [isDark, setIsDark] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -95,23 +109,34 @@ export default function WizardShell({ initialCategory }) {
   const pendingSave = useRef(false);
 
   // ISO code for initial map center
-  const urlCountry = URL_COUNTRY_TO_CODE[(country).toLowerCase()] || "IN";
+  const urlCountry = URL_COUNTRY_TO_CODE[country.toLowerCase()] || "IN";
 
   // Dark mode sync
   useEffect(() => {
-    const sync = () => setIsDark(document.documentElement.classList.contains("dark"));
+    const sync = () =>
+      setIsDark(document.documentElement.classList.contains("dark"));
     sync();
     const obs = new MutationObserver(sync);
-    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    obs.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
     return () => obs.disconnect();
   }, []);
 
   // ── Wizard state ───────────────────────────────────────────────────────
   const {
-    form, updateForm, attempted, attemptStep, isStepValid,
-    hydrated, lastSavedKey,
-    reviewReached, markReviewReached,
-    saveDraft, clearDraft,
+    form,
+    updateForm,
+    attempted,
+    attemptStep,
+    isStepValid,
+    hydrated,
+    lastSavedKey,
+    reviewReached,
+    markReviewReached,
+    saveDraft,
+    clearDraft,
   } = useListingWizard(initialCategory, urlCountry);
 
   // ── Auto-restore: redirect to last active step on bare category URL ────
@@ -170,29 +195,184 @@ export default function WizardShell({ initialCategory }) {
     router.push(stepUrl("review"));
   };
 
-  const handleSubmit = () => {
-    // Persist a lightweight listing snapshot so the payment page can display
-    // the listing name, category, and city without needing the full draft.
+  const handleSubmit = async () => {
     try {
-      localStorage.setItem(
-        `vb_pending_${initialCategory}`,
-        JSON.stringify({
-          title:       form.title       || "",
-          subcategory: form.subcategory || "",
-          city:        form.city        || "",
-          country:     form.country     || "",
-          submittedAt: Date.now(),
-        }),
+      console.log("FORM:", form);
+
+      const formData = new FormData();
+
+      /* -------------------------------------------------------------------------- */
+      /*                               BASIC FIELDS                                 */
+      /* -------------------------------------------------------------------------- */
+
+      formData.append("title", form.title || "");
+      formData.append("description", form.description || "");
+      formData.append("category", form.category || "");
+      formData.append("subcategory", String(form.subcategory || ""));
+
+      formData.append("address", form.address || "");
+      formData.append("city", form.city || "");
+      formData.append("state", form.state || "");
+      formData.append("country", form.country || "");
+      formData.append("pincode", form.pincode || "");
+
+      /* -------------------------------------------------------------------------- */
+      /*                                  LOCATION                                  */
+      /* -------------------------------------------------------------------------- */
+
+      formData.append("lat", String(form.lat || ""));
+      formData.append("lng", String(form.lng || ""));
+
+      /* -------------------------------------------------------------------------- */
+      /*                                  CAPACITY                                  */
+      /* -------------------------------------------------------------------------- */
+
+      formData.append(
+        "capacity[minGuests]",
+        String(form.capacity?.minGuests || 0),
       );
-    } catch (_) {}
-    clearDraft();
-    router.push(`/${locale}/${country}/start-listing/${initialCategory}/payment`);
+
+      formData.append(
+        "capacity[maxGuests]",
+        String(form.capacity?.maxGuests || 0),
+      );
+
+      formData.append("capacity_setting", JSON.stringify(form.capacity));
+
+      /* -------------------------------------------------------------------------- */
+      /*                                 AMENITIES                                  */
+      /* -------------------------------------------------------------------------- */
+
+      (form.amenities || []).forEach((item) => {
+        formData.append("amenities[]", item);
+      });
+
+      /* -------------------------------------------------------------------------- */
+      /*                              PRICING SHIFTS                                */
+      /* -------------------------------------------------------------------------- */
+
+      if (form.category == "venue") {
+        if (form.pricing?.shifts) {
+          Object.entries(form.pricing.shifts).forEach(([shift, data]) => {
+            formData.append(
+              `pricing[shifts][${shift}][enabled]`,
+              String(data?.enabled || false),
+            );
+
+            formData.append(
+              `pricing[shifts][${shift}][price]`,
+              String(data?.price || 0),
+            );
+          });
+        }
+      } 
+      
+formData.append("pricing", JSON.stringify(form.pricing));
+      formData.append("security_deposit", form.pricing.deposit);
+      // formData.append("mode", JSON.stringify(form));
+      formData.append("mode", form.pricing.mode);
+
+      
+
+      /* -------------------------------------------------------------------------- */
+      /*                              FILE RESOLVER                                 */
+      /* -------------------------------------------------------------------------- */
+
+      const resolveFile = async (img) => {
+        // Fresh uploaded file
+        if (img.file instanceof File) {
+          return img.file;
+        }
+
+        // Restore from IndexedDB
+        if (img.localKey) {
+          const blob = await getBlob(img.localKey);
+
+          console.log("RESTORED BLOB:", blob);
+
+          // IMPORTANT
+          if (blob instanceof File) {
+            return blob;
+          }
+
+          if (blob instanceof Blob) {
+            return new File([blob], img.name || "image.jpg", {
+              type: blob.type || "image/jpeg",
+            });
+          }
+        }
+
+        return null;
+      };
+
+      /* -------------------------------------------------------------------------- */
+      /*                                   IMAGES                                   */
+      /* -------------------------------------------------------------------------- */
+
+      for (const img of form.images || []) {
+        const file = await resolveFile(img);
+
+        if (!file) continue;
+
+        formData.append("images[]", file);
+      }
+
+      /* -------------------------------------------------------------------------- */
+      /*                                COVER IMAGE                                 */
+      /* -------------------------------------------------------------------------- */
+
+      const coverImage = form.images?.find((img) => img.cover);
+
+      if (coverImage) {
+        const coverFile = await resolveFile(coverImage);
+
+        if (coverFile) {
+          formData.append("cover_image", coverFile);
+        }
+      }
+
+      /* -------------------------------------------------------------------------- */
+      /*                              DEBUG FORMDATA                                */
+      /* -------------------------------------------------------------------------- */
+
+      for (const pair of formData.entries()) {
+        console.log(pair[0], pair[1], pair[1] instanceof File);
+      }
+
+      /* -------------------------------------------------------------------------- */
+      /*                                  API CALL                                  */
+      /* -------------------------------------------------------------------------- */
+
+      const res = await listing_create(formData);
+
+      clearDraft();
+      setTimeout(() => {
+        router.push(
+          `/${encodeURIComponent(locale)}/${encodeURIComponent(country)}/start-listing/${encodeURIComponent(form.category)}/payment`,
+        );
+      }, 800);
+
+      /* -------------------------------------------------------------------------- */
+      /*                           CLEAN TEMP INDEXEDDB                             */
+      /* -------------------------------------------------------------------------- */
+
+      for (const img of form.images || []) {
+        if (img?.localKey) {
+          await deleteBlob(img.localKey);
+        }
+      }
+    } catch (error) {
+      console.error("SUBMIT ERROR:", error);
+    }
   };
 
   // ── Save & Exit (auth-gated) ───────────────────────────────────────────
   const doSaveAndExit = () => {
     setSaving(true);
+    //handleSubmit();
     saveDraft(currentStep.key);
+
+
     toast.success("Progress saved! Continue any time.", {
       icon: "🔖",
       style: { borderRadius: "12px", fontSize: "13px", fontWeight: "500" },
@@ -218,8 +398,8 @@ export default function WizardShell({ initialCategory }) {
     }
   };
 
-  const catLabel      = CATEGORY_LABELS[form.category] || form.category || "";
-  const catImage      = CAT_IMAGES[form.category] || null;
+  const catLabel = CATEGORY_LABELS[form.category] || form.category || "";
+  const catImage = CAT_IMAGES[form.category] || null;
   const StepComponent = STEP_COMPONENTS[currentStep.key];
 
   // "Back to Review" is shown on every non-review step once the user has
@@ -240,10 +420,8 @@ export default function WizardShell({ initialCategory }) {
           STICKY HEADER
       ══════════════════════════════════════════════════════════════ */}
       <header className="sticky top-0 z-40 w-full bg-white dark:bg-gray-950 border-b border-transparent">
-
         <div className="w-full px-5 sm:px-10 py-3.5 sm:py-4">
           <div className="flex items-center gap-3 sm:gap-6">
-
             <Link
               href={`/${locale}/${country}/home`}
               aria-label="VenueBook home"
@@ -299,7 +477,6 @@ export default function WizardShell({ initialCategory }) {
       ══════════════════════════════════════════════════════════════ */}
       <main className="flex-1 overflow-y-auto">
         <div className="max-w-[720px] mx-auto px-5 sm:px-8 pt-10 pb-12">
-
           <div className="mb-8">
             <h1 className="text-2xl sm:text-[28px] font-bold text-gray-900 dark:text-white leading-tight tracking-tight">
               {currentStep.title}
@@ -324,10 +501,10 @@ export default function WizardShell({ initialCategory }) {
                 updateForm={updateForm}
                 attempted={attempted}
                 goToStep={handleGoToStep}
+                api={getProperty}
               />
             </motion.div>
           </AnimatePresence>
-
         </div>
       </main>
 

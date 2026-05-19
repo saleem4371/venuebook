@@ -1,11 +1,14 @@
 "use client";
-
+import { useState, useEffect } from "react";
 import { Pencil, CheckCircle2, Star, MapPin } from "lucide-react";
 import { CATEGORY_LABELS } from "../wizardConfig";
 import { AMENITY_META }    from "./config/amenitiesConfig";
 import { CAPACITY_CONFIG, SEATING_STYLES } from "./config/capacityConfig";
 import { PRICING_CONFIG, VENUE_SHIFTS }    from "./config/pricingConfig";
 import { getCountryName, getLocationConfig } from "./config/locationConfig";
+
+import { getAmenties } from "@/services/global.service";
+
 
 // ─── Section card ──────────────────────────────────────────────────────────
 
@@ -83,6 +86,26 @@ export default function ReviewStep({ form, goToStep }) {
   const pricing  = form.pricing  || {};
   const capacity = form.capacity || {};
   const amenities = form.amenities || [];
+
+   // API
+  const [amenitie, setAmenities] = useState([]);
+
+  console.log(amenitie)
+  
+    useEffect(() => {
+      load();
+    }, [form.category]);
+  
+    const load = async () => {
+      try {
+        const res = await getAmenties(form.category);
+        const mergedData = res?.data?.data;
+        const flatAmenities = mergedData.flatMap((group) => group.children);
+        setAmenities(flatAmenities);
+      } catch (err) {
+        console.log(err);
+      }
+    };
 
   const coverImage = images.find((img) => img.cover) || images[0];
   const catLabel   = CATEGORY_LABELS[form.category] || form.category || "";
@@ -242,14 +265,17 @@ export default function ReviewStep({ form, goToStep }) {
 
       {/* ── Step 2: Amenities ── */}
       <Section title="Amenities" stepIndex={2} onEdit={goToStep}>
+
+      
+        
         {amenities.length === 0 ? (
           <p className="text-xs text-gray-400 dark:text-gray-500">No amenities selected</p>
         ) : (
-          <div className="flex flex-wrap gap-2">
-            {amenities.map((key) => {
-              const meta = AMENITY_META[key];
-              return meta ? <AmenityPill key={key} label={meta.label} /> : null;
-            })}
+          <div className="flex flex-wrap gap-2 text-xs font-semibold text-gray-800 dark:text-gray-200">
+            {amenitie
+    .filter((item) => form.amenities.includes(item.id))
+    .map((item) => item.name)
+    .join(', ')}
           </div>
         )}
       </Section>

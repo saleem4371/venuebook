@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { IndianRupee, Info, ChevronDown, Check, Clock } from "lucide-react";
+import { useState,useEffect } from "react";
+import { IndianRupee, Info, ChevronDown, Check, Clock, AlertCircle } from "lucide-react";
 import { PRICING_CONFIG, VENUE_SHIFTS, TIME_SLOTS } from "./config/pricingConfig";
 
 // ─── Shared helpers ────────────────────────────────────────────────────────
@@ -79,9 +79,14 @@ function ShiftPricingList({ pricing, onChange, showErrors }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
-        <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
-          Shift pricing
-        </p>
+        <div>
+          <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+            Shift pricing
+          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+            Enable shifts you offer and set a price for each
+          </p>
+        </div>
         {showErrors && !hasEnabledWithPrice && (
           <span className="text-xs text-red-500 font-medium">At least one required</span>
         )}
@@ -189,10 +194,15 @@ function ShiftSelectorList({ pricing, onChange }) {
 
   return (
     <div>
-      <div className="mb-3">
-        <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
-          Available shifts
-        </p>
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+            Available shifts
+          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+            Select the time slots guests can book
+          </p>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-2">
@@ -288,7 +298,14 @@ function RateList({ rates, pricing, onChange, attempted }) {
 
 // ─── Shared: Security deposit ──────────────────────────────────────────────
 
-function DepositField({ pricing, onChange }) {
+function DepositField({ pricing, onChange, totalShiftPrice }) {
+  const deposit        = Number(pricing.deposit) || 0;
+  const cap            = totalShiftPrice > 0 ? totalShiftPrice * 0.5 : null;
+  const exceedsCap     = cap !== null && deposit > cap;
+  const formattedCap   = cap !== null
+    ? cap.toLocaleString("en-IN", { maximumFractionDigits: 0 })
+    : null;
+
   return (
     <div>
       <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">
@@ -299,7 +316,15 @@ function DepositField({ pricing, onChange }) {
         value={pricing.deposit}
         onChange={(v) => onChange("deposit", v)}
         placeholder="0"
+        invalid={exceedsCap}
       />
+      {exceedsCap && (
+        <p className="flex items-center gap-1.5 text-xs text-red-500 mt-1.5">
+          <AlertCircle size={12} className="flex-shrink-0" />
+          Deposit cannot exceed 50% of total shift revenue
+          {formattedCap && <span className="font-medium">(max ₹{formattedCap})</span>}
+        </p>
+      )}
     </div>
   );
 }
@@ -325,22 +350,51 @@ export default function PricingStep({ form, updateForm, attempted }) {
   const category = form.category || "venue";
   const config   = PRICING_CONFIG[category] || PRICING_CONFIG.farmstay;
   const pricing  = form.pricing || {};
+  
 
-  const [venueMode, setVenueMode] = useState(pricing.mode || "venue");
+  const [venueMode, setVenueMode] = useState("venue");
 
-  const update = (key, val) =>
-    updateForm({ pricing: { ...pricing, [key]: val } });
+useEffect(() => {
+  if (pricing?.mode) {
+    setVenueMode(pricing.mode);
+  }
+}, [pricing?.mode]);
+
+  // const update = (key, val) =>
+  //   updateForm({ pricing: { ...pricing, [key]: val } });
+
+  
+const update = (key, val) => {
+  const next =
+    typeof updateForm === "function"
+      ? updateForm
+      : null;
+
+  updateForm({
+    ...form,
+    pricing: {
+      ...(form?.pricing || {}),
+      [key]: val,
+    },
+  });
+};
 
   const switchMode = (mode) => {
-    setVenueMode(mode);
-    update("mode", mode);
-  };
+  setVenueMode(mode);
+  update("mode", mode);
+};
 
   const showErrors = !!attempted?.pricing;
 
   // ── Venue pricing ──────────────────────────────────────────────────────
 
   if (config.type === "venue_shifts") {
+    // Compute total of enabled + priced shifts for deposit cap validation
+    const shifts = pricing.shifts || {};
+    const totalShiftPrice = Object.values(shifts)
+      .filter((s) => s?.enabled && Number(s?.price) > 0)
+      .reduce((sum, s) => sum + Number(s.price), 0);
+
     return (
       <div className="space-y-7">
 
@@ -349,21 +403,44 @@ export default function PricingStep({ form, updateForm, attempted }) {
           <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3">
             Pricing model
           </label>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             {config.modes.map((m) => (
               <button
                 key={m.key}
                 type="button"
                 onClick={() => switchMode(m.key)}
                 className={[
-                  "px-4 py-3 rounded-xl border text-sm font-semibold text-center transition-all duration-150",
+                  "px-4 py-3.5 rounded-xl border text-left transition-all duration-150",
                   "focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500",
                   venueMode === m.key
-                    ? "border-violet-600 bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300"
-                    : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:border-violet-300 dark:hover:border-violet-700 hover:text-gray-800 dark:hover:text-gray-200",
+                    ? "border-violet-600 bg-violet-50 dark:bg-violet-950/30"
+                    : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:border-violet-300 dark:hover:border-violet-700",
                 ].join(" ")}
               >
-                {m.label}
+                <div className="flex items-center gap-2 mb-1">
+                  <span
+                    className={[
+                      "w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0",
+                      venueMode === m.key
+                        ? "border-violet-600"
+                        : "border-gray-300 dark:border-gray-600",
+                    ].join(" ")}
+                  >
+                    {venueMode === m.key && (
+                      <span className="w-2 h-2 rounded-full bg-violet-600" />
+                    )}
+                  </span>
+                  <span
+                    className={[
+                      "text-sm font-semibold",
+                      venueMode === m.key
+                        ? "text-violet-700 dark:text-violet-300"
+                        : "text-gray-700 dark:text-gray-300",
+                    ].join(" ")}
+                  >
+                    {m.label}
+                  </span>
+                </div>
               </button>
             ))}
           </div>
@@ -404,7 +481,7 @@ export default function PricingStep({ form, updateForm, attempted }) {
         )}
 
         {/* ── Security deposit ── */}
-        <DepositField pricing={pricing} onChange={update} />
+        <DepositField pricing={pricing} onChange={update} totalShiftPrice={totalShiftPrice} />
 
         <InfoNote />
       </div>

@@ -485,6 +485,20 @@ export default function LocationStep({ form, updateForm, attempted }) {
 
   const selectedCountry = COUNTRY_LIST.find((c) => c.code === effectiveCountry);
 
+  // ── Sync map when editing lat/lng (IMPORTANT FIX) ──
+useEffect(() => {
+  if (!mapInst.current || !form.lat || !form.lng) return;
+
+  const pos = {
+    lat: Number(form.lat),
+    lng: Number(form.lng),
+  };
+
+  skipNextIdle.current = true;
+  mapInst.current.panTo(pos);
+  mapInst.current.setZoom(16);
+}, [form.lat, form.lng]);
+
   return (
     <div className="space-y-6">
 
