@@ -1,4 +1,5 @@
 import "./globals.css";
+
 import {
   Plus_Jakarta_Sans,
   Noto_Sans_Devanagari,
@@ -14,7 +15,7 @@ const jakarta = Plus_Jakarta_Sans({
   variable: "--font-jakarta",
   weight: ["300", "400", "500", "600", "700", "800"],
   display: "swap",
-});
+}); 
 
 /* ── Supplemental: script-specific fonts loaded only when needed ──
    Each font uses `display: swap` so Latin text is never blocked.
@@ -113,6 +114,7 @@ export default async function RootLayout({ children }) {
           }}
         />
       </head>
+     
       <body
         suppressHydrationWarning
         className="min-h-screen bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 antialiased font-sans"

@@ -135,11 +135,3 @@ html {
 .animate-shimmer {
   animation: shimmer 1.5s infinite;
 }
-@keyframes vbPinIdle {
-  0%,100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-1.5px);
-  }
-}
