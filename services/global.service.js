@@ -16,8 +16,16 @@ export const getPropertyName = (category) => {
   return api.get(`/global/getPropertyName?category=${category}`);
 };
 
+export const findPropertyname = (category) => {
+  return api.get(`/global/findPropertyname?category=${category}`);
+};
+
 export const getCountry = () => {
   return api.get(`/global/country`);
+};
+
+export const country_of_category = () => {
+  return api.get(`/global/country_of_category`);
 };
 
 // export const getAllCurrencies = () => {

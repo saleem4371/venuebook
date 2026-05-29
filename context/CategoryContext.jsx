@@ -31,6 +31,8 @@ const CategoryContext = createContext(null);
  * @param {{ children: React.ReactNode, initialCategory?: string }} props
  */
 export function CategoryProvider({ children, initialCategory }) {
+
+
   const [activeCategory, setActiveCategoryRaw] = useState(
     () =>
       initialCategory && CATEGORIES[initialCategory]
