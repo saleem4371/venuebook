@@ -111,8 +111,8 @@ function DesktopNav({
   return (
     <div
       ref={containerRef}
-      style={{ insetInlineEnd: "40px", top: "128px" }}
-      className="fixed z-30 flex flex-col items-end"
+      style={{ insetInlineEnd: "40px", top: "83px" }}
+      className="fixed z-40 flex flex-col items-end"
     >
       <Trigger
         isOpen={isOpen} setIsOpen={setIsOpen}
@@ -151,7 +151,7 @@ function MobileNav({
         insetInlineEnd: "20px",
         top: "calc(75px + env(safe-area-inset-top, 0px))",
       }}
-      className="fixed z-[31] flex flex-col items-end"
+      className="fixed z-40 flex flex-col items-end"
     >
       <Trigger
         isOpen={isOpen} setIsOpen={setIsOpen}
@@ -189,7 +189,7 @@ function Trigger({ isOpen, setIsOpen, activeCategory, activeColor, activeLabel, 
       aria-haspopup="dialog"
       aria-label={`${activeLabel} — change category`}
       className={[
-        "relative flex items-center gap-2 rounded-full",
+        "relative flex items-center gap-2.5 rounded-full",
         compact ? "px-3.5 py-2" : "px-4 py-2.5",
         "text-sm font-medium whitespace-nowrap",
         "bg-white dark:bg-gray-900",

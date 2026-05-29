@@ -10,6 +10,8 @@ import darkLogo from "@/assets/logo.png";
 
 import RegionLanguageModal from "../../home/components/RegionLanguageModal";
 import { useAuth } from "@/context/AuthContext";
+import KycStatusChip from "./KycStatusChip";
+import KYCModal from "./KYCModal";
 
 /* ═══════════════════════════════════════════════════════════════
    HOOKS
@@ -115,7 +117,7 @@ const IBTN = [
 /* ═══════════════════════════════════════════════════════════════
    MENU PRIMITIVES
 ═══════════════════════════════════════════════════════════════ */
-function MenuItem({ icon, label, href, onClick, variant = "default", badge }) {
+function MenuItem({ icon, label, href, onClick, variant = "default", badge, adminBadge }) {
   const base =
     "flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-violet-500";
   const varCls = {
@@ -138,6 +140,11 @@ function MenuItem({ icon, label, href, onClick, variant = "default", badge }) {
         {icon}
       </span>
       <span className="flex-1">{label}</span>
+      {adminBadge && (
+        <span className="ml-auto inline-flex items-center px-1.5 py-0.5 rounded-md bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300 text-[9px] font-bold leading-none tracking-wide uppercase">
+          Admin
+        </span>
+      )}
       {badge > 0 && (
         <span className="ml-auto inline-flex items-center justify-center h-4 min-w-[16px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold leading-none">
           {badge}
@@ -208,8 +215,9 @@ function AvatarArea({
             <ul className="py-1.5" role="none">
               {notifications.map((n, i) => (
                 <li key={i} role="none">
-                  <button
-                    type="button"
+                  <Link
+                    href={`${base}/notifications`}
+                    onClick={() => setShowNotif(false)}
                     className="flex w-full items-start gap-3 px-4 py-2.5 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors"
                   >
                     <span
@@ -224,7 +232,7 @@ function AvatarArea({
                         {n.time}
                       </span>
                     </span>
-                  </button>
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -295,7 +303,7 @@ function AvatarArea({
               </div>
             </div>
 
-            {/* Items: Account, Region, Notifications, Settings, Logout */}
+            {/* Items: Account, Region, Notifications, Settings, Team Management, Logout */}
             <ul className="py-1.5" role="none">
               <li role="none">
                 <MenuItem
@@ -317,9 +325,9 @@ function AvatarArea({
                   icon={<BellIcon className="h-4 w-4" />}
                   label="Notifications"
                   badge={unread}
+                  href={`${base}/notifications`}
                   onClick={() => {
                     setShowProfile(false);
-                    setShowNotif(true);
                   }}
                 />
               </li>
@@ -329,6 +337,17 @@ function AvatarArea({
                   label="Settings"
                   href={`${base}/settings`}
                   onClick={() => setShowProfile(false)}
+                />
+              </li>
+              <Divider />
+              <li role="none">
+                <MenuItem
+                  icon={<TeamIcon />}
+                  label="Team Management"
+                  href={`${base}/teams`}
+                  onClick={() => setShowProfile(false)}
+                  variant="accent"
+                  adminBadge
                 />
               </li>
               <Divider />
@@ -369,6 +388,10 @@ export default function PremiumNavbar() {
   const [showNotif, setShowNotif] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [regionOpen, setRegionOpen] = useState(false);
+  const [kycStatus, setKycStatus] = useState("pending"); // wire to API/session later
+  const [kycOpen, setKycOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
 
   /* Separate refs for desktop + mobile (both rendered but only one visible) */
   const profileRefD = useRef(null);
@@ -413,8 +436,9 @@ export default function PremiumNavbar() {
   return (
     <>
       <header
+        suppressHydrationWarning
         className={[
-          "fixed inset-x-0 top-0 z-50 w-full",
+          "fixed inset-x-0 top-0 z-[100] w-full",
           "transition-[background-color,border-color,box-shadow] duration-200",
           scrolled
             ? "bg-white/95 dark:bg-gray-950/95 backdrop-blur-md border-b border-gray-200/80 dark:border-gray-800/80"
@@ -429,6 +453,14 @@ export default function PremiumNavbar() {
           <Brandlogo href={`${base}/dashboard`} isDark={isDark} />
 
           <div className="flex items-center gap-1">
+            {/* KYC Status Chip */}
+            <span className="me-2">
+              <KycStatusChip
+                status={kycStatus}
+                onClick={() => setKycOpen(true)}
+              />
+            </span>
+
             {/* Switch to Customer */}
             <button
               type="button"
@@ -444,22 +476,17 @@ export default function PremiumNavbar() {
               ].join(" ")}
             >
               <HomeIcon className="h-4 w-4 shrink-0" />
-              <span>Switch to Customer</span>
+              <span>Switch to customer</span>
             </button>
-
-            <span
-              className="mx-1 h-5 w-px bg-gray-200 dark:bg-gray-700"
-              aria-hidden="true"
-            />
 
             {/* Theme */}
             <button
               type="button"
               onClick={toggleTheme}
-              aria-label={isDark ? "Light mode" : "Dark mode"}
+              aria-label={mounted && isDark ? "Light mode" : "Dark mode"}
               className={IBTN}
             >
-              {isDark ? (
+              {mounted && isDark ? (
                 <SunIcon className="h-[18px] w-[18px]" />
               ) : (
                 <MoonIcon className="h-[18px] w-[18px]" />
@@ -493,6 +520,12 @@ export default function PremiumNavbar() {
           <Brandlogo href={`${base}/dashboard`} isDark={isDark} />
 
          <div className="flex items-center gap-1">
+            {/* KYC Status Chip — prefix on mobile too */}
+            <KycStatusChip
+              status={kycStatus}
+              onClick={() => setKycOpen(true)}
+            />
+
           {/* Theme */}
             <button
               type="button"
@@ -520,6 +553,7 @@ export default function PremiumNavbar() {
             >
               <GlobeIcon className="h-[18px] w-[18px]" />
             </button>
+
           <AvatarArea profileRef={profileRefM} {...sharedAreaProps} />
           </div>
         </nav>
@@ -529,6 +563,8 @@ export default function PremiumNavbar() {
         open={regionOpen}
         onClose={() => setRegionOpen(false)}
       />
+
+      <KYCModal open={kycOpen} setOpen={setKycOpen} />
     </>
   );
 }
@@ -547,6 +583,14 @@ const P = {
 };
 
 function Brandlogo({ href, isDark }) {
+  /* Avoid SSR/client src mismatch — always render light logo on server,
+     swap to dark logo on client after mount when theme is known. */
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+  const logoSrc = mounted && isDark
+    ? (darkLogo.src ?? darkLogo)
+    : (lightLogo.src ?? lightLogo);
+
   return (
     <Link
       href={href}
@@ -554,13 +598,14 @@ function Brandlogo({ href, isDark }) {
       className="shrink-0 inline-flex items-center rounded-md transition-opacity hover:opacity-75 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2"
     >
       <img
-        src={isDark ? (darkLogo.src ?? darkLogo) : (lightLogo.src ?? lightLogo)}
+        src={logoSrc}
         alt="VenueBook"
         width={140}
         height={28}
         loading="eager"
         decoding="async"
         className="h-7 w-auto md:h-8"
+        suppressHydrationWarning
       />
     </Link>
   );
@@ -637,3 +682,14 @@ function LogoutIcon() {
     </svg>
   );
 }
+function TeamIcon() {
+  return (
+    <svg width="16" height="16" {...P}>
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  );
+}
+

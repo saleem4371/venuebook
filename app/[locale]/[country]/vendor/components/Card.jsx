@@ -1,65 +1,77 @@
 "use client";
-import { motion } from "framer-motion";
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight } from "lucide-react";
 
 const ACCENT = {
-  Revenue:          { bg: "bg-purple-50  dark:bg-purple-950/30", icon: "text-violet-600 dark:text-violet-400",  glow: "hover:shadow-purple-100  dark:hover:shadow-purple-900/30"  },
-  Users:            { bg: "bg-blue-50    dark:bg-blue-950/30",   icon: "text-sky-600    dark:text-sky-400",     glow: "hover:shadow-blue-100    dark:hover:shadow-blue-900/30"    },
-  Bookings:         { bg: "bg-green-50   dark:bg-green-950/30",  icon: "text-emerald-600 dark:text-emerald-400",glow: "hover:shadow-green-100   dark:hover:shadow-green-900/30"   },
-  Recognised:       { bg: "bg-orange-50  dark:bg-orange-950/30", icon: "text-amber-600  dark:text-amber-400",   glow: "hover:shadow-orange-100  dark:hover:shadow-orange-900/30"  },
-  Advance:          { bg: "bg-pink-50    dark:bg-pink-950/30",   icon: "text-rose-600   dark:text-rose-400",    glow: "hover:shadow-pink-100    dark:hover:shadow-pink-900/30"    },
-  "Total Views":    { bg: "bg-indigo-50  dark:bg-indigo-950/30", icon: "text-indigo-600 dark:text-indigo-400",  glow: "hover:shadow-indigo-100  dark:hover:shadow-indigo-900/30"  },
-  "Enquiry Clicks": { bg: "bg-cyan-50    dark:bg-cyan-950/30",   icon: "text-teal-600   dark:text-teal-400",    glow: "hover:shadow-cyan-100    dark:hover:shadow-cyan-900/30"    },
-  "Venues Listed":  { bg: "bg-fuchsia-50 dark:bg-fuchsia-950/30",icon: "text-fuchsia-600 dark:text-fuchsia-400",glow: "hover:shadow-fuchsia-100 dark:hover:shadow-fuchsia-900/30" },
+  Revenue:          "#7c3aed",
+  Users:            "#0ea5e9",
+  Bookings:         "#10b981",
+  Recognised:       "#f59e0b",
+  Advance:          "#f43f5e",
+  "Total Views":    "#6366f1",
+  "Enquiry Clicks": "#14b8a6",
+  "Venues Listed":  "#d946ef",
 };
-const DEF = { bg: "bg-gray-50 dark:bg-gray-800/40", icon: "text-gray-500 dark:text-gray-400", glow: "hover:shadow-gray-100 dark:hover:shadow-gray-800/30" };
+const DEF = "#6b7280";
 
-export default function GlassCard({ title, value, icon: Icon, trend, trendValue }) {
-  const a = ACCENT[title] || DEF;
+function Sparkline({ data, color }) {
+  if (!data || data.length < 2) return null;
+  const max   = Math.max(...data);
+  const min   = Math.min(...data);
+  const range = max - min || 1;
+  const W = 56, H = 22;
+  const pts = data
+    .map((v, i) => {
+      const x = (i / (data.length - 1)) * W;
+      const y = H - ((v - min) / range) * (H - 4) - 2;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(" ");
+  const last = data[data.length - 1];
+  const ly   = H - ((last - min) / range) * (H - 4) - 2;
+  return (
+    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="overflow-visible flex-shrink-0">
+      <polyline
+        points={pts} fill="none" stroke={color}
+        strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+        opacity="0.65"
+      />
+      <circle cx={W} cy={ly} r="2.5" fill={color} />
+    </svg>
+  );
+}
 
-  const TIcon  = trend === "up" ? TrendingUp : trend === "down" ? TrendingDown : Minus;
-  const tColor = trend === "up"
-    ? "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40"
-    : trend === "down"
-    ? "text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-950/40"
-    : "text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-800/40";
+export default function Card({ title, value, trend, trendValue, sparkline }) {
+  const primary = ACCENT[title] ?? DEF;
 
   return (
-    <motion.div
-      whileHover={{ y: -3 }}
-      whileTap={{ scale: 0.98 }}
-      transition={{ duration: 0.2, type: "spring", stiffness: 300 }}
-      className={[
-        "relative flex flex-col justify-between p-5 rounded-2xl overflow-hidden",
-        "bg-white dark:bg-gray-900",
-        "border border-gray-100 dark:border-gray-800",
-        " hover:shadow-lg transition-all duration-300",
-        a.glow,
-      ].join(" ")}
-    >
-      {/* Glow blob */}
-      <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full opacity-[0.06] blur-2xl bg-current pointer-events-none" aria-hidden="true" />
+    <div className="relative overflow-hidden rounded-xl bg-white dark:bg-[#0f172a] border border-gray-200/80 dark:border-white/[0.06] p-3 sm:p-4 shadow-sm dark:shadow-black/20">
+      {/* Top accent bar */}
+      <div className="absolute top-0 inset-x-0 h-[2px] rounded-t-xl" style={{ background: primary }} />
 
-      {/* Top: icon + trend */}
-      <div className="flex items-start justify-between mb-4">
-        {Icon && (
-          <div className={`p-2 rounded-xl ${a.bg}`}>
-            <Icon size={16} className={a.icon} />
+      <p className="text-[10.5px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-2 sm:mb-2.5">
+        {title}
+      </p>
+
+      <div className="flex items-end justify-between gap-2">
+        <p className="text-[18px] sm:text-[22px] font-black text-gray-900 dark:text-white tracking-tight leading-none min-w-0 truncate">
+          {value}
+        </p>
+        {sparkline && <Sparkline data={sparkline} color={primary} />}
+      </div>
+
+      <div className="mt-2.5 h-[18px]">
+        {trend && trendValue && (
+          <div className={`flex items-center gap-1 text-[11px] font-semibold ${
+            trend === "up"
+              ? "text-emerald-600 dark:text-emerald-400"
+              : "text-red-500 dark:text-red-400"
+          }`}>
+            {trend === "up" ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+            {trendValue}
+            <span className="text-gray-400 dark:text-gray-500 font-normal ml-0.5">vs last period</span>
           </div>
         )}
-        {trend && trendValue && (
-          <span className={`inline-flex items-center gap-0.5 text-[11px] font-semibold px-2 py-0.5 rounded-full ${tColor}`}>
-            <TIcon size={11} />
-            {trendValue}
-          </span>
-        )}
       </div>
-
-      {/* Value + label */}
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 tracking-tight leading-none">{value}</h2>
-        <p className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 mt-1.5 uppercase tracking-widest">{title}</p>
-      </div>
-    </motion.div>
+    </div>
   );
 }

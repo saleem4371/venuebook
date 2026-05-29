@@ -10,9 +10,9 @@ const BAR_COLORS = [
 ];
 
 const CARD = [
-  "bg-white dark:bg-gray-900",
-  "border border-gray-100 dark:border-gray-800",
-  "rounded-2xl   transition-shadow duration-300 p-5 flex flex-col",
+  "bg-white dark:bg-[#0f172a]",
+  "border border-gray-200/80 dark:border-white/[0.06]",
+  "rounded-xl shadow-sm dark:shadow-black/20 transition-shadow duration-300 p-5 flex flex-col",
 ].join(" ");
 
 export default function DashboardCards({ agingData, bookings }) {

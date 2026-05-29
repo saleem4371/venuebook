@@ -7,6 +7,8 @@ import {
   Users, CalendarDays, MapPin, Pencil,
 } from "lucide-react";
 
+import { useVendorCategory } from "@/context/VendorCategoryContext";
+
 /* ─────────────────────────────────────────────────────────────────────────────
    PREMIUM VENUE CARD
    - Full-bleed cover image with cinematic gradient overlay
@@ -21,6 +23,10 @@ export default function VenueCard({ venue }) {
   const [loading, setLoading] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
 
+   const { activeCategory } = useVendorCategory();
+
+  const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+
   const basePath = `/${params?.locale}/${params?.country}/vendor/listing`;
 
   useEffect(() => {
@@ -29,10 +35,10 @@ export default function VenueCard({ venue }) {
 
   const openEditor = (id) => {
     setLoading(true);
-    setTimeout(() => router.push(`${basePath}/${id}`), 160);
+    setTimeout(() => router.push(`${basePath}/${id}?category=${activeCategory}`), 160);
   };
 
-  const isActive = venue.status === "ACTIVE";
+  const isActive = venue.status === 1;
 
   return (
     <>
@@ -69,7 +75,7 @@ export default function VenueCard({ venue }) {
           </AnimatePresence>
 
           <img
-            src={venue.image}
+            src={`${BASE_URL}/${venue.image}`}
             alt={venue.name}
             onLoad={() => setImgLoaded(true)}
   className="

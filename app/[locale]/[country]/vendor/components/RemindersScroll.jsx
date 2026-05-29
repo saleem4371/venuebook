@@ -13,7 +13,7 @@ export default function RemindersVertical({ reminders }) {
   }, [reminders]);
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl  p-5">
+    <div className="flex flex-col h-full bg-white dark:bg-[#0f172a] border border-gray-200/80 dark:border-white/[0.06] rounded-xl shadow-sm dark:shadow-black/20 p-5">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">

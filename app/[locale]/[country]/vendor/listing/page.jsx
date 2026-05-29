@@ -2,22 +2,56 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {Plus, Building2, ArrowRight, Sparkles,} from "lucide-react";
+import { Plus, Building2, ArrowRight, Sparkles } from "lucide-react";
 import { useRouter, useParams } from "next/navigation";
 
 import VenueCard from "./components/VenueCard";
 import { useVendorCategory } from "@/context/VendorCategoryContext";
 
+import { LoadListing } from "@/services/vendor.service";
+
+import { useCategory } from "@/context/CategoryContext";
+
 /* ─────────────────────────────────────────────────────────────────────────────
    CATEGORY META
 ───────────────────────────────────────────────────────────────────────────── */
 const CATEGORY_META = {
-  venues:      { pageTitle: "Venue Listings",      subtitle: "Manage, update and publish your venue properties.",     accent: "from-violet-600 to-indigo-500",  glow: "rgba(139,92,246,0.18)" },
-  farmstays:   { pageTitle: "Farmstay Listings",   subtitle: "Manage your farmstay properties and availability.",    accent: "from-emerald-600 to-teal-500",   glow: "rgba(16,185,129,0.18)" },
-  studios:     { pageTitle: "Studio Listings",     subtitle: "Manage your creative studios and booking slots.",      accent: "from-amber-500 to-orange-500",   glow: "rgba(245,158,11,0.18)" },
-  rentals:     { pageTitle: "Rental Listings",     subtitle: "Manage your rental properties and pricing.",           accent: "from-blue-600 to-cyan-500",      glow: "rgba(59,130,246,0.18)" },
-  workspaces:  { pageTitle: "Workspace Listings",  subtitle: "Manage your coworking spaces and meeting rooms.",      accent: "from-cyan-600 to-sky-500",       glow: "rgba(6,182,212,0.18)" },
-  experiences: { pageTitle: "Experience Listings", subtitle: "Manage your curated experiences and events.",          accent: "from-rose-600 to-pink-500",      glow: "rgba(244,63,94,0.18)" },
+  venues: {
+    pageTitle: "Venue Listings",
+    subtitle: "Manage, update and publish your venue properties.",
+    accent: "from-violet-600 to-indigo-500",
+    glow: "rgba(139,92,246,0.18)",
+  },
+  farmstays: {
+    pageTitle: "Farmstay Listings",
+    subtitle: "Manage your farmstay properties and availability.",
+    accent: "from-emerald-600 to-teal-500",
+    glow: "rgba(16,185,129,0.18)",
+  },
+  studios: {
+    pageTitle: "Studio Listings",
+    subtitle: "Manage your creative studios and booking slots.",
+    accent: "from-amber-500 to-orange-500",
+    glow: "rgba(245,158,11,0.18)",
+  },
+  rentals: {
+    pageTitle: "Rental Listings",
+    subtitle: "Manage your rental properties and pricing.",
+    accent: "from-blue-600 to-cyan-500",
+    glow: "rgba(59,130,246,0.18)",
+  },
+  workspaces: {
+    pageTitle: "Workspace Listings",
+    subtitle: "Manage your coworking spaces and meeting rooms.",
+    accent: "from-cyan-600 to-sky-500",
+    glow: "rgba(6,182,212,0.18)",
+  },
+  experiences: {
+    pageTitle: "Experience Listings",
+    subtitle: "Manage your curated experiences and events.",
+    accent: "from-rose-600 to-pink-500",
+    glow: "rgba(244,63,94,0.18)",
+  },
 };
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -25,16 +59,78 @@ const CATEGORY_META = {
 ───────────────────────────────────────────────────────────────────────────── */
 const MOCK_LISTINGS = {
   venues: [
-    { id: 1, name: "The Zenith of Coastal Elegance", parentName: "SYFTE Venues", address: "VVG5+976, Mallikatte, Bendoor, Mangaluru, Karnataka 575002, India", status: "ACTIVE", guests: 2000, leads: 40, image: "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=800&q=80" },
-    { id: 2, name: "The Azure Pavilion", parentName: "SYFTE Venues", address: "VVG5+976, Mallikatte, Bendoor, Mangaluru, Karnataka 575002, India", status: "ACTIVE", guests: 200, leads: 5, image: "https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=800&q=80" },
-    { id: 3, name: "Heritage Manor Estate", parentName: "SYFTE Venues", address: "Civil Lines, Jaipur, Rajasthan 302006, India", status: "INACTIVE", guests: 1000, leads: 0, image: "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&q=80" },
+    {
+      id: 1,
+      name: "The Zenith of Coastal Elegance",
+      parentName: "SYFTE Venues",
+      address:
+        "VVG5+976, Mallikatte, Bendoor, Mangaluru, Karnataka 575002, India",
+      status: "ACTIVE",
+      guests: 2000,
+      leads: 40,
+      image:
+        "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=800&q=80",
+    },
+    {
+      id: 2,
+      name: "The Azure Pavilion",
+      parentName: "SYFTE Venues",
+      address:
+        "VVG5+976, Mallikatte, Bendoor, Mangaluru, Karnataka 575002, India",
+      status: "ACTIVE",
+      guests: 200,
+      leads: 5,
+      image:
+        "https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=800&q=80",
+    },
+    {
+      id: 3,
+      name: "Heritage Manor Estate",
+      parentName: "SYFTE Venues",
+      address: "Civil Lines, Jaipur, Rajasthan 302006, India",
+      status: "INACTIVE",
+      guests: 1000,
+      leads: 0,
+      image:
+        "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&q=80",
+    },
   ],
   farmstays: [
-    { id: 10, name: "Green Valley Organic Farmstay", parentName: "SYFTE Retreats", address: "Coorg Hill Estates, Madikeri, Karnataka 571201, India", status: "ACTIVE", guests: 30, leads: 12, image: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=800&q=80" },
-    { id: 11, name: "Sunrise Mountain Farm", parentName: "SYFTE Retreats", address: "Nilgiri Hills, Ooty, Tamil Nadu 643001, India", status: "ACTIVE", guests: 20, leads: 7, image: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800&q=80" },
+    {
+      id: 10,
+      name: "Green Valley Organic Farmstay",
+      parentName: "SYFTE Retreats",
+      address: "Coorg Hill Estates, Madikeri, Karnataka 571201, India",
+      status: "ACTIVE",
+      guests: 30,
+      leads: 12,
+      image:
+        "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=800&q=80",
+    },
+    {
+      id: 11,
+      name: "Sunrise Mountain Farm",
+      parentName: "SYFTE Retreats",
+      address: "Nilgiri Hills, Ooty, Tamil Nadu 643001, India",
+      status: "ACTIVE",
+      guests: 20,
+      leads: 7,
+      image:
+        "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800&q=80",
+    },
   ],
   studios: [
-    { id: 20, name: "Creative Loft Studio", parentName: "SYFTE Studios", address: "Indiranagar, Bangalore, Karnataka 560038, India", status: "ACTIVE", guests: 20, leads: 15, image: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80" },
+    {
+      id: 20,
+      name: "Creative Loft Studio",
+      parentName: "SYFTE Studios",
+      address: "Indiranagar, Bangalore, Karnataka 560038, India",
+      status: "ACTIVE",
+      guests: 20,
+      leads: 15,
+      image:
+        "https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80",
+    },
   ],
 };
 
@@ -46,6 +142,9 @@ export default function ListingPage() {
   const [parentLoading, setParentLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
 
+  const [loadData, setLoadData] = useState([]);
+
+
   const router = useRouter();
   const { locale, country } = useParams();
 
@@ -53,7 +152,7 @@ export default function ListingPage() {
   const listings = MOCK_LISTINGS[activeCategory] ?? [];
 
   const parentPath = `/${locale}/${country}/vendor/listing/parent_details`;
-  const startPath = (cat) => `/${locale}/${country}/start-listing/${cat}`;
+  const startPath = (cat) => `/${locale}/${country}/start-listing/${cat}?category=${activeCategory}`; //activeCategory
 
   /* Simulate initial data load — replace with real fetch */
   useEffect(() => {
@@ -62,7 +161,9 @@ export default function ListingPage() {
     return () => clearTimeout(t);
   }, [activeCategory]);
 
-  useEffect(() => { router.prefetch(parentPath); }, []);
+  useEffect(() => {
+    router.prefetch(parentPath);
+  }, []);
 
   const openParent = () => {
     setParentLoading(true);
@@ -70,11 +171,27 @@ export default function ListingPage() {
   };
 
   const handleCreateListing = () => router.push(startPath(activeCategory));
+  
+useEffect(() => {
+  load();
+}, [activeCategory]);
 
+const load = async () => {
+  try {
+    setPageLoading(true);
+
+    const res = await LoadListing(activeCategory);
+
+    setLoadData(res?.data || []);
+  } catch (err) {
+    console.error(err);
+  } finally {
+    setPageLoading(false);
+  }
+};
 
   return (
     <div className="space-y-6">
-
       {/* ── PARENT VENUE CARD ── */}
       <motion.div
         initial={{ opacity: 0, y: 8 }}
@@ -93,11 +210,15 @@ export default function ListingPage() {
         {/* Ambient background glow */}
         <div
           className="absolute -right-12 -top-12 w-48 h-48 rounded-full opacity-[0.07] blur-3xl pointer-events-none"
-          style={{ background: `radial-gradient(circle, ${meta.glow}, transparent)` }}
+          style={{
+            background: `radial-gradient(circle, ${meta.glow}, transparent)`,
+          }}
         />
 
         <div className="flex items-center gap-4 min-w-0 relative z-10">
-          <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${meta.accent} flex items-center justify-center shrink-0 shadow-[0_2px_12px_rgba(139,92,246,0.30)]`}>
+          <div
+            className={`w-11 h-11 rounded-xl bg-gradient-to-br ${meta.accent} flex items-center justify-center shrink-0 shadow-[0_2px_12px_rgba(139,92,246,0.30)]`}
+          >
             <Building2 size={19} className="text-white" />
           </div>
           <div className="min-w-0">
@@ -197,7 +318,7 @@ export default function ListingPage() {
             transition={{ duration: 0.22 }}
             className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5"
           >
-            {listings.map((listing, i) => (
+            {loadData.map((listing, i) => (
               <motion.div
                 key={listing.id}
                 initial={{ opacity: 0, y: 16 }}
@@ -244,9 +365,24 @@ export default function ListingPage() {
             >
               <div className="relative w-14 h-14">
                 <svg className="animate-spin w-14 h-14" viewBox="0 0 56 56">
-                  <circle cx="28" cy="28" r="24" fill="none" stroke="url(#parentGrad)" strokeWidth="3.5" strokeDasharray="100 52" strokeLinecap="round" />
+                  <circle
+                    cx="28"
+                    cy="28"
+                    r="24"
+                    fill="none"
+                    stroke="url(#parentGrad)"
+                    strokeWidth="3.5"
+                    strokeDasharray="100 52"
+                    strokeLinecap="round"
+                  />
                   <defs>
-                    <linearGradient id="parentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <linearGradient
+                      id="parentGrad"
+                      x1="0%"
+                      y1="0%"
+                      x2="100%"
+                      y2="100%"
+                    >
                       <stop offset="0%" stopColor="#7c3aed" />
                       <stop offset="100%" stopColor="#6366f1" />
                     </linearGradient>
@@ -255,14 +391,17 @@ export default function ListingPage() {
                 <div className="absolute inset-[5px] rounded-full bg-white dark:bg-gray-950" />
               </div>
               <div className="text-center">
-                <p className="text-[13px] font-semibold text-gray-800 dark:text-white">Loading Parent Details</p>
-                <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">Please wait…</p>
+                <p className="text-[13px] font-semibold text-gray-800 dark:text-white">
+                  Loading Parent Details
+                </p>
+                <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">
+                  Please wait…
+                </p>
               </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
-
     </div>
   );
 }
@@ -292,22 +431,29 @@ function SkeletonCard() {
    EMPTY STATE
 ───────────────────────────────────────────────────────────────────────────── */
 function EmptyState({ meta, activeCategory, onCreateListing }) {
-  const label = CATEGORY_META[activeCategory]?.pageTitle?.replace(" Listings", "") ?? "listings";
+  const label =
+    CATEGORY_META[activeCategory]?.pageTitle?.replace(" Listings", "") ??
+    "listings";
   return (
-    <div className="
+    <div
+      className="
       flex flex-col items-center justify-center py-24 px-6
       rounded-2xl
       bg-white dark:bg-gray-900
       border border-dashed border-gray-200 dark:border-white/[0.08]
-    ">
-      <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${meta.accent} flex items-center justify-center mb-5 shadow-[0_4px_20px_rgba(139,92,246,0.28)]`}>
+    "
+    >
+      <div
+        className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${meta.accent} flex items-center justify-center mb-5 shadow-[0_4px_20px_rgba(139,92,246,0.28)]`}
+      >
         <Sparkles size={26} className="text-white" />
       </div>
       <h3 className="text-[17px] font-bold text-gray-800 dark:text-white mb-2">
         No {label.toLowerCase()} yet
       </h3>
       <p className="text-[13px] text-gray-500 dark:text-gray-400 mb-8 text-center max-w-xs leading-relaxed">
-        Create your first {label.toLowerCase()} to start attracting bookings and growing your revenue.
+        Create your first {label.toLowerCase()} to start attracting bookings and
+        growing your revenue.
       </p>
       <button
         onClick={onCreateListing}
