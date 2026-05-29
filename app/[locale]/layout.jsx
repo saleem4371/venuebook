@@ -23,7 +23,7 @@ import { HtmlDirSync } from "./HtmlDirSync";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { GlobalProvider } from "@/context/GlobalProvider";
 import { AuthProvider } from "@/context/AuthContext";
-import { GeoProvider } from "@/context/GeoContext";
+// import { GeoProvider } from "@/context/GeoContext";
 export default async function LocaleLayout({ children, params }) {
 
    const cookieStore = await cookies();
@@ -62,9 +62,9 @@ export default async function LocaleLayout({ children, params }) {
       <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID}>
         <AuthProvider>
           <GlobalProvider>
-            <GeoProvider initialCountry={country}>
+            {/* <GeoProvider initialCountry={country}> */}
   {children}
-</GeoProvider>
+{/* </GeoProvider> */}
            </GlobalProvider>
         </AuthProvider>
       </GoogleOAuthProvider>
