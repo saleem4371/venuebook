@@ -1,67 +1,138 @@
 "use client";
 
-import Navbar             from "./components/Navbar";
-import VendorNavTabs      from "./components/VendorNavTabs";
-import BottomDock         from "./components/BottomNav";
-import MessageFAB         from "./components/MessageFAB";
-// import StandardFooter     from "./components/StandardFooter";
-import VerificationBanner from "./components/VerificationBanner";
-import ScrollToTop        from "./components/ScrollToTop";
-import { VendorUIProvider }        from "@/context/VendorUIContext";
-import { VendorCategoryProvider }  from "@/context/VendorCategoryContext";
-import VendorCategoryNavigator     from "./components/VendorCategoryNavigator";
+import { usePathname }           from "next/navigation";
+import { motion }                from "framer-motion";
+import Navbar                    from "./components/Navbar";
+import VendorNavTabs             from "./components/VendorNavTabs";
+import BottomDock                from "./components/BottomNav";
+import MessageFAB                from "./components/MessageFAB";
+import ScrollToTop               from "./components/ScrollToTop";
+import { VendorUIProvider }      from "@/context/VendorUIContext";
+import { VendorCategoryProvider, useVendorCategory } from "@/context/VendorCategoryContext";
+import VendorCategoryNavigator   from "./components/VendorCategoryNavigator";
+import CategoryTransitionOverlay from "./components/CategoryTransitionOverlay";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // VENDOR ENABLED CATEGORIES
 // Replace with API/session data once auth is wired.
-// • 1 entry  → navigator hidden automatically (single-category vendor)
-// • 2+ entries → floating navigator shown, active category shared via context
 // ─────────────────────────────────────────────────────────────────────────────
 const VENDOR_CATEGORIES = ["venues", "farmstays", "studios"];
 
-export default function AdminLayout({ children }) {
+/* ── Animation config ─────────────────────────────────────────────── */
+const EASE_OUT = [0.16, 1, 0.3, 1];
+
+const shrinkVariants = {
+  idle: {
+    scale:   1,
+    opacity: 1,
+    filter:  "blur(0px)",
+    transition: { duration: 0.44, ease: EASE_OUT },
+  },
+  shrinking: {
+    scale:   0.982,        /* very gentle recede — cinematic, not dramatic    */
+    opacity: 0.65,
+    filter:  "blur(3px)",  /* page contextually blurs; overlay does the rest  */
+    transition: { duration: 0.18, ease: [0.4, 0, 1, 1] },
+  },
+  loading: {
+    scale:   0.982,
+    opacity: 0.65,
+    filter:  "blur(3px)",
+    transition: { duration: 0.01 }, /* hold frozen until idle */
+  },
+};
+
+/**
+ * PageMainWrapper
+ * ───────────────
+ * Inner component (lives inside VendorCategoryProvider) that reads
+ * the transition phase and applies the scale-down / blur effect to
+ * the main content area while the overlay is active.
+ */
+function PageMainWrapper({ isListingEditor, isFullBleedPage, isFullBleedPage1, children }) {
+  const { phase } = useVendorCategory();
+
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-950">
+    <motion.main
+      variants={shrinkVariants}
+      animate={phase}
+      initial="idle"
+      className={[
+        isFullBleedPage || isFullBleedPage1
+          ? ""
+          : "px-4 sm:px-6 md:px-8 lg:px-10 pb-24 space-y-6",
+        isListingEditor
+          ? "pt-[64px] md:pt-[72px]"
+          : "pt-[120px] md:pt-[140px]",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      style={{ transformOrigin: "center top" }}
+    >
+      {children}
+    </motion.main>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   VENDOR LAYOUT
+══════════════════════════════════════════════════════════════════════ */
+export default function AdminLayout({ children }) {
+  const pathname = usePathname();
+
+  const isListingEditor  = /\/vendor\/listing\/.+/.test(pathname);
+  const isFullBleedPage  = /\/vendor\/package/.test(pathname);
+  const isFullBleedPage1 = /\/vendor\/teams|\/vendor\/addons/.test(pathname);
+  /* Messages page owns its own padding/layout for the split-pane viewport fill */
+  const isMessagesPage   = /\/vendor\/messages/.test(pathname);
+
+  return (
+    <div className="min-h-screen bg-white dark:bg-gray-950" suppressHydrationWarning>
       <VendorCategoryProvider vendorCategories={VENDOR_CATEGORIES}>
         <VendorUIProvider>
+
           {/* PRIMARY HEADER */}
           <Navbar />
 
-          {/* SECONDARY NAV BAR — desktop only, fixed at top-[72px] */}
-          <VendorNavTabs />
+          {/* SECONDARY NAV BAR — hidden inside listing editor */}
+          {!isListingEditor && <VendorNavTabs />}
 
-          {/* FLOATING CATEGORY NAVIGATOR
-              Fixed position, outside main flow.
-              Hidden automatically when VENDOR_CATEGORIES has ≤ 1 entry.
-              Desktop: insetInlineEnd 40px, top 128px
-              Mobile:  insetInlineEnd 16px, top calc(80px + safe-area-inset-top) */}
-          <VendorCategoryNavigator />
+          {/* FLOATING CATEGORY NAVIGATOR — hidden inside listing editor */}
+          {!isListingEditor && <VendorCategoryNavigator />}
 
-          {/* SCROLL TO TOP — fires on every route change */}
+          {/* SCROLL TO TOP */}
           <ScrollToTop />
 
-          {/* VERIFICATION BANNER
-              Floating pill — fixed, pointer-events-none outer, does NOT push layout.
-              mobile: anchored at top-[64px]
-              desktop: anchored at top-[116px] (below header 72 + secondary 44) */}
-          <VerificationBanner />
+          {/*
+            MAIN CONTENT
+            PageMainWrapper reads phase from context and applies the
+            cinematic scale-down during category transitions.
 
-          {/* MAIN CONTENT
-              Banner is floating (out of flow), so pt only covers fixed headers.
-              mobile:  header 64 + 16 gutter = pt-[80px]
-              desktop: header 72 + secondary 44 + 16 gutter = pt-[132px] */}
-          <main className=" px-4 sm:px-6 md:px-8 lg:px-10 pt-[120px] md:pt-[140px] pb-24 space-y-6">
+            Full-bleed pages (package): component manages its own spacing.
+            Listing editor: exact navbar height, no gutter.
+              mobile:  pt-[64px]
+              desktop: pt-[72px]
+            All other pages: full offset including secondary nav tabs.
+              mobile:  pt-[120px]
+              desktop: pt-[140px]
+          */}
+          <PageMainWrapper
+            isListingEditor={isListingEditor}
+            isFullBleedPage={isFullBleedPage || isMessagesPage}
+            isFullBleedPage1={isFullBleedPage1}
+          >
             {children}
-          </main>
+          </PageMainWrapper>
+
+          {/* CINEMATIC CATEGORY TRANSITION OVERLAY — portal to document.body */}
+          <CategoryTransitionOverlay />
 
           {/* FLOATING ELEMENTS */}
           <div className="relative z-40">
             <MessageFAB />
-            <BottomDock />
+            {!isListingEditor && <BottomDock />}
           </div>
 
-          {/* FOOTER */}
-          {/* <StandardFooter vendorType="STANDARD" /> */}
         </VendorUIProvider>
       </VendorCategoryProvider>
     </div>
