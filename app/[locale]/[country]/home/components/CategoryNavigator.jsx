@@ -43,7 +43,9 @@ function useIsMobile(bp = 768) {
 /*  Root component                                                      */
 /* ------------------------------------------------------------------ */
 
-export default function CategoryNavigator() {
+export default function CategoryNavigator({loadData}) {
+
+  console.log('load Category')
   const [isOpen,   setIsOpen]   = useState(false);
   const [mounted,  setMounted]  = useState(false);
   const containerRef            = useRef(null);
@@ -101,8 +103,8 @@ export default function CategoryNavigator() {
   };
 
   return isMobile
-    ? <MobileNav containerRef={containerRef} {...shared} />
-    : <DesktopNav containerRef={containerRef} {...shared} />;
+    ? <MobileNav loadData = {loadData } containerRef={containerRef} {...shared} />
+    : <DesktopNav  loadData = {loadData } containerRef={containerRef} {...shared} />;
 }
 
 /* ------------------------------------------------------------------ */
@@ -111,7 +113,7 @@ export default function CategoryNavigator() {
 
 function DesktopNav({
   containerRef, isOpen, setIsOpen,
-  activeCategory, activeColor, activeLabel, onSelect, t,
+  activeCategory, activeColor, activeLabel, onSelect, t, loadData
 }) {
   return (
     <div
@@ -147,7 +149,7 @@ function DesktopNav({
         ].join(" ")}
       >
         <IconBadge color={activeColor}>
-          <CategoryIcon id={activeCategory} className="h-3.5 w-3.5 text-white" />
+          <CategoryIcon id={activeCategory} data = { loadData } className="h-3.5 w-3.5 text-white" />
         </IconBadge>
 
         <span className="text-gray-800 dark:text-gray-100">{activeLabel}</span>
@@ -185,6 +187,7 @@ function DesktopNav({
               onSelect={onSelect}
               onClose={() => setIsOpen(false)}
               t={t}
+              loadData={loadData}
             />
           </motion.div>
         )}
@@ -199,7 +202,7 @@ function DesktopNav({
 
 function MobileNav({
   containerRef, isOpen, setIsOpen,
-  activeCategory, activeColor, activeLabel, onSelect, t,
+  activeCategory, activeColor, activeLabel, onSelect, t, loadData
 }) {
   return (
     <div
@@ -236,8 +239,8 @@ function MobileNav({
             : "",
         ].join(" ")}
       >
-        <IconBadge color={activeColor}>
-          <CategoryIcon id={activeCategory} className="h-3.5 w-3.5 text-white" />
+        <IconBadge color={activeColor} >
+          <CategoryIcon id={activeCategory} data = { loadData } className="h-3.5 w-3.5 text-white" />
         </IconBadge>
 
         <span className="text-gray-800 dark:text-gray-100">{activeLabel}</span>
@@ -281,6 +284,7 @@ function MobileNav({
               onSelect={onSelect}
               onClose={() => setIsOpen(false)}
               t={t}
+               loadData={loadData}
             />
           </motion.div>
         )}
@@ -293,7 +297,7 @@ function MobileNav({
 /*  Shared panel content                                                */
 /* ------------------------------------------------------------------ */
 
-function PanelContent({ cols, activeCategory, activeColor, onSelect, onClose, t }) {
+function PanelContent({ cols, activeCategory, activeColor, onSelect, onClose, t ,loadData}) {
   const gridCols = cols === 3 ? "grid-cols-3" : "grid-cols-2";
 
   return (
@@ -315,7 +319,7 @@ function PanelContent({ cols, activeCategory, activeColor, onSelect, onClose, t 
 
       {/* Category grid */}
       <div className={`grid ${gridCols} gap-2`}>
-        {CATEGORY_ORDER.map((id) => {
+        {/* {CATEGORY_ORDER.map((id) => {
           const cat    = CATEGORIES[id];
           const color  = CATEGORY_COLORS[cat.color];
           const isAct  = id === activeCategory;
@@ -338,12 +342,10 @@ function PanelContent({ cols, activeCategory, activeColor, onSelect, onClose, t 
                     : "cursor-pointer bg-gray-50 dark:bg-gray-800/60 hover:bg-gray-100/80 dark:hover:bg-gray-800 active:scale-[0.97]",
               ].join(" ")}
             >
-              {/* Icon badge */}
               <IconBadge color={color} size="md">
-                <CategoryIcon id={id} className="h-4 w-4 text-white" />
+                <CategoryIcon id={id}  data = { loadData } className="h-4 w-4 text-white" />
               </IconBadge>
 
-              {/* Label */}
               <span
                 className={[
                   "text-[13px] font-medium leading-snug",
@@ -355,7 +357,6 @@ function PanelContent({ cols, activeCategory, activeColor, onSelect, onClose, t 
                 {t(id)}
               </span>
 
-              {/* Coming soon badge */}
               {cat.comingSoon && (
                 <span
                   className="absolute top-2 end-2 rounded-full bg-gray-100 dark:bg-gray-700/80 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400"
@@ -366,7 +367,51 @@ function PanelContent({ cols, activeCategory, activeColor, onSelect, onClose, t 
               )}
             </button>
           );
-        })}
+        })} */}
+        {loadData?.map((item) => {
+  const id = item?.name?.toLowerCase()+'s';
+
+  const cat = CATEGORIES[id] || {};
+  const color = CATEGORY_COLORS[item.color || "violet"];
+  const isAct = id === activeCategory;
+
+  return (
+    <button
+      key={item.id}
+      type="button"
+       onClick={() => onSelect(id)}
+              disabled={cat.comingSoon}
+              aria-current={isAct ? "true" : undefined}
+      className={[
+        "relative flex flex-col gap-2 rounded-xl p-3 text-start",
+        "transition-all duration-150",
+        "focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500",
+        isAct
+          ? `${color.light} ring-1 ${color.ring} shadow-sm`
+          : "cursor-pointer bg-gray-50 dark:bg-gray-800/60 hover:bg-gray-100/80 dark:hover:bg-gray-800 active:scale-[0.97]",
+      ].join(" ")}
+    >
+      <IconBadge color={color} size="md">
+        <CategoryIcon
+          id={id}
+          data={loadData}
+          className="h-4 w-4 text-white object-contain"
+        />
+      </IconBadge>
+
+      <span
+        className={[
+          "text-[13px] font-medium leading-snug",
+          isAct
+            ? color.text
+            : "text-gray-700 dark:text-gray-300",
+        ].join(" ")}
+      >
+        {item.name}
+      </span>
+    </button>
+  );
+})}
       </div>
     </div>
   );
@@ -392,15 +437,67 @@ function IconBadge({ color, size = "sm", children }) {
 /*  Category icons                                                      */
 /* ------------------------------------------------------------------ */
 
-function CategoryIcon({ id, className }) {
-  switch (id) {
-    case "venues":      return <VenueIcon      className={className} />;
-    case "farmstays":   return <FarmstayIcon   className={className} />;
-    case "studios":     return <StudioIcon     className={className} />;
-    case "rentals":     return <RentalIcon     className={className} />;
-    case "workspaces":  return <WorkspaceIcon  className={className} />;
-    case "experiences": return <ExperienceIcon className={className} />;
-    default:            return <VenueIcon      className={className} />;
+// function CategoryIcon({ id, className , data }) {
+//   switch (id) {
+//     case "venues":      return <VenueIcon      className={className} />;
+//     case "farmstays":   return <FarmstayIcon   className={className} />;
+//     case "studios":     return <StudioIcon     className={className} />;
+//     case "rentals":     return <RentalIcon     className={className} />;
+//     case "workspaces":  return <WorkspaceIcon  className={className} />;
+//     case "experiences": return <ExperienceIcon className={className} />;
+//     default:            return <VenueIcon      className={className} />;
+//   }
+// }
+function CategoryIcon({ id, className, data = [] }) {
+  const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+
+  // find matching category
+  const category = data.find(
+    (item) =>
+      item?.name?.toLowerCase() === id?.toLowerCase()
+  );
+
+  // image from API
+  if (category?.image) {
+    return (
+      <img
+        src={`${BASE_URL}/${category.image}`}
+        alt={category.name}
+        className={className}
+      />
+    );
+  }
+
+
+
+  // fallback icons
+  switch (id?.toLowerCase()) {
+    case "venue":
+    case "venues":
+      return <VenueIcon className={className} />;
+
+    case "farmstay":
+    case "farmstays":
+      return <FarmstayIcon className={className} />;
+
+    case "studio":
+    case "studios":
+      return <StudioIcon className={className} />;
+
+    case "rental":
+    case "rentals":
+      return <RentalIcon className={className} />;
+
+    case "workspace":
+    case "workspaces":
+      return <WorkspaceIcon className={className} />;
+
+    case "experience":
+    case "experiences":
+      return <ExperienceIcon className={className} />;
+
+    default:
+      return <VenueIcon className={className} />;
   }
 }
 

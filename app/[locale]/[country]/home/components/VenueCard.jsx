@@ -2,7 +2,8 @@
 
 import { motion } from "framer-motion";
 
-export default function VenueCard({ venue }) {
+export default function VenueCard({ title, subtitle, venue ,dataSource}) {
+   const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
   return (
     <motion.div
       whileHover={{ y: -4 }}
@@ -13,7 +14,7 @@ export default function VenueCard({ venue }) {
         {/* Image */}
         <div className="relative overflow-hidden h-40">
           <img
-            src={venue.image}
+            src={dataSource == 'api' ? `${BASE_URL}/${venue.image}` : venue.image}
             alt={venue.name}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             loading="lazy"

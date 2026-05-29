@@ -18,7 +18,7 @@ export default function Navbar() {
 
           {/* LOGO */}
           <img
-            src="https://www.venuebook.in/img/logo.490f6c58.svg"
+            src="https://beta.venuebook.in/img/logo.490f6c58.svg"
             className="w-28 sm:w-36"
             alt="logo"
           />

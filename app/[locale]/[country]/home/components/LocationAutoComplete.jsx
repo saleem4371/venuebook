@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MapPinIcon, ClockIcon, FireIcon, MagnifyingGlassIcon, XMarkIcon } from "@heroicons/react/24/solid";
+import { MapPinIcon, ClockIcon, MagnifyingGlassIcon, XMarkIcon } from "@heroicons/react/24/solid";
 
 /* ── Category-aware popular destinations ─────────────────────── */
 const POPULAR_BY_CATEGORY = {
@@ -68,9 +68,147 @@ function saveRecent(city) {
     localStorage.setItem(RECENT_STORAGE_KEY, JSON.stringify(updated));
   } catch {}
 }
+function removeRecent(city) {
+  try {
+    const updated = loadRecent().filter((c) => c !== city);
+    localStorage.setItem(RECENT_STORAGE_KEY, JSON.stringify(updated));
+    return updated;
+  } catch { return []; }
+}
+
+/* ── Shared suggestion list (popup + inline) ─────────────────── */
+function SuggestionList({ query, google, recents, setRecents, popular, tint, onSelect }) {
+  const tintHex = tint?.hex ?? "#7c3aed";
+
+  if (query.length >= 2) {
+    if (google.length === 0) {
+      return (
+        <div className="p-6 text-center">
+          <p className="text-white/40 text-sm">No results for "{query}"</p>
+        </div>
+      );
+    }
+    return (
+      <div className="px-2 pb-2">
+        <p className="text-[9px] font-bold uppercase tracking-widest text-white/30 px-2 pb-2 pt-3.5">
+          Suggestions
+        </p>
+        {google.map((place) => (
+          <button
+            key={place.place_id}
+            type="button"
+            onClick={() => onSelect(place.description)}
+            className="w-full flex items-start gap-3 px-3 py-2.5 rounded-xl hover:bg-white/[0.07] transition text-start group"
+          >
+            <div className="shrink-0 mt-0.5 p-1.5 rounded-lg bg-white/[0.08] group-hover:bg-white/[0.12] transition">
+              <MagnifyingGlassIcon className="w-3.5 h-3.5 text-white/50" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-white text-sm font-medium truncate leading-snug">
+                {place.structured_formatting?.main_text ?? place.description}
+              </p>
+              <p className="text-white/40 text-xs truncate mt-0.5">
+                {place.structured_formatting?.secondary_text ?? ""}
+              </p>
+            </div>
+          </button>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {recents.length > 0 && (
+        <div className="p-2 border-b border-white/[0.07]">
+          <p className="text-[9px] font-bold uppercase tracking-widest text-white/30 px-2 py-1.5">
+            Recent searches
+          </p>
+          <AnimatePresence initial={false}>
+            {recents.map((city) => (
+              <motion.div
+                key={city}
+                layout
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                transition={{ duration: 0.18 }}
+                className="overflow-hidden"
+              >
+                <div className="flex items-center gap-2 group rounded-xl hover:bg-white/[0.07] transition px-1">
+                  <button
+                    type="button"
+                    onClick={() => onSelect(city)}
+                    className="flex items-center gap-3 flex-1 py-2 ps-2 text-start"
+                  >
+                    <div className="shrink-0 p-1.5 rounded-lg bg-white/[0.08]">
+                      <ClockIcon className="w-3.5 h-3.5 text-white/50" />
+                    </div>
+                    <p className="text-white/80 text-sm">{city}</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const updated = removeRecent(city);
+                      setRecents(updated);
+                    }}
+                    className="shrink-0 p-1.5 rounded-lg text-white/30 hover:text-white/70 hover:bg-white/10 transition opacity-0 group-hover:opacity-100 focus:opacity-100"
+                    aria-label={`Remove ${city}`}
+                  >
+                    <XMarkIcon className="w-3 h-3" />
+                  </button>
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+      )}
+
+      <div className="px-2 pb-2">
+        <p className="text-[9px] font-bold uppercase tracking-widest text-white/30 px-2 pb-2 pt-3.5">
+          Popular destinations
+        </p>
+        {popular.map((loc) => (
+          <button
+            key={loc.city}
+            type="button"
+            onClick={() => onSelect(loc.city)}
+            className="w-full flex items-start gap-3 px-3 py-2.5 rounded-xl hover:bg-white/[0.07] transition text-start group"
+          >
+            <div
+              className="shrink-0 mt-0.5 p-1.5 rounded-lg transition"
+              style={{ background: tint?.light ?? "rgba(124,58,237,0.15)" }}
+            >
+              <MapPinIcon className="w-3.5 h-3.5" style={{ color: tintHex }} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-white text-sm font-medium leading-relaxed break-words">
+                {loc.city}
+                <span className="text-white/40 font-normal"> · {loc.state}</span>
+              </p>
+              <p className="text-white/40 text-xs mt-0.5 leading-relaxed break-words">{loc.desc}</p>
+            </div>
+          </button>
+        ))}
+      </div>
+    </>
+  );
+}
 
 /* ── Main component ─────────────────────────────────────────── */
-export default function LocationAutoComplete({ category = "venues", tint, placeholder, textClass, placeholderClass, clearClass }) {
+export default function LocationAutoComplete({
+  category = "venues",
+  tint,
+  placeholder,
+  textClass,
+  placeholderClass,
+  clearClass,
+  /** When true, renders suggestions inline (no absolute dropdown). For MobileSearchSheet. */
+  inline      = false,
+  /** Called with the selected city string — useful when inline=true. */
+  onSelect:   onSelectProp,
+}) {
   const inputRef  = useRef(null);
   const wrapRef   = useRef(null);
   const [show,    setShow]    = useState(false);
@@ -80,63 +218,90 @@ export default function LocationAutoComplete({ category = "venues", tint, placeh
 
   const popular = POPULAR_BY_CATEGORY[category] ?? POPULAR_BY_CATEGORY.venues;
 
-  /* Load recents on mount */
   useEffect(() => { setRecents(loadRecent()); }, []);
 
-  /* Google autocomplete */
   useEffect(() => {
-    if (!window.google || query.length < 2) { setGoogle([]); return; }
+    if (typeof window === "undefined" || !window.google || query.length < 2) { setGoogle([]); return; }
     const svc = new window.google.maps.places.AutocompleteService();
     svc.getPlacePredictions({ input: query, componentRestrictions: { country: "in" } }, (preds) => {
       setGoogle(preds ?? []);
     });
   }, [query]);
 
-  /* Outside click */
+  /* Outside click (popup mode only) */
   useEffect(() => {
-    if (!show) return;
+    if (inline || !show) return;
     const handler = (e) => {
       if (wrapRef.current && !wrapRef.current.contains(e.target)) setShow(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, [show]);
+  }, [show, inline]);
 
   const handleSelect = (city) => {
     setQuery(city);
     saveRecent(city);
     setRecents(loadRecent());
     setShow(false);
+    onSelectProp?.(city);
   };
 
   const tintBorder = tint?.border ?? "rgba(255,255,255,0.15)";
   const tintGlow   = tint?.glow   ?? "0 0 24px rgba(255,255,255,0.05)";
-  const tintHex    = tint?.hex    ?? "#7c3aed";
 
-  return (
-    <div ref={wrapRef} className="relative w-full">
-      {/* Input */}
-      <div className="flex items-center gap-2">
-        <input
-          ref={inputRef}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onFocus={() => setShow(true)}
-          placeholder={placeholder ?? "Search city or area"}
-          className={`bg-transparent outline-none w-full text-sm ${placeholderClass ?? "placeholder-white/35"} ${textClass ?? "text-white"}`}
-        />
-        {query && (
-          <button
-            type="button"
-            onClick={() => { setQuery(""); inputRef.current?.focus(); }}
-            className={`transition shrink-0 ${clearClass ?? "text-white/40 hover:text-white/80"}`}
-          >
-            <XMarkIcon className="w-3.5 h-3.5" />
-          </button>
-        )}
+  const inputEl = (
+    <div className="flex items-center gap-2">
+      <input
+        ref={inputRef}
+        value={query}
+        onChange={(e) => { setQuery(e.target.value); if (!inline) setShow(true); }}
+        onFocus={() => !inline && setShow(true)}
+        placeholder={placeholder ?? "Search city or area"}
+        className={`bg-transparent outline-none w-full text-sm ${placeholderClass ?? "placeholder-white/35"} ${textClass ?? "text-white"}`}
+      />
+      {query && (
+        <button
+          type="button"
+          onClick={() => { setQuery(""); onSelectProp?.(""); inputRef.current?.focus(); }}
+          className={`transition shrink-0 ${clearClass ?? "text-white/40 hover:text-white/80"}`}
+        >
+          <XMarkIcon className="w-3.5 h-3.5" />
+        </button>
+      )}
+    </div>
+  );
+
+  /* ── Inline mode: suggestions render in document flow ─────── */
+  if (inline) {
+    return (
+      <div className="w-full">
+        {inputEl}
+        <div
+          className="mt-2 rounded-2xl overflow-y-auto max-h-[260px]"
+          style={{
+            background: "rgba(12,12,18,0.97)",
+            border:     `1px solid ${tintBorder}`,
+          }}
+        >
+          <SuggestionList
+            query={query}
+            google={google}
+            recents={recents}
+            setRecents={setRecents}
+            popular={popular}
+            tint={tint}
+            onSelect={handleSelect}
+          />
+        </div>
       </div>
+    );
+  }
 
-      {/* Dropdown */}
+  /* ── Popup mode (desktop hero search bar) ─────────────────── */
+  return (
+    <div ref={wrapRef} className="w-full">
+      {inputEl}
+
       <AnimatePresence>
         {show && (
           <motion.div
@@ -145,104 +310,22 @@ export default function LocationAutoComplete({ category = "venues", tint, placeh
             exit={{   opacity: 0, y: 8,   scale: 0.98 }}
             transition={{ duration: 0.18, ease: "easeOut" }}
             style={{
-              background:        "rgba(12,12,18,0.97)",
-              border:            `1px solid ${tintBorder}`,
-              boxShadow:         `0 24px 64px rgba(0,0,0,0.6), ${tintGlow}`,
-              insetInlineStart:  0,
+              background:       "rgba(12,12,18,0.97)",
+              border:           `1px solid ${tintBorder}`,
+              boxShadow:        `0 24px 64px rgba(0,0,0,0.6), ${tintGlow}`,
+              insetInlineStart: 0,
             }}
-            className="absolute top-full mt-3 w-max min-w-full min-w-[300px] max-w-[380px] z-[9999] rounded-2xl backdrop-blur-2xl overflow-hidden"
+            className="absolute top-full mt-1.5 min-w-[380px] max-w-[400px] z-[9999] rounded-2xl backdrop-blur-2xl overflow-hidden"
           >
-            {/* Google suggestions when typing */}
-            {query.length >= 2 && google.length > 0 && (
-              <div className="p-2">
-                <p className="text-[9px] font-bold uppercase tracking-widest text-white/30 px-2 py-1.5">
-                  Suggestions
-                </p>
-                {google.map((place) => (
-                  <button
-                    key={place.place_id}
-                    type="button"
-                    onClick={() => handleSelect(place.description)}
-                    className="w-full flex items-start gap-3 px-3 py-2.5 rounded-xl hover:bg-white/[0.07] transition text-start group"
-                  >
-                    <div className="shrink-0 mt-0.5 p-1.5 rounded-lg bg-white/[0.08] group-hover:bg-white/[0.12] transition">
-                      <MagnifyingGlassIcon className="w-3.5 h-3.5 text-white/50" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-white text-sm font-medium truncate leading-snug">
-                        {place.structured_formatting?.main_text ?? place.description}
-                      </p>
-                      <p className="text-white/40 text-xs truncate mt-0.5">
-                        {place.structured_formatting?.secondary_text ?? ""}
-                      </p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* Empty query — show recents + popular */}
-            {query.length < 2 && (
-              <>
-                {/* Recent searches */}
-                {recents.length > 0 && (
-                  <div className="p-2 border-b border-white/[0.07]">
-                    <p className="text-[9px] font-bold uppercase tracking-widest text-white/30 px-2 py-1.5">
-                      Recent searches
-                    </p>
-                    {recents.map((city) => (
-                      <button
-                        key={city}
-                        type="button"
-                        onClick={() => handleSelect(city)}
-                        className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-white/[0.07] transition text-start"
-                      >
-                        <div className="shrink-0 p-1.5 rounded-lg bg-white/[0.08]">
-                          <ClockIcon className="w-3.5 h-3.5 text-white/50" />
-                        </div>
-                        <p className="text-white/80 text-sm">{city}</p>
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {/* Popular destinations — category-aware */}
-                <div className="p-2">
-                  <p className="text-[9px] font-bold uppercase tracking-widest text-white/30 px-2 py-1.5">
-                    Popular destinations
-                  </p>
-                  {popular.map((loc) => (
-                    <button
-                      key={loc.city}
-                      type="button"
-                      onClick={() => handleSelect(loc.city)}
-                      className="w-full flex items-start gap-3 px-3 py-2.5 rounded-xl hover:bg-white/[0.07] transition text-start group"
-                    >
-                      <div
-                        className="shrink-0 mt-0.5 p-1.5 rounded-lg transition"
-                        style={{ background: tint?.light ?? "rgba(124,58,237,0.15)" }}
-                      >
-                        <MapPinIcon className="w-3.5 h-3.5" style={{ color: tintHex }} />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-white text-sm font-medium leading-relaxed break-words">
-                          {loc.city}
-                          <span className="text-white/40 font-normal"> · {loc.state}</span>
-                        </p>
-                        <p className="text-white/40 text-xs mt-0.5 leading-relaxed break-words">{loc.desc}</p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-
-            {/* No google results */}
-            {query.length >= 2 && google.length === 0 && (
-              <div className="p-6 text-center">
-                <p className="text-white/40 text-sm">No results for "{query}"</p>
-              </div>
-            )}
+            <SuggestionList
+              query={query}
+              google={google}
+              recents={recents}
+              setRecents={setRecents}
+              popular={popular}
+              tint={tint}
+              onSelect={handleSelect}
+            />
           </motion.div>
         )}
       </AnimatePresence>

@@ -1,8 +1,9 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { MagnifyingGlassIcon, BellIcon } from "@heroicons/react/24/solid";
-import { useState, useEffect, useRef } from "react";
+import { MagnifyingGlassIcon, BellIcon, ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/solid";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useRouter, useParams } from "next/navigation";
 
 import MobileSearchSheet   from "./MobileSearchSheet";
 import LocationAutoComplete from "./LocationAutoComplete";
@@ -12,8 +13,7 @@ import DatePicker           from "./DatePicker";
 import { CATEGORIES, CATEGORY_ORDER, CATEGORY_TINTS } from "@/config/categoryConfig";
 import { useCategory } from "@/context/CategoryContext";
 
-import { useGeo } from "@/context/GeoContext";
-
+import { country_of_category } from "@/services/global.service";
 
 /* ─── Labels ────────────────────────────────────────────────── */
 const WORD_LABEL = {
@@ -24,14 +24,14 @@ const WORD_LABEL = {
   workspaces:  "Workspace",
   experiences: "Experience",
 };
-const TAB_LABEL = {
-  venues:      "Venues",
-  farmstays:   "Farmstays",
-  studios:     "Studios",
-  rentals:     "Rentals",
-  workspaces:  "Workspaces",
-  experiences: "Experiences",
-};
+// const TAB_LABEL = {
+//   venues:      "Venues",
+//   farmstays:   "Farmstays",
+//   studios:     "Studios",
+//   rentals:     "Rentals",
+//   workspaces:  "Workspaces",
+//   experiences: "Experiences",
+// };
 
 /* ─── Search field matrix ───────────────────────────────────── */
 /*
@@ -74,28 +74,133 @@ const SEARCH_CONFIG = {
   ],
   experiences: null,
 };
+const CATEGORY_KEY_MAP = {
+  venues: "venues",
+  venue: "venues",
 
+  farmstays: "farmstays",
+  farmstay: "farmstays",
+
+  studios: "studios",
+  studio: "studios",
+
+  rentals: "rentals",
+  rental: "rentals",
+
+  workspaces: "workspaces",
+  workspace: "workspaces",
+
+  experiences: "experiences",
+  experience: "experiences",
+};
 const WORDS = CATEGORY_ORDER.map((id) => WORD_LABEL[id]);
 
 /* ─── Component ─────────────────────────────────────────────── */
 export default function HeroSection() {
+   const router = useRouter();
+const params = useParams();
+
+const locale = params?.locale || "en";
+const country = params?.country || "in";
+
   const { activeCategory, setActiveCategory } = useCategory();
 
   const [isMobile,    setIsMobile]    = useState(false);
   const [mounted,     setMounted]     = useState(false);
   const [openSearch,  setOpenSearch]  = useState(false);
   const [wordIdx,     setWordIdx]     = useState(0);
-  /* date / guest values keyed by field id */
+   const [loadData, setLoadData] = useState([]);
   const [dates,       setDates]       = useState({});
+  const [mediaMap, setMediaMap] = useState({});
+
+   const [searchData, setSearchData] = useState({
+  location: "",
+  date: "",
+  checkin: "",
+  checkout: "",
+  guests: "",
+});
+
+  /* Category tab scroll state */
+  const tabsRef                       = useRef(null);
+  const [canTabLeft,  setCanTabLeft]  = useState(false);
+  const [canTabRight, setCanTabRight] = useState(false);
+
+
+    const TAB_LABEL = loadData.reduce((acc, item) => {
+    const key = CATEGORY_KEY_MAP[item.name?.toLowerCase()?.trim()];
+    if (!key) return acc;
+    acc[key] =
+  (item.name?.charAt(0)?.toUpperCase() || "") +
+  (item.name?.slice(1) || "") +
+  (item.name?.endsWith("s") ? "" : "s");
+    return acc;
+  }, {});
+
+  const enabledCategories = Object.keys(TAB_LABEL);
+
+  const WORDS =
+    enabledCategories.length > 0
+      ? enabledCategories
+          .filter((id) => WORD_LABEL[id])
+          .map((id) => WORD_LABEL[id])
+      : [];
+
+
+       useEffect(() => {
+    if (!enabledCategories.length) return;
+    if (!enabledCategories.includes(activeCategory)) {
+      setActiveCategory(enabledCategories[0]);
+      setDates({});
+    }
+  }, [enabledCategories, activeCategory]);
+
+//Load 
+
+  useEffect(() => {
+    load();
+  }, []);
+  const load = async () => {
+    try {
+      const res = await country_of_category();
+      setLoadData(Array.isArray(res?.data) ? res.data : []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      // setLoading(false);
+    }
+  };
+
+
+
+
+  const updateTabScroll = useCallback(() => {
+    const el = tabsRef.current;
+    if (!el) return;
+    const { scrollLeft, scrollWidth, clientWidth } = el;
+    setCanTabLeft(scrollLeft > 4);
+    setCanTabRight(scrollLeft < scrollWidth - clientWidth - 4);
+  }, []);
+
+  const scrollTabs = (dir) => {
+    const el = tabsRef.current;
+    if (!el) return;
+    el.scrollBy({ left: dir * 160, behavior: "smooth" });
+  };
 
   /* Hydration */
   useEffect(() => setMounted(true), []);
 
   /* Word rotation */
-  useEffect(() => {
-    const t = setInterval(() => setWordIdx((p) => (p + 1) % WORDS.length), 2800);
-    return () => clearInterval(t);
-  }, []);
+ useEffect(() => {
+  if (!WORDS.length) return;
+
+  const t = setInterval(() => {
+    setWordIdx((p) => (p + 1) % WORDS.length);
+  }, 2800);
+
+  return () => clearInterval(t);
+}, [WORDS.length]);
 
   /* Mobile detection */
   useEffect(() => {
@@ -105,16 +210,60 @@ export default function HeroSection() {
     return () => window.removeEventListener("resize", check);
   }, []);
 
+  /* Tab scroll arrow visibility */
+  useEffect(() => {
+    const el = tabsRef.current;
+    if (!el) return;
+    updateTabScroll();
+    el.addEventListener("scroll", updateTabScroll, { passive: true });
+    const ro = new ResizeObserver(updateTabScroll);
+    ro.observe(el);
+    return () => { el.removeEventListener("scroll", updateTabScroll); ro.disconnect(); };
+  }, [updateTabScroll, mounted]);
+
   /* Clear date values on category switch */
   const handleTabClick = (id) => {
     setActiveCategory(id);
     setDates({});
   };
 
+
+  useEffect(() => {
+    const map = {};
+    loadData.forEach((item) => {
+      const key = CATEGORY_KEY_MAP[item.name?.toLowerCase()?.trim()];
+      if (!key) return;
+      map[key] = {
+        image: item.image,
+        video: item.video,
+      };
+    });
+
+    setMediaMap(map);
+  }, [loadData]);
+
+    const handleSearch = () => {
+  console.log("SEARCH DATA 👉", searchData);
+
+  const params = new URLSearchParams();
+
+  Object.entries(searchData).forEach(([key, value]) => {
+    if (value !== null && value !== undefined && value !== "") {
+      params.set(key, String(value));
+    }
+  });
+
+  console.log("URL 👉", params.toString());
+
+  router.push(
+    `/${locale}/${country}/search/${activeCategory}?${params.toString()}`
+  );
+};
+
   if (!mounted) return null;
 
   const tint        = CATEGORY_TINTS[activeCategory] ?? CATEGORY_TINTS.venues;
-  const fields      = SEARCH_CONFIG[activeCategory] ?? null;
+  const fields = SEARCH_CONFIG[activeCategory] ?? [];
   const isComingSoon = CATEGORIES[activeCategory]?.comingSoon ?? false;
 
   /* Tint-aware glass style for search bar */
@@ -124,7 +273,8 @@ export default function HeroSection() {
     boxShadow:   `0 8px 40px rgba(0,0,0,0.35), ${tint.glow}`,
   };
 
-   const { country, loading } = useGeo();
+ const currentMedia = mediaMap[activeCategory] || {};
+
 
   return (
     <>
@@ -132,18 +282,44 @@ export default function HeroSection() {
         overflow-hidden is on the inner background wrapper, NOT the section.
         This lets absolutely-positioned dropdowns (z-50) escape without clipping.
       */}
-      <section className="relative flex flex-col min-h-[55svh] md:min-h-[80vh]">
+      <section className="relative flex flex-col min-h-[45svh] md:min-h-[80vh]">
 
         {/* Background — overflow-hidden scoped here so video scale-105 doesn't bleed */}
         <div className="absolute inset-0 overflow-hidden">
           {isMobile ? (
             <div
               className="absolute inset-0 bg-cover bg-center"
-              style={{ backgroundImage: "url('https://www.venuebook.in/img/sintra.6885ed95.png')" }}
+               style={{
+                backgroundImage: currentMedia.image
+  ? `url(${process.env.NEXT_PUBLIC_API_URL}/${currentMedia.image})`
+  : "url('https://www.venuebook.in/img/sintra.6885ed95.png')",
+              }}
             />
+          ) :  currentMedia.video ? (
+            <video
+              autoPlay
+              muted
+              loop
+              playsInline
+              className="absolute inset-0 w-full h-full object-cover scale-105"
+            >
+              <source
+  src={`${process.env.NEXT_PUBLIC_API_URL}/${currentMedia.video}`}
+  type="video/mp4"
+/>
+            </video>
           ) : (
-            <video autoPlay muted loop playsInline className="absolute inset-0 w-full h-full object-cover scale-105">
-              <source src="https://api.venuebook.in/Upload/Video/HomePage.mp4" type="video/mp4" />
+            <video
+              autoPlay
+              muted
+              loop
+              playsInline
+              className="absolute inset-0 w-full h-full object-cover scale-105"
+            >
+              <source
+                src="https://api.venuebook.in/Upload/Video/HomePage.mp4"
+                type="video/mp4"
+              />
             </video>
           )}
           {/* Overlay */}
@@ -151,7 +327,7 @@ export default function HeroSection() {
         </div>
 
         {/* Content */}
-        <div className="relative z-10 flex flex-col flex-1 justify-center w-full max-w-6xl mx-auto px-5 sm:px-8 md:px-12 lg:px-16 pt-24 md:pt-28 pb-8 md:pb-10">
+        <div className="relative z-10 flex flex-col flex-1 justify-center w-full max-w-6xl mx-auto px-5 sm:px-8 md:px-12 lg:px-16 pt-32 md:pt-28 pb-8 md:pb-10">
 
           {/* Headline */}
           <motion.div
@@ -169,14 +345,14 @@ export default function HeroSection() {
               >
                 <AnimatePresence mode="wait">
                   <motion.span
-                    key={WORDS[wordIdx]}
+                   key={WORDS[wordIdx] || "default"}
                     initial={{ opacity: 0, y: 12, filter: "blur(5px)" }}
                     animate={{ opacity: 1, y: 0,  filter: "blur(0px)" }}
                     exit={{   opacity: 0, y: -12, filter: "blur(5px)" }}
                     transition={{ duration: 0.42, ease: "easeInOut" }}
                     className="absolute left-0 top-0 bg-gradient-to-r from-violet-400 via-fuchsia-400 to-pink-400 bg-clip-text text-transparent whitespace-nowrap"
                   >
-                    {WORDS[wordIdx]}
+                    {WORDS[wordIdx] || ""}
                   </motion.span>
                 </AnimatePresence>
               </span>
@@ -192,50 +368,94 @@ export default function HeroSection() {
             </motion.p>
           </motion.div>
 
-          {/* Category tabs */}
+          {/* Category tabs — scrollable, fade edges + small arrows when overflowing */}
           <motion.div
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.28 }}
             className="mt-6 md:mt-7"
           >
-            <div
-              className="flex items-center gap-2 overflow-x-auto pb-0.5"
-              style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-            >
-              {CATEGORY_ORDER.map((id) => {
-                const isActive = activeCategory === id;
-                const isSoon   = CATEGORIES[id].comingSoon;
-                const tabTint  = CATEGORY_TINTS[id];
+            <div className="relative">
+              {/* Left arrow */}
+              {canTabLeft && (
+                <button
+                  type="button"
+                  onClick={() => scrollTabs(-1)}
+                  className="absolute start-0 top-1/2 -translate-y-1/2 z-20 w-6 h-6 rounded-full bg-white/15 backdrop-blur-sm border border-white/25 flex items-center justify-center text-white hover:bg-white/25 transition-all"
+                  aria-label="Scroll categories left"
+                >
+                  <ChevronLeftIcon className="w-3 h-3" />
+                </button>
+              )}
 
-                return (
-                  <button
-                    key={id}
-                    onClick={() => handleTabClick(id)}
-                    style={isActive ? {
-                      background:  tabTint.activeBg,
-                      borderColor: tabTint.activeBorder,
-                      color:       "#fff",
-                      boxShadow:   `${tabTint.activeGlow}, 0 2px 8px rgba(0,0,0,0.3)`,
-                    } : {}}
-                    className={[
-                      "relative flex items-center gap-1.5 shrink-0 rounded-full px-4 py-2 border",
-                      "text-[13px] font-medium transition-all duration-200 whitespace-nowrap",
-                      "focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40",
-                      isActive
-                        ? "font-semibold"
-                        : "bg-white/[0.07] border-white/[0.15] text-white/80 hover:bg-white/[0.14] hover:border-white/30 active:scale-95",
-                    ].join(" ")}
-                  >
-                    {TAB_LABEL[id]}
-                    {isSoon && (
-                      <span className="text-[9px] font-bold bg-amber-400 text-black px-1.5 py-0.5 rounded-full uppercase tracking-wide leading-none">
-                        Soon   {loading ? "Loading..." : `Country: ${country}`}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
+              {/* Right arrow */}
+              {canTabRight && (
+                <button
+                  type="button"
+                  onClick={() => scrollTabs(1)}
+                  className="absolute end-0 top-1/2 -translate-y-1/2 z-20 w-6 h-6 rounded-full bg-white/15 backdrop-blur-sm border border-white/25 flex items-center justify-center text-white hover:bg-white/25 transition-all"
+                  aria-label="Scroll categories right"
+                >
+                  <ChevronRightIcon className="w-3 h-3" />
+                </button>
+              )}
+
+              {/* Left fade */}
+              {canTabLeft && (
+                <div
+                  className="absolute inset-y-0 start-0 w-10 pointer-events-none z-10"
+                />
+              )}
+              {/* Right fade */}
+              <div
+                className="absolute inset-y-0 end-0 w-12 pointer-events-none z-10"
+              />
+
+              <div
+                ref={tabsRef}
+                className="flex items-center gap-2 overflow-x-auto mb-1"
+                style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}
+              >
+                {/* Leading spacer when left arrow shows */}
+                {canTabLeft && <div className="shrink-0 w-4" />}
+
+                {CATEGORY_ORDER.map((id) => {
+                if (!TAB_LABEL[id]) return null;
+                const isActive = activeCategory === id;
+                const isSoon = CATEGORIES[id]?.comingSoon;
+                const tabTint = CATEGORY_TINTS[id];
+
+                  return (
+                    <button
+                      key={id}
+                      onClick={() => handleTabClick(id)}
+                      style={isActive ? {
+                        background:  tabTint.activeBg,
+                        borderColor: tabTint.activeBorder,
+                        color:       "#fff",
+                      } : {}}
+                      className={[
+                        "relative flex items-center gap-1.5 shrink-0 rounded-full px-4 py-2 border",
+                        "text-[13px] font-medium transition-all duration-200 whitespace-nowrap",
+                        "focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40",
+                        isActive
+                          ? "font-semibold"
+                          : "bg-white/[0.07] border-white/[0.15] text-white/80 hover:bg-white/[0.14] hover:border-white/30 active:scale-95",
+                      ].join(" ")}
+                    >
+                     
+                       {TAB_LABEL[id]}
+                      {isSoon && (
+                        <span className="text-[9px] font-bold bg-amber-400 text-black px-1.5 py-0.5 rounded-full uppercase tracking-wide leading-none">
+                          Soon
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+                {/* Trailing spacer so last chip clears the right fade/arrow */}
+                <div className="shrink-0 w-8" />
+              </div>
             </div>
           </motion.div>
 
@@ -279,18 +499,22 @@ export default function HeroSection() {
                     className="hidden md:flex backdrop-blur-2xl rounded-2xl border max-w-4xl overflow-visible"
                     style={glassStyle}
                   >
-                    {fields.map((field, i) => (
-                      <SearchField
-                        key={`${activeCategory}-${field.id}`}
-                        field={field}
-                        tint={tint}
-                        category={activeCategory}
-                        isLast={i === fields.length - 1}
-                        /* date state */
-                        dateValue={dates[field.id] ?? null}
-                        onDateChange={(v) => setDates((p) => ({ ...p, [field.id]: v }))}
-                      />
-                    ))}
+                    {Array.isArray(fields) &&
+                      fields.map((field, i) => (
+                        <SearchField
+                          key={`${activeCategory}-${field.id}`}
+                          field={field}
+                          tint={tint}
+                          category={activeCategory}
+                          isLast={i === fields.length - 1}
+                          /* date state */
+                          dateValue={dates[field.id] ?? null}
+                          onDateChange={(v) =>
+                            setDates((p) => ({ ...p, [field.id]: v }))
+                          }
+                           setSearchData={setSearchData}
+                        />
+                      ))}
 
                     {/* Search button */}
                     <div className="flex items-center px-3 py-2">
@@ -300,6 +524,8 @@ export default function HeroSection() {
                           background: tint.hex,
                           boxShadow:  tint.activeGlow,
                         }}
+
+                         onClick={() => handleSearch()}
                       >
                         <MagnifyingGlassIcon className="w-4 h-4" />
                         Search
@@ -343,7 +569,7 @@ export default function HeroSection() {
 }
 
 /* ─── Search field renderer ─────────────────────────────────── */
-function SearchField({ field, tint, category, isLast, dateValue, onDateChange }) {
+function SearchField({ field, tint, category, isLast, dateValue , onDateChange, setSearchData}) {
   return (
     <div
       /* overflow-visible so dropdowns escape the flex row */
@@ -362,6 +588,12 @@ function SearchField({ field, tint, category, isLast, dateValue, onDateChange })
           category={category}
           tint={tint}
           placeholder={field.placeholder}
+              onSelect={(value) =>
+    setSearchData((p) => ({
+      ...p,
+      location: value,
+    }))
+  }
         />
       )}
 
@@ -370,8 +602,15 @@ function SearchField({ field, tint, category, isLast, dateValue, onDateChange })
           mode="single"
           tint={tint}
           startDate={dateValue}
-          onChangeStart={onDateChange}
+          // onChangeStart={onDateChange}
           placeholder="Select date"
+           onChangeStart={(v) => {
+    onDateChange(v);
+    setSearchData((p) => ({
+      ...p,
+      [field.id]: v,
+    }));
+  }}
         />
       )}
 
@@ -380,8 +619,15 @@ function SearchField({ field, tint, category, isLast, dateValue, onDateChange })
           mode="datetime"
           tint={tint}
           startDate={dateValue}
-          onChangeStart={onDateChange}
+          // onChangeStart={onDateChange}
           placeholder="Select date & time"
+           onChangeStart={(v) => {
+    onDateChange(v);
+    setSearchData((p) => ({
+      ...p,
+      [field.id]: v,
+    }));
+  }}
         />
       )}
 
@@ -389,6 +635,9 @@ function SearchField({ field, tint, category, isLast, dateValue, onDateChange })
         <GuestPicker
           type={field.guestType ?? "guests"}
           tint={tint}
+            onChange={(val) =>
+    setSearchData((p) => ({ ...p, guests: val }))
+  }
         />
       )}
     </div>

@@ -3,40 +3,64 @@
 import { motion } from "framer-motion";
 import VenueCard from "./VenueCard";
 
-export default function VenueSection({ title, subtitle, venues }) {
-  return (
-    <section className="w-full overflow-x-hidden py-8">
+/*
+ * VenueSection
+ * ─────────────────────────────────────────────────────────────
+ * Mobile  (<sm): 2-column flex-wrap grid — no horizontal scroll
+ * Desktop (sm+): horizontal scroll carousel
+ *
+ * "View all" is hidden when there are 5 or fewer venues.
+ */
+export default function VenueSection({ title, subtitle, venues ,dataSource }) {
+  if (!venues?.length) return null;
 
+  const showViewAll = venues.length > 5;
+
+  return (
+    <section className="w-full py-7">
       {/* Header */}
-      <div className="mb-6">
-        <h2 className="text-xl md:text-2xl font-bold text-gray-800 dark:text-gray-100">
-          {title}
-        </h2>
-        {subtitle && (
-          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
-            {subtitle}
-          </p>
+      <div className="flex items-end justify-between mb-4">
+        <div>
+          <h2 className="text-lg md:text-xl font-bold text-gray-800 dark:text-gray-100 leading-snug">
+            {title}
+          </h2>
+          {subtitle && (
+            <p className="text-gray-500 dark:text-gray-400 text-sm mt-0.5">{subtitle}</p>
+          )}
+        </div>
+        {showViewAll && (
+          <button
+            className="text-sm font-medium shrink-0 hover:opacity-70 transition"
+            style={{ color: tint?.hex ?? "#7c3aed" }}
+          >
+            View all →
+          </button>
         )}
       </div>
 
-      {/* ✅ PURE GRID */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        className="
-          w-full grid gap-4
-          grid-cols-2
-          sm:grid-cols-2
-          md:grid-cols-3
-          lg:grid-cols-4
-          xl:grid-cols-5
-        "
+      {/*
+        Responsive track:
+          Mobile  → flex-wrap (2-col), overflow-visible
+          Desktop → flex-nowrap + horizontal scroll
+      */}
+      <div
+        className="flex flex-wrap gap-3 overflow-visible sm:flex-nowrap sm:gap-4 sm:overflow-x-auto sm:scroll-smooth"
+        style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
       >
         {venues.map((venue, i) => (
-          <VenueCard key={i} venue={venue} />
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, y: 10 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: i * 0.04, duration: 0.22 }}
+            /* Mobile: 2 per row; sm+: fixed carousel width */
+            className="w-[calc(50%-6px)] shrink-0 sm:w-[220px] md:w-[240px]"
+          >
+            <VenueCard venue={venue} dataSource = {dataSource} />
+          </motion.div>
         ))}
-      </motion.div>
-
+      </div>
     </section>
   );
 }

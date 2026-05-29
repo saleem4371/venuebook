@@ -25,12 +25,9 @@ import { LANGUAGE_META }                        from "@/config/i18n";
 import { useRegionContext }                     from "@/context/RegionContext";
 import { useCurrency }                          from "@/hooks/useCurrency";
 
-
-import { getCountry  } from '@/services/global.service';
-
 /* ── Build data from config ──────────────────────────────────────── */
 
-// const ALL_REGIONS    = getAllRegions();
+const ALL_REGIONS    = getAllRegions();
 const ALL_CURRENCIES = getAllCurrencies();
 
 /* ── Component ───────────────────────────────────────────────────── */
@@ -40,27 +37,6 @@ export default function RegionLanguageModal({ open, onClose }) {
   const pathname = usePathname();
   const params   = useParams();
   const panelRef = useRef(null);
-
-  const [loadcountry, setLoadCountry] = useState([]);
-
-  //getCountry
-
-   useEffect(() => {
-
-    Load();
-
-  }, []);
-
-   const Load = async () => {
-
-     const res =
-        await getCountry(); 
-        
-      setLoadCountry(
-        res.data || [],
-      );
-
-   }
 
   /* Active tab: "lang_region" | "currency" */
   const [activeTab, setActiveTab] = useState("lang_region");
@@ -77,13 +53,10 @@ export default function RegionLanguageModal({ open, onClose }) {
   const currentCountry = params?.country || "in";
 
   /* Derive available languages for the currently selected region */
-
   const currentRegion      = getRegionByCountryCode(currentCountry);
   const availableLanguages = (currentRegion?.languages || ["en"]).map(
     (code) => LANGUAGE_META[code]
   ).filter(Boolean);
-
-
 
   /* Reset state on open */
   useEffect(() => {
@@ -242,14 +215,14 @@ export default function RegionLanguageModal({ open, onClose }) {
                       {t("region")}
                     </p>
                     <div className="grid grid-cols-2 gap-2">
-                      {loadcountry.map((region) => {
-                        const active    = region.iso_code === currentCountry;
-                        const isPending = pending?.type === "region" && pending?.value === region.iso_code;
+                      {ALL_REGIONS.map((region) => {
+                        const active    = region.countryCode === currentCountry;
+                        const isPending = pending?.type === "region" && pending?.value === region.countryCode;
                         return (
                           <button
-                            key={region.id}
+                            key={region.code}
                             type="button"
-                            onClick={() => withDelay(() => handleRegion(region.iso_code), "region", region.iso_code)}
+                            onClick={() => withDelay(() => handleRegion(region.countryCode), "region", region.countryCode)}
                             disabled={!!pending}
                             className={[
                               "relative flex items-center gap-3 rounded-xl border px-4 py-3.5 text-sm text-start",
@@ -264,7 +237,7 @@ export default function RegionLanguageModal({ open, onClose }) {
                             <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center
                                             rounded-lg bg-gray-100 dark:bg-gray-800 overflow-hidden">
                               <Image
-                                src='/flags/us.svg'
+                                src={region.flag}
                                 alt={region.name}
                                 width={28}
                                 height={20}

@@ -1,5 +1,5 @@
 "use client";
-import {  useEffect } from "react";
+import {  useEffect , useState} from "react";
 import { usePathname } from "next/navigation";
 import Navbar           from "./home/components/Navbar";
 import Footer           from "./home/components/PremiumFooter";
@@ -12,6 +12,8 @@ import { UIProvider }        from "@/context/UIContext";
 import { AuthProvider , useAuth }      from "@/context/AuthContext";
 import { CategoryProvider }  from "@/context/CategoryContext";
 
+import { country_of_category } from "@/services/global.service";
+
 import { connectSocket } from "@/lib/socket";
 
 export default function ClientLayout({ children }) {
@@ -21,6 +23,8 @@ export default function ClientLayout({ children }) {
   const isStartListingRoute = pathname.includes("/start-listing");
   const hideChrome          = isVendorRoute || isStartListingRoute;
 
+  const [loadData, setLoadData] = useState([]);
+
     const { user } = useAuth();
 
   useEffect(() => {
@@ -28,6 +32,21 @@ export default function ClientLayout({ children }) {
       connectSocket(user.id);
     }
   }, [user?.id]);
+
+  useEffect(() => {
+      load();
+    }, []);
+
+    const load = async () => {
+      try {
+        const res = await country_of_category();
+        setLoadData(res?.data);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        // setLoading(false);
+      }
+    };
 
   return (
     <RegionProvider>
@@ -37,7 +56,7 @@ export default function ClientLayout({ children }) {
             <CategoryProvider>
 
               {!hideChrome && <Navbar />}
-              {!hideChrome && <CategoryNavigator />}
+              {!hideChrome && <CategoryNavigator loadData = {loadData}/>}
 
               {children}
 

@@ -48,6 +48,8 @@ export default function UserDropdown({ onOpenRegionModal }) {
 
   const locale  = params?.locale  || "en";
   const country = params?.country || "in";
+
+  
   const isOpen  = openDropdown === "user";
 
   const [confirmLogout, setConfirmLogout] = useState(false);

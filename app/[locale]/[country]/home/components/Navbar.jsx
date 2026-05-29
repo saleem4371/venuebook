@@ -15,12 +15,14 @@ import darkLogo  from "@/assets/logo.png";
 import { useTranslations } from "next-intl";
 
 import { getCookie } from "@/lib/cookie";
+import { useCategory }      from "@/context/CategoryContext";
 
 import { useUI }           from "@/context/UIContext";
 import { useDropdown }     from "@/context/DropdownContext";
 import { useAuth }         from "@/context/AuthContext";
 import { useRegionContext } from "@/context/RegionContext";
 import { useCurrency }     from "@/hooks/useCurrency";
+
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
@@ -139,6 +141,8 @@ export default function Navbar() {
   const [regionModalOpen, setRegionModalOpen] = useState(false);
   const { isDark, toggleTheme }               = useTheme();
 
+   const { activeCategory }           = useCategory();
+
   useRegionContext(); // keeps RegionProvider mounted for modal
   useCurrency();     // keeps currency context warm
 
@@ -187,19 +191,31 @@ export default function Navbar() {
   }, [vendorLoading, isListed, locale, country, router]);
 
 
-  const handleTabChange = useCallback(
-    (type) => {
-      setActiveTab(type);
-      const route = type === "venue" ? "venues" : "farmstay";
-      router.push(`/${locale}/${country}/search/${route}`);
-    },
-    [router, locale, country]
-  );
 
-  const handleExplore = useCallback(
-    () => router.push(`/${locale}/${country}/search/venues`),
-    [router, locale, country]
-  );
+  const handleTabChange = useCallback(
+  (type) => {
+    setActiveTab(type);
+
+    const slug = type
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, "-");
+
+    router.push(`/${locale}/${country}/search/${slug}`);
+  },
+  [router, locale, country]
+);
+
+  const handleExplore = useCallback(() => {
+  if (!activeCategory) return;
+
+  const slug = activeCategory
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, "-");
+
+  router.push(`/${locale}/${country}/search/${slug}`);
+}, [activeCategory, router, locale, country]);
 
   /* ---------- Vendor CTA ---------- */
   const vendorLabel = isLoggedIn && isListed ? t("switch_to_vendor") : t("list_property");
@@ -250,11 +266,11 @@ export default function Navbar() {
               <Brand href={`/${locale}/${country}/home`} isDark={isDark} />
 
               {/* Center: search-type tabs (desktop search pages) */}
-              {showCenterToggle && (
+              {/* {showCenterToggle && (
                 <div className="absolute left-1/2 -translate-x-1/2 hidden md:block">
                   <SearchTabs active={activeTab} onChange={handleTabChange} />
                 </div>
-              )}
+              )} */}
 
               {/* ── Right cluster ──────────────────────────────── */}
               <div className="flex items-center gap-1">
