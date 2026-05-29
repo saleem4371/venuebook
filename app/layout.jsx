@@ -1,5 +1,7 @@
 import "./globals.css";
-
+import ServiceWorkerProvider from '../components/ServiceWorkerProvider'
+import PWAInstallPrompt from '../components/PWAInstallPrompt'
+import NotificationHandler from '../components/NotificationHandler'
 import {
   Plus_Jakarta_Sans,
   Noto_Sans_Devanagari,
@@ -16,6 +18,24 @@ const jakarta = Plus_Jakarta_Sans({
   weight: ["300", "400", "500", "600", "700", "800"],
   display: "swap",
 }); 
+
+export const metadata = {
+  title: 'venuebook.in',
+  description:
+    'Discover and book venues, farmstays, studios, workspaces & rentals',
+
+  manifest: '/manifest.json',
+  themeColor: '#000000',
+
+  icons: {
+    icon: [
+      { url: '/favicon.ico' },
+    //  { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
+      //{ url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
+    ],
+   // apple: '/apple-touch-icon.png',
+  },
+};
 
 /* ── Supplemental: script-specific fonts loaded only when needed ──
    Each font uses `display: swap` so Latin text is never blocked.
@@ -43,11 +63,11 @@ const arabic = Noto_Sans_Arabic({
   display: "swap",
 });
 
-export const metadata = {
-  title: "VenueBook",
-  description:
-    "Discover and book venues, farmstays, studios, workspaces & rentals",
-};
+// export const metadata = {
+//   title: "VenueBook",
+//   description:
+//     "Discover and book venues, farmstays, studios, workspaces & rentals",
+// };
 
 export default async function RootLayout({ children }) {
   /*
@@ -89,6 +109,13 @@ export default async function RootLayout({ children }) {
       ].join(" ")}
     >
       <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+        <link rel="apple-touch-icon" href="/icon-192x192.png" />
+        <link rel="icon" type="image/png" href="/icon-192x192.png" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="NextPWA" />
+        <meta name="description" content="Progressive Web App with Notifications" />
         {/*
           Theme — runs synchronously before paint for zero flicker.
           Reads ONLY localStorage key 'theme'. No system/OS detection.
@@ -119,7 +146,12 @@ export default async function RootLayout({ children }) {
         suppressHydrationWarning
         className="min-h-screen bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 antialiased font-sans"
       >
-        {children}
+         <ServiceWorkerProvider>
+          <PWAInstallPrompt />
+          <NotificationHandler />
+          {children}
+        </ServiceWorkerProvider>
+        {/* {children} */}
       </body>
     </html>
   );
