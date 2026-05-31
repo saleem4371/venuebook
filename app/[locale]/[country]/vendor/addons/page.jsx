@@ -1,19 +1,5 @@
 "use client";
 
-/**
- * ADD-ONS MANAGEMENT — v6
- *
- * Modal redesign changes:
- * [1] Header: X-only close, no top Cancel/Create buttons
- * [2] Sticky glass footer: Cancel + Create CTA (blur + border)
- * [3] Premium input layer (form-input + form-input-readonly CSS)
- * [4] Dual pricing: Total Price ↔ Per Unit (animated switch)
- *     Unit mode: Total Stock, Damaged, Available (auto), Price/Unit
- * [5] Inline category creation — expands inside form, no context switch
- * [6] CategoryModal: compact grid for colors/icons, tighter rhythm
- * [7] Dark surfaces: bg-[#070b14], bg-[#0f172a], border-white/[0.05]
- */
-
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -28,6 +14,15 @@ import {
   Leaf, Gem, Mic, Rocket, Crown, Tag, ImageIcon,
 } from "lucide-react";
 
+
+import {
+  SaveCategory,
+  LoadaddonCategory,
+  SaveAddon,
+  Loadaddon,
+  ToggleAddon,
+  DeleteAddon
+} from "@/services/vendor.service";
 /* ══════════════════════════════════════════════════════════
    BRAND
 ══════════════════════════════════════════════════════════ */
@@ -38,14 +33,14 @@ const BRAND = "linear-gradient(242deg,#a44bf3,#499ce8)";
 ══════════════════════════════════════════════════════════ */
 const CATEGORY_THEMES = {
   Decor:          { gradient: "linear-gradient(242deg,#a44bf3,#499ce8)", strip: "from-violet-500 to-indigo-500",   Icon: Palette  },
-  Catering:       { gradient: "linear-gradient(242deg,#22c55e,#14b8a6)", strip: "from-emerald-500 to-teal-500",    Icon: Utensils },
-  Entertainment:  { gradient: "linear-gradient(242deg,#f59e0b,#ef4444)", strip: "from-amber-500 to-red-500",       Icon: Music    },
-  Photography:    { gradient: "linear-gradient(242deg,#3b82f6,#06b6d4)", strip: "from-blue-500 to-cyan-500",       Icon: Camera   },
-  Lighting:       { gradient: "linear-gradient(242deg,#ec4899,#8b5cf6)", strip: "from-pink-500 to-violet-500",     Icon: Zap      },
-  Transportation: { gradient: "linear-gradient(242deg,#f97316,#eab308)", strip: "from-orange-500 to-yellow-500",   Icon: Car      },
-  Fitness:        { gradient: "linear-gradient(242deg,#10b981,#3b82f6)", strip: "from-emerald-500 to-blue-500",    Icon: Dumbbell },
-  Furniture:      { gradient: "linear-gradient(242deg,#6366f1,#a855f7)", strip: "from-indigo-500 to-purple-500",   Icon: Sofa     },
-  Activities:     { gradient: "linear-gradient(242deg,#14b8a6,#22c55e)", strip: "from-teal-500 to-emerald-500",    Icon: Activity },
+  // Catering:       { gradient: "linear-gradient(242deg,#22c55e,#14b8a6)", strip: "from-emerald-500 to-teal-500",    Icon: Utensils },
+  // Entertainment:  { gradient: "linear-gradient(242deg,#f59e0b,#ef4444)", strip: "from-amber-500 to-red-500",       Icon: Music    },
+  // Photography:    { gradient: "linear-gradient(242deg,#3b82f6,#06b6d4)", strip: "from-blue-500 to-cyan-500",       Icon: Camera   },
+  // Lighting:       { gradient: "linear-gradient(242deg,#ec4899,#8b5cf6)", strip: "from-pink-500 to-violet-500",     Icon: Zap      },
+  // Transportation: { gradient: "linear-gradient(242deg,#f97316,#eab308)", strip: "from-orange-500 to-yellow-500",   Icon: Car      },
+  // Fitness:        { gradient: "linear-gradient(242deg,#10b981,#3b82f6)", strip: "from-emerald-500 to-blue-500",    Icon: Dumbbell },
+  // Furniture:      { gradient: "linear-gradient(242deg,#6366f1,#a855f7)", strip: "from-indigo-500 to-purple-500",   Icon: Sofa     },
+  // Activities:     { gradient: "linear-gradient(242deg,#14b8a6,#22c55e)", strip: "from-teal-500 to-emerald-500",    Icon: Activity },
 };
 
 /* ══════════════════════════════════════════════════════════
@@ -111,7 +106,7 @@ const MOCK_ADDONS = [
 const fmt = (n) => `₹${Number(n).toLocaleString("en-IN")}`;
 
 const EMPTY_FORM = {
-  name: "", category: "", description: "", image: null, tags: [], status: "active",
+  name: "", category: "", description: "", image: '', tags: [], status: "active",
   pricingType:  "total",
   price:        "",
   unit:         "per event",
@@ -119,6 +114,7 @@ const EMPTY_FORM = {
   totalStock:   "",
   damagedUnits: "",
   unitLabel:    "",
+  id:    "",
 };
 
 const EMPTY_CAT = {
@@ -265,7 +261,7 @@ function ListSkeleton() {
 }
 
 export default function AddonsPage() {
-  const [addons,           setAddons]           = useState(MOCK_ADDONS);
+  const [addons,           setAddons]           = useState([]);
   const [customCategories, setCustomCategories] = useState([]);
   const [view,             setView]             = useState("grid");
   const [search,           setSearch]           = useState("");
@@ -280,6 +276,11 @@ export default function AddonsPage() {
   const [toasts,           setToasts]           = useState([]);
   const [loading,          setLoading]          = useState(true);
 
+
+  //ctegory
+  const [catErrors, setCatErrors] = useState({});
+const [saving, setSaving] = useState(false);
+
   useEffect(() => {
     const t = setTimeout(() => setLoading(false), 700);
     return () => clearTimeout(t);
@@ -287,7 +288,7 @@ export default function AddonsPage() {
 
   /* Merged category themes */
   const allCategoryThemes = useMemo(() => ({
-    ...CATEGORY_THEMES,
+    // ...CATEGORY_THEMES,
     ...Object.fromEntries(
       customCategories.map(c => [c.name, {
         gradient: c.gradient, strip: c.strip,
@@ -325,9 +326,9 @@ export default function AddonsPage() {
   /* Stats */
   const stats = useMemo(() => ({
     total:    addons.length,
-    active:   addons.filter(a => a.status === "active").length,
-    bookings: addons.reduce((s, a) => s + a.bookings, 0),
-    revenue:  addons.reduce((s, a) => s + (a.pricingType === "unit" ? a.pricePerUnit : a.price) * a.bookings, 0),
+    active:   addons.filter(a => a.status === "1").length,
+    bookings: 0,//addons.reduce((s, a) => s + a.bookings, 0),
+    revenue:  0,//addons.reduce((s, a) => s + (a.pricingType === "unit" ? a.pricePerUnit : a.price) * a.bookings, 0),
   }), [addons]);
 
   /* Modal helpers */
@@ -348,21 +349,86 @@ export default function AddonsPage() {
   const addCustomCategory = useCallback((cat) => {
     setCustomCategories(prev => [...prev, cat]);
   }, []);
-  const handleSaveCategory = () => {
-    const trimmed = catForm.name.trim();
-    if (!trimmed) return toast("Category name required", "error");
-    const exists = Object.keys(allCategoryThemes).some(k => k.toLowerCase() === trimmed.toLowerCase() && k !== editingCatName);
-    if (exists) return toast("Category already exists", "error");
-    if (editingCatName) {
-      setCustomCategories(prev => prev.map(c => c.name === editingCatName ? { ...catForm, name: trimmed } : c));
-      setAddons(prev => prev.map(a => a.category === editingCatName ? { ...a, category: trimmed } : a));
-      toast("Category updated ✨");
-    } else {
-      setCustomCategories(prev => [...prev, { ...catForm, name: trimmed }]);
-      toast("Category created 🎉");
-    }
+
+  const validateCategory = () => {
+  const errors = {};
+
+  errors.name = validateField(catForm.name, "Category Name");
+
+  if (
+    customCategories.some(
+      c =>
+        c.name.toLowerCase() === catForm.name.trim().toLowerCase() &&
+        (!editMode || c.name !== catForm.originalName)
+    )
+  ) {
+    errors.name = "Category already exists";
+  }
+
+  if (!catForm.iconKey)
+    errors.iconKey = "Please select an icon";
+
+  if (!catForm.gradient)
+    errors.gradient = "Please select a color";
+
+  Object.keys(errors).forEach(
+    key => !errors[key] && delete errors[key]
+  );
+
+  setCatErrors(errors);
+
+  return Object.keys(errors).length === 0;
+};
+const validateField = (value, name, min = 2) => {
+  if (!value?.trim()) return `${name} is required`;
+  if (value.trim().length < min)
+    return `${name} must be at least ${min} characters`;
+  return "";
+};
+
+
+
+  
+
+const handleSaveCategory = async () => {
+  if (saving) return;
+
+  if (!validateCategory()) return;
+
+  try {
+    setSaving(true);
+
+    const payload = {
+      ...catForm,
+      name: catForm.name.trim(),
+    };
+
+    const res = await SaveCategory(payload);
+
+    toast.success(
+      editMode
+        ? "Category updated successfully"
+        : "Category created successfully"
+    );
+
     closeModal();
-  };
+  } catch (err) {
+    console.error(err);
+
+    if (err?.response?.status === 409) {
+      toast.error("Category already exists");
+      return;
+    }
+
+    toast.error(
+      err?.response?.data?.message ||
+      err?.message ||
+      "Something went wrong"
+    );
+  } finally {
+    setSaving(false);
+  }
+};
   const handleDeleteCategory = (name) => {
     if (addons.some(a => a.category === name)) return toast(`Cannot delete — ${name} is in use`, "error");
     setCustomCategories(prev => prev.filter(c => c.name !== name));
@@ -371,37 +437,180 @@ export default function AddonsPage() {
   };
 
   /* CRUD */
-  const handleSave = () => {
-    if (!form.name.trim()) return toast("Name is required", "error");
-    if (!form.category)    return toast("Select a category", "error");
-    if (form.pricingType === "unit") {
-      if (!String(form.pricePerUnit).trim()) return toast("Price per unit is required", "error");
-      if (!form.unitLabel.trim())            return toast("Unit label is required", "error");
+  // const handleSave = () => {
+
+
+   
+  //   console.log(form)
+
+  //   if (!form.name.trim()) return toast("Name is required", "error");
+  //   if (!form.category)    return toast("Select a category", "error");
+  //   if (form.pricingType === "unit") {
+  //     if (!String(form.pricePerUnit).trim()) return toast("Price per unit is required", "error");
+  //     if (!form.unitLabel.trim())            return toast("Unit label is required", "error");
+  //   } else {
+  //     if (!String(form.price).trim()) return toast("Price is required", "error");
+  //   }
+  //   const saved = {
+  //     ...form,
+  //     price:        form.pricingType === "total" ? Number(form.price)        : 0,
+  //     pricePerUnit: form.pricingType === "unit"  ? Number(form.pricePerUnit) : 0,
+  //     totalStock:   Number(form.totalStock)   || 0,
+  //     damagedUnits: Number(form.damagedUnits) || 0,
+  //   };
+  //   if (modal === "edit") {
+  //     setAddons(prev => prev.map(a => a.id === activeAddon.id ? { ...a, ...saved } : a));
+  //     toast("Add-on updated ✨");
+  //   } else {
+  //     setAddons(prev => [{ ...saved, id: Date.now(), bookings: 0 }, ...prev]);
+  //     toast("Add-on created 🚀");
+  //   }
+  //   closeModal();
+  // };
+const handleSave = async () => {
+  try {
+    if (!validateAddon()) return;
+
+    setSaving(true);
+
+    const formData = new FormData();
+
+    formData.append("name", form.name.trim());
+    formData.append("category", form.category);
+    formData.append("description", form.description || "");
+    formData.append("pricingType", form.pricingType);
+    formData.append("status", form.status);
+    formData.append("id", form.id);
+
+    formData.append("image", form.image);
+
+    if (form.pricingType === "total") {
+      formData.append("price", form.price);
+      formData.append("unit", form.unit);
     } else {
-      if (!String(form.price).trim()) return toast("Price is required", "error");
+      formData.append("pricePerUnit", form.pricePerUnit);
+      formData.append("unitLabel", form.unitLabel);
+      formData.append("totalStock", form.totalStock || 0);
+      formData.append("damagedUnits", form.damagedUnits || 0);
     }
-    const saved = {
-      ...form,
-      price:        form.pricingType === "total" ? Number(form.price)        : 0,
-      pricePerUnit: form.pricingType === "unit"  ? Number(form.pricePerUnit) : 0,
-      totalStock:   Number(form.totalStock)   || 0,
-      damagedUnits: Number(form.damagedUnits) || 0,
-    };
-    if (modal === "edit") {
-      setAddons(prev => prev.map(a => a.id === activeAddon.id ? { ...a, ...saved } : a));
-      toast("Add-on updated ✨");
-    } else {
-      setAddons(prev => [{ ...saved, id: Date.now(), bookings: 0 }, ...prev]);
-      toast("Add-on created 🚀");
-    }
+    
+    console.log(catForm)
+//  formData.append("showInlineCat", showInlineCat);
+ formData.append("cname", catForm.name);
+ formData.append("iconKey", catForm.iconKey);
+ formData.append("strip", catForm.strip);
+ formData.append("gradient", catForm.gradient);//gradient iconKey strip
+
+
+    
+
+    formData.append("tags", JSON.stringify(form.tags || []));
+
+    await SaveAddon(formData);
+
+    toast("Add-on saved successfully", "success");
+
     closeModal();
+  } catch (err) {
+    toast(
+      err?.response?.data?.message ||
+      "Failed to save add-on",
+      "error"
+    );
+  } finally {
+    setSaving(false);
+  }
+};
+  const handleDelete    = async() => { 
+    // setAddons(prev => prev.filter(a => a.id !== activeAddon.id)); toast("Deleted");
+    await DeleteAddon(activeAddon.id);
+     closeModal();
   };
-  const handleDelete    = () => { setAddons(prev => prev.filter(a => a.id !== activeAddon.id)); toast("Deleted"); closeModal(); };
   const handleDuplicate = (a) => { setAddons(prev => [{ ...a, id: Date.now(), name: `${a.name} (Copy)`, bookings: 0 }, ...prev]); toast("Duplicated ✨"); };
-  const handleToggle    = (id) => setAddons(prev => prev.map(a => a.id === id ? { ...a, status: a.status === "active" ? "inactive" : "active" } : a));
+const handleToggle = async (id) => {
+  try {
+    const addon = addons.find((a) => a.id === id);
+
+    if (!addon) return;
+
+    const param = {
+      id:id,
+      status: addon.status === "active" ? "0" : "1",
+    };
+
+    await ToggleAddon(param);
+
+   // toast.success("Status updated");
+
+    await loadAddons(); // reload data
+  } catch (err) {
+    toast.error("Failed to update status");
+  }
+};
+   
 
   const activeFilters = sort !== "Newest";
   const inactiveCount = stats.total - stats.active;
+
+  //loding //LoadaddonCategory
+
+   useEffect( () => {
+  
+      const loadAddons = async () => {
+        try {
+          const addons = await LoadaddonCategory();
+          setCustomCategories(addons?.data);
+
+          const addon = await Loadaddon();
+          setAddons(addon?.data);
+
+        } catch (err) {
+          console.error("Addons load error:", err);
+        }
+      };
+  
+      loadAddons();
+    }, []);
+
+    const validateAddon = () => {
+  if (!form.name.trim()) {
+    toast("Add-on name is required", "error");
+    return false;
+  }
+
+  if (!form.category) {
+    toast("Please select category", "error");
+    return false;
+  }
+
+  if (!form.image) {
+    toast("Please upload image", "error");
+    return false;
+  }
+
+  if (form.pricingType === "total") {
+    if (!form.price || Number(form.price) <= 0) {
+      toast("Price is required", "error");
+      return false;
+    }
+  }
+
+  if (form.pricingType === "unit") {
+    if (!form.unitLabel.trim()) {
+      toast("Unit label is required", "error");
+      return false;
+    }
+
+    if (!form.pricePerUnit || Number(form.pricePerUnit) <= 0) {
+      toast("Price per unit is required", "error");
+      return false;
+    }
+  }
+
+  return true;
+};
+
+
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#030712] mt-[-56px] md:mt-[-20px]">
@@ -410,7 +619,7 @@ export default function AddonsPage() {
       <AnimatePresence>
         {(modal === "create" || modal === "edit") && (
           <AddOnModal
-            key="addon-modal" mode={modal} form={form} setForm={setForm}
+            key="addon-modal" mode={modal} form={form} setForm={setForm} setCatForm={setCatForm}
             onClose={closeModal} onSave={handleSave}
             getTheme={getTheme} allCategoryThemes={allCategoryThemes}
             onAddCategory={addCustomCategory}
@@ -432,6 +641,7 @@ export default function AddonsPage() {
             customCategories={customCategories}
             onEditCategory={openEditCategory}
             onDeleteCategory={handleDeleteCategory}
+            catErrors={catErrors}
           />
         )}
       </AnimatePresence>
@@ -687,7 +897,7 @@ function AddOnCard({ addon, index, onEdit, onDelete, onDuplicate, onToggle, getT
       <div className="relative w-full aspect-video overflow-hidden shrink-0 bg-gray-100 dark:bg-white/[0.04]">
         {addon.image ? (
           <>
-            <img src={addon.image} alt={addon.name} className={`w-full h-full object-cover object-center transition-transform duration-700 ${hovered ? "scale-110" : "scale-100"}`} />
+            <img src={`${ process.env.NEXT_PUBLIC_AWS_BUCKET_URL}/${addon.image}`} alt={addon.name} className={`w-full h-full object-cover object-center transition-transform duration-700 ${hovered ? "scale-110" : "scale-100"}`} />
             <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/5 to-transparent" />
           </>
         ) : (
@@ -695,8 +905,8 @@ function AddOnCard({ addon, index, onEdit, onDelete, onDuplicate, onToggle, getT
             <Icon size={38} className="text-white/40" />
           </div>
         )}
-        <span className={`absolute top-2.5 start-2.5 text-[10px] font-bold px-2 py-0.5 rounded-full backdrop-blur-sm ${addon.status === "active" ? "bg-black/20 text-white" : "bg-black/40 text-white/60"}`}>
-          {addon.status === "active" ? "● Live" : "○ Paused"}
+        <span className={`absolute top-2.5 start-2.5 text-[10px] font-bold px-2 py-0.5 rounded-full backdrop-blur-sm ${addon.publish_status === "1" ? "bg-black/20 text-white" : "bg-black/40 text-white/60"}`}>
+          {addon.publish_status === "1" ? "● Live" : "○ Paused"}
         </span>
         <AnimatePresence>
           {hovered && (
@@ -704,7 +914,7 @@ function AddOnCard({ addon, index, onEdit, onDelete, onDuplicate, onToggle, getT
               className="absolute inset-0 flex items-center justify-center gap-2 bg-black/55 backdrop-blur-[3px]"
             >
               <OverlayBtn icon={Pencil} onClick={() => onEdit(addon)}      title="Edit"      />
-              <OverlayBtn icon={Copy}   onClick={() => onDuplicate(addon)} title="Duplicate" />
+              {/* <OverlayBtn icon={Copy}   onClick={() => onDuplicate(addon)} title="Duplicate" /> */}
               <OverlayBtn icon={Trash2} onClick={() => onDelete(addon)}    title="Delete"    danger />
             </motion.div>
           )}
@@ -717,7 +927,7 @@ function AddOnCard({ addon, index, onEdit, onDelete, onDuplicate, onToggle, getT
             <Icon size={9} />{addon.category}
           </span>
           <div className="flex gap-1 flex-wrap justify-end">
-            {addon.tags.slice(0, 2).map(t => (
+            {addon.tags && addon.tags.slice(0, 2).map(t => (
               <span key={t} className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${TAG_STYLES[t] || "bg-gray-100 text-gray-600"}`}>{t}</span>
             ))}
           </div>
@@ -737,7 +947,7 @@ function AddOnCard({ addon, index, onEdit, onDelete, onDuplicate, onToggle, getT
               <p className="text-[10px] text-gray-400 dark:text-gray-500">bookings</p>
               <p className="text-sm font-bold text-gray-700 dark:text-gray-300">{addon.bookings}</p>
             </div>
-            <StatusToggle checked={addon.status === "active"} onChange={() => onToggle(addon.id)} />
+            <StatusToggle checked={addon.status === "1"} onChange={() => onToggle(addon.id)} />
           </div>
         </div>
       </div>
@@ -763,13 +973,13 @@ function AddOnRow({ addon, index, onEdit, onDelete, onDuplicate, onToggle, getTh
       <div className="hidden md:grid grid-cols-[1fr_140px_110px_80px_100px_48px] items-center gap-4 px-5 py-3.5">
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0">
-            {addon.image ? <img src={addon.image} alt={addon.name} className="w-full h-full object-cover object-center" />
+            {addon.image ? <img src={`${ process.env.NEXT_PUBLIC_AWS_BUCKET_URL}/${addon.image}`} alt={addon.name} className="w-full h-full object-cover object-center" />
               : <div className="w-full h-full flex items-center justify-center" style={{ background: theme.gradient }}><Icon size={16} className="text-white/80" /></div>}
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2 mb-0.5">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-white truncate">{addon.name}</h3>
-              {addon.tags.slice(0, 1).map(t => <span key={t} className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${TAG_STYLES[t] || "bg-gray-100 text-gray-600"}`}>{t}</span>)}
+              {addon.tags && addon.tags.slice(0, 1).map(t => <span key={t} className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${TAG_STYLES[t] || "bg-gray-100 text-gray-600"}`}>{t}</span>)}
             </div>
             <p className="text-[11px] text-gray-400 dark:text-gray-500 truncate">{addon.description}</p>
           </div>
@@ -796,7 +1006,7 @@ function AddOnRow({ addon, index, onEdit, onDelete, onDuplicate, onToggle, getTh
       <div className="md:hidden p-4">
         <div className="flex items-start gap-3 mb-3">
           <div className="w-11 h-11 rounded-xl overflow-hidden shrink-0">
-            {addon.image ? <img src={addon.image} alt={addon.name} className="w-full h-full object-cover object-center" />
+            {addon.image ? <img src={`${ process.env.NEXT_PUBLIC_AWS_BUCKET_URL}/${addon.image}`} alt={addon.name} className="w-full h-full object-cover object-center" />
               : <div className="w-full h-full flex items-center justify-center" style={{ background: theme.gradient }}><Icon size={16} className="text-white/80" /></div>}
           </div>
           <div className="flex-1 min-w-0">
@@ -902,7 +1112,8 @@ function EmptyState({ onAdd }) {
              ↳ Animated pricing type switch (Total ↔ Per Unit)
    Footer  : sticky glass — Cancel + Create/Save
 ══════════════════════════════════════════════════════════ */
-function AddOnModal({ mode, form, setForm, onClose, onSave, getTheme, allCategoryThemes, onAddCategory }) {
+function AddOnModal({ mode, form, setForm, onClose, onSave, getTheme,
+   allCategoryThemes, onAddCategory , setCatForm}) {
   const fileRef = useRef(null);
   const [isDragging,   setIsDragging]   = useState(false);
   const [uploading,    setUploading]    = useState(false);
@@ -910,13 +1121,40 @@ function AddOnModal({ mode, form, setForm, onClose, onSave, getTheme, allCategor
   const [inlineCat, setInlineCat]       = useState(EMPTY_CAT);
 
   /* Image handling */
+  // const handleFile = (file) => {
+  //   if (!file?.type.startsWith("image/")) return;
+  //   if (form.image?.startsWith("blob:")) URL.revokeObjectURL(form.image);
+  //   setUploading(true);
+  //   setTimeout(() => { setForm(f => ({ ...f, image: URL.createObjectURL(file) })); setUploading(false); }, 600);
+  // };
   const handleFile = (file) => {
-    if (!file?.type.startsWith("image/")) return;
-    if (form.image?.startsWith("blob:")) URL.revokeObjectURL(form.image);
-    setUploading(true);
-    setTimeout(() => { setForm(f => ({ ...f, image: URL.createObjectURL(file) })); setUploading(false); }, 600);
-  };
-  const removeImage  = () => { if (form.image?.startsWith("blob:")) URL.revokeObjectURL(form.image); setForm(f => ({ ...f, image: null })); };
+  if (!file) return;
+
+  if (!file.type.startsWith("image/")) {
+    toast("Only image files allowed", "error");
+    return;
+  }
+
+  if (file.size > 5 * 1024 * 1024) {
+    toast("Image size must be less than 5MB", "error");
+    return;
+  }
+
+  setUploading(true);
+
+  const previewUrl = URL.createObjectURL(file);
+
+  setTimeout(() => {
+    setForm((prev) => ({
+      ...prev,
+      image: file, // binary
+      imagePreview: previewUrl, // preview
+    }));
+
+    setUploading(false);
+  }, 500);
+};
+//  const removeImage  = () => { if (form.image?.startsWith("blob:")) URL.revokeObjectURL(form.image); setForm(f => ({ ...f, image: null })); };
   const handleDrop   = (e) => { e.preventDefault(); setIsDragging(false); handleFile(e.dataTransfer.files?.[0]); };
 
   /* Inline category */
@@ -941,6 +1179,8 @@ function AddOnModal({ mode, form, setForm, onClose, onSave, getTheme, allCategor
   /* Preview theme */
   const previewTheme = form.category ? getTheme(form.category) : { gradient: BRAND, strip: "from-violet-500 to-indigo-500" };
   const PreviewIcon  = form.category ? (allCategoryThemes[form.category]?.Icon || Package) : Package;
+
+  const [saving, setSaving] = useState(false);
 
   return (
     <FullscreenOverlay onClose={onClose} wide>
@@ -978,7 +1218,16 @@ function AddOnModal({ mode, form, setForm, onClose, onSave, getTheme, allCategor
               {/* Upload zone */}
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2">Cover Image</p>
-                <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={e => handleFile(e.target.files?.[0])} />
+               <input
+  ref={fileRef}
+  type="file"
+  accept="image/*"
+  className="hidden"
+  onChange={(e) => {
+    const file = e.target.files?.[0];
+    handleFile(file);
+  }}
+/>
                 <div
                   onDrop={handleDrop} onDragOver={e => { e.preventDefault(); setIsDragging(true); }} onDragLeave={() => setIsDragging(false)}
                   className={`relative h-44 rounded-2xl overflow-hidden border-2 border-dashed transition-all duration-200 ${
@@ -992,9 +1241,9 @@ function AddOnModal({ mode, form, setForm, onClose, onSave, getTheme, allCategor
                         className="w-6 h-6 rounded-full border-2 border-white/25 border-t-white" />
                       <p className="text-[11px] text-white/75 font-medium">Processing…</p>
                     </div>
-                  ) : form.image ? (
+                  ) : form.imagePreview ? (
                     <>
-                      <img src={form.image} alt="Cover" className="w-full h-full object-cover object-center" />
+                      <img src={form.imagePreview} alt="Cover" className="w-full h-full object-cover object-center" />
                       <div className="absolute inset-0 bg-black/0 hover:bg-black/45 transition-colors duration-200 group flex items-center justify-center">
                         <div className="opacity-0 group-hover:opacity-100 flex gap-2 transition-opacity">
                           <button onClick={e => { e.stopPropagation(); fileRef.current?.click(); }}
@@ -1043,8 +1292,8 @@ function AddOnModal({ mode, form, setForm, onClose, onSave, getTheme, allCategor
                     className="rounded-2xl border border-gray-100 dark:border-white/[0.06] overflow-hidden bg-white dark:bg-[#0f172a] shadow-sm">
                     <div className={`h-0.5 bg-gradient-to-r ${previewTheme.strip}`} />
                     <div className="aspect-video overflow-hidden flex items-center justify-center" style={{ background: form.image ? undefined : previewTheme.gradient }}>
-                      {form.image
-                        ? <img src={form.image} alt="preview" className="w-full h-full object-cover object-center" />
+                      {form.imagePreview
+                        ? <img src={form.imagePreview} alt="preview" className="w-full h-full object-cover object-center" />
                         : <PreviewIcon size={20} className="text-white/45" />}
                     </div>
                     <div className="p-3 space-y-1.5">
@@ -1099,6 +1348,8 @@ function AddOnModal({ mode, form, setForm, onClose, onSave, getTheme, allCategor
                   <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Premium Floral Decor" className="form-input" />
                 </FormField>
 
+                 <input type= "hidden" value={form.id} onChange={e => setForm(f => ({ ...f, id: e.target.value }))} />
+
                 {/* Category + inline creator */}
                 <FormField label="Category" required>
                   <div className="relative">
@@ -1122,7 +1373,7 @@ function AddOnModal({ mode, form, setForm, onClose, onSave, getTheme, allCategor
                     {showInlineCat ? <><X size={10} /> Cancel</> : <><Plus size={10} /> Create new category</>}
                   </button>
 
-                  {/* Inline category creation panel */}
+                  {/* Inline category creation panel */} 
                   <AnimatePresence>
                     {showInlineCat && (
                       <motion.div
@@ -1135,7 +1386,10 @@ function AddOnModal({ mode, form, setForm, onClose, onSave, getTheme, allCategor
 
                           <input
                             value={inlineCat.name}
-                            onChange={e => setInlineCat(f => ({ ...f, name: e.target.value }))}
+                         onChange={(e) => {
+    setInlineCat((f) => ({ ...f, name: e.target.value }));
+    setCatForm((f) => ({ ...f, name: e.target.value }));
+  }}
                             placeholder="Category name…"
                             className="form-input"
                           />
@@ -1145,7 +1399,11 @@ function AddOnModal({ mode, form, setForm, onClose, onSave, getTheme, allCategor
                             <p className="text-[9px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-600 mb-2">Color</p>
                             <div className="flex flex-wrap gap-1.5">
                               {GRADIENT_PRESETS.map(p => (
-                                <button key={p.label} onClick={() => setInlineCat(f => ({ ...f, gradient: p.gradient, strip: p.strip }))}
+                                <button key={p.label} 
+                                 onClick={(e) => {
+    setInlineCat((f) => ({ ...f, gradient: p.gradient, strip: p.strip  }));
+    setCatForm((f) => ({ ...f, gradient: p.gradient, strip: p.strip  }));
+  }}
                                   title={p.label}
                                   className={`h-6 w-6 rounded-lg transition-all ${inlineCat.gradient === p.gradient ? "ring-2 ring-offset-2 ring-violet-500 scale-[1.15]" : "opacity-65 hover:opacity-100 hover:scale-105"}`}
                                   style={{ background: p.gradient }}
@@ -1159,7 +1417,19 @@ function AddOnModal({ mode, form, setForm, onClose, onSave, getTheme, allCategor
                             <p className="text-[9px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-600 mb-2">Icon</p>
                             <div className="flex flex-wrap gap-1.5">
                               {ICON_PRESETS.map(({ key, Icon: Ic }) => (
-                                <button key={key} onClick={() => setInlineCat(f => ({ ...f, iconKey: key }))}
+                                <button key={key} 
+                                
+                                onClick={() => {
+  setInlineCat((f) => ({
+    ...f,
+    iconKey: key,
+  }));
+
+  setCatForm((f) => ({
+    ...f,
+    iconKey: key,
+  }));
+}}
                                   className={`h-7 w-7 rounded-lg flex items-center justify-center transition-all ${
                                     inlineCat.iconKey === key
                                       ? "text-white scale-[1.1]"
@@ -1341,13 +1611,31 @@ function AddOnModal({ mode, form, setForm, onClose, onSave, getTheme, allCategor
             Cancel
           </button>
           <motion.button
-            whileTap={{ scale: 0.97 }} whileHover={{ boxShadow: "0 6px 24px rgba(164,75,243,0.30)" }}
-            onClick={onSave}
-            className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl text-sm font-semibold text-white shadow-md shadow-violet-500/20 transition-shadow"
-            style={{ background: BRAND }}
-          >
-            {mode === "edit" ? "Save Changes" : "Create Add-on"}
-          </motion.button>
+  disabled={saving}
+  onClick={onSave}
+  whileTap={!saving ? { scale: 0.97 } : {}}
+  className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl text-sm font-semibold text-white shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
+  style={{ background: BRAND }}
+>
+  {saving ? (
+    <span className="flex items-center gap-2">
+      <motion.span
+        animate={{ rotate: 360 }}
+        transition={{
+          repeat: Infinity,
+          duration: 1,
+          ease: "linear",
+        }}
+        className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white"
+      />
+      Saving...
+    </span>
+  ) : mode === "edit" ? (
+    "Save Changes"
+  ) : (
+    "Create Add-on"
+  )}
+</motion.button>
         </div>
       </div>
     </FullscreenOverlay>
@@ -1360,7 +1648,7 @@ function AddOnModal({ mode, form, setForm, onClose, onSave, getTheme, allCategor
    Existing categories listed with hover-reveal actions.
    Sticky glass footer matches AddOnModal.
 ══════════════════════════════════════════════════════════ */
-function CategoryModal({ catForm, setCatForm, editMode, onClose, onSave, customCategories, onEditCategory, onDeleteCategory }) {
+function CategoryModal({ catForm, setCatForm, editMode, onClose, onSave, customCategories, onEditCategory, onDeleteCategory , catErrors }) {
   const SelectedIcon = ICON_PRESETS.find(p => p.key === catForm.iconKey)?.Icon || Package;
 
   return (
@@ -1398,9 +1686,11 @@ function CategoryModal({ catForm, setCatForm, editMode, onClose, onSave, customC
             <FormField label="Name">
               <input
                 value={catForm.name}
+                 className={`form-input ${
+    catErrors.name ? "form-input-error" : ""
+  }`}
                 onChange={e => setCatForm(f => ({ ...f, name: e.target.value }))}
                 placeholder="e.g. Fireworks, Drone Show, Celebrity Entry…"
-                className="form-input"
               />
             </FormField>
 

@@ -13,6 +13,7 @@ import { useAuth } from "@/context/AuthContext";
 import KycStatusChip from "./KycStatusChip";
 import KYCModal from "./KYCModal";
 
+
 /* ═══════════════════════════════════════════════════════════════
    HOOKS
 ═══════════════════════════════════════════════════════════════ */
@@ -191,6 +192,7 @@ function AvatarArea({
   onRegion,
   onLogout,
   notifications,
+  logout
 }) {
   const unread = notifications.length;
 
@@ -355,8 +357,7 @@ function AvatarArea({
                 <MenuItem
                   icon={<LogoutIcon />}
                   label="Logout"
-                  href="/logout"
-                  onClick={onLogout}
+                  onClick={() => logout()}
                   variant="danger"
                 />
               </li>
@@ -381,7 +382,8 @@ export default function PremiumNavbar() {
 
   const { scrolled } = useScrollHeader();
   const { isDark, toggle: toggleTheme } = useTheme();
-  const { user, isLoggedIn } = useAuth();
+  const { user, isLoggedIn,logout } = useAuth();
+
   const userName = user?.name || "Vendor";
   const userEmail = user?.email || "vendor@venuebook.in";
 
@@ -430,7 +432,9 @@ export default function PremiumNavbar() {
       setShowProfile(false);
       setRegionOpen(true);
     },
-    onLogout: () => setShowProfile(false),
+    onLogout: () => { setShowProfile(false);
+                     logout() }
+                     ,
   };
 
   return (
@@ -508,7 +512,7 @@ export default function PremiumNavbar() {
             </button>
 
             {/* Avatar + profile dropdown + notif panel */}
-            <AvatarArea profileRef={profileRefD} {...sharedAreaProps} />
+            <AvatarArea profileRef={profileRefD} {...sharedAreaProps} logout = { logout }/>
           </div>
         </nav>
 
@@ -554,7 +558,7 @@ export default function PremiumNavbar() {
               <GlobeIcon className="h-[18px] w-[18px]" />
             </button>
 
-          <AvatarArea profileRef={profileRefM} {...sharedAreaProps} />
+          <AvatarArea profileRef={profileRefM} {...sharedAreaProps} logout = { logout } />
           </div>
         </nav>
       </header>

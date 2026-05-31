@@ -75,19 +75,31 @@ const TIPS = [
    HELPERS
 ───────────────────────────────────────────────────────────────────────────── */
 function getPhotoUrl(photo) {
-  if (!photo) return "";
+  if (!photo) return null;
+
   if (typeof photo === "string") return photo;
-  if (photo.url) return photo.url;
-  if (photo.images) return photo.images;
-  return "";
+
+  return (
+    photo.url ||
+    photo.image ||
+    photo.images ||
+    photo.path ||
+    null
+  );
 }
 
 function getSectionImageUrl(img) {
-  if (!img) return "";
+  if (!img) return null;
+
   if (typeof img === "string") return img;
-  if (img.url) return img.url;
-  if (img.images) return img.images;
-  return "";
+
+  return (
+    img.url ||
+    img.image ||
+    img.images ||
+    img.path ||
+    null
+  );
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -163,38 +175,71 @@ export default function PhotoStep({
     }));
   };
 
- async function deleteImageFromServer(image) {
-    try {
-      if (!image) return;
+async function deleteImageFromServer(image) {
+  try {
+    if (!image) return;
 
-      const path =
-        typeof image === "string"
-          ? image
-          : image?.path || image?.url || image?.images;
+    const imageUrl =
+      typeof image === "string"
+        ? image
+        : image.image ||
+          image.images ||
+          image.url ||
+          image.path ||
+          null;
 
-      if (!path) return;
-
-      /* PARENT CALL */
-      if (typeof onDeleteImgeFile === "function") {
-  await onDeleteImgeFile(image);
-}
-
-    } catch (error) {
-      console.error("Delete image error:", error);
+    if (!imageUrl) {
+      console.log("No image URL found");
+      return;
     }
-  }
 
+    const payload = {
+      id: image?.id || null,
+      image_id: image?.image_id || null,
+      image: imageUrl,
+      path: imageUrl,
+      url: imageUrl,
+      category_key: image?.category_key || null,
+      isCover: image?.isCover || false,
+    };
+
+    console.log("DELETE PAYLOAD", payload);
+
+    if (typeof onDeleteImgeFile === "function") {
+      await onDeleteImgeFile(payload);
+    }
+  } catch (error) {
+    console.error("Delete image error:", error);
+  }
+}
   /* ─────────────────────────────────────────────────────────────────────
      DRAG REORDER
   ───────────────────────────────────────────────────────────────────── */
-  const handleDragStart = (idx) => setDragIdx(idx);
+  // const handleDragStart = (idx) => setDragIdx(idx);
 
+  // const handleDragOver = (e, idx) => {
+  //   e.preventDefault();
+  //   setOverIdx(idx);
+  // };
   const handleDragOver = (e, idx) => {
-    e.preventDefault();
-    setOverIdx(idx);
-  };
+  e.preventDefault();
+  setOverIdx(idx);
+};
+  const handleDragStart = (idx) => {
+  setDragIdx(idx);
+  setOverIdx(idx);
+};
+
+const handleDragEnd = () => {
+  setDragIdx(null);
+  setOverIdx(null);
+};
+
 
   const handleDrop = async (toIdx) => {
+     console.log("dragIdx", dragIdx);
+  console.log("toIdx", toIdx);
+  console.log("photos before", photos);
     if (dragIdx === null || dragIdx === toIdx) {
       setDragIdx(null);
       setOverIdx(null);
@@ -207,11 +252,21 @@ export default function PhotoStep({
 
     arr.splice(toIdx, 0, moved);
 
-    const normalized = arr.map((item, index) => ({
-      ...item,
+    const normalized = arr.map((item, index) => {
+  if (typeof item === "string") {
+    return {
+      image: item,
       category_key: index === 0 ? 2 : 3,
       isCover: index === 0,
-    }));
+    };
+  }
+
+  return {
+    ...item,
+    category_key: index === 0 ? 2 : 3,
+    isCover: index === 0,
+  };
+});
 
     setForm((p) => ({
       ...p,
@@ -222,10 +277,7 @@ export default function PhotoStep({
     setOverIdx(null);
   };
 
-  const handleDragEnd = () => {
-    setDragIdx(null);
-    setOverIdx(null);
-  };
+ 
 
   /* ─────────────────────────────────────────────────────────────────────
      SECTION HELPERS
@@ -344,14 +396,17 @@ const handleConfirmDelete = async () => {
       (_, i) => i !== idx
     );
 
-    const normalized = updated.map(
-      (item, index) => ({
-        ...item,
-        category_key:
-          index === 0 ? 2 : 3,
-        isCover: index === 0,
-      })
-    );
+   const normalized = updated.map((item, index) => {
+  if (typeof item === "string") {
+    return item;
+  }
+
+  return {
+    ...item,
+    category_key: index === 0 ? 2 : 3,
+    isCover: index === 0,
+  };
+});
 
     setForm((p) => ({
       ...p,
@@ -403,19 +458,7 @@ const handleConfirmDelete = async () => {
       );
     }
 
-    await fetch(
-      "/api/delete-photo-section",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type":
-            "application/json",
-        },
-        body: JSON.stringify({
-          sectionId,
-        }),
-      }
-    );
+  
   }
 
   setConfirmOpen(false);
@@ -423,6 +466,8 @@ const handleConfirmDelete = async () => {
 };
   const INPUT =
     "w-full rounded-xl px-4 py-2.5 text-[13px] font-medium outline-none transition-all focus:ring-2 focus:ring-violet-500/20";
+
+   
 
   return (
     <div className="space-y-6">
@@ -502,8 +547,7 @@ const handleConfirmDelete = async () => {
         <div
           className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
           onDragOver={(e) => e.preventDefault()}
-          onDrop={handlePageDrop}
-          onDragStart={() => handleDragStart(idx)}
+  onDrop={handlePageDrop}
         >
           {photos.map((photo, idx) => {
             const src = getPhotoUrl(photo);
@@ -517,17 +561,20 @@ const handleConfirmDelete = async () => {
 
             return (
               <div
-                key={photo.id || idx}
-                draggable
-                onDragOver={(e) => {
-  e.stopPropagation();
-  handleDragOver(e, idx);
-}}
-               onDrop={(e) => {
-  e.stopPropagation();
-  handleDrop(idx);
-}}
-                onDragEnd={handleDragEnd}
+               key={photo?.id || photo?.url || photo?.image || photo?.path || idx}
+  draggable
+  onDragStart={() => handleDragStart(idx)}
+  onDragOver={(e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    handleDragOver(e, idx);
+  }}
+  onDrop={(e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    handleDrop(idx);
+  }}
+  onDragEnd={handleDragEnd}
                 className="relative group cursor-grab active:cursor-grabbing rounded-2xl overflow-hidden"
                 style={{
                   aspectRatio: "16/9",

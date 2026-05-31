@@ -13,7 +13,7 @@ import AddonsStep    from "./AddonsStep";
 import TermsStep     from "./TermsStep";
 
 export default function StepRenderer({ step, form, setForm, category , amenities , property ,
-   event,categorys,  onDeleteImgeFile} ) {
+   event,categorys,  onDeleteImgeFile,addonList} ) {
  // const props = { form, setForm, category, amenities };
 
 
@@ -25,8 +25,9 @@ export default function StepRenderer({ step, form, setForm, category , amenities
   amenities,
   property,
   event,
-  categorys
-}), [form, setForm, category, amenities , property, event,categorys]);
+  categorys,
+  addonList
+}), [form, setForm, category, amenities , property, event,categorys,addonList]);
 
 
   switch (step) {

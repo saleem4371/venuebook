@@ -13,6 +13,8 @@ import RemindersScroll from "../components/RemindersScroll";
 import DashboardCards from "../components/DashboardCards";
 import PageHeader from "../components/PageHeader";
 
+
+
 const STAT_CARDS = [
   { title: "Revenue",        value: "₹1,20,000", trend: "up",   trendValue: "+12%", sparkline: [40, 55, 48, 60, 72, 65, 80, 95, 88, 110, 102, 120] },
   { title: "Users",          value: "1,240",      trend: "up",   trendValue: "+8%",  sparkline: [900, 950, 980, 1020, 1050, 1100, 1130, 1160, 1180, 1200, 1220, 1240] },

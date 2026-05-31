@@ -18,8 +18,13 @@
  *   xs    → icon + dot only
  */
 
+import { useState, useEffect} from "react";
 import { motion } from "framer-motion";
 import { ShieldAlert, ShieldCheck, ShieldX, Clock } from "lucide-react";
+
+import { kyc_status } from '@/services/kyc.service'
+
+import { useAuth } from "@/context/AuthContext";
 
 /* ── Per-status design tokens ───────────────────────────────────────── */
 const STATUS = {
@@ -37,7 +42,7 @@ const STATUS = {
     dot:   "bg-amber-500",
     pulse: true,
   },
-  review: {
+  verification_in_progress: {
     label:  "Under Review",
     short:  "Review",
     Icon:   Clock,
@@ -68,11 +73,41 @@ const STATUS = {
   },
 };
 
-export default function KycStatusChip({ status = "pending", onClick }) {
-  const cfg = STATUS[status];
 
-  /* Hide when verified — account is clear */
-  if (!cfg) return null;
+export default function KycStatusChip({ status = "pending", onClick }) {
+
+  const { user } = useAuth();
+
+console.log("user =>", user);
+  //kyc_status
+ const [kycState, setKycState] = useState(null);
+
+useEffect(() => {
+  const kyc_check = async () => {
+    if (!user) return;
+
+    try {
+      const res = await kyc_status();
+      setKycState(res?.data || null);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  kyc_check();
+}, [user]);
+
+if (!kycState) return null;
+
+const statusKey =
+  kycState?.kyc_status === "approved"
+    ? "verified"
+    : kycState?.kyc_status;
+
+const cfg = STATUS[statusKey];
+
+if (!cfg) return null;
+
 
   const { label, short, Icon, chip, dot, pulse } = cfg;
 

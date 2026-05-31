@@ -25,7 +25,7 @@ export default function VenueCard({ venue }) {
 
    const { activeCategory } = useVendorCategory();
 
-  const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+  const BASE_URL = process.env.NEXT_PUBLIC_AWS_BUCKET_URL;
 
   const basePath = `/${params?.locale}/${params?.country}/vendor/listing`;
 
@@ -39,6 +39,7 @@ export default function VenueCard({ venue }) {
   };
 
   const isActive = venue.status === 1;
+
 
   return (
     <>

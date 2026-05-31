@@ -31,7 +31,7 @@ import {
   getAmenties,
   getPropertyName,
   getEvents,
-} from "@/services/global.service";
+  } from "@/services/global.service";
 
 import {
   ListingProperty,
@@ -48,6 +48,7 @@ import {
   saveAddonsStep,
   saveTermsStep,
   DeletePhotos,
+  getAddon
 } from "@/services/vendor.service";
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -1147,8 +1148,14 @@ const buildStepPayload = async (step, form) => {
       return {
         minCapacity: form.minCapacity,
         maxCapacity: form.maxCapacity,
+        totalDesks: form.totalDesks,
+        meetingRooms: form.meetingRooms,
+        bedrooms: form.bedrooms,
+        bathrooms: form.bathrooms,
+        totalRooms: form.totalRooms,
+        bedsPerRoom: form.bedsPerRoom,
       };
-
+ ////totalDesks  meetingRooms bedrooms bathrooms totalRooms bedsPerRoom
     case "amenities":
       return { selected_amenities: form.amenities };
 
@@ -1162,7 +1169,7 @@ const buildStepPayload = async (step, form) => {
       };
 
     case "pricing":
-      return { pricing: form.pricing };
+      return { pricing: form.pricing , type : form.propety_category};
 
     case "tags":
       return {
@@ -1245,6 +1252,7 @@ export default function ListingEditor() {
   const [mobileShowContent, setMobileShowContent] = useState(false);
   const [showPreview, setShowPreview] = useState(false);   /* FIX: preview state */
   const [categorys, setCategory] = useState([]);
+  const [addons, setAddons] = useState([]);
 
   /* ── Loading / saving / error states ────────────────────────────────────── */
   const [isPageLoading, setIsPageLoading] = useState(!!listingId);
@@ -1261,6 +1269,14 @@ export default function ListingEditor() {
     category: "",
     minCapacity: 0,
     maxCapacity: 0,
+
+    totalDesks: 0,
+    meetingRooms: 0,
+    bedrooms: 0,
+    bathrooms: 0,
+    totalRooms: 0,
+    bedsPerRoom: 0,
+   
     address: "",
     city: "",
     state: "",
@@ -1385,10 +1401,11 @@ export default function ListingEditor() {
 
     const loadAmenities = async () => {
       try {
-        const [resEvent, resAmen, resProp] = await Promise.all([
+        const [resEvent, resAmen, resProp,resAddon] = await Promise.all([
           getEvents(),
           getAmenties(cat),
           getPropertyName(cat),
+          getAddon(cat),
         ]);
         if (cancelled) return;
         setEvent(resEvent?.data ?? []);
@@ -1402,6 +1419,7 @@ export default function ListingEditor() {
           })),
         }));
         setAmenities(mergedData);
+        setAddons(resAddon?.data ?? []);
       } catch (err) {
         if (!cancelled) console.error("Amenities load error:", err);
       }
@@ -2012,6 +2030,7 @@ export default function ListingEditor() {
                         property={property}
                         event={event}
                         categorys={categorys}
+                        addonList={addons}
                          onDeleteImgeFile={onDeleteImgeFile}
                       />
                     </div>

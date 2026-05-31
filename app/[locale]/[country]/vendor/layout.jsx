@@ -11,7 +11,7 @@ import { VendorUIProvider }      from "@/context/VendorUIContext";
 import { VendorCategoryProvider, useVendorCategory } from "@/context/VendorCategoryContext";
 import VendorCategoryNavigator   from "./components/VendorCategoryNavigator";
 import CategoryTransitionOverlay from "./components/CategoryTransitionOverlay";
-
+import { AuthProvider } from "@/context/AuthContext";
 // ─────────────────────────────────────────────────────────────────────────────
 // VENDOR ENABLED CATEGORIES
 // Replace with API/session data once auth is wired.
@@ -69,7 +69,9 @@ function PageMainWrapper({ isListingEditor, isFullBleedPage, isFullBleedPage1, c
         .join(" ")}
       style={{ transformOrigin: "center top" }}
     >
-      {children}
+      
+  {children}
+    
     </motion.main>
   );
 }
@@ -89,6 +91,7 @@ export default function AdminLayout({ children }) {
   return (
     <div className="min-h-screen bg-white dark:bg-gray-950" suppressHydrationWarning>
       <VendorCategoryProvider vendorCategories={VENDOR_CATEGORIES}>
+        <AuthProvider>
         <VendorUIProvider>
 
           {/* PRIMARY HEADER */}
@@ -134,6 +137,7 @@ export default function AdminLayout({ children }) {
           </div>
 
         </VendorUIProvider>
+        </AuthProvider>
       </VendorCategoryProvider>
     </div>
   );

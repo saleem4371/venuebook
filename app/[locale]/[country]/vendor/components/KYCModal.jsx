@@ -14,14 +14,22 @@
  *         smooth Framer Motion transitions, full dark-mode support.
  */
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { createPortal }                  from "react-dom";
 import { motion, AnimatePresence }       from "framer-motion";
+
+
+
 import {
   X, ShieldCheck, Building2, CreditCard,
   FileText, Upload, CheckCircle2, Clock,
   ChevronRight, ChevronLeft, AlertCircle,
 } from "lucide-react";
+
+import {
+  SubmitKYC,
+  each_kyc_status
+} from "@/services/kyc.service";
 
 /* ─────────────────────────────────────────────────────────────────────
    STEP DEFINITIONS
@@ -78,6 +86,35 @@ const SLIDE = (dir) => ({
   transition: { duration: 0.22, ease: [0.16, 1, 0.3, 1] },
 });
 
+
+function KycBadge({ status }) {
+  if (!status) return null;
+
+  const map = {
+    approved: {
+      text: "Approved",
+      cls: "bg-green-100 text-green-700",
+    },
+    pending: {
+      text: "Under Review",
+      cls: "bg-blue-100 text-blue-700",
+    },
+    rejected: {
+      text: "Rejected",
+      cls: "bg-red-100 text-red-700",
+    },
+  };
+
+  const item = map[status];
+
+  return (
+    <span
+      className={`px-2 py-1 rounded-full text-xs font-medium ${item.cls}`}
+    >
+      {item.text}
+    </span>
+  );
+}
 /* ─────────────────────────────────────────────────────────────────────
    ROOT EXPORT
 ───────────────────────────────────────────────────────────────────── */
@@ -89,6 +126,8 @@ export default function KYCModal({ open, setOpen }) {
   const [errors,    setErrors]    = useState({});
   const [form,      setForm]      = useState(INITIAL_FORM);
 
+  const [kycData, setKycData] = useState(null);
+
   const patch = useCallback((key, val) => {
     setForm((f) => ({ ...f, [key]: val }));
     setErrors((e) => { const n = { ...e }; delete n[key]; return n; });
@@ -96,12 +135,29 @@ export default function KYCModal({ open, setOpen }) {
 
   const validate = useCallback(() => {
     const e = {};
+    // if (step === 1) {
+    //   if (!form.pan.trim())   e.pan     = "PAN number is required";
+    //   if (!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(form.pan.trim().toUpperCase()))
+    //     e.pan = "Enter a valid PAN (e.g. ABCDE1234F)";
+    //   if (!form.panFile)      e.panFile = "Upload your PAN card";
+    // }
     if (step === 1) {
-      if (!form.pan.trim())   e.pan     = "PAN number is required";
-      if (!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(form.pan.trim().toUpperCase()))
-        e.pan = "Enter a valid PAN (e.g. ABCDE1234F)";
-      if (!form.panFile)      e.panFile = "Upload your PAN card";
-    }
+  if (!form.pan.trim())
+    e.pan = "PAN number is required";
+
+  if (
+    !/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(
+      form.pan.trim().toUpperCase()
+    )
+  ) {
+    e.pan = "Enter a valid PAN (e.g. ABCDE1234F)";
+  }
+
+  // Only require file if no uploaded PAN exists
+  if (!form.panFile && !kycData?.pan?.file_url) {
+    e.panFile = "Upload your PAN card";
+  }
+}
     if (step === 2) {
       if (!form.bankName.trim())  e.bankName  = "Bank name is required";
       if (!form.accountNo.trim()) e.accountNo = "Account number is required";
@@ -114,9 +170,18 @@ export default function KYCModal({ open, setOpen }) {
       if (!form.bizName.trim())  e.bizName  = "Business name is required";
       if (!form.bizType)         e.bizType  = "Select business type";
     }
+    // if (step === 4) {
+    //   if (!form.aadhaarFile) e.aadhaarFile = "Upload your Aadhaar card";
+    // }
     if (step === 4) {
-      if (!form.aadhaarFile) e.aadhaarFile = "Upload your Aadhaar card";
-    }
+  // Only require Aadhaar if not already uploaded
+  if (
+    !form.aadhaarFile &&
+    !kycData?.aadhaar?.file_url
+  ) {
+    e.aadhaarFile = "Upload your Aadhaar card";
+  }
+}
     setErrors(e);
     return Object.keys(e).length === 0;
   }, [step, form]);
@@ -131,12 +196,67 @@ export default function KYCModal({ open, setOpen }) {
     setStep((s) => Math.max(s - 1, 1));
   };
 
-  const handleSubmit = async () => {
+ const handleSubmit = async () => {
+  try {
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1800));
-    setLoading(false);
+
+    const formData = new FormData();
+
+formData.append("pan", form.pan);
+
+// formData.append("panFile", form.panFile);
+
+formData.append("bankName", form.bankName);
+formData.append("accountNo", form.accountNo);
+formData.append("ifsc", form.ifsc);
+formData.append("accountType", form.accountType);
+
+formData.append("bizName", form.bizName);
+formData.append("bizType", form.bizType);
+formData.append("gst", form.gst);
+formData.append("bizAddress", form.bizAddress);
+
+// if (form.aadhaarFile) {
+//   formData.append("aadhaarFile", form.aadhaarFile);
+// }
+
+// if (form.bizRegFile) {
+//   formData.append("bizRegFile", form.bizRegFile);
+// }
+
+// if (form.chequeFile) {
+//   formData.append("chequeFile", form.chequeFile);
+// }
+
+if (form.panFile instanceof File) {
+  formData.append("panFile", form.panFile);
+}
+
+if (form.aadhaarFile instanceof File) {
+  formData.append("aadhaarFile", form.aadhaarFile);
+}
+
+if (form.bizRegFile instanceof File) {
+  formData.append("bizRegFile", form.bizRegFile);
+}
+
+if (form.chequeFile instanceof File) {
+  formData.append("chequeFile", form.chequeFile);
+}
+
+    /* API CALL */
+    await SubmitKYC(formData);
+
+    //kyc/submit
+
+
     setSubmitted(true);
-  };
+  } catch (error) {
+    console.log(error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleClose = () => {
     setOpen(false);
@@ -147,6 +267,38 @@ export default function KYCModal({ open, setOpen }) {
       setErrors({}); setForm(INITIAL_FORM);
     }, 320);
   };
+
+useEffect(() => {
+  if (!open) return;
+
+  const loadKyc = async () => {
+    try {
+      const res = await each_kyc_status();
+
+      setKycData(res?.data);
+
+      setForm((prev) => ({
+        ...prev,
+
+        pan: res?.data?.pan?.document_number || "",
+
+        bankName: res?.data?.bank?.bank_name || "",
+        accountNo: res?.data?.bank?.account_number || "",
+        ifsc: res?.data?.bank?.ifsc || "",
+        accountType: res?.data?.bank?.account_type || "",
+
+        bizName: res?.data?.bank?.business_name || "",
+        bizType: res?.data?.bank?.business_type || "",
+        gst: res?.data?.bank?.gst_number || "",
+        bizAddress: res?.data?.bank?.business_address || "",
+      }));
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+  loadKyc();
+}, [open]);
 
   if (typeof window === "undefined") return null;
 
@@ -211,6 +363,7 @@ export default function KYCModal({ open, setOpen }) {
                         form={form}
                         errors={errors}
                         patch={patch}
+                        kycData={kycData}
                       />
                     </motion.div>
                   )}
@@ -221,12 +374,13 @@ export default function KYCModal({ open, setOpen }) {
             {/* ── Footer navigation ───────────────────────────────── */}
             {!submitted && (
               <ModalFooter
-                step={step}
-                loading={loading}
-                onBack={goBack}
-                onNext={goNext}
-                onSubmit={handleSubmit}
-              />
+  step={step}
+  loading={loading}
+  kycStatus={kycData?.overall_status}
+  onBack={goBack}
+  onNext={goNext}
+  onSubmit={handleSubmit}
+/>
             )}
 
           </motion.div>
@@ -349,12 +503,12 @@ function ProgressStepper({ currentStep }) {
 /* ─────────────────────────────────────────────────────────────────────
    STEP CONTENT ROUTER
 ───────────────────────────────────────────────────────────────────── */
-function StepContent({ step, form, errors, patch }) {
+function StepContent({ step, form, errors, patch ,kycData}) {
   switch (step) {
-    case 1: return <StepPAN      form={form} errors={errors} patch={patch} />;
-    case 2: return <StepBank     form={form} errors={errors} patch={patch} />;
-    case 3: return <StepBusiness form={form} errors={errors} patch={patch} />;
-    case 4: return <StepDocs     form={form} errors={errors} patch={patch} />;
+    case 1: return <StepPAN      form={form} errors={errors} patch={patch}  status={kycData?.pan?.status} kycData={kycData} />;
+    case 2: return <StepBank     form={form} errors={errors} patch={patch}   />;
+    case 3: return <StepBusiness form={form} errors={errors} patch={patch} status={kycData?.aadhaar?.status}/>;
+    case 4: return <StepDocs     form={form} errors={errors} patch={patch}   kycData={kycData}/>;
     case 5: return <StepReview   form={form} />;
     default: return null;
   }
@@ -363,7 +517,7 @@ function StepContent({ step, form, errors, patch }) {
 /* ─────────────────────────────────────────────────────────────────────
    STEP 1 — PAN VERIFICATION
 ───────────────────────────────────────────────────────────────────── */
-function StepPAN({ form, errors, patch }) {
+function StepPAN({ form, errors, patch , status, kycData}) {
   return (
     <div className="space-y-4 pb-4">
       <StepHeader
@@ -389,6 +543,17 @@ function StepPAN({ form, errors, patch }) {
         onChange={(f) => patch("panFile", f)}
       />
       <InfoBox text="Your PAN information is encrypted and stored securely." />
+
+      {kycData?.pan?.file_url && (
+  <a
+    href={kycData.pan.file_url}
+    target="_blank"
+    rel="noreferrer"
+    className="text-xs text-blue-500"
+  >
+    View Uploaded PAN
+  </a>
+)}
     </div>
   );
 }
@@ -509,7 +674,7 @@ function StepBusiness({ form, errors, patch }) {
 /* ─────────────────────────────────────────────────────────────────────
    STEP 4 — DOCUMENTS
 ───────────────────────────────────────────────────────────────────── */
-function StepDocs({ form, errors, patch }) {
+function StepDocs({ form, errors, patch , kycData}) {
   return (
     <div className="space-y-4 pb-4">
       <StepHeader
@@ -517,7 +682,7 @@ function StepDocs({ form, errors, patch }) {
         title="Document Upload"
         desc="Upload clear, legible copies of the following documents."
       />
-      <FileUpload
+      {/* <FileUpload
         label="Aadhaar Card"
         sublabel="Front & back — JPG, PNG or PDF · Max 5 MB"
         value={form.aadhaarFile}
@@ -536,7 +701,61 @@ function StepDocs({ form, errors, patch }) {
         sublabel="For bank account verification — Optional"
         value={form.chequeFile}
         onChange={(f) => patch("chequeFile", f)}
-      />
+      /> */}
+      <FileUpload
+  label="Aadhaar Card"
+  sublabel="Front & back — JPG, PNG or PDF · Max 5 MB"
+  value={form.aadhaarFile}
+  error={errors.aadhaarFile}
+  onChange={(f) => patch("aadhaarFile", f)}
+/>
+
+{kycData?.aadhaar?.file_url && (
+  <a
+    href={kycData.aadhaar.file_url}
+    target="_blank"
+    rel="noreferrer"
+    className="text-xs text-blue-500"
+  >
+    View Uploaded Aadhaar
+  </a>
+)}
+
+<FileUpload
+  label="Business Registration"
+  sublabel="GST cert, Shop Act, or Incorporation doc — Optional"
+  value={form.bizRegFile}
+  onChange={(f) => patch("bizRegFile", f)}
+/>
+
+{kycData?.business_doc?.file_url && (
+  <a
+    href={kycData.business_doc.file_url}
+    target="_blank"
+    rel="noreferrer"
+    className="text-xs text-blue-500"
+  >
+    View Uploaded Business Document
+  </a>
+)}
+
+<FileUpload
+  label="Cancelled Cheque"
+  sublabel="For bank account verification — Optional"
+  value={form.chequeFile}
+  onChange={(f) => patch("chequeFile", f)}
+/>
+
+{kycData?.cheque?.file_url && (
+  <a
+    href={kycData.cheque.file_url}
+    target="_blank"
+    rel="noreferrer"
+    className="text-xs text-blue-500"
+  >
+    View Uploaded Cheque
+  </a>
+)}
       <InfoBox text="All documents are encrypted using 256-bit AES and stored securely." />
     </div>
   );
@@ -643,40 +862,59 @@ function SubmittedState({ onClose }) {
 /* ─────────────────────────────────────────────────────────────────────
    MODAL FOOTER
 ───────────────────────────────────────────────────────────────────── */
-function ModalFooter({ step, loading, onBack, onNext, onSubmit }) {
+function ModalFooter({
+  step,
+  loading,
+  kycStatus,
+  onBack,
+  onNext,
+  onSubmit,
+}) {
   const isFirst = step === 1;
-  const isLast  = step === 5;
+  const isLast = step === 5;
+
+  const isPending = kycStatus === "pending";
+  const disableSubmit = loading || isPending;
 
   return (
     <div className="shrink-0 border-t border-gray-100 dark:border-gray-800 px-6 py-4 flex items-center justify-between gap-3">
-      {/* Back */}
       {!isFirst ? (
         <button
           type="button"
           onClick={onBack}
-          className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 dark:border-gray-700 px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+          className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 dark:border-gray-700 px-4 py-2 text-sm font-medium"
         >
           <ChevronLeft size={14} />
           Back
         </button>
       ) : (
-        <div /> /* spacer */
+        <div />
       )}
 
-      {/* Next / Submit */}
       {isLast ? (
         <motion.button
           type="button"
           onClick={onSubmit}
-          disabled={loading}
-          whileHover={!loading ? { scale: 1.02 } : undefined}
-          whileTap={!loading  ? { scale: 0.97 } : undefined}
-          className="inline-flex items-center gap-2 rounded-full px-5 py-2 text-sm font-semibold text-white cursor-pointer transition hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
-          style={{ background: "linear-gradient(242deg,#a44bf3,#499ce8)" }}
+          disabled={disableSubmit}
+          whileHover={!disableSubmit ? { scale: 1.02 } : undefined}
+          whileTap={!disableSubmit ? { scale: 0.97 } : undefined}
+          className="inline-flex items-center gap-2 rounded-full px-5 py-2 text-sm font-semibold text-white transition disabled:opacity-60 disabled:cursor-not-allowed"
+          style={{
+            background:
+              disableSubmit && !loading
+                ? "#9ca3af"
+                : "linear-gradient(242deg,#a44bf3,#499ce8)",
+          }}
         >
           {loading ? (
             <>
-              <Spinner /> Submitting…
+              <Spinner />
+              Submitting...
+            </>
+          ) : isPending ? (
+            <>
+              <Clock size={14} />
+              Under Review
             </>
           ) : (
             <>
@@ -691,8 +929,11 @@ function ModalFooter({ step, loading, onBack, onNext, onSubmit }) {
           onClick={onNext}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.97 }}
-          className="inline-flex items-center gap-1.5 rounded-full px-5 py-2 text-sm font-semibold text-white cursor-pointer transition hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
-          style={{ background: "linear-gradient(242deg,#a44bf3,#499ce8)" }}
+          className="inline-flex items-center gap-1.5 rounded-full px-5 py-2 text-sm font-semibold text-white"
+          style={{
+            background:
+              "linear-gradient(242deg,#a44bf3,#499ce8)",
+          }}
         >
           Continue
           <ChevronRight size={14} />
@@ -701,7 +942,6 @@ function ModalFooter({ step, loading, onBack, onNext, onSubmit }) {
     </div>
   );
 }
-
 /* ─────────────────────────────────────────────────────────────────────
    PRIMITIVES
 ───────────────────────────────────────────────────────────────────── */

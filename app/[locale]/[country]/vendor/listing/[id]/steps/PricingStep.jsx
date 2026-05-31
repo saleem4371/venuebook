@@ -216,6 +216,7 @@ function ShiftPricing({ form, setForm, copy, tk, theme }) {
    NIGHTLY PRICING  (farmstays / rentals)
 ───────────────────────────────────────────────────────────────────────────── */
 function NightlyPricing({ form, setForm, copy, tk, theme }) {
+  
   const pricing = form.pricing || { nightlyRate: "", weekendRate: "", cleaningFee: "" };
   const set     = (k, v) => setForm({ ...form, pricing: { ...pricing, [k]: v } });
 
@@ -229,6 +230,24 @@ function NightlyPricing({ form, setForm, copy, tk, theme }) {
     color:      tk.text,
     boxShadow:  valid ? "0 0 0 3px rgba(52,211,153,0.10)" : "none",
   });
+
+  useEffect(() => {
+  if (!form?.property_pricing?.length) return;
+
+  const getAmount = (key) =>
+    form.property_pricing.find(
+      (item) => item.pricing_key === key
+    )?.amount || "";
+
+  setForm((prev) => ({
+    ...prev,
+    pricing: {
+      nightlyRate: getAmount("nightly"),
+      weekendRate: getAmount("weekly"),
+      cleaningFee: getAmount("cleaning_fee"),
+    },
+  }));
+}, [form?.property_pricing]);
 
   return (
     <div className="space-y-8">
