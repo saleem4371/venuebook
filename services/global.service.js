@@ -36,3 +36,4 @@ export const country_of_category = () => {
 export const getAmenties = (category) => {
   return api.get(`/global/getAmenties?category=${category}`);
 };
+

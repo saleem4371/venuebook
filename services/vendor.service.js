@@ -70,6 +70,31 @@ export const saveTermsStep = async (id, payload) => {
 export const saveSetting = async (id, payload) => {
  return api.put(`/venue-listing/SaveVenueSetting/${id}`, payload);
 };
+
+//addons
+
+export const LoadaddonCategory  =  () => {
+  return api.get(`/venue-listing/LoadaddonCategory`);
+};
+
+export const SaveCategory  = async (data) => {
+  return api.post(`/venue-listing/SaveCategory`, data);
+};
+
+export const SaveAddon  = async (data) => {
+  return api.post(`/venue-listing/SaveAddon`, data);
+};
+
+export const Loadaddon  = async () => {
+  return api.get(`/venue-listing/Loadaddon`);
+};
+export const DeleteAddon  = async (id) => {
+  return api.delete(`/venue-listing/DeleteAddon/${id}`);
+};
+export const ToggleAddon  = async (id) => {
+  return api.post(`/venue-listing/ToggleAddon`,id);
+};
+
 // export const savePaymentStep = async (id, payload) => {
 //  return api.patch(`/venue-listing/${id}/Payment`, payload);
 // };
@@ -91,5 +116,8 @@ export const saveSetting = async (id, payload) => {
 //  return api.patch(`/venue-listing/${id}/savePricingSetting`, payload);
 // };
 
+export const getAddon = (category) => {
+  return api.get(`/venue-listing/getAddon?category=${category}`);
+};
 
 
