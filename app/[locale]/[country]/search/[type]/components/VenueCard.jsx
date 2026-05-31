@@ -39,20 +39,52 @@ const VenueCard = ({
   const [showWishlistModal, setShowWishlistModal] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
 
-  const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+  const BASE_URL = process.env.NEXT_PUBLIC_AWS_BUCKET_URL;
 
   const liked = wishlist?.some((item) => item.venue_id === venue.childVenueId);
 
   /* ---------------- IMAGES ---------------- */
-  const images = useMemo(() => {
-    if (venue.galleryImages?.length) {
-      return venue.galleryImages.map((img) =>
-        img?.image?.startsWith("http") ? img.image : `${BASE_URL}/${img.image}`,
-      );
-    }
-    return ["https://api.venuebook.in/Gallery/venue_images/parent_venue_a709df8e-9490-4813-8eb0-b85c1d78fbeb/child_venue_c1a5667c-3c82-4ad2-b005-ae6700d405dc/thumbnail_69e68ecdc2158.png"];
-  }, [venue, BASE_URL]);
+// const images = useMemo(
+//   () =>
+//     venue?.images?.length
+//       ? venue.images.map(({ image }) =>
+//           image?.startsWith("http")
+//             ? image
+//             : `${BASE_URL}/${image}`
+//         )
+//       : [
+//           "https://api.venuebook.in/Gallery/venue_images/parent_venue_a709df8e-9490-4813-8eb0-b85c1d78fbeb/child_venue_c1a5667c-3c82-4ad2-b005-ae6700d405dc/thumbnail_69e68ecdc2158.png",
+//         ],
+//   [venue?.images, BASE_URL]
+// );
 
+// const BASE_URL = process.env.NEXT_PUBLIC_AWS_BUCKET_URL;
+
+const images = useMemo(() => {
+  if (!venue?.images?.length) {
+    return [
+      "https://api.venuebook.in/Gallery/venue_images/parent_venue_a709df8e-9490-4813-8eb0-b85c1d78fbeb/child_venue_c1a5667c-3c82-4ad2-b005-ae6700d405dc/thumbnail_69e68ecdc2158.png",
+    ];
+  }
+
+  return venue.images
+    .map((item) => {
+      const image =
+        typeof item === "string"
+          ? item
+          : item?.image || item?.url || "";
+
+      if (!image) return null;
+
+      return image.startsWith("http")
+        ? image
+        : `${BASE_URL}/${image}`;
+    })
+    .filter(Boolean);
+}, [venue?.images, BASE_URL]);
+
+
+console.log(images)
   const isActive = hoverVenue?.childVenueId === venue.childVenueId;
 
   /* ---------------- SLIDER ---------------- */
