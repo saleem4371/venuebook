@@ -1,5 +1,14 @@
 "use client";
 
+// Module-level theme init — executes once when this chunk is evaluated by the
+// browser, before any React render. No script tag needed, no React warning.
+if (typeof window !== "undefined") {
+  try {
+    const t = localStorage.getItem("theme");
+    document.documentElement.classList.toggle("dark", t === "dark");
+  } catch (_) {}
+}
+
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useParams } from "next/navigation";
@@ -160,8 +169,6 @@ export default function Navbar() {
     segments[2] === "search" &&
     !["venues", "farmstay"].includes(segments[3]);
 
-  const { scrolled, visible } = useScrollHeader(isDetailPage);
-
   /* ---------- Sync tab from URL ---------- */
   useEffect(() => {
     if (segments[3] === "farmstay") setActiveTab("farmstay");
@@ -221,8 +228,7 @@ export default function Navbar() {
   const vendorLabel = isLoggedIn && isListed ? t("switch_to_vendor") : t("list_property");
 
   /* ---------- Layout branches ---------- */
-  const showMobileSearchBar = isMobile && isSearchPage && !isDetailPage;
-  const showCenterToggle    = !isMobile && isSearchPage && !isDetailPage;
+  const showCenterToggle = !isMobile && isSearchPage && !isDetailPage;
 
   /* ================================================================ */
 
@@ -237,33 +243,16 @@ export default function Navbar() {
   return (
     <>
       {/* ── Header ───────────────────────────────────────────────── */}
-      <motion.header
-        initial={false}
-        animate={{ y: visible ? 0 : -70 }}
-        transition={{ duration: 0.25, ease: "easeOut" }}
-        className={[
-          "fixed inset-x-0 top-0 z-40 w-full",
-          "transition-[background-color,border-color,box-shadow] duration-200",
-          scrolled
-            ? "bg-white/95 dark:bg-gray-950/95 backdrop-blur-md border-b border-gray-200/80 dark:border-gray-800/80 shadow-sm"
-            : "bg-white dark:bg-gray-950 border-b border-transparent",
-        ].join(" ")}
+      <header
+        className="fixed inset-x-0 top-0 z-50 w-full bg-white dark:bg-gray-950 border-b border-gray-100 dark:border-gray-800"
         role="banner"
       >
         <nav
           aria-label="Primary navigation"
           className="flex h-[64px] md:h-[72px] w-full items-center justify-between px-5 sm:px-8 lg:px-10"
         >
-          {/* ── Branch: Mobile search bar on search pages ──────── */}
-          {showMobileSearchBar ? (
-            <MobileSearchBar
-              onBack={() => router.back()}
-              onFilter={() => setFilterOpen(true)}
-            />
-          ) : (
-            <>
-              {/* Logo */}
-              <Brand href={`/${locale}/${country}/home`} isDark={isDark} />
+          {/* Logo — always visible on all pages and screen sizes */}
+          <Brand href={`/${locale}/${country}/home`} isDark={isDark} />
 
               {/* Center: search-type tabs (desktop search pages) */}
               {/* {showCenterToggle && (
@@ -395,10 +384,8 @@ export default function Navbar() {
                 <UserDropdown onOpenRegionModal={() => setRegionModalOpen(true)}  token = { token }  />
 
               </div>
-            </>
-          )}
         </nav>
-      </motion.header>
+      </header>
 
       {/* ── Region & Language modal ──────────────────────────────── */}
       <RegionLanguageModal
@@ -482,61 +469,6 @@ function SearchTabs({ active, onChange }) {
   );
 }
 
-/* ---------- Mobile search bar (on search pages) ---------- */
-function MobileSearchBar({ onBack, onFilter }) {
-  return (
-    <div className="flex w-full items-center gap-2">
-      <button
-        type="button"
-        onClick={onBack}
-        aria-label="Go back"
-        className={[
-          "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
-          "text-gray-700 dark:text-gray-300",
-          "transition hover:bg-gray-100 dark:hover:bg-gray-800",
-          "focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500",
-        ].join(" ")}
-      >
-        <BackArrowIcon className="h-5 w-5" />
-      </button>
-
-      <label className={[
-        "flex h-10 flex-1 items-center gap-2 rounded-full",
-        "bg-gray-100 dark:bg-gray-800 px-4",
-        "focus-within:bg-gray-200/70 dark:focus-within:bg-gray-700",
-        "transition-colors",
-      ].join(" ")}>
-        <ExploreSearchIcon className="h-4 w-4 shrink-0 text-gray-500 dark:text-gray-400" />
-        <span className="sr-only">Search venues</span>
-        <input
-          type="search"
-          placeholder="Search venues…"
-          className={[
-            "w-full bg-transparent border-none text-sm",
-            "text-gray-900 dark:text-gray-100",
-            "placeholder:text-gray-500 dark:placeholder:text-gray-400",
-            "focus:outline-none",
-          ].join(" ")}
-        />
-      </label>
-
-      <button
-        type="button"
-        onClick={onFilter}
-        aria-label="Open filters"
-        className={[
-          "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
-          "border border-gray-200 dark:border-gray-700",
-          "text-gray-700 dark:text-gray-300",
-          "transition hover:bg-gray-50 dark:hover:bg-gray-800",
-          "focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500",
-        ].join(" ")}
-      >
-        <FilterIcon className="h-4 w-4" />
-      </button>
-    </div>
-  );
-}
 
 /* ------------------------------------------------------------------ */
 /*  Inline SVG icon components                                         */

@@ -315,7 +315,7 @@ export default function CategorySection(loadData) {
                   <img
                     src={
                       chip.frontImage
-                        ? `${process.env.NEXT_PUBLIC_API_URL}/${chip.frontImage}`
+                        ? `${process.env.NEXT_PUBLIC_AWS_BUCKET_URL}/${chip.frontImage}`
                         : "https://digitalsynopsis.com/wp-content/uploads/2017/02/beautiful-color-gradients-backgrounds-070-aqua-splash.png"
                     }
                     alt={chip.name}
@@ -333,7 +333,11 @@ export default function CategorySection(loadData) {
                   >
                     {/* <span className="text-sm leading-none">{chip.icon}</span> */}
                     <img
-                      src={chip.icon}
+                      src={
+                      chip.icon
+                        ? `${process.env.NEXT_PUBLIC_AWS_BUCKET_URL}/${chip.icon}`
+                        : "https://digitalsynopsis.com/wp-content/uploads/2017/02/beautiful-color-gradients-backgrounds-070-aqua-splash.png"
+                    }
                       alt={chip.label}
                       className="w-4 h-4 object-contain"
                     />

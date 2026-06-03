@@ -1,58 +1,71 @@
 "use client";
 
-import { motion } from "framer-motion";
+/**
+ * CategoryBar — horizontal scrollable pill chips.
+ *
+ * "All" chip first → deselects any active category.
+ * Active chip uses VenueBook brand gradient.
+ * Dark mode aware. Mobile swipe friendly.
+ */
 
-const categories = [
-  { id:1, name: "Banquet", icon: "https://apitest.venuebook.in/assets/Category_icons/banquet-hall.png" },
-  { id:2, name: "Conference", icon: "https://apitest.venuebook.in/assets/Category_icons/conference.png" },
-  { id:3, name: "Resorts", icon: "https://apitest.venuebook.in/assets/Category_icons/resort.png" },
-  { id:4, name: "Hotels", icon: "https://apitest.venuebook.in/assets/Category_icons/hotel.png" },
-  { id:5, name: "Community", icon: "https://apitest.venuebook.in/assets/Category_icons/community.png" },
-  { id:6, name: "Convention", icon: "https://apitest.venuebook.in/assets/Category_icons/convention.png" },
-  { id:7, name: "Auditoriums", icon: "https://apitest.venuebook.in/assets/Category_icons/auditorium.png" },
-  { id:8, name: "Outdoor", icon: "https://apitest.venuebook.in/assets/Category_icons/Outdoor.png" },
-];
+const GRADIENT = "linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)";
 
-export default function CategoryBar({ selectedCategory, setSelectedCategory , loadData}) {
-  
+export default function CategoryBar({
+  selectedCategory,
+  setSelectedCategory,
+  loadData = [],
+}) {
+  const toggle = (id) =>
+    setSelectedCategory(selectedCategory === id ? null : id);
+
+  const chipCls = (active) =>
+    "flex-shrink-0 inline-flex items-center gap-1.5 h-8 px-4 rounded-full text-sm font-medium " +
+    "border transition-all duration-200 whitespace-nowrap cursor-pointer select-none " +
+    (active
+      ? "text-white border-transparent shadow-sm"
+      : "text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-900 " +
+        "border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500");
+
   return (
-    <div className="w-full bg-gray-100 border-b border-gray-200 mb-2">
-      <div className="flex items-center gap-4 px-3 py-2 overflow-x-auto no-scrollbar">
+    <div className="w-full bg-white dark:bg-gray-950 border-b border-gray-100 dark:border-gray-800">
+      <div
+        className="flex items-center gap-2 px-4 py-2.5 overflow-x-auto"
+        style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+      >
+        {/* ALL chip */}
+        <button
+          onClick={() => setSelectedCategory(null)}
+          className={chipCls(selectedCategory === null)}
+          style={selectedCategory === null ? { background: GRADIENT } : {}}
+        >
+          All
+        </button>
 
+        {/* Dynamic chips */}
         {loadData.map((cat) => {
           const active = selectedCategory === cat.id;
-
           return (
-            <div
+            <button
               key={cat.id}
-              onClick={() =>
-                setSelectedCategory(active ? null : cat.id) // toggle
-              }
-              className={`flex flex-col items-center flex-shrink-0 w-[100px] cursor-pointer
-                ${active ? "opacity-100" : "opacity-70"}
-              `}
+              onClick={() => toggle(cat.id)}
+              className={chipCls(active)}
+              style={active ? { background: GRADIENT } : {}}
             >
-              <motion.img
-                src={cat.icon}
-                alt={cat.name}
-                className={`w-7 h-7 object-contain ${
-                  active ? "scale-110" : ""
-                }`}
-                whileHover={{ scale: 1.1 }}
-              />
-
-              <span className="text-[11px] mt-1 text-center leading-normal">
-                {cat.name}
-              </span>
-
-              {/* Active Indicator */}
-              {active && (
-                <div className="w-5 h-[2px] bg-purple-600 mt-1 rounded-full" />
+              
+              {cat.icon && (
+                <img
+                  src={`${process.env.NEXT_PUBLIC_AWS_BUCKET_URL}/${cat.icon}`}
+                  alt=""
+                  className={
+                    "w-3.5 h-3.5 object-contain flex-shrink-0 " +
+                    (active ? "brightness-0 invert" : "opacity-60")
+                  }
+                />
               )}
-            </div>
+              {cat.name}
+            </button>
           );
         })}
-
       </div>
     </div>
   );

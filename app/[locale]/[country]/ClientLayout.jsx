@@ -40,7 +40,8 @@ export default function ClientLayout({ children }) {
     const load = async () => {
       try {
         const res = await country_of_category();
-        setLoadData(res?.data);
+        const raw = res?.data?.data ?? res?.data;
+        setLoadData(Array.isArray(raw) ? raw : []);
       } catch (err) {
         console.error(err);
       } finally {
@@ -56,7 +57,7 @@ export default function ClientLayout({ children }) {
             <CategoryProvider>
 
               {!hideChrome && <Navbar />}
-              {!hideChrome && <CategoryNavigator loadData = {loadData}/>}
+              {!hideChrome && <CategoryNavigator loadData={loadData} />}
 
               {children}
 

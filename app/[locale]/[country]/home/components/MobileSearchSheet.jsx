@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   XMarkIcon,
@@ -39,7 +40,7 @@ function FieldSection({ icon: Icon, label, value, isOpen, onToggle, tint, childr
       <button
         type="button"
         onClick={onToggle}
-        className="w-full flex items-center gap-3 px-4 py-3.5 bg-white dark:bg-gray-800/60 hover:bg-gray-50 dark:hover:bg-gray-800 transition text-start rounded-2xl"
+        className="w-full flex items-center gap-3 px-4 py-3 bg-white dark:bg-gray-800/60 hover:bg-gray-50 dark:hover:bg-gray-800 transition text-start rounded-2xl"
       >
         <div
           className="shrink-0 w-8 h-8 rounded-xl flex items-center justify-center"
@@ -75,7 +76,7 @@ function FieldSection({ icon: Icon, label, value, isOpen, onToggle, tint, childr
             transition={{ duration: 0.22, ease: "easeInOut" }}
             className="overflow-hidden rounded-b-2xl"
           >
-            <div className="px-4 pb-4 pt-3 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-100 dark:border-white/[0.06]">
+            <div className="px-3 pb-3 pt-2 bg-white dark:bg-gray-900/50 border-t border-gray-100 dark:border-white/[0.06] overflow-hidden">
               {children}
             </div>
           </motion.div>
@@ -143,7 +144,13 @@ export default function MobileSearchSheet({ open, setOpen }) {
 
   const isReady = !!location;
 
-  return (
+  // Portal renders at document.body to escape any ancestor stacking contexts
+  // (e.g. sticky z-30 SearchBar wrapper that would otherwise cap the sheet's z-index)
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+  if (!mounted) return null;
+
+  return createPortal(
     <AnimatePresence>
       {open && (
         <div className="fixed inset-0 z-[9998] md:hidden">
@@ -190,7 +197,7 @@ export default function MobileSearchSheet({ open, setOpen }) {
             </div>
 
             {/* Scrollable content — overflow-y-auto here is fine because children use in-flow layouts */}
-            <div className="flex-1 overflow-y-auto px-4 pb-2 space-y-2.5" style={{ overscrollBehavior: "contain" }}>
+            <div className="flex-1 overflow-y-auto px-4 pb-2 space-y-2" style={{ overscrollBehavior: "contain" }}>
 
               {/* ── Location ── */}
               <FieldSection
@@ -213,6 +220,7 @@ export default function MobileSearchSheet({ open, setOpen }) {
                   placeholderClass="placeholder-gray-400 dark:placeholder-white/35"
                   clearClass="text-gray-400 hover:text-gray-600 dark:text-white/40 dark:hover:text-white/80"
                   inline
+                  lightDropdown={true}
                   onSelect={(city) => {
                     setLocation(city);
                     if (city) setOpenSection("date");
@@ -239,6 +247,7 @@ export default function MobileSearchSheet({ open, setOpen }) {
                   tint={tint}
                   startDate={startDate}
                   endDate={endDate}
+                  lightMode={true}
                   onChangeStart={(d) => {
                     setStartDate(d);
                     if (!isRange && !isDatetime) setOpenSection("guests");
@@ -296,6 +305,7 @@ export default function MobileSearchSheet({ open, setOpen }) {
           </motion.div>
         </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }

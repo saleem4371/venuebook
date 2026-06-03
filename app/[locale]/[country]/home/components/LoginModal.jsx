@@ -38,6 +38,10 @@ import { useRegion } from "@/hooks/useRegion";
 // When provided, it replaces the default router.push("/") redirect so callers
 // can route the user wherever makes sense in their context.
 export default function LoginModal({ open, setOpen, onSuccess }) {
+
+  const currentPath = window.location.pathname + window.location.search;
+  sessionStorage.setItem("redirectAfterLogin", currentPath);
+
   const [mode, setMode] = useState("login"); // login | register | phone
   const t = useTranslations("auth");
   const [user, setUser] = useState("");
@@ -116,7 +120,21 @@ const [googleProfile, setGoogleProfile] = useState(null);
       document.cookie = `token=${res.data.token}; path=/`;
       await fetchUser();
       close();
-      if (onSuccess) onSuccess(); else router.push("/");
+      // if (onSuccess) onSuccess(); else router.push("/");
+      if (onSuccess) {
+
+        onSuccess()
+      } else {
+ const redirectPath =
+  sessionStorage.getItem("redirectAfterLogin") || "/";
+
+sessionStorage.removeItem("redirectAfterLogin");
+
+router.push(redirectPath);
+      }
+
+     
+
     } catch (err) {
       setError(err?.response?.data?.message || "Login failed");
     } finally {
@@ -184,7 +202,18 @@ const [googleProfile, setGoogleProfile] = useState(null);
       document.cookie = `token=${res.data.token}; path=/`;
       await fetchUser();
       close();
-      if (onSuccess) onSuccess(); else router.push("/");
+      // if (onSuccess) onSuccess(); else router.push("/");
+        if (onSuccess) {
+
+        onSuccess()
+      } else {
+ const redirectPath =
+  sessionStorage.getItem("redirectAfterLogin") || "/";
+
+sessionStorage.removeItem("redirectAfterLogin");
+
+router.push(redirectPath);
+      }
     } catch (err) {
       setError("OTP verification failed");
     } finally {
@@ -204,7 +233,18 @@ const [googleProfile, setGoogleProfile] = useState(null);
       document.cookie = `token=${res.data.token}; path=/`;
       await fetchUser();
       close();
-      if (onSuccess) onSuccess(); else router.push("/");
+      // if (onSuccess) onSuccess(); else router.push("/");
+        if (onSuccess) {
+
+        onSuccess()
+      } else {
+ const redirectPath =
+  sessionStorage.getItem("redirectAfterLogin") || "/";
+
+sessionStorage.removeItem("redirectAfterLogin");
+
+router.push(redirectPath);
+      }
     } catch (err) {
       setError("Social login failed");
     } finally {
@@ -305,8 +345,19 @@ const handleGoogleContinue = async () => {
 
     close();
 
-    if (onSuccess) onSuccess();
-    else router.push("/");
+    // if (onSuccess) onSuccess();
+    // else router.push("/");
+      if (onSuccess) {
+
+        onSuccess()
+      } else {
+ const redirectPath =
+  sessionStorage.getItem("redirectAfterLogin") || "/";
+
+sessionStorage.removeItem("redirectAfterLogin");
+
+router.push(redirectPath);
+      }
 
   } catch (err) {
     setError("Google registration failed");

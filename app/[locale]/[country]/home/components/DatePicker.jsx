@@ -23,21 +23,20 @@ function toDisplay(d, withTime) {
 }
 
 /* ── Calendar month grid ─────────────────────────────────────── */
-function CalendarMonth({ year, month, start, end, hovered, onSelect, onHover, tint, range, minDate }) {
+function CalendarMonth({ year, month, start, end, hovered, onSelect, onHover, tint, range, minDate, light = false }) {
   const firstDay  = new Date(year, month, 1).getDay();
   const daysCount = new Date(year, month + 1, 0).getDate();
   const cells     = [];
   for (let i = 0; i < firstDay; i++) cells.push(null);
   for (let d = 1; d <= daysCount; d++) cells.push(new Date(year, month, d));
 
+  const dayHeaderCls = light ? "text-gray-400 dark:text-white/30" : "text-white/30";
+
   return (
     <div>
-      {/* <p className="text-center text-white/80 text-sm font-semibold mb-3">
-        {MONTHS[month]} {year}
-      </p> */}
       <div className="grid grid-cols-7 gap-0.5 mb-1">
         {DAYS.map((d) => (
-          <p key={d} className="text-center text-white/30 text-[10px] font-medium py-1">{d}</p>
+          <p key={d} className={`text-center text-[10px] font-medium py-1 ${dayHeaderCls}`}>{d}</p>
         ))}
       </div>
       <div className="grid grid-cols-7 gap-0.5">
@@ -48,6 +47,13 @@ function CalendarMonth({ year, month, start, end, hovered, onSelect, onHover, ti
           const isEnd      = isSameDay(day, end);
           const isInRange  = range && isBetween(day, start, end || hovered);
           const isHovered  = isSameDay(day, hovered);
+
+          const normalCls = light
+            ? "text-gray-700 dark:text-white/75 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white"
+            : "text-white/75 hover:bg-white/10 hover:text-white";
+          const pastCls   = light ? "text-gray-200 dark:text-white/15" : "text-white/15";
+          const rangeCls  = light ? "text-gray-700 dark:text-white/90" : "text-white/90";
+          const hovCls    = light ? "bg-gray-100 dark:bg-white/10 text-gray-800 dark:text-white" : "bg-white/10 text-white";
 
           return (
             <button
@@ -61,20 +67,20 @@ function CalendarMonth({ year, month, start, end, hovered, onSelect, onHover, ti
                 isStart || isEnd
                   ? { background: tint?.hex ?? "#7c3aed", color: "#fff" }
                   : isInRange
-                  ? { background: tint?.light ?? "rgba(124,58,237,0.15)" }
+                  ? { background: light ? (tint?.light ?? "rgba(124,58,237,0.12)") : (tint?.light ?? "rgba(124,58,237,0.15)") }
                   : {}
               }
               className={[
                 "relative flex items-center justify-center text-[12px] h-8 rounded-lg transition-all",
                 isPast
-                  ? "text-white/15 cursor-not-allowed"
+                  ? `cursor-not-allowed ${pastCls}`
                   : isStart || isEnd
                   ? "font-bold shadow-sm"
                   : isInRange
-                  ? "text-white/90"
+                  ? rangeCls
                   : isHovered
-                  ? "bg-white/10 text-white"
-                  : "text-white/75 hover:bg-white/10 hover:text-white",
+                  ? hovCls
+                  : normalCls,
               ].join(" ")}
             >
               {day.getDate()}
@@ -87,13 +93,19 @@ function CalendarMonth({ year, month, start, end, hovered, onSelect, onHover, ti
 }
 
 /* ── Time selector ───────────────────────────────────────────── */
-function TimePicker({ value, onChange, label }) {
+function TimePicker({ value, onChange, label, light = false }) {
   const hours   = Array.from({ length: 24 }, (_, i) => i);
   const minutes = [0, 15, 30, 45];
 
+  const borderCls  = light ? "border-t border-gray-100 dark:border-white/10"  : "border-t border-white/10";
+  const labelCls   = light ? "text-gray-400 dark:text-white/40"               : "text-white/40";
+  const selectCls  = light
+    ? "bg-gray-100 dark:bg-white/10 border-gray-200 dark:border-white/15 text-gray-800 dark:text-white [color-scheme:light] dark:[color-scheme:dark]"
+    : "bg-white/10 border-white/15 text-white [color-scheme:dark]";
+
   return (
-    <div className="border-t border-white/10 pt-3 mt-3">
-      <p className="text-[10px] font-semibold uppercase tracking-widest text-white/40 mb-2">{label}</p>
+    <div className={`${borderCls} pt-3 mt-3`}>
+      <p className={`text-[10px] font-semibold uppercase tracking-widest mb-2 ${labelCls}`}>{label}</p>
       <div className="flex items-center gap-2">
         <select
           value={value?.getHours() ?? 9}
@@ -102,7 +114,7 @@ function TimePicker({ value, onChange, label }) {
             d.setHours(+e.target.value);
             onChange(d);
           }}
-          className="bg-white/10 border border-white/15 rounded-lg text-white text-sm px-2 py-1.5 outline-none flex-1 [color-scheme:dark]"
+          className={`rounded-lg text-sm px-2 py-1.5 outline-none flex-1 border ${selectCls}`}
         >
           {hours.map((h) => (
             <option key={h} value={h}>{String(h).padStart(2,"0")}:00</option>
@@ -115,7 +127,7 @@ function TimePicker({ value, onChange, label }) {
             d.setMinutes(+e.target.value);
             onChange(d);
           }}
-          className="bg-white/10 border border-white/15 rounded-lg text-white text-sm px-2 py-1.5 outline-none flex-1 [color-scheme:dark]"
+          className={`rounded-lg text-sm px-2 py-1.5 outline-none flex-1 border ${selectCls}`}
         >
           {minutes.map((m) => (
             <option key={m} value={m}>{String(m).padStart(2,"0")} min</option>
@@ -138,6 +150,8 @@ export default function DatePicker({
   placeholderClass,
   /** When true, renders the calendar inline (no trigger button, no popup). For mobile sheets. */
   alwaysOpen  = false,
+  /** When true, popup uses white bg in light mode / dark bg in dark mode. */
+  lightMode   = false,
 }) {
   const [open,     setOpen]     = useState(false);
   const [viewDate, setViewDate] = useState(new Date());
@@ -174,24 +188,26 @@ export default function DatePicker({
   const nextMonth = () => setViewDate((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1));
 
   /* ── Calendar body (shared between inline + popup) ── */
+  const navBtnCls  = lightMode
+    ? "p-1.5 rounded-lg text-gray-400 dark:text-white/60 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-700 dark:hover:text-white transition"
+    : "p-1.5 rounded-lg hover:bg-white/10 text-white/60 hover:text-white transition";
+  const monthLblCls = lightMode
+    ? "text-gray-700 dark:text-white/80 font-semibold text-sm"
+    : "text-white/80 font-semibold text-sm";
+  const hintCls = lightMode
+    ? "text-center text-gray-400 dark:text-white/35 text-[11px] mt-3"
+    : "text-center text-white/35 text-[11px] mt-3";
+
   const calendarBody = (
     <>
       <div className="flex items-center justify-between mb-4">
-        <button
-          type="button"
-          onClick={prevMonth}
-          className="p-1.5 rounded-lg hover:bg-white/10 text-white/60 hover:text-white transition"
-        >
+        <button type="button" onClick={prevMonth} className={navBtnCls}>
           <ChevronLeftIcon className="w-4 h-4" />
         </button>
-        <span className="text-white/80 font-semibold text-sm">
+        <span className={monthLblCls}>
           {MONTHS[viewDate.getMonth()]} {viewDate.getFullYear()}
         </span>
-        <button
-          type="button"
-          onClick={nextMonth}
-          className="p-1.5 rounded-lg hover:bg-white/10 text-white/60 hover:text-white transition"
-        >
+        <button type="button" onClick={nextMonth} className={navBtnCls}>
           <ChevronRightIcon className="w-4 h-4" />
         </button>
       </div>
@@ -205,21 +221,20 @@ export default function DatePicker({
         range={isRange}
         minDate={today}
         tint={tint}
+        light={lightMode}
         onSelect={handleSelect}
         onHover={isRange ? setHovered : undefined}
       />
 
       {isDatetime && startDate && (
-        <TimePicker value={startDate} onChange={onChangeStart} label="Start time" />
+        <TimePicker value={startDate} onChange={onChangeStart} label="Start time" light={lightMode} />
       )}
       {isDatetime && endDate && (
-        <TimePicker value={endDate} onChange={onChangeEnd} label="End time" />
+        <TimePicker value={endDate} onChange={onChangeEnd} label="End time" light={lightMode} />
       )}
 
       {isRange && startDate && !endDate && (
-        <p className="text-center text-white/35 text-[11px] mt-3">
-          Select checkout date
-        </p>
+        <p className={hintCls}>Select checkout date</p>
       )}
     </>
   );
@@ -228,8 +243,13 @@ export default function DatePicker({
   if (alwaysOpen) {
     return (
       <div
-        className="rounded-2xl p-4 mt-1"
-        style={{
+        className={[
+          "rounded-2xl p-4 mt-1 w-full",
+          lightMode
+            ? "bg-white dark:bg-[rgba(10,10,16,0.97)] border border-gray-200 dark:border-white/15"
+            : "",
+        ].join(" ")}
+        style={lightMode ? {} : {
           background: "rgba(10,10,16,0.97)",
           border:     `1px solid ${tint?.border ?? "rgba(255,255,255,0.15)"}`,
         }}
@@ -273,13 +293,18 @@ export default function DatePicker({
             animate={{ opacity: 1, y: 0,  scale: 1    }}
             exit={{   opacity: 0, y: 8,   scale: 0.97 }}
             transition={{ duration: 0.18, ease: "easeOut" }}
-            style={{
+            style={lightMode ? { insetInlineStart: 0 } : {
               background:       "rgba(12,12,18,0.95)",
               border:           `1px solid ${tint?.border ?? "rgba(255,255,255,0.15)"}`,
               boxShadow:        `0 20px 60px rgba(0,0,0,0.6), ${tint?.glow ?? "0 0 24px rgba(255,255,255,0.05)"}`,
               insetInlineStart: 0,
             }}
-            className="absolute top-full mt-1.5 z-[9999] rounded-2xl backdrop-blur-2xl p-4 min-w-[300px]"
+            className={[
+              "absolute top-full mt-1.5 z-[9999] rounded-2xl p-4 min-w-[300px]",
+              lightMode
+                ? "bg-white dark:bg-[#0f0f14] border border-gray-200 dark:border-[#252525] shadow-[0_8px_24px_rgba(0,0,0,0.08),0_2px_8px_rgba(0,0,0,0.04)] dark:shadow-[0_20px_60px_rgba(0,0,0,0.6)] backdrop-blur-md"
+                : "backdrop-blur-2xl",
+            ].join(" ")}
           >
             {calendarBody}
           </motion.div>

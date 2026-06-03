@@ -160,13 +160,20 @@ export default function GuestPicker({
   chevronClass,
   /** When true, renders steppers inline (no trigger/popup). Used in MobileSearchSheet. */
   inline      = false,
+  /**
+   * Placeholder text shown in the trigger BEFORE the user has made a selection.
+   * When omitted the trigger shows the computed summary immediately (existing behaviour).
+   */
+  placeholder,
+  /** When true, popup uses white bg in light mode / dark bg in dark mode. */
+  lightMode   = false,
 }) {
-  const [open,   setOpen]   = useState(false);
-  const [values, setValues] = useState(() => buildDefault(type));
-  const ref                 = useRef(null);
+  const [open,          setOpen]          = useState(false);
+  const [values,        setValues]        = useState(() => buildDefault(type));
+  const [hasInteracted, setHasInteracted] = useState(false);
+  const ref                               = useRef(null);
 
   const fields     = GUEST_CONFIGS[type] ?? GUEST_CONFIGS.guests;
-  /* Only the single venue guest count allows manual keyboard entry */
   const allowInput = type === "guests";
 
   useEffect(() => { setValues(buildDefault(type)); }, [type]);
@@ -181,6 +188,7 @@ export default function GuestPicker({
   }, [open]);
 
   const handleChange = (id, newVal) => {
+    setHasInteracted(true);
     setValues((prev) => {
       const next = { ...prev, [id]: newVal };
       onChange?.(next);
@@ -214,7 +222,7 @@ export default function GuestPicker({
     : "Guests";
 
   return (
-    <div ref={ref} className="relative w-full">
+    <div ref={ref} className=" w-full">
 
       {/* Trigger */}
       <button
@@ -222,7 +230,9 @@ export default function GuestPicker({
         onClick={() => setOpen((v) => !v)}
         className={`w-full flex items-center gap-2 bg-transparent text-sm outline-none text-start ${textClass ?? "text-white"}`}
       >
-        <span className="truncate flex-1">{summary}</span>
+        <span className="truncate flex-1">
+          {(placeholder && !hasInteracted) ? placeholder : summary}
+        </span>
         <ChevronDownIcon
           className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""} ${chevronClass ?? "text-white/50"}`}
         />
@@ -236,15 +246,24 @@ export default function GuestPicker({
             animate={{ opacity: 1, y: 0,  scale: 1    }}
             exit={{   opacity: 0, y: 6,   scale: 0.97 }}
             transition={{ duration: 0.18, ease: "easeOut" }}
-            style={{
+            style={lightMode ? { insetInlineStart: 0 } : {
               background:       "rgba(10,10,16,0.97)",
               border:           `1px solid ${tint?.activeBorder ?? tint?.border ?? "rgba(255,255,255,0.15)"}`,
               boxShadow:        `0 24px 48px rgba(0,0,0,0.5), ${tint?.activeGlow ?? tint?.glow ?? "0 0 20px rgba(0,0,0,0.2)"}`,
               insetInlineStart: 0,
             }}
-            className="absolute top-full mt-2 min-w-[280px] z-[9999] rounded-2xl backdrop-blur-2xl px-4 pt-3 pb-4"
+            className={[
+              "absolute top-full mt-1.5 min-w-[320px] max-w-[400px] z-[9999] rounded-2xl px-4 pt-3 pb-4",
+              lightMode
+                ? "bg-white dark:bg-[#0f0f14] border border-gray-200 dark:border-[#252525] shadow-[0_8px_24px_rgba(0,0,0,0.08),0_2px_8px_rgba(0,0,0,0.04)] dark:shadow-[0_24px_48px_rgba(0,0,0,0.5)] backdrop-blur-md"
+                : "backdrop-blur-2xl",
+            ].join(" ")}
           >
-            <p className="text-[10px] font-bold uppercase tracking-widest text-white/35 pb-2 mb-1 border-b border-white/[0.07]">
+            <p className={`text-[10px] font-bold uppercase tracking-widest pb-2 mb-1 border-b ${
+              lightMode
+                ? "text-gray-400 dark:text-white/35 border-gray-100 dark:border-white/[0.07]"
+                : "text-white/35 border-white/[0.07]"
+            }`}>
               {label}
             </p>
 
@@ -255,6 +274,7 @@ export default function GuestPicker({
                 value={values[field.id] ?? field.min}
                 onChange={(v) => handleChange(field.id, v)}
                 allowInput={allowInput}
+                lightMode={lightMode}
               />
             ))}
 

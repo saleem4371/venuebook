@@ -227,12 +227,14 @@ console.log(images)
         className="
           relative
           overflow-hidden
-          rounded-3xl
-          bg-white/70
-          backdrop-blur-xl
-          shadow-[0_10px_40px_rgba(0,0,0,0.08)]
-          hover:shadow-[0_25px_70px_rgba(0,0,0,0.12)]
-          transition-all
+          rounded-2xl
+          bg-white
+          border border-gray-100
+          shadow-[0_2px_8px_rgba(0,0,0,0.06),0_0_1px_rgba(0,0,0,0.04)]
+          hover:shadow-[0_8px_24px_rgba(0,0,0,0.10),0_2px_8px_rgba(0,0,0,0.06)]
+          hover:border-gray-200
+          transition-all duration-200
+          z-[1]
         "
       >
         {/* ---------------- IMAGE SLIDER ---------------- */}
@@ -259,7 +261,7 @@ console.log(images)
                 initial={{ scale: 0, opacity: 0 }}
                 animate={{ scale: 1.6, opacity: 1 }}
                 exit={{ scale: 0, opacity: 0 }}
-                className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none"
+                className="absolute inset-0 z-[3] flex items-center justify-center pointer-events-none"
               >
                 <Heart className="text-pink-500 fill-pink-500" size={70} />
               </motion.div>
@@ -323,7 +325,7 @@ console.log(images)
     absolute
     top-3
     left-3
-    z-20
+    z-[2]
     flex
     items-center
     justify-center

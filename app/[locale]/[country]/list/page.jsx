@@ -5,7 +5,6 @@ import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
 
-
 import { useAuth } from "@/context/AuthContext";
 import LoginModal from "@/app/[locale]/[country]/home/components/LoginModal";
 
@@ -28,11 +27,9 @@ export default function ListYourPropertyPage() {
     // loading,
   } = useGlobal();
 
-  console.log(categorys);
-
   const t = useTranslations("listing");
 
- const [selected, setSelected] = useState("venue");
+  const [selected, setSelected] = useState("venue");
   // const [selected, setSelected] = useState(1);
   const params = useParams();
   const router = useRouter();
@@ -41,50 +38,59 @@ export default function ListYourPropertyPage() {
 
   const region = country.toUpperCase();
   // const category = categorys.find((c) => c.id === selected);
-const category = categorys?.find((c) => c.name === selected) || {};
+  const category = categorys?.find((c) => c.name === selected) || {};
 
-// const stat = category.stat || {};
+  // const stat = category.stat || {};
 
-let stat = {};
+  let stat = {};
 
-try {
-  stat =
-    typeof category?.stat === "string"
-      ? JSON.parse(category.stat)
-      : category?.stat || {};
-} catch (e) {
-  stat = {};
-}
+  try {
+    stat =
+      typeof category?.stat === "string"
+        ? JSON.parse(category.stat)
+        : category?.stat || {};
+  } catch (e) {
+    stat = {};
+  }
 
-console.log(stat);
+  console.log(stat);
 
-  const isComingSoon = selected === 6 ;
+  const isComingSoon = selected === 6;
   const ctaHref = `/${locale}/${country}/start-listing/${selected}`;
 
   // Auth gate
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, user } = useAuth();
   const [showLogin, setShowLogin] = useState(false);
+
+  const isParent = Number(user?.is_parent) === 1;
 
   // Click handler for the CTA button
   const handleCtaClick = () => {
     if (isComingSoon) return;
+
     if (!isLoggedIn) {
       setShowLogin(true);
       return;
     }
-    router.push(ctaHref);
+
+    router.push(isParent ? "/" : ctaHref);
+  };
+
+  const handleSwitchVendor = () => {
+    router.push(`/${locale}/${country}/vendor/dashboard`);
   };
 
   // After successful login → navigate to the listing flow
   const handleLoginSuccess = () => {
     setShowLogin(false);
-    router.push(ctaHref);
+
+    router.push(isParent ? "/" : ctaHref);
   };
 
   const getImageUrl = (path) => {
-  if (!path) return "https://placehold.co/600x400";
-  return `${process.env.NEXT_PUBLIC_AWS_BUCKET_URL}/${path}`;
-};
+    if (!path) return "https://placehold.co/600x400";
+    return `${process.env.NEXT_PUBLIC_AWS_BUCKET_URL}/${path}`;
+  };
 
   return (
     <main className="bg-white dark:bg-gray-950">
@@ -212,7 +218,7 @@ console.log(stat);
               <div className="inline-flex items-center gap-2.5 rounded-xl px-7 py-3.5 text-sm font-semibold text-gray-400 dark:text-gray-600 cursor-not-allowed shrink-0 border border-gray-200 dark:border-gray-800">
                 {t(`cta_button.${selected}`)}
               </div>
-            ) : (
+            ) : !isParent ? (
               <button
                 type="button"
                 onClick={handleCtaClick}
@@ -235,6 +241,29 @@ console.log(stat);
                   </motion.span>
                 </AnimatePresence>
               </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleSwitchVendor}
+                className="inline-flex items-center gap-2.5 rounded-xl px-7 py-3.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 active:opacity-80 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 shrink-0"
+                style={{
+                  background: "linear-gradient(242deg, #a44bf3, #499ce8)",
+                }}
+              >
+                <AnimatePresence mode="wait">
+                  <motion.span
+                    key={selected}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.18 }}
+                    className="flex items-center gap-2.5"
+                  >
+                    Switch to Vendor
+                    <ArrowRightIcon />
+                  </motion.span>
+                </AnimatePresence>
+              </button>
             )}
           </div>
 
@@ -252,11 +281,11 @@ console.log(stat);
                   <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1">
                     {t(`stat.${key}`)}
                   </p>
-                 <p className="text-xl font-bold text-gray-900 dark:text-white">
-  {key === "earning"
-    ? t(`earning.${region}`)
-    : stat?.[key] ?? '-'}
-</p>
+                  <p className="text-xl font-bold text-gray-900 dark:text-white">
+                    {key === "earning"
+                      ? t(`earning.${region}`)
+                      : (stat?.[key] ?? "-")}
+                  </p>
                 </motion.div>
               ))}
             </AnimatePresence>

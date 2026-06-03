@@ -106,7 +106,7 @@ export function PopularCategoryRow({ tint, categoryLabel = "Venues", items }) {
                 location: item.location,
                 image:    item.image,
                 rating:   item.rating ?? 4.7,
-                reviews:  item.reviews ?? Math.floor(Math.random() * 300 + 50),
+                reviews:  item.reviews ?? 0,
               }}
             />
           </motion.div>

@@ -11,7 +11,7 @@ import VenueCard from "./VenueCard";
  *
  * "View all" is hidden when there are 5 or fewer venues.
  */
-export default function VenueSection({ title, subtitle, venues ,dataSource }) {
+export default function VenueSection({ title, subtitle, venues, dataSource, tint }) {
   if (!venues?.length) return null;
 
   const showViewAll = venues.length > 5;
