@@ -78,7 +78,6 @@ export default function KycStatusChip({ status = "pending", onClick }) {
 
   const { user } = useAuth();
 
-console.log("user =>", user);
   //kyc_status
  const [kycState, setKycState] = useState(null);
 

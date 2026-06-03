@@ -82,23 +82,7 @@ const TAG_OPTIONS        = ["Popular", "Premium", "Bestseller", "New"];
 const TOTAL_UNIT_OPTIONS = ["per event", "per booking", "per day", "per night", "per hour", "per trip", "per person"];
 const SORT_OPTIONS       = ["Newest", "Price ↑", "Price ↓", "Most Booked", "Name A–Z"];
 
-/* ══════════════════════════════════════════════════════════
-   MOCK DATA
-══════════════════════════════════════════════════════════ */
-const MOCK_ADDONS = [
-  { id: 1,  name: "Premium Floral Decor",     category: "Decor",         pricingType: "total", price: 15000, unit: "per event",   pricePerUnit: 0,   totalStock: 0,  damagedUnits: 0, unitLabel: "", status: "active",   tags: ["Popular","Premium"],    bookings: 42,  image: null, description: "Luxury floral arrangements with seasonal blooms and exotic centerpieces." },
-  { id: 2,  name: "5-Course Gala Dinner",     category: "Catering",      pricingType: "total", price: 4500,  unit: "per person",  pricePerUnit: 0,   totalStock: 0,  damagedUnits: 0, unitLabel: "", status: "active",   tags: ["Bestseller"],           bookings: 89,  image: null, description: "Curated 5-course dinner prepared by award-winning chefs." },
-  { id: 3,  name: "DJ + Sound System",        category: "Entertainment",  pricingType: "total", price: 35000, unit: "per night",   pricePerUnit: 0,   totalStock: 0,  damagedUnits: 0, unitLabel: "", status: "active",   tags: ["Popular"],              bookings: 67,  image: null, description: "Professional DJ with premium JBL sound system for up to 1000 guests." },
-  { id: 4,  name: "360° Event Photography",   category: "Photography",    pricingType: "total", price: 25000, unit: "per event",   pricePerUnit: 0,   totalStock: 0,  damagedUnits: 0, unitLabel: "", status: "active",   tags: ["Premium","New"],        bookings: 28,  image: null, description: "Full event coverage with 2 photographers and drone footage." },
-  { id: 5,  name: "LED Uplighting Package",   category: "Lighting",       pricingType: "total", price: 18000, unit: "per event",   pricePerUnit: 0,   totalStock: 0,  damagedUnits: 0, unitLabel: "", status: "active",   tags: ["Popular"],              bookings: 55,  image: null, description: "40-piece LED uplighting with custom color programming." },
-  { id: 6,  name: "Luxury Coach Transfer",    category: "Transportation", pricingType: "total", price: 12000, unit: "per trip",    pricePerUnit: 0,   totalStock: 0,  damagedUnits: 0, unitLabel: "", status: "inactive", tags: [],                       bookings: 12,  image: null, description: "AC luxury coach for 45 passengers with a dedicated chauffeur." },
-  { id: 7,  name: "Banquet Chairs",           category: "Furniture",      pricingType: "unit",  price: 0,     unit: "per event",   pricePerUnit: 120, totalStock: 500, damagedUnits: 18, unitLabel: "chairs", status: "active", tags: ["Popular"],           bookings: 31,  image: null, description: "Premium Chiavari banquet chairs with gold finish." },
-  { id: 8,  name: "Cinematic Videography",    category: "Photography",    pricingType: "total", price: 30000, unit: "per event",   pricePerUnit: 0,   totalStock: 0,  damagedUnits: 0, unitLabel: "", status: "active",   tags: ["New"],                  bookings: 9,   image: null, description: "4K cinematic film with color grading and same-day highlight reel." },
-  { id: 9,  name: "Royal Buffet Setup",       category: "Catering",       pricingType: "total", price: 1800,  unit: "per person",  pricePerUnit: 0,   totalStock: 0,  damagedUnits: 0, unitLabel: "", status: "active",   tags: ["Bestseller","Popular"], bookings: 134, image: null, description: "Extensive buffet with 40+ dishes across Indian and Continental." },
-  { id: 10, name: "Projectors",               category: "Entertainment",  pricingType: "unit",  price: 0,     unit: "per event",   pricePerUnit: 2500, totalStock: 12, damagedUnits: 2, unitLabel: "projectors", status: "active", tags: [],               bookings: 19,  image: null, description: "HD projectors with screens, ideal for presentations and screenings." },
-  { id: 11, name: "Kids Activity Zone",       category: "Activities",     pricingType: "total", price: 8000,  unit: "per event",   pricePerUnit: 0,   totalStock: 0,  damagedUnits: 0, unitLabel: "", status: "inactive", tags: [],                       bookings: 23,  image: null, description: "Supervised play area with games, face painting, and magic show." },
-  { id: 12, name: "Mandap Decoration",        category: "Decor",          pricingType: "total", price: 85000, unit: "per event",   pricePerUnit: 0,   totalStock: 0,  damagedUnits: 0, unitLabel: "", status: "active",   tags: ["Premium","Bestseller"], bookings: 76,  image: null, description: "Traditional mandap with modern floral and fabric draping." },
-];
+
 
 /* ══════════════════════════════════════════════════════════
    UTILS
@@ -276,7 +260,8 @@ export default function AddonsPage() {
   const [toasts,           setToasts]           = useState([]);
   const [loading,          setLoading]          = useState(true);
 
-
+ const BASE_URL = process.env.NEXT_PUBLIC_AWS_BUCKET_URL;
+ 
   //ctegory
   const [catErrors, setCatErrors] = useState({});
 const [saving, setSaving] = useState(false);
@@ -507,7 +492,7 @@ const handleSave = async () => {
     formData.append("tags", JSON.stringify(form.tags || []));
 
     await SaveAddon(formData);
-
+await loadAddons();
     toast("Add-on saved successfully", "success");
 
     closeModal();
@@ -525,28 +510,30 @@ const handleSave = async () => {
     // setAddons(prev => prev.filter(a => a.id !== activeAddon.id)); toast("Deleted");
     await DeleteAddon(activeAddon.id);
      closeModal();
+     await loadAddons();
   };
   const handleDuplicate = (a) => { setAddons(prev => [{ ...a, id: Date.now(), name: `${a.name} (Copy)`, bookings: 0 }, ...prev]); toast("Duplicated ✨"); };
 const handleToggle = async (id) => {
   try {
     const addon = addons.find((a) => a.id === id);
 
+    console.log(addon)
+
     if (!addon) return;
 
     const param = {
-      id:id,
-      status: addon.status === "active" ? "0" : "1",
+      id,
+      status: Number(addon.status) === 1 ? "0" : "1",
     };
 
     await ToggleAddon(param);
-
-   // toast.success("Status updated");
-
-    await loadAddons(); // reload data
+    await loadAddons();
   } catch (err) {
-    toast.error("Failed to update status");
+    // toast.error("Failed to update status");
   }
 };
+
+
    
 
   const activeFilters = sort !== "Newest";
@@ -554,7 +541,7 @@ const handleToggle = async (id) => {
 
   //loding //LoadaddonCategory
 
-   useEffect( () => {
+   
   
       const loadAddons = async () => {
         try {
@@ -568,7 +555,8 @@ const handleToggle = async (id) => {
           console.error("Addons load error:", err);
         }
       };
-  
+
+  useEffect( () => {
       loadAddons();
     }, []);
 
@@ -623,6 +611,7 @@ const handleToggle = async (id) => {
             onClose={closeModal} onSave={handleSave}
             getTheme={getTheme} allCategoryThemes={allCategoryThemes}
             onAddCategory={addCustomCategory}
+            BASE_URL = {BASE_URL}
           />
         )}
       </AnimatePresence>
@@ -926,11 +915,11 @@ function AddOnCard({ addon, index, onEdit, onDelete, onDuplicate, onToggle, getT
           <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full text-white shrink-0" style={{ background: theme.gradient }}>
             <Icon size={9} />{addon.category}
           </span>
-          <div className="flex gap-1 flex-wrap justify-end">
+          {/* <div className="flex gap-1 flex-wrap justify-end">
             {addon.tags && addon.tags.slice(0, 2).map(t => (
               <span key={t} className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${TAG_STYLES[t] || "bg-gray-100 text-gray-600"}`}>{t}</span>
             ))}
-          </div>
+          </div> */}
         </div>
         <h3 className="font-bold text-gray-900 dark:text-white text-sm leading-snug line-clamp-2 mb-1.5">{addon.name}</h3>
         <p className="text-[11px] text-gray-400 dark:text-gray-500 line-clamp-2 leading-relaxed mb-auto">{addon.description}</p>
@@ -979,7 +968,7 @@ function AddOnRow({ addon, index, onEdit, onDelete, onDuplicate, onToggle, getTh
           <div className="min-w-0">
             <div className="flex items-center gap-2 mb-0.5">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-white truncate">{addon.name}</h3>
-              {addon.tags && addon.tags.slice(0, 1).map(t => <span key={t} className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${TAG_STYLES[t] || "bg-gray-100 text-gray-600"}`}>{t}</span>)}
+              {/* {addon.tags && addon.tags.slice(0, 1).map(t => <span key={t} className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${TAG_STYLES[t] || "bg-gray-100 text-gray-600"}`}>{t}</span>)} */}
             </div>
             <p className="text-[11px] text-gray-400 dark:text-gray-500 truncate">{addon.description}</p>
           </div>
@@ -995,10 +984,13 @@ function AddOnRow({ addon, index, onEdit, onDelete, onDuplicate, onToggle, getTh
           <p className="text-sm font-bold text-gray-800 dark:text-gray-200">{addon.bookings}</p>
           <p className="text-[10px] text-gray-400">bookings</p>
         </div>
-        <div className="flex justify-center"><StatusToggle checked={addon.status === "active"} onChange={() => onToggle(addon.id)} /></div>
+        <div className="flex justify-center">
+          {/* <StatusToggle checked={addon.status === "active"} onChange={() => onToggle(addon.id)} /> */}
+             <StatusToggle checked={addon.status === "1"} onChange={() => onToggle(addon.id)} />
+          </div>
         <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
           <RowBtn icon={Pencil} onClick={() => onEdit(addon)}      title="Edit"      />
-          <RowBtn icon={Copy}   onClick={() => onDuplicate(addon)} title="Duplicate" />
+          {/* <RowBtn icon={Copy}   onClick={() => onDuplicate(addon)} title="Duplicate" /> */}
           <RowBtn icon={Trash2} onClick={() => onDelete(addon)}    title="Delete"    danger />
         </div>
       </div>
@@ -1013,13 +1005,13 @@ function AddOnRow({ addon, index, onEdit, onDelete, onDuplicate, onToggle, getTh
             <h3 className="font-semibold text-gray-900 dark:text-white text-sm line-clamp-1">{addon.name}</h3>
             <p className="text-[11px] text-gray-400 mt-0.5">{addon.category}</p>
           </div>
-          <StatusToggle checked={addon.status === "active"} onChange={() => onToggle(addon.id)} />
+          <StatusToggle checked={addon.status === "1"} onChange={() => onToggle(addon.id)} />
         </div>
-        {addon.tags.length > 0 && (
+        {/* {addon.tags.length > 0 && (
           <div className="flex flex-wrap gap-1 mb-3">
             {addon.tags.map(t => <span key={t} className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${TAG_STYLES[t] || "bg-gray-100 text-gray-600"}`}>{t}</span>)}
           </div>
-        )}
+        )} */}
         <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-white/[0.06]">
           <div>
             <p className="text-base font-black text-gray-900 dark:text-white">{fmt(displayPrice)}</p>
@@ -1113,7 +1105,7 @@ function EmptyState({ onAdd }) {
    Footer  : sticky glass — Cancel + Create/Save
 ══════════════════════════════════════════════════════════ */
 function AddOnModal({ mode, form, setForm, onClose, onSave, getTheme,
-   allCategoryThemes, onAddCategory , setCatForm}) {
+   allCategoryThemes, onAddCategory , setCatForm , BASE_URL}) {
   const fileRef = useRef(null);
   const [isDragging,   setIsDragging]   = useState(false);
   const [uploading,    setUploading]    = useState(false);
@@ -1127,6 +1119,7 @@ function AddOnModal({ mode, form, setForm, onClose, onSave, getTheme,
   //   setUploading(true);
   //   setTimeout(() => { setForm(f => ({ ...f, image: URL.createObjectURL(file) })); setUploading(false); }, 600);
   // };
+  console.log(form)
   const handleFile = (file) => {
   if (!file) return;
 
@@ -1292,8 +1285,8 @@ function AddOnModal({ mode, form, setForm, onClose, onSave, getTheme,
                     className="rounded-2xl border border-gray-100 dark:border-white/[0.06] overflow-hidden bg-white dark:bg-[#0f172a] shadow-sm">
                     <div className={`h-0.5 bg-gradient-to-r ${previewTheme.strip}`} />
                     <div className="aspect-video overflow-hidden flex items-center justify-center" style={{ background: form.image ? undefined : previewTheme.gradient }}>
-                      {form.imagePreview
-                        ? <img src={form.imagePreview} alt="preview" className="w-full h-full object-cover object-center" />
+                      {(form.image || form.imagePreview)
+                        ? <img src={form.imagePreview ||`${BASE_URL}/${form.image}`} alt="preview" className="w-full h-full object-cover object-center" />
                         : <PreviewIcon size={20} className="text-white/45" />}
                     </div>
                     <div className="p-3 space-y-1.5">
@@ -1316,13 +1309,13 @@ function AddOnModal({ mode, form, setForm, onClose, onSave, getTheme,
                       {form.pricingType === "unit" && form.totalStock && (
                         <p className="text-[9px] text-gray-400">{availableUnits} available</p>
                       )}
-                      {form.tags?.length > 0 && (
+                      {/* {form.tags?.length > 0 && (
                         <div className="flex flex-wrap gap-1 pt-0.5">
                           {form.tags.slice(0, 3).map(t => (
                             <span key={t} className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full ${TAG_STYLES[t] || "bg-gray-100 text-gray-600"}`}>{t}</span>
                           ))}
                         </div>
-                      )}
+                      )} */}
                     </div>
                   </motion.div>
                 )}
