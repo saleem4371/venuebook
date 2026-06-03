@@ -48,6 +48,7 @@ export default function ItemModal({
   onSubmit,
   saving,
   t,
+  pathUrl
 }) {
   const isEdit = !!form.id;
   const currencySymbol = usePriceCurrencySymbol();
@@ -79,11 +80,16 @@ export default function ItemModal({
           <div className="sm:w-44 sm:flex-shrink-0">
             {imagePreview ? (
               <div className="relative overflow-hidden rounded-2xl sm:h-full sm:min-h-[180px]">
-                <img
-                  src={imagePreview}
-                  alt="Preview"
-                  className="h-44 w-full object-cover sm:h-full"
-                />
+               <img
+  src={
+    typeof imagePreview === "string" &&
+    imagePreview.startsWith("data:")
+      ? imagePreview
+      : `${pathUrl}/${imagePreview}`
+  }
+  alt="Preview"
+  className="h-44 w-full object-cover sm:h-full"
+/>
                 {/* Gradient overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
                 <button
@@ -206,15 +212,20 @@ export default function ItemModal({
               </button>
               <button
                 type="submit"
-                disabled={saving || !form.name.trim() || !form.price}
+                disabled={saving || !form.name || !form.price}
                 className="inline-flex items-center gap-1.5 rounded-xl px-5 py-2 text-xs font-semibold text-white shadow-md transition hover:opacity-90 active:scale-95 disabled:opacity-50"
                 style={{ background: "linear-gradient(242deg,#a44bf3,#499ce8)" }}
+
               >
                 {saving ? t("pkg.saving") : isEdit ? t("save") : t("pkg.add")}
               </button>
             </div>
           </div>
         </div>
+           <input
+                type="hidden"
+                value={form.id}
+              />
       </form>
     </ModalBase>
   );

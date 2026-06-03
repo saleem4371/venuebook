@@ -9,8 +9,8 @@ import { Pencil, Shapes } from "lucide-react";
  */
 export default function CategoryCard({ category, onEdit, onTogglePublish }) {
   const t = useTranslations();
-  const isPublished = category.cat_publish === 1;
-  const itemCount   = category.package_item?.length ?? 0;
+  const isPublished = Number(category.cat_publish) === 1;
+  const itemCount = category?.package_item?.length ?? 0;
 
   return (
     <div
@@ -45,7 +45,7 @@ export default function CategoryCard({ category, onEdit, onTogglePublish }) {
 
           <button
             type="button"
-            onClick={() => onEdit(category)}
+            onClick={() => onEdit?.(category)}
             aria-label="Edit category"
             className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 opacity-0 transition-all duration-200 group-hover:opacity-100 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-white/[0.08] dark:hover:text-white"
           >
@@ -82,7 +82,12 @@ export default function CategoryCard({ category, onEdit, onTogglePublish }) {
             type="button"
             role="switch"
             aria-checked={isPublished}
-            onClick={() => onTogglePublish(category.id, isPublished ? 0 : 1)}
+            onClick={() =>
+  onTogglePublish?.(
+    category.id,
+    isPublished ? 0 : 1
+  )
+}
             className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 ${
               isPublished ? "bg-violet-500" : "bg-slate-200 dark:bg-slate-700"
             }`}

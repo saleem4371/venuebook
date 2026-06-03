@@ -56,7 +56,7 @@ export default function CategoriesTab({
           </button>
           <button
             type="button"
-            onClick={() => onAddCategory(0)}
+            onClick={() => onAddCategory?.(0)}
             className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-semibold text-white shadow-md transition hover:opacity-90 hover:shadow-lg active:scale-95"
             style={{ background: "linear-gradient(242deg,#a44bf3,#499ce8)" }}
           >

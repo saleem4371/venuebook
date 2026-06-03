@@ -17,6 +17,7 @@ export default function CategoryModal({
   onSubmit,
   saving,
   t,
+  onEditCategory
 }) {
   const isEdit = !!form.id;
 
@@ -24,6 +25,7 @@ export default function CategoryModal({
     e.preventDefault();
     onSubmit();
   };
+
 
   return (
     <ModalBase
@@ -62,7 +64,7 @@ export default function CategoryModal({
           </button>
           <button
             type="submit"
-            disabled={saving || !form.name.trim()}
+            disabled={saving || !form.name}
             className="inline-flex items-center gap-1.5 rounded-xl px-5 py-2 text-xs font-semibold text-white shadow-md transition hover:opacity-90 active:scale-95 disabled:opacity-50"
             style={{ background: "linear-gradient(242deg,#a44bf3,#499ce8)" }}
           >
