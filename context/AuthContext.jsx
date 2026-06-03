@@ -2,17 +2,12 @@
 
 import { createContext, useContext, useState, useCallback, useEffect } from "react";
 import api from "@/lib/axios";
-import { useRouter } from "next/navigation";
-
-
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-
-  const router = useRouter();
 
   const isLoggedIn = !!user;
 const isListed =
@@ -39,8 +34,7 @@ const isListed =
     setUser(null);
     await api.post("/auth/logout");
     document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT";
-     router.replace("/");
-  }, [router]);
+  }, []);
 
   // ✅ auto check on refresh
   useEffect(() => {

@@ -1,15 +1,27 @@
-/**
- * /services/package.service.js
- *
- * All API calls for the Package Management module.
- * Only used for Venues with PAX pricing model.
- *
- * Endpoints mirror the original Vue apiServer calls.
- */
-
 import api from "@/lib/axios";
 
 /* ─── Categories ──────────────────────────────────────────── */
+
+
+export const package_category = () => {
+  return api.get(`/packages/package_category`);
+};
+export const create_category = (data) => {
+  return api.post(`/packages/create_category`,data);
+};
+export const updateCategoryPublish = (data) => {
+  return api.post(`/packages/updateCategoryPublish`,data);
+};
+export const create_items = (data) => {
+  return api.post(`/packages/create_items`,data);
+};
+export const delete_items = (id) => {
+  return api.put(`/packages/delete_items/${id}`);
+};
+export const create_packages = (data) => {
+  return api.post(`/packages/create_packages`,data);
+};
+
 
 /** Load all categories (menu + addons) and package listings. */
 export async function loadPackageData() {
@@ -111,3 +123,5 @@ export const ITEM_TEMPLATE_URL =
 
 export const CATEGORY_TEMPLATE_URL =
   `${process.env.NEXT_PUBLIC_API_URL}/Excel/category.csv`;
+
+
