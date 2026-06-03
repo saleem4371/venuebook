@@ -14,7 +14,9 @@
    spacing changes — layout stays identical for every language.   */
 /* :lang(hi) { font-family: var(--font-devanagari), ui-sans-serif, system-ui, sans-serif; } */
 /* :lang(kn)  { font-family: var(--font-kannada),   ui-sans-serif, system-ui, sans-serif; } */
-:lang(ar)  { font-family: var(--font-arabic),    ui-sans-serif, system-ui, sans-serif; }
+:lang(ar) {
+  font-family: var(--font-arabic), ui-sans-serif, system-ui, sans-serif;
+}
 
 /* ── Optical vertical centering for Indic scripts ─────────────────
    Noto Sans Devanagari and Kannada have larger ascenders than Plus
@@ -37,6 +39,7 @@
 :lang(kn) [role="menuitem"] {
   line-height: 1.6;
 }
+
 /* ────────────────────────────────────────────────────────────── */
 
 /* price markers */
@@ -72,7 +75,7 @@ textarea:disabled,
 }
 
 html {
-  scroll-behavior: smooth; 
+  scroll-behavior: smooth;
 }
 
 .priceMarkerWrapper {
@@ -86,7 +89,7 @@ html {
   font-weight: 600;
   font-size: 12px;
   border: 1px solid #eee;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
 }
 
 /* cluster markers */
@@ -105,13 +108,14 @@ html {
   align-items: center;
   justify-content: center;
   font-weight: 600;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
 }
+
 /* Hide scrollbar */
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
 }
- 
+
 .hide-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
@@ -127,6 +131,7 @@ html {
   0% {
     transform: translateX(-100%);
   }
+
   100% {
     transform: translateX(100%);
   }
@@ -142,23 +147,23 @@ html {
   border: 1px solid rgb(229 231 235);
   padding: 12px 14px;
   font-size: 14px;
-  transition: all .2s ease;
+  transition: all 0.2s ease;
   background: white;
 }
 
 .dark .form-input {
-  background: rgba(255,255,255,.03);
-  border-color: rgba(255,255,255,.08);
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.08);
   color: white;
 }
 
 .form-input:focus {
   outline: none;
   border-color: #a44bf3;
-  box-shadow: 0 0 0 4px rgba(164,75,243,.12);
+  box-shadow: 0 0 0 4px rgba(164, 75, 243, 0.12);
 }
 
 .form-input-error {
   border-color: #ef4444 !important;
-  box-shadow: 0 0 0 4px rgba(239,68,68,.12);
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.12);
 }

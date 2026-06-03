@@ -1,7 +1,6 @@
 import "./globals.css";
 import ServiceWorkerProvider from '../components/ServiceWorkerProvider'
-import PWAInstallPrompt from '../components/PWAInstallPrompt'
-import NotificationHandler from '../components/NotificationHandler'
+import PWABottomSheets from '../components/PWABottomSheets'
 import {
   Plus_Jakarta_Sans,
   Noto_Sans_Devanagari,
@@ -116,39 +115,32 @@ export default async function RootLayout({ children }) {
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="NextPWA" />
         <meta name="description" content="Progressive Web App with Notifications" />
-        {/*
-          Theme — runs synchronously before paint for zero flicker.
-          Reads ONLY localStorage key 'theme'. No system/OS detection.
-        */}
-
-         <script
+           <script
           src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAzQBQV6-t21jRrYTU9WGOnAO0iz-fpGEI&libraries=places"
           async
           defer
         ></script>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){
-  try {
-    var t = localStorage.getItem('theme');
-    if (t === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  } catch(e) {}
-})();`,
-          }}
-        />
-      </head>
-     
+        {/* Capture beforeinstallprompt BEFORE React mounts so we never miss it */}
+        <script dangerouslySetInnerHTML={{ __html: `
+          window.__pwaInstallEvent = null;
+          window.addEventListener('beforeinstallprompt', function(e) {
+            e.preventDefault();
+            window.__pwaInstallEvent = e;
+            window.dispatchEvent(new Event('pwa-installable'));
+          });
+          window.addEventListener('appinstalled', function() {
+            window.__pwaInstalled = true;
+            window.dispatchEvent(new Event('pwa-installed'));
+          });
+        ` }} />
+          </head>
+
       <body
         suppressHydrationWarning
         className="min-h-screen bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 antialiased font-sans"
       >
          <ServiceWorkerProvider>
-          <PWAInstallPrompt />
-          <NotificationHandler />
+          <PWABottomSheets />
           {children}
         </ServiceWorkerProvider>
         {/* {children} */}
