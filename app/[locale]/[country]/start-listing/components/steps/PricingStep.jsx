@@ -386,6 +386,18 @@ const update = (key, val) => {
 
   const showErrors = !!attempted?.pricing;
 
+  // ── Farmstay pricing ───────────────────────────────────────────────────
+
+  if (config.type === "farmstay") {
+    return (
+      <FarmstayPricing
+        pricing={pricing}
+        update={update}
+        attempted={attempted}
+      />
+    );
+  }
+
   // ── Venue pricing ──────────────────────────────────────────────────────
 
   if (config.type === "venue_shifts") {
@@ -567,6 +579,207 @@ const update = (key, val) => {
       {config.hasDeposit && <DepositField pricing={pricing} onChange={update} />}
 
       <InfoNote />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  FarmstayPricing
+//  Rendered ONLY when category === "farmstay". All other categories untouched.
+//
+//  form.pricing keys:
+//    nightly (req), checkIn, checkOut,
+//    weekendEnabled, weekendPrice,
+//    extendedStayEnabled, extendedStayMinNights, extendedStayDiscount,
+//    deposit
+// ─────────────────────────────────────────────────────────────────────────────
+
+function FsTimeSelect({ label, value, onChange, defaultValue }) {
+  return (
+    <div>
+      <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
+        {label}
+      </label>
+      <div className="relative">
+        <Clock size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+        <select
+          value={value || defaultValue}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full pl-9 pr-8 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition appearance-none"
+        >
+          {TIME_SLOTS.map((t) => <option key={t} value={t}>{t}</option>)}
+        </select>
+        <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+      </div>
+    </div>
+  );
+}
+
+function FarmstayPricing({ pricing, update, attempted }) {
+  const showErrors = !!attempted?.pricing;
+
+  const dailyInvalid        = showErrors && (!pricing.nightly || Number(pricing.nightly) <= 0);
+  const weekendPriceInvalid = showErrors && pricing.weekendEnabled &&
+    (!pricing.weekendPrice || Number(pricing.weekendPrice) <= 0);
+  const extMinNightsInvalid = showErrors && pricing.extendedStayEnabled &&
+    (!pricing.extendedStayMinNights || Number(pricing.extendedStayMinNights) < 1);
+  const extDiscountInvalid  = showErrors && pricing.extendedStayEnabled &&
+    (!pricing.extendedStayDiscount || Number(pricing.extendedStayDiscount) < 1 || Number(pricing.extendedStayDiscount) > 99);
+
+  const previewRate =
+    pricing.nightly && pricing.extendedStayDiscount &&
+    Number(pricing.nightly) > 0 && Number(pricing.extendedStayDiscount) > 0
+      ? Math.round(Number(pricing.nightly) * (1 - Number(pricing.extendedStayDiscount) / 100)).toLocaleString("en-IN")
+      : null;
+
+  return (
+    <div className="space-y-7">
+
+      {/* ── Standard Daily Rate ── */}
+      <div>
+        <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-1">
+          Standard daily rate <span className="text-red-500">*</span>
+        </p>
+        <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">
+          Base price per day for your farmstay
+        </p>
+        <RupeeInput
+          value={pricing.nightly}
+          onChange={(v) => update("nightly", v)}
+          placeholder="3,500"
+          invalid={dailyInvalid}
+        />
+        {dailyInvalid && (
+          <p className="text-xs text-red-500 mt-1.5">Please enter a valid daily rate</p>
+        )}
+
+        {/* ── Property-level Check-in / Check-out (single, applies to all rates) ── */}
+        <div className="grid grid-cols-2 gap-4 mt-4">
+          <FsTimeSelect
+            label="Property Check-in Time *"
+            value={pricing.checkIn}
+            onChange={(v) => update("checkIn", v)}
+            defaultValue="2:00 PM"
+          />
+          <FsTimeSelect
+            label="Property Check-out Time *"
+            value={pricing.checkOut}
+            onChange={(v) => update("checkOut", v)}
+            defaultValue="11:00 AM"
+          />
+        </div>
+      </div>
+
+      {/* ── Weekend Rate ── */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+              Weekend rate
+            </p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+              Different price for Fri – Sun stays
+            </p>
+          </div>
+          <Toggle
+            checked={!!pricing.weekendEnabled}
+            onChange={(v) => update("weekendEnabled", v)}
+          />
+        </div>
+
+        {pricing.weekendEnabled && (
+          <RupeeInput
+            value={pricing.weekendPrice}
+            onChange={(v) => update("weekendPrice", v)}
+            placeholder="Weekend rate per day"
+            invalid={weekendPriceInvalid}
+          />
+        )}
+        {weekendPriceInvalid && (
+          <p className="text-xs text-red-500 mt-1.5">Please enter a weekend rate</p>
+        )}
+      </div>
+
+      {/* ── Extended Stay Discount ── */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+              Extended stay discount
+            </p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+              Offer a discount for longer stays
+            </p>
+          </div>
+          <Toggle
+            checked={!!pricing.extendedStayEnabled}
+            onChange={(v) => update("extendedStayEnabled", v)}
+          />
+        </div>
+
+        {pricing.extendedStayEnabled && (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">
+                Minimum nights required <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                min="1"
+                value={pricing.extendedStayMinNights || ""}
+                onChange={(e) => update("extendedStayMinNights", e.target.value)}
+                placeholder="e.g. 5 nights"
+                className={[
+                  "w-full px-4 py-3 rounded-xl border text-sm outline-none transition",
+                  "bg-white dark:bg-gray-900 text-gray-900 dark:text-white",
+                  "placeholder:text-gray-400 dark:placeholder:text-gray-500",
+                  extMinNightsInvalid
+                    ? "border-red-400 ring-1 ring-red-400"
+                    : "border-gray-200 dark:border-gray-700 focus:border-violet-500 focus:ring-1 focus:ring-violet-500",
+                ].join(" ")}
+              />
+              {extMinNightsInvalid && (
+                <p className="text-xs text-red-500 mt-1.5">Please enter minimum nights required</p>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">
+                Discount percentage <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  min="1"
+                  max="99"
+                  value={pricing.extendedStayDiscount || ""}
+                  onChange={(e) => update("extendedStayDiscount", e.target.value)}
+                  placeholder="e.g. 10"
+                  className={[
+                    "w-full pl-4 pr-10 py-3 rounded-xl border text-sm outline-none transition",
+                    "bg-white dark:bg-gray-900 text-gray-900 dark:text-white",
+                    "placeholder:text-gray-400 dark:placeholder:text-gray-500",
+                    extDiscountInvalid
+                      ? "border-red-400 ring-1 ring-red-400"
+                      : "border-gray-200 dark:border-gray-700 focus:border-violet-500 focus:ring-1 focus:ring-violet-500",
+                  ].join(" ")}
+                />
+                <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400 pointer-events-none">%</span>
+              </div>
+              {extDiscountInvalid && (
+                <p className="text-xs text-red-500 mt-1.5">Enter a discount between 1 – 99%</p>
+              )}
+              {previewRate && !extDiscountInvalid && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5">
+                  Extended stay rate: ₹{previewRate} / night (after {pricing.extendedStayDiscount}% off)
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Security Deposit ── */}
+      <DepositField pricing={pricing} onChange={update} />
     </div>
   );
 }

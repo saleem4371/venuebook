@@ -24,14 +24,11 @@ export const CAPACITY_CONFIG = {
     ],
     seatingStyles: true,
   },
+  // Farmstay: custom component (FarmstayCapacity) handles rendering.
+  // fields[] is intentionally empty — the component manages its own structure.
   farmstay: {
     type: "farmstay",
-    fields: [
-      { key: "maxGuests",  label: "Maximum guests",  placeholder: "15", required: true,  unit: "guests" },
-      { key: "rooms",      label: "Number of rooms", placeholder: "5",  required: false, unit: "rooms" },
-      { key: "beds",       label: "Total beds",      placeholder: "8",  required: false, unit: "beds" },
-      { key: "bathrooms",  label: "Bathrooms",       placeholder: "3",  required: false, unit: "bathrooms" },
-    ],
+    fields: [],
   },
   studio: {
     type: "studio",

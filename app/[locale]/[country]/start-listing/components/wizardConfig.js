@@ -69,6 +69,14 @@ export const validateStep = (key, form) => {
   switch (key) {
 
     case "basics":
+      if (form.category === "farmstay") {
+        return (
+          form.title?.trim().length > 3 &&
+          !!form.subcategory &&
+          form.description?.trim().length >= 10 &&
+          !!form.farmstayStyle          // required for farmstay only
+        );
+      }
       return (
         form.title?.trim().length > 3 &&
         !!form.category &&
@@ -106,7 +114,7 @@ export const validateStep = (key, form) => {
         );
         return !seatingInvalid;
       }
-      if (cat === "farmstay")   return !!c.maxGuests        && Number(c.maxGuests)        > 0;
+      if (cat === "farmstay")   return !!c.maxAdults && Number(c.maxAdults) > 0 && (c.roomTypes || []).length >= 1;
       if (cat === "studio")     return !!c.sizeSqft         && Number(c.sizeSqft)         > 0;
       if (cat === "workspace")  return !!c.seatingCapacity  && Number(c.seatingCapacity)  > 0;
       if (cat === "rental")     return !!c.maxGuests        && Number(c.maxGuests)        > 0;
@@ -133,7 +141,21 @@ export const validateStep = (key, form) => {
         /* both */            return allHavePrice;
       }
 
-      if (cat === "farmstay" || cat === "rental") {
+      if (cat === "farmstay") {
+        // nightly rate is required
+        if (!p.nightly || Number(p.nightly) <= 0) return false;
+        // checkIn/checkOut always valid: FsTimeSelect renders a default even when
+        // the field is undefined in state, so we never block on them being unset.
+        // Weekend rate: if toggle on, price must be filled
+        if (p.weekendEnabled && (!p.weekendPrice || Number(p.weekendPrice) <= 0)) return false;
+        // Extended stay discount: if toggle on, both fields must be filled and in range
+        if (p.extendedStayEnabled) {
+          if (!p.extendedStayMinNights || Number(p.extendedStayMinNights) < 1) return false;
+          if (!p.extendedStayDiscount  || Number(p.extendedStayDiscount)  < 1 || Number(p.extendedStayDiscount) > 99) return false;
+        }
+        return true;
+      }
+      if (cat === "rental") {
         return !!p.nightly && Number(p.nightly) > 0;
       }
 

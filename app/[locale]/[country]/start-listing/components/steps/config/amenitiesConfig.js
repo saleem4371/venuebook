@@ -23,22 +23,17 @@ export const AMENITY_CONFIG = {
     },
   ],
 
+  // Farmstay: general amenities only — Food / Parking / Pets rendered as separate
+  // sections in AmenitiesStep (FarmstayAmenities component).
   farmstay: [
     {
-      group: "Essentials",
-      keys: ["wifi", "parking", "power_backup", "washrooms", "security", "ac"],
-    },
-    {
-      group: "Outdoor",
-      keys: ["swimming_pool", "bonfire", "trekking", "camping", "cycling", "bbq", "outdoor_dining"],
-    },
-    {
-      group: "Activities",
-      keys: ["farm_activities", "pet_friendly", "orchard", "yoga_space", "indoor_games"],
-    },
-    {
-      group: "Comfort",
-      keys: ["geyser", "housekeeping", "cook", "laundry"],
+      group: "General Amenities",
+      keys: [
+        "fs_fan", "fs_heater", "wifi", "fs_tv", "power_backup",
+        "fs_drinking_water", "fs_hot_water", "cctv", "fs_iron", "gym",
+        "fs_smoke_alarm", "fs_washing_machine", "elevator", "first_aid",
+        "fs_microwave", "fs_fridge",
+      ],
     },
   ],
 
@@ -115,9 +110,39 @@ export const AMENITY_CONFIG = {
   ],
 };
 
+// ─── Farmstay-only section options (Food / Parking) ──────────────────────
+
+export const FARMSTAY_FOOD_OPTIONS = [
+  { key: "fs_breakfast",    label: "Breakfast Included" },
+  { key: "fs_lunch",        label: "Lunch Available"    },
+  { key: "fs_dinner",       label: "Dinner Available"   },
+  { key: "fs_snacks",       label: "Snacks Available"   },
+  { key: "fs_bbq_food",     label: "BBQ Available"      },
+  { key: "fs_self_cooking", label: "Self Cooking Allowed" },
+  { key: "fs_food_other",   label: "Other"              },
+];
+
+export const FARMSTAY_PARKING_OPTIONS = [
+  { key: "fs_car_parking",  label: "Car Parking"  },
+  { key: "fs_bus_parking",  label: "Bus Parking"  },
+  { key: "fs_bike_parking", label: "Bike Parking" },
+];
+
 // ─── Flat metadata: label + lucide icon name for each key ─────────────────
 
 export const AMENITY_META = {
+  // ── Farmstay-specific keys (prefixed fs_ to avoid collision) ──────────
+  fs_fan:             { label: "Fan",                  icon: "Wind" },
+  fs_heater:          { label: "Heater",               icon: "Flame" },
+  fs_tv:              { label: "Television",           icon: "Tv" },
+  fs_drinking_water:  { label: "Drinking Water",       icon: "Droplets" },
+  fs_hot_water:       { label: "Hot Water",            icon: "Droplets" },
+  fs_iron:            { label: "Iron",                 icon: "Shirt" },
+  fs_smoke_alarm:     { label: "Smoke Alarm",          icon: "Bell" },
+  fs_washing_machine: { label: "Washing Machine",      icon: "RefreshCw" },
+  fs_microwave:       { label: "Microwave",            icon: "Zap" },
+  fs_fridge:          { label: "Fridge",               icon: "Package" },
+  // ── Universal ──────────────────────────────────────────────────────────
   wifi:               { label: "Wi-Fi",                icon: "Wifi" },
   parking:            { label: "Parking",              icon: "Car" },
   ac:                 { label: "Air Conditioning",     icon: "Wind" },

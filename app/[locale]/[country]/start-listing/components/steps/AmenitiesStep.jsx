@@ -10,9 +10,10 @@ import {
   PawPrint, Droplets, SlidersHorizontal, Tag, Sun,
   Image, Move, Radio, Layers, Sparkles, ArrowUpDown,
   UserCheck, Flower2, Gamepad2, DoorOpen, PenLine, Tv, Check,
+  RefreshCw,
 } from "lucide-react";
 
-import { AMENITY_META } from "./config/amenitiesConfig";
+import { AMENITY_META, FARMSTAY_FOOD_OPTIONS, FARMSTAY_PARKING_OPTIONS } from "./config/amenitiesConfig";
 import { getAmenties } from "@/services/global.service";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -27,6 +28,7 @@ const ICON_MAP = {
   PawPrint, Droplets, SlidersHorizontal, Tag, Sun,
   Image, Move, Radio, Layers, Sparkles, ArrowUpDown,
   UserCheck, Flower2, Gamepad2, DoorOpen, PenLine, Tv, Check,
+  RefreshCw,
 };
 
 function AmenityIcon({ iconName, size = 18 }) {
@@ -43,6 +45,7 @@ export default function AmenitiesStep({
   updateForm,
   attempted,
 }) {
+  const isFarmstay = form.category === "farmstay";
 
   const selected = form.amenities || [];
   const showError = !!attempted?.amenities && selected.length < 1;
@@ -181,10 +184,162 @@ export default function AmenitiesStep({
         </div>
       ))}
 
+      {/* ── Farmstay-specific extra sections ── */}
+      {isFarmstay && (
+        <FarmstayExtraSections form={form} updateForm={updateForm} />
+      )}
+
       {/* Footer */}
       <p className="text-xs text-gray-400 dark:text-gray-500">
         Tip: Listings with 8+ amenities get 40% more bookings on average
       </p>
+
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  FarmstayExtraSections
+//  Rendered ONLY when category === "farmstay", BELOW the API amenities.
+//  Manages: Food Options, Parking, Pets
+//  Stored in: form.farmstayFood (array), form.farmstayParking (array),
+//             form.farmstayFoodOther (string), form.farmstayPets ('yes'|'no')
+// ─────────────────────────────────────────────────────────────────────────────
+
+function ChipToggle({ label, active, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={[
+        "relative flex items-center gap-2.5 px-3.5 py-3 rounded-xl border text-left",
+        "transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500",
+        "text-sm font-medium leading-snug",
+        active
+          ? "border-violet-600 bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300"
+          : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:border-violet-400 dark:hover:border-violet-600 hover:bg-violet-50/50 dark:hover:bg-violet-950/20",
+      ].join(" ")}
+    >
+      <span className="flex-1 min-w-0 truncate">{label}</span>
+      {active && (
+        <span className="flex-shrink-0 w-4 h-4 rounded-full bg-violet-600 flex items-center justify-center">
+          <Check size={9} strokeWidth={3} className="text-white" />
+        </span>
+      )}
+    </button>
+  );
+}
+
+function RadioGroup({ label, value, onChange }) {
+  return (
+    <div>
+      <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3">{label}</p>
+      <div className="flex gap-3">
+        {["Yes", "No"].map((opt) => {
+          const v = opt.toLowerCase();
+          const active = value === v;
+          return (
+            <button
+              key={v}
+              type="button"
+              onClick={() => onChange(active ? "" : v)}
+              className={[
+                "flex items-center gap-2 px-5 py-2.5 rounded-xl border text-sm font-medium transition-all duration-150",
+                "focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500",
+                active
+                  ? "border-violet-600 bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300"
+                  : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:border-violet-300",
+              ].join(" ")}
+            >
+              <span className={[
+                "w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0",
+                active ? "border-violet-600" : "border-gray-300 dark:border-gray-600",
+              ].join(" ")}>
+                {active && <span className="w-2 h-2 rounded-full bg-violet-600" />}
+              </span>
+              {opt}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function FarmstayExtraSections({ form, updateForm }) {
+  const food    = form.farmstayFood    || [];
+  const parking = form.farmstayParking || [];
+
+  const toggleFood = (key) => {
+    const next = food.includes(key) ? food.filter((k) => k !== key) : [...food, key];
+    updateForm({ farmstayFood: next });
+  };
+  const toggleParking = (key) => {
+    const next = parking.includes(key) ? parking.filter((k) => k !== key) : [...parking, key];
+    updateForm({ farmstayParking: next });
+  };
+
+  const showFoodOther = food.includes("fs_food_other");
+
+  return (
+    <div className="space-y-8">
+
+      {/* ── Food Options ── */}
+      <div>
+        <h3 className="text-[11px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">
+          Food Options
+        </h3>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+          {FARMSTAY_FOOD_OPTIONS.map((opt) => (
+            <ChipToggle
+              key={opt.key}
+              label={opt.label}
+              active={food.includes(opt.key)}
+              onClick={() => toggleFood(opt.key)}
+            />
+          ))}
+        </div>
+        {showFoodOther && (
+          <div className="mt-3">
+            <input
+              type="text"
+              value={form.farmstayFoodOther || ""}
+              onChange={(e) => updateForm({ farmstayFoodOther: e.target.value })}
+              placeholder="Describe other food option…"
+              className={[
+                "w-full px-4 py-3 rounded-xl border bg-white dark:bg-gray-900",
+                "text-gray-900 dark:text-white text-sm outline-none transition",
+                "placeholder:text-gray-400 dark:placeholder:text-gray-500",
+                "border-gray-200 dark:border-gray-700 focus:border-violet-500 focus:ring-1 focus:ring-violet-500",
+              ].join(" ")}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* ── Parking ── */}
+      <div>
+        <h3 className="text-[11px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">
+          Parking
+        </h3>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+          {FARMSTAY_PARKING_OPTIONS.map((opt) => (
+            <ChipToggle
+              key={opt.key}
+              label={opt.label}
+              active={parking.includes(opt.key)}
+              onClick={() => toggleParking(opt.key)}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* ── Pets ── */}
+      <RadioGroup
+        label="Pets allowed?"
+        value={form.farmstayPets || ""}
+        onChange={(v) => updateForm({ farmstayPets: v })}
+      />
 
     </div>
   );

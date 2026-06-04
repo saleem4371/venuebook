@@ -237,6 +237,21 @@ export default function CapacityStep({ form, updateForm, attempted }) {
   const touch   = (f) => setTouched((p) => ({ ...p, [f]: true }));
   const showErr = (f) => touched[f] || !!attempted?.capacity;
 
+  // ── Farmstay: delegate to custom component ────────────────────────────
+  if (form.category === "farmstay") {
+    const capacity = form.capacity || {};
+    return (
+      <FarmstayCapacity
+        capacity={capacity}
+        updateCap={(key, val) => updateForm({ capacity: { ...capacity, [key]: val } })}
+        updateCapObj={(obj) => updateForm({ capacity: { ...capacity, ...obj } })}
+        attempted={attempted}
+        touched={touched}
+        touch={touch}
+      />
+    );
+  }
+
   const category = form.category || "venue";
   const config   = CAPACITY_CONFIG[category] || CAPACITY_CONFIG.venue;
   const capacity = form.capacity || {};
@@ -447,6 +462,172 @@ export default function CapacityStep({ form, updateForm, attempted }) {
           </div>
         </div>
       )}
+
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  FarmstayCapacity
+//  Rendered ONLY when category === "farmstay". All other categories untouched.
+//
+//  form.capacity keys:
+//    maxAdults (req), maxKids, roomTypes[], bathroomFacilities[],
+//    roomCombination ('yes'|'no'), bedTypes[], extraMattress ('yes'|'no'),
+//    propertyArea, propertyAreaUnit, guestSpaces[]
+// ─────────────────────────────────────────────────────────────────────────────
+
+const FS_ROOM_TYPES  = ["Private Rooms","Family Rooms","Dormitory Rooms","Cottages","Luxury Tents"];
+const FS_BATHROOM    = ["Attached Bathrooms","Common Bathrooms","Western Toilets","Indian Toilets","Hot Water","Toiletries Provided"];
+const FS_BED_TYPES   = ["King Bed","Queen Bed","Double Bed","Single Bed","Bunk Bed","Floor Mattress"];
+const FS_GUEST_SPACES = ["Swimming Pool","Garden","Farm Area","Lake / Pond","Rooftop","Bonfire Area","Children's Play Area","Open Lawn","Event Space"];
+
+function FsChipGrid({ options, selected, onToggle }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((opt) => {
+        const active = (selected || []).includes(opt);
+        return (
+          <button
+            key={opt}
+            type="button"
+            onClick={() => onToggle(opt)}
+            className={[
+              "px-3.5 py-2 rounded-xl border text-sm font-medium transition-all duration-150",
+              "focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500",
+              active
+                ? "border-violet-600 bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300"
+                : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:border-violet-400 dark:hover:border-violet-600",
+            ].join(" ")}
+          >
+            {active && <span className="mr-1.5 inline-block w-1.5 h-1.5 rounded-full bg-violet-600 align-middle" />}
+            {opt}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function FsRadio({ label, subLabel, value, onChange }) {
+  return (
+    <div>
+      <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-0.5">{label}</p>
+      {subLabel && <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">{subLabel}</p>}
+      <div className="flex gap-3 mt-3">
+        {["Yes","No"].map((opt) => {
+          const v = opt.toLowerCase();
+          const active = value === v;
+          return (
+            <button key={v} type="button" onClick={() => onChange(active ? "" : v)}
+              className={[
+                "flex items-center gap-2 px-5 py-2.5 rounded-xl border text-sm font-medium transition-all duration-150",
+                "focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500",
+                active
+                  ? "border-violet-600 bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300"
+                  : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:border-violet-300",
+              ].join(" ")}
+            >
+              <span className={["w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0", active ? "border-violet-600" : "border-gray-300 dark:border-gray-600"].join(" ")}>
+                {active && <span className="w-2 h-2 rounded-full bg-violet-600" />}
+              </span>
+              {opt}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function FsSection({ title, children }) {
+  return (
+    <div className="space-y-3">
+      <h3 className="text-[11px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">{title}</h3>
+      {children}
+    </div>
+  );
+}
+
+function FarmstayCapacity({ capacity, updateCap, attempted, touched, touch }) {
+  const showErr       = (f) => touched[f] || !!attempted?.capacity;
+  const adultsInvalid = showErr("maxAdults") && (!capacity.maxAdults || Number(capacity.maxAdults) <= 0);
+  const roomsInvalid  = !!attempted?.capacity && !(capacity.roomTypes || []).length;
+
+  const toggleArr = (field, val) => {
+    const arr = capacity[field] || [];
+    updateCap(field, arr.includes(val) ? arr.filter((v) => v !== val) : [...arr, val]);
+  };
+
+  return (
+    <div className="space-y-8">
+
+      {/* Maximum Occupancy */}
+      <FsSection title="Maximum Occupancy">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div>
+            <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">
+              Maximum adults <span className="text-red-500">*</span>
+            </label>
+            <Counter value={capacity.maxAdults ?? ""} onChange={(v) => { updateCap("maxAdults", v); touch("maxAdults"); }} min={1} invalid={adultsInvalid} />
+            {adultsInvalid && <p className="text-xs text-red-500 mt-1.5">Maximum adults is required</p>}
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">Maximum kids</label>
+            <Counter value={capacity.maxKids ?? ""} onChange={(v) => updateCap("maxKids", v)} min={0} />
+          </div>
+        </div>
+      </FsSection>
+
+      {/* Room Types */}
+      <FsSection title="Room Types Available">
+        <FsChipGrid options={FS_ROOM_TYPES} selected={capacity.roomTypes} onToggle={(v) => toggleArr("roomTypes", v)} />
+        {roomsInvalid && <p className="text-xs text-red-500">Select at least one room type</p>}
+      </FsSection>
+
+      {/* Bathroom Facilities */}
+      <FsSection title="Bathroom Facilities">
+        <FsChipGrid options={FS_BATHROOM} selected={capacity.bathroomFacilities} onToggle={(v) => toggleArr("bathroomFacilities", v)} />
+      </FsSection>
+
+      {/* Room Combination */}
+      <FsSection title="Room Configuration">
+        <FsRadio label="Can rooms be combined for larger groups?" value={capacity.roomCombination || ""} onChange={(v) => updateCap("roomCombination", v)} />
+      </FsSection>
+
+      {/* Bed Types */}
+      <FsSection title="Bed Types">
+        <FsChipGrid options={FS_BED_TYPES} selected={capacity.bedTypes} onToggle={(v) => toggleArr("bedTypes", v)} />
+      </FsSection>
+
+      {/* Extra Mattress */}
+      <FsRadio label="Can extra mattresses be provided?" value={capacity.extraMattress || ""} onChange={(v) => updateCap("extraMattress", v)} />
+
+      {/* Property Area */}
+      <FsSection title="Property Area">
+        <div className="flex gap-3">
+          <input
+            type="number" min="0"
+            value={capacity.propertyArea || ""}
+            onChange={(e) => updateCap("propertyArea", e.target.value)}
+            placeholder="e.g. 5"
+            className="flex-[4] px-4 py-3 rounded-xl border bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm outline-none transition placeholder:text-gray-400 dark:placeholder:text-gray-500 border-gray-200 dark:border-gray-700 focus:border-violet-500 focus:ring-1 focus:ring-violet-500"
+          />
+          <select
+            value={capacity.propertyAreaUnit || "Acres"}
+            onChange={(e) => updateCap("propertyAreaUnit", e.target.value)}
+            className="flex-[1] px-3 py-3 rounded-xl border bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm outline-none transition cursor-pointer border-gray-200 dark:border-gray-700 focus:border-violet-500 focus:ring-1 focus:ring-violet-500"
+          >
+            <option>Acres</option>
+            <option>Sq Ft</option>
+          </select>
+        </div>
+      </FsSection>
+
+      {/* Guest Accessible Spaces */}
+      <FsSection title="Guest Accessible Spaces">
+        <FsChipGrid options={FS_GUEST_SPACES} selected={capacity.guestSpaces} onToggle={(v) => toggleArr("guestSpaces", v)} />
+      </FsSection>
 
     </div>
   );

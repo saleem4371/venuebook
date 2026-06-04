@@ -28,15 +28,17 @@ export const PRICING_CONFIG = {
     shifts: VENUE_SHIFTS,
     hasDeposit: true,
   },
+  // Farmstay: custom pricing rendered by FarmstayPricing component in PricingStep.
   farmstay: {
-    type: "nightly",
+    type: "farmstay",
     rates: [
-      { key: "nightly", label: "Nightly rate",  required: true,  placeholder: "3,500" },
-      { key: "weekly",  label: "Weekly rate",   required: false, placeholder: "22,000" },
+      { key: "nightly", label: "Per day price", required: true, placeholder: "3,500" },
     ],
-    weekendToggle: true,
-    checkInOut: true,
-    hasDeposit: true,
+    checkInOut:          true,
+    weekendToggle:       true,
+    weekendCheckInOut:   true,   // farmstay-specific: weekend has its own check-in/out
+    longStayToggle:      true,   // farmstay-specific: multi-day stay rate
+    hasDeposit:          true,
   },
   studio: {
     type: "hourly_day",
