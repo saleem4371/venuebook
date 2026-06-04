@@ -93,7 +93,7 @@ export default function ListingsSearchBar({ onSearch }) {
   /* ── DESKTOP bar ───────────────────────────────────────────── */
   return (
     <>
-      <div className="hidden md:flex items-stretch bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-sm overflow-visible mx-4 mt-3 mb-2">
+      <div className="hidden md:flex items-stretch bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm overflow-visible mx-4 mt-2.5 mb-2">
 
         {fields.map((field, i) => (
           <SearchField
@@ -109,10 +109,10 @@ export default function ListingsSearchBar({ onSearch }) {
         ))}
 
         {/* Search button */}
-        <div className="flex items-center px-3 py-2">
+        <div className="flex items-center px-2.5 py-1.5">
           <button
             onClick={handleSearch}
-            className="flex items-center gap-2 font-semibold text-sm px-5 py-2.5 rounded-xl hover:opacity-90 active:scale-95 transition-all whitespace-nowrap text-white"
+            className="flex items-center gap-1.5 font-semibold text-sm px-4 py-2 rounded-lg hover:opacity-90 active:scale-95 transition-all whitespace-nowrap text-white"
             style={{ background: tint.hex, boxShadow: tint.activeGlow }}
           >
             <MagnifyingGlassIcon className="w-4 h-4" />
@@ -153,12 +153,12 @@ function SearchField({ field, tint, category, isLast, dateValue, onDateChange, s
   return (
     <div
       className={[
-        "relative flex-1 min-w-0 px-5 py-3.5 overflow-visible",
+        "relative flex-1 min-w-0 px-4 py-2.5 overflow-visible",
         !isLast ? "border-e border-gray-100 dark:border-white/10" : "",
       ].join(" ")}
     >
-      {/* Field label — same size/weight/tracking as HeroSection, color flipped */}
-      <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-white/40 mb-1.5 whitespace-nowrap">
+      {/* Field label — smaller, lighter; value text below should dominate */}
+      <p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-gray-400/80 dark:text-white/30 mb-1 whitespace-nowrap">
         {field.label}
       </p>
 

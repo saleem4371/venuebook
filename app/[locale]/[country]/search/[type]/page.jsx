@@ -11,7 +11,6 @@ import VenueCard         from "./components/VenueCard";
 import FilterDrawer      from "./components/FilterDrawer";
 import WishlistPopup     from "./components/WishlistPopup";
 import FilterRow         from "./components/FilterRow";
-import FloatingMenu      from "./components/FloatingMenu";
 import ListingsSearchBar from "./components/ListingsSearchBar";
 
 import { useCategory } from "@/context/CategoryContext";
@@ -68,7 +67,6 @@ export default function SearchPage() {
   /* ── data ──────────────────────────────────────────────────── */
   const [hoverVenue,       setHoverVenue]       = useState(null);
   const [wishlistVenue,    setWishlistVenue]     = useState(null);
-  const [compareList,      setCompareList]       = useState([]);
   const [loadData,         setLoadData]          = useState([]);
   const [loadProperty,     setLoadProperty]      = useState([]);
   const [wishlistCategory, setWishlistCategory]  = useState([]);
@@ -174,7 +172,6 @@ export default function SearchPage() {
     onCompare:        handleCompare,
     onRecentViews:    userRecentView,
     locale, country,
-    compareList, setCompareList,
     onRemoveWishlist: removeWishlistAPI,
   };
 
@@ -198,8 +195,8 @@ export default function SearchPage() {
           </div>
 
           {/* STICKY 2 — Property type + Filters strip (z-30)
-              mobile top=142  desktop top=164 */}
-          <div className="sticky z-30 bg-white dark:bg-gray-950 top-[142px] md:top-[164px]">
+              mobile top=142  desktop top=148  (search bar is now ~60px shorter) */}
+          <div className="sticky z-30 bg-white dark:bg-gray-950 top-[142px] md:top-[148px]">
             <FilterRow
               selectedCategory={selectedCategory}
               setSelectedCategory={setSelectedCategory}
@@ -260,69 +257,80 @@ export default function SearchPage() {
 
       {/* ── Floating Compare FAB — bottom-left, glassmorphism ─────── */}
       <style>{`
-        @keyframes vb-pulse {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(124,58,237,0.4); }
-          50%       { box-shadow: 0 0 0 6px rgba(124,58,237,0); }
+        @keyframes vb-fab-glow {
+          0%, 100% { box-shadow: 0 8px 28px rgba(124,58,237,0.22), 0 2px 8px rgba(0,0,0,0.10); }
+          50%       { box-shadow: 0 8px 32px rgba(124,58,237,0.42), 0 2px 8px rgba(0,0,0,0.10); }
         }
-        .vb-badge-pulse { animation: vb-pulse 2s ease-in-out infinite; }
+        @keyframes vb-badge-pop {
+          0%, 100% { transform: scale(1); }
+          40%       { transform: scale(1.25); }
+          60%       { transform: scale(0.95); }
+        }
+        .vb-fab-pulse { animation: vb-fab-glow 2.8s ease-in-out infinite; }
+        .vb-badge-anim { animation: vb-badge-pop 2.8s ease-in-out infinite; }
       `}</style>
 
       <AnimatePresence>
         {compares.length > 0 && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.82, y: 16 }}
-            animate={{ opacity: 1, scale: 1,    y: 0  }}
-            exit={{   opacity: 0, scale: 0.82, y: 16  }}
-            transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-            /* bottom-left: above mobile nav on mobile, 24px from edges on desktop */
-            className="fixed bottom-[80px] left-4 lg:bottom-6 lg:left-6 z-[45]"
+            initial={{ opacity: 0, scale: 0.8, y: 20 }}
+            animate={{ opacity: 1, scale: 1,   y: 0  }}
+            exit={{   opacity: 0, scale: 0.8,  y: 20 }}
+            transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+            /* Desktop (lg+): 32px from bottom/left. Mobile: above 64px bottom nav */
+            className="fixed bottom-[88px] left-4 lg:bottom-8 lg:left-6 z-[35]"
           >
             <div className="relative">
               {/* FAB pill */}
               <button
                 onClick={() => setShowComparePanel((p) => !p)}
+                className={!showComparePanel ? "vb-fab-pulse" : ""}
                 style={{
                   background: showComparePanel
-                    ? "linear-gradient(135deg,#7c3aed,#6d28d9)"
-                    : "rgba(255,255,255,0.85)",
-                  backdropFilter: "blur(12px)",
-                  WebkitBackdropFilter: "blur(12px)",
+                    ? "linear-gradient(135deg,#7c3aed 0%,#6d28d9 100%)"
+                    : "rgba(255,255,255,0.90)",
+                  backdropFilter: "blur(16px)",
+                  WebkitBackdropFilter: "blur(16px)",
                   border: showComparePanel
-                    ? "1px solid rgba(124,58,237,0.5)"
-                    : "1px solid rgba(124,58,237,0.2)",
-                  boxShadow: showComparePanel
-                    ? "0 8px 24px rgba(124,58,237,0.38)"
-                    : "0 4px 20px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08)",
+                    ? "1.5px solid rgba(124,58,237,0.55)"
+                    : "1.5px solid rgba(124,58,237,0.25)",
                   borderRadius: 999,
-                  padding: "10px 18px",
+                  padding: "11px 20px",
                   display: "inline-flex",
                   alignItems: "center",
-                  gap: 8,
+                  gap: 9,
                   cursor: "pointer",
-                  transition: "all 0.22s ease",
+                  transition: "background 0.22s ease, border 0.22s ease, transform 0.15s ease",
                   color: showComparePanel ? "#fff" : "#4c1d95",
+                  minWidth: 0,
                 }}
+                onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.04)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
               >
-                <Scale size={15} style={{ flexShrink: 0 }} />
-                <span style={{ fontSize: 13, fontWeight: 700, whiteSpace: "nowrap" }}>
+                <Scale size={19} strokeWidth={2} style={{ flexShrink: 0 }} />
+                <span style={{ fontSize: 13.5, fontWeight: 700, letterSpacing: "0.01em", whiteSpace: "nowrap" }}>
                   Compare
                 </span>
-                {/* Pulsing badge */}
+                {/* Animated badge */}
                 <span
-                  className="vb-badge-pulse"
+                  className="vb-badge-anim"
                   style={{
                     display: "inline-flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    width: 20, height: 20,
+                    minWidth: 22, height: 22,
+                    padding: "0 5px",
                     borderRadius: 999,
                     fontSize: 11,
                     fontWeight: 800,
                     background: showComparePanel
-                      ? "rgba(255,255,255,0.25)"
-                      : "linear-gradient(135deg,#7c3aed,#a855f7)",
+                      ? "rgba(255,255,255,0.28)"
+                      : "linear-gradient(135deg,#7c3aed 0%,#a855f7 100%)",
                     color: "#fff",
                     flexShrink: 0,
+                    boxShadow: showComparePanel
+                      ? "none"
+                      : "0 2px 6px rgba(124,58,237,0.45)",
                   }}
                 >
                   {compares.length}
@@ -333,7 +341,9 @@ export default function SearchPage() {
               {showComparePanel && (
                 <>
                   <div className="fixed inset-0 z-[44]" onClick={() => setShowComparePanel(false)} />
-                  <div className="absolute bottom-full left-0 mb-2 w-72 bg-white dark:bg-gray-900 shadow-xl border border-gray-100 dark:border-gray-800 rounded-2xl z-[46] overflow-hidden">
+                  <div className="absolute bottom-full left-0 mb-3 w-72 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl z-[46] overflow-hidden"
+                    style={{ boxShadow: "0 16px 48px rgba(0,0,0,0.16), 0 4px 16px rgba(0,0,0,0.08)" }}
+                  >
                     <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center">
                       <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">Compare ({compares.length})</h3>
                       <button onClick={() => setShowComparePanel(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-lg leading-none">✕</button>
@@ -350,7 +360,12 @@ export default function SearchPage() {
                       ))}
                     </div>
                     <div className="p-3 border-t border-gray-100 dark:border-gray-800">
-                      <button className="w-full bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold py-2.5 rounded-xl transition">Compare Now</button>
+                      <button
+                        className="w-full text-white text-sm font-semibold py-2.5 rounded-xl transition hover:opacity-90 active:scale-[0.98]"
+                        style={{ background: "linear-gradient(135deg,#7c3aed 0%,#6d28d9 100%)", boxShadow: "0 4px 14px rgba(124,58,237,0.35)" }}
+                      >
+                        Compare Now
+                      </button>
                     </div>
                   </div>
                 </>
@@ -386,10 +401,6 @@ export default function SearchPage() {
         )}
       </AnimatePresence>
 
-      {/* ── Mobile floating actions ─────────────────────────────── */}
-      {!showMap && (
-        <FloatingMenu compareList={compareList} setCompareList={setCompareList} />
-      )}
 
       {/* ── Filter drawer ────────────────────────────────────────── */}
       <FilterDrawer

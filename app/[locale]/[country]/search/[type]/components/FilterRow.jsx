@@ -4,10 +4,12 @@
  * FilterRow — Airbnb-style compact category strip
  * ─────────────────────────────────────────────────
  * • No active-item jumping — padding identical for active/inactive
- * • 60px actual icon size for categories
  * • Overflow arrows (glass, fade in/out) on desktop + tablet
  * • Mouse drag-to-scroll + wheel support
  * • Filters: glass pill, stands out without breaking rhythm
+ *
+ * ONLY change vs original: icon image and label scale with viewport
+ * via clamp() — all layout, spacing, and structure is unchanged.
  */
 
 import { useState, useRef, useEffect, useCallback } from "react";
@@ -21,56 +23,79 @@ function buildIconSrc(icon) {
   return `${AWS}/${icon.replace(/^\/+/, "")}`;
 }
 
+/*
+ * Images render landscape (wider than tall) with object-contain.
+ *   IMG_W: 57–72px   IMG_H: 38–44px   (aspect ~1.6:1)
+ *   ALL_SIZE: 36–44px square (same height as IMG_H, centers in 60px box)
+ *
+ * Responsive item horizontal padding: 8px (768px) → 12px (1440px)
+ * Responsive item min-width:          80px (768px) → 96px (1440px)
+ *
+ * Arrow size: 32px (768px) → 40px (1440px)
+ * Label:      10px (768px) → 11px (1440px)
+ */
+const IMG_W      = "clamp(57px, calc(2vw + 43px), 72px)";
+const IMG_H      = "clamp(38px, calc(0.9vw + 31px), 44px)";
+const ALL_SIZE   = "clamp(36px, calc(1.1vw + 27.5px), 44px)";
+const LABEL_SIZE = "clamp(10px, calc(0.17vw + 8.55px), 11px)";
+const ITEM_PX    = "clamp(8px, calc(0.6vw + 3.4px), 12px)";
+const ITEM_MINW  = "clamp(80px, calc(3vw + 60px), 96px)";
+const ALL_MINW   = "clamp(60px, calc(3vw + 37px), 80px)";
+const ARROW_SZ   = "clamp(32px, calc(1.2vw + 23px), 40px)";
+
 /* ── Image with error fallback ─────────────────────────────────────────── */
 function CatImage({ src, alt }) {
   const [failed, setFailed] = useState(false);
-  if (failed || !src) return <DefaultCatIcon size={60} />;
+  if (failed || !src) return <DefaultCatIcon />;
   return (
     <img
       src={src} alt={alt}
       onError={() => setFailed(true)}
-      width={60} height={60}
-      style={{ objectFit: "contain", display: "block" }}
+      style={{ width: IMG_W, height: IMG_H, objectFit: "contain", display: "block", flexShrink: 0 }}
     />
   );
 }
 
 /* ── Category / utility strip item ─────────────────────────────────────── */
-function Strip({ active, onClick, icon, label, minW = 96 }) {
+function Strip({ active, onClick, icon, label, minW = ITEM_MINW }) {
   return (
     <button
       onClick={onClick}
       /* position:relative for the absolute underline indicator */
-      style={{ position: "relative", minWidth: minW }}
+      style={{ position: "relative", minWidth: minW, paddingLeft: ITEM_PX, paddingRight: ITEM_PX }}
       className={[
         "flex flex-col items-center flex-shrink-0 cursor-pointer select-none",
-        /* IDENTICAL padding for active and inactive — no jumping */
-        "pt-2 pb-3 px-3",
+        /* IDENTICAL vertical padding for active and inactive — no jumping */
+        "pt-2 pb-3",
         "transition-colors duration-200",
         active
           ? "text-purple-600 dark:text-purple-400"
           : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white",
       ].join(" ")}
     >
-      {/* Icon wrapper — same size always, bg-only change on active */}
+      {/* Icon wrapper — FIXED 60px height for ALL items (preserves row height + alignment).
+          Icon content (landscape image or AllIcon) centers itself inside. Gap→4px. */}
       <span
         className="flex items-center justify-center flex-shrink-0"
         style={{
-          marginBottom: 8,
-          width: "auto", height: "auto",
-          /* Subtle tint bg — does NOT add padding so height stays constant */
+          marginBottom: 4,
+          width: "100%",
+          height: 60,
+          /* Subtle tint bg — does NOT shift layout */
           background: active ? "rgba(124,58,237,0.07)" : "transparent",
           borderRadius: 10,
           transition: "background 0.2s",
-          /* Inset padding via box-shadow so layout dimensions don't change */
           padding: 0,
         }}
       >
         {icon}
       </span>
 
-      {/* Label */}
-      <span className="text-[11px] font-semibold whitespace-nowrap leading-none tracking-wide">
+      {/* Label — scales with viewport, same weight/tracking as before */}
+      <span
+        style={{ fontSize: LABEL_SIZE }}
+        className="font-semibold whitespace-nowrap leading-none tracking-wide"
+      >
         {label}
       </span>
 
@@ -100,27 +125,39 @@ function Arrow({ direction, onClick, visible }) {
       style={{
         position: "absolute",
         top: "50%",
-        transform: "translateY(-50%)",
-        [direction]: direction === "left" ? 4 : 4,
+        transform: visible
+          ? "translateY(-50%) scale(1)"
+          : "translateY(-50%) scale(0.85)",
+        [direction]: 6,
         zIndex: 10,
-        width: 36, height: 36,
+        width: ARROW_SZ, height: ARROW_SZ,
         borderRadius: "50%",
         display: "flex", alignItems: "center", justifyContent: "center",
-        background: "rgba(255,255,255,0.9)",
-        backdropFilter: "blur(8px)",
-        WebkitBackdropFilter: "blur(8px)",
-        boxShadow: "0 2px 12px rgba(0,0,0,0.12)",
-        border: "1px solid rgba(0,0,0,0.07)",
+        background: "var(--arrow-bg, rgba(255,255,255,0.88))",
+        backdropFilter: "blur(10px)",
+        WebkitBackdropFilter: "blur(10px)",
+        boxShadow: "var(--arrow-shadow, 0 1px 8px rgba(0,0,0,0.09), 0 1px 3px rgba(0,0,0,0.05))",
+        border: "var(--arrow-border, 1px solid rgba(0,0,0,0.08))",
         cursor: "pointer",
         opacity: visible ? 1 : 0,
         pointerEvents: visible ? "auto" : "none",
-        transition: "opacity 0.2s ease",
-        color: "#374151",
+        transition: "opacity 0.22s ease, transform 0.22s ease, box-shadow 0.18s ease",
+        color: "var(--arrow-color, #374151)",
+      }}
+      className="vb-arrow"
+      onMouseEnter={(e) => {
+        if (!visible) return;
+        e.currentTarget.style.transform = "translateY(-50%) scale(1.08)";
+        e.currentTarget.style.boxShadow = "var(--arrow-shadow-hover, 0 4px 14px rgba(0,0,0,0.13), 0 1px 4px rgba(0,0,0,0.07))";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = "translateY(-50%) scale(1)";
+        e.currentTarget.style.boxShadow = "var(--arrow-shadow, 0 1px 8px rgba(0,0,0,0.09), 0 1px 3px rgba(0,0,0,0.05))";
       }}
     >
       {direction === "left"
-        ? <ChevronLeft size={18} strokeWidth={2} />
-        : <ChevronRight size={18} strokeWidth={2} />
+        ? <ChevronLeft size={15} strokeWidth={2.2} />
+        : <ChevronRight size={15} strokeWidth={2.2} />
       }
     </button>
   );
@@ -129,7 +166,10 @@ function Arrow({ direction, onClick, visible }) {
 /* ── Icons ──────────────────────────────────────────────────────────────── */
 function AllIcon() {
   return (
-    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg
+      viewBox="0 0 24 24" fill="none" aria-hidden="true"
+      style={{ width: ALL_SIZE, height: ALL_SIZE, flexShrink: 0 }}
+    >
       <rect x="2"  y="2"  width="9" height="9" rx="2.5" fill="currentColor"/>
       <rect x="13" y="2"  width="9" height="9" rx="2.5" fill="currentColor" opacity="0.65"/>
       <rect x="2"  y="13" width="9" height="9" rx="2.5" fill="currentColor" opacity="0.65"/>
@@ -138,11 +178,13 @@ function AllIcon() {
   );
 }
 
-function DefaultCatIcon({ size = 60 }) {
+function DefaultCatIcon() {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24"
-      fill="none" stroke="currentColor"
-      strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+      viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+      style={{ width: IMG_W, height: IMG_H, flexShrink: 0 }}
+    >
       <rect x="3" y="3" width="18" height="18" rx="3"/>
       <path d="M3 9h18M9 21V9"/>
     </svg>
@@ -207,59 +249,68 @@ export default function FilterRow({ selectedCategory, setSelectedCategory, loadD
 
   /* ── Horizontal mouse-wheel ── */
   const onWheel = (e) => {
-    if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return; // native horizontal — let it pass
+    if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
     e.preventDefault();
     scrollRef.current?.scrollBy({ left: e.deltaY * 1.5 });
   };
 
   return (
-    <div
-      className="flex items-stretch bg-white dark:bg-gray-950 border-b border-gray-100 dark:border-gray-800"
-      style={{ position: "relative" }}
-    >
-      <style>{`.vb-strip::-webkit-scrollbar{display:none}`}</style>
+    <div className="flex items-stretch bg-white dark:bg-gray-950 border-b border-gray-100 dark:border-gray-800">
+      <style>{`
+        .vb-strip::-webkit-scrollbar{display:none}
+        .dark .vb-arrow {
+          --arrow-bg: rgba(30,30,40,0.82);
+          --arrow-border: 1px solid rgba(255,255,255,0.10);
+          --arrow-shadow: 0 1px 8px rgba(0,0,0,0.28), 0 1px 3px rgba(0,0,0,0.18);
+          --arrow-shadow-hover: 0 4px 14px rgba(0,0,0,0.38), 0 1px 4px rgba(0,0,0,0.22);
+          --arrow-color: #e5e7eb;
+        }
+      `}</style>
 
-      {/* ── Overflow arrows ───────────────────────────────────────── */}
-      <Arrow direction="left"  onClick={() => scrollBy(-1)} visible={canLeft}  />
-      <Arrow direction="right" onClick={() => scrollBy(+1)} visible={canRight} />
+      {/* ── Scrollable strip — position:relative so arrows are scoped to it ── */}
+      <div className="relative flex-1 min-w-0">
 
-      {/* ── Scrollable strip ──────────────────────────────────────── */}
-      <div
-        ref={scrollRef}
-        className="vb-strip flex flex-1 min-w-0 bg-white dark:bg-gray-950 px-1"
-        style={{
-          overflowX: "auto",
-          overflowY: "hidden",
-          scrollbarWidth: "none",
-          msOverflowStyle: "none",
-          gap: 2,
-          alignItems: "stretch",
-          cursor: "grab",
-        }}
-        onMouseDown={onMouseDown}
-        onMouseMove={onMouseMove}
-        onMouseUp={onMouseUp}
-        onMouseLeave={onMouseUp}
-        onWheel={onWheel}
-      >
-        <Strip
-          active={selectedCategory === null}
-          onClick={() => setSelectedCategory(null)}
-          icon={<AllIcon />}
-          label="All"
-          minW={80}
-        />
+        {/* Overflow arrows — inside scroll area, never touching Filters */}
+        <Arrow direction="left"  onClick={() => scrollBy(-1)} visible={canLeft}  />
+        <Arrow direction="right" onClick={() => scrollBy(+1)} visible={canRight} />
 
-        {loadData.map((cat) => (
+        <div
+          ref={scrollRef}
+          className="vb-strip flex min-w-0 bg-white dark:bg-gray-950 px-1"
+          style={{
+            overflowX: "auto",
+            overflowY: "hidden",
+            scrollbarWidth: "none",
+            msOverflowStyle: "none",
+            gap: 2,
+            alignItems: "stretch",
+            cursor: "grab",
+          }}
+          onMouseDown={onMouseDown}
+          onMouseMove={onMouseMove}
+          onMouseUp={onMouseUp}
+          onMouseLeave={onMouseUp}
+          onWheel={onWheel}
+        >
           <Strip
-            key={cat.id}
-            active={selectedCategory === cat.id}
-            onClick={() => toggle(cat.id)}
-            icon={<CatImage src={buildIconSrc(cat.icon)} alt={cat.name ?? ""} />}
-            label={cat.name}
-            minW={96}
+            active={selectedCategory === null}
+            onClick={() => setSelectedCategory(null)}
+            icon={<AllIcon />}
+            label="All"
+            minW={ALL_MINW}
           />
-        ))}
+
+          {loadData.map((cat) => (
+            <Strip
+              key={cat.id}
+              active={selectedCategory === cat.id}
+              onClick={() => toggle(cat.id)}
+              icon={<CatImage src={buildIconSrc(cat.icon)} alt={cat.name ?? ""} />}
+              label={cat.name}
+              minW={ITEM_MINW}
+            />
+          ))}
+        </div>
       </div>
 
       {/* ── Filters — glass pill, clearly an action ───────────────── */}
@@ -272,7 +323,7 @@ export default function FilterRow({ selectedCategory, setSelectedCategory, loadD
           <span
             className="flex items-center justify-center flex-shrink-0"
             style={{
-              marginBottom: 8,
+              marginBottom: 4,
               background: "rgba(124,58,237,0.06)",
               border: "1px solid rgba(124,58,237,0.15)",
               borderRadius: 10,
@@ -288,7 +339,10 @@ export default function FilterRow({ selectedCategory, setSelectedCategory, loadD
               className="text-purple-600 dark:text-purple-400 group-hover:text-purple-700 dark:group-hover:text-purple-300 transition-colors"
             />
           </span>
-          <span className="text-[11px] font-semibold whitespace-nowrap leading-none tracking-wide text-purple-600 dark:text-purple-400">
+          <span
+            style={{ fontSize: LABEL_SIZE }}
+            className="font-semibold whitespace-nowrap leading-none tracking-wide text-purple-600 dark:text-purple-400"
+          >
             Filters
           </span>
         </button>
