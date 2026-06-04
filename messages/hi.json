@@ -30,7 +30,7 @@
     "explore": "एक्सप्लोर करें",
     "explore_aria": "स्थल एक्सप्लोर करें",
     "list_property": "अपनी संपत्ति सूचीबद्ध करें",
-    "switch_to_vendor": "विक्रेता पर स्विच करें",
+    "switch_to_vendor": "संपत्ति पर स्विच करें",
     "theme_to_light": "लाइट मोड पर स्विच करें",
     "theme_to_dark": "डार्क मोड पर स्विच करें",
     "region_aria": "क्षेत्र, भाषा या मुद्रा बदलें",
@@ -461,5 +461,69 @@
         "system": "सिस्टम"
       }
     }
+  },
+  "onboarding": {
+    "property_type": {
+      "title": "Tell us about your property",
+      "subtitle": "This helps us set up the right listing structure for your business.",
+      "step_label": "Step 1 of 2 — Property Structure",
+      "help_text": "You can always add more units to a property later.",
+      "single": {
+        "title": "Single Property",
+        "description": "Perfect if you are listing one venue, farmstay, studio, workspace, rental item, or experience.",
+        "badge": "Most common"
+      },
+      "multi": {
+        "title": "Property With Multiple Units",
+        "description": "Ideal when one property contains multiple bookable spaces or inventories."
+      },
+      "continue": "Continue"
+    },
+    "parent_setup": {
+      "title": "Property Information",
+      "subtitle": "Provide information about your overall property. Individual units will be added later.",
+      "save_continue": "Save & Continue to Units",
+      "section_details": "Property Details",
+      "section_facts": "Property Facts",
+      "section_address": "Address",
+      "section_contact": "Business Contact",
+      "section_branding": "Branding & Media",
+      "field_property_name": "Property Name",
+      "field_description": "Property Description",
+      "field_category": "Property Category",
+      "field_built_year": "Built Year",
+      "field_operating_since": "Operating Since",
+      "field_size": "Property Size",
+      "field_ownership": "Ownership Type",
+      "ownership_owned": "Owned",
+      "ownership_leased": "Leased",
+      "ownership_managed": "Managed",
+      "field_country": "Country",
+      "field_state": "State",
+      "field_city": "City",
+      "field_area": "Area / Locality",
+      "field_full_address": "Full Address",
+      "field_pincode": "Pincode",
+      "field_map_url": "Google Maps URL",
+      "field_email": "Business Email",
+      "field_phone": "Business Phone",
+      "field_alt_phone": "Alternative Phone",
+      "field_website": "Website URL",
+      "field_manager": "Manager Name",
+      "field_logo": "Property Logo",
+      "field_cover": "Property Cover Image",
+      "field_gallery": "Property Gallery",
+      "branding_hint": "Images uploaded here become shared assets available across all units.",
+      "autofilled": "Auto-filled",
+      "back": "Back"
+    }
+  },
+  "unauthorized": {
+    "badge": "पहुंच प्रतिबंधित",
+    "heading": "पहुंच प्रतिबंधित है",
+    "description": "आपके पास इस पृष्ठ तक पहुंचने की अनुमति नहीं है। यदि आपको लगता है यह कोई त्रुटि है, तो सहायता से संपर्क करें या अपने खाते पर उपलब्ध पृष्ठ पर वापस जाएं।",
+    "go_back": "वापस जाएं",
+    "return_home": "होम पर लौटें",
+    "contact_support": "सहायता से संपर्क करें"
   }
 }

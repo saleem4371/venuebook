@@ -13,13 +13,16 @@ export function AuthProvider({ children }) {
 const isListed =
   Number(user?.is_vendor) === 1;
 
-  // ✅ Load user from backend (IMPORTANT)
+  // ✅ Load user from backend — returns the fresh user object so callers
+  // can use it immediately without waiting for a React re-render cycle.
   const fetchUser = useCallback(async () => {
     try {
       const res = await api.get("/auth/me");
       setUser(res.data);
+      return res.data;          // ← callers receive fresh data synchronously
     } catch (err) {
       setUser(null);
+      return null;
     } finally {
       setLoading(false);
     }
@@ -30,10 +33,23 @@ const isListed =
     setUser(userData);
   }, []);
 
-  const logout = useCallback( async() => {
+  const logout = useCallback(async () => {
+    // 1. Clear React state immediately — UI flips to guest on this tick
     setUser(null);
-    await api.post("/auth/logout");
-    document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT";
+
+    // 2. Best-effort server-side session invalidation
+    try {
+      await api.post("/auth/logout");
+    } catch (_) {
+      // swallow — local state is already cleared; proceed with cleanup
+    }
+
+    // 3. Wipe the auth cookie (root path + any sub-paths)
+    document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax";
+
+    // 4. Clear any auth-scoped session storage
+    try { sessionStorage.removeItem("auth_user"); } catch (_) {}
+    try { sessionStorage.removeItem("user"); } catch (_) {}
   }, []);
 
   // ✅ auto check on refresh
