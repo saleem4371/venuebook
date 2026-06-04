@@ -18,9 +18,9 @@ export default function PackageCard({ pkg, onView, onEdit, onDuplicate, onToggle
   const t = useTranslations();
   const isPublished = pkg.package_status === 1;
 
-  let itemCount = 0;
-  try { itemCount = JSON.parse(pkg.package_items || "[]").length; } catch { /* */ }
-
+ const itemCount = Array.isArray(pkg.package_items)
+  ? pkg.package_items.length
+  : 0;
   const typeInfo = PACKAGE_TYPE_CONFIG[pkg.package_type] ?? PACKAGE_TYPE_CONFIG[0];
   const TypeIcon = typeInfo.Icon;
 

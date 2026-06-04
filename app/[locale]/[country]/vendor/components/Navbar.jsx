@@ -12,6 +12,7 @@ import RegionLanguageModal from "../../home/components/RegionLanguageModal";
 import { useAuth } from "@/context/AuthContext";
 import KycStatusChip from "./KycStatusChip";
 import KYCModal from "./KYCModal";
+import LogoutConfirmationModal from "@/components/shared/LogoutConfirmationModal";
 
 
 /* ═══════════════════════════════════════════════════════════════
@@ -357,7 +358,7 @@ function AvatarArea({
                 <MenuItem
                   icon={<LogoutIcon />}
                   label="Logout"
-                  onClick={() => logout()}
+                  onClick={onLogout}
                   variant="danger"
                 />
               </li>
@@ -387,9 +388,10 @@ export default function PremiumNavbar() {
   const userName = user?.name || "Vendor";
   const userEmail = user?.email || "vendor@venuebook.in";
 
-  const [showNotif, setShowNotif] = useState(false);
-  const [showProfile, setShowProfile] = useState(false);
-  const [regionOpen, setRegionOpen] = useState(false);
+  const [showNotif,       setShowNotif]       = useState(false);
+  const [showProfile,     setShowProfile]     = useState(false);
+  const [regionOpen,      setRegionOpen]      = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [kycStatus, setKycStatus] = useState("pending"); // wire to API/session later
   const [kycOpen, setKycOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -432,9 +434,7 @@ export default function PremiumNavbar() {
       setShowProfile(false);
       setRegionOpen(true);
     },
-    onLogout: () => { setShowProfile(false);
-                     logout() }
-                     ,
+    onLogout: () => { setShowProfile(false); setShowLogoutModal(true); },
   };
 
   return (
@@ -569,6 +569,21 @@ export default function PremiumNavbar() {
       />
 
       <KYCModal open={kycOpen} setOpen={setKycOpen} />
+
+      {/* Shared logout confirmation modal — redirects to home on confirm */}
+      <LogoutConfirmationModal
+        open={showLogoutModal}
+        onCancel={() => setShowLogoutModal(false)}
+        onConfirm={async () => {
+          setShowLogoutModal(false);
+          await logout();
+          // replace() removes the vendor page from back-history after logout.
+          // refresh() flushes the Next.js router cache so server components
+          // re-run and the navbar re-renders as guest immediately.
+          router.replace(`/${locale}/${country}/home`);
+          router.refresh();
+        }}
+      />
     </>
   );
 }

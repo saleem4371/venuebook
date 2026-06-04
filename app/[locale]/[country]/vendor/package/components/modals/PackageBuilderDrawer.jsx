@@ -43,6 +43,9 @@ function CategoryConfigRow({ category, onCountChange, onItemToggle, t }) {
   const [expanded, setExpanded] = useState(false);
   const currencySymbol = usePriceCurrencySymbol();
 
+  console.log('-----0000------')
+  console.log(category)
+
   const selectedCount = category.package_item.filter((i) => i.selected).length;
   const countNumber   = category.count_number ?? 0;
 

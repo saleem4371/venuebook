@@ -6,6 +6,7 @@ import { Plus, Building2, ArrowRight, Sparkles } from "lucide-react";
 import { useRouter, useParams } from "next/navigation";
 
 import VenueCard from "./components/VenueCard";
+import { usePropertyTypeModal } from "@/context/PropertyTypeModalContext";
 import { useVendorCategory } from "@/context/VendorCategoryContext";
 
 import { LoadListing } from "@/services/vendor.service";
@@ -52,6 +53,16 @@ const CATEGORY_META = {
     accent: "from-rose-600 to-pink-500",
     glow: "rgba(244,63,94,0.18)",
   },
+};
+
+/* Hex accents for PropertyTypeModal (mirrors Tailwind classes above) */
+const CATEGORY_ACCENT_HEX = {
+  venues:      { from: "#7c3aed", to: "#6366f1" },
+  farmstays:   { from: "#059669", to: "#14b8a6" },
+  studios:     { from: "#f59e0b", to: "#f97316" },
+  rentals:     { from: "#2563eb", to: "#06b6d4" },
+  workspaces:  { from: "#0891b2", to: "#0ea5e9" },
+  experiences: { from: "#e11d48", to: "#ec4899" },
 };
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -165,12 +176,28 @@ export default function ListingPage() {
     router.prefetch(parentPath);
   }, []);
 
+  const { openPropertyModal } = usePropertyTypeModal();
+  const accent = CATEGORY_ACCENT_HEX[activeCategory] ?? CATEGORY_ACCENT_HEX.venues;
+
   const openParent = () => {
     setParentLoading(true);
     setTimeout(() => router.push(parentPath), 180);
   };
 
-  const handleCreateListing = () => router.push(startPath(activeCategory));
+  const handleCreateListing = () => {
+    openPropertyModal({
+      accentFrom: accent.from,
+      accentTo:   accent.to,
+      category:   activeCategory,
+      onContinue: (type) => {
+        if (type === "single") {
+          router.push(startPath(activeCategory));
+        } else {
+          router.push(`/${locale}/${country}/start-listing/${activeCategory}/parent-setup`);
+        }
+      },
+    });
+  };
   
 useEffect(() => {
   load();
@@ -402,6 +429,7 @@ const load = async () => {
           </motion.div>
         )}
       </AnimatePresence>
+
     </div>
   );
 }

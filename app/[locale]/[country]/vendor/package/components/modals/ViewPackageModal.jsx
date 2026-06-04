@@ -28,7 +28,11 @@ export default function ViewPackageModal({
 
   const { name, price, details, food_preference, package_type } = packageData;
   const categoryKeys = Object.keys(details || {});
-  const totalItems   = categoryKeys.reduce((acc, k) => acc + details[k].length, 0);
+  // const totalItems   = categoryKeys.reduce((acc, k) => acc + details[k].length, 0);
+  const totalItems = categoryKeys.reduce(
+   (acc, k) => acc + (details[k]?.count || 0),
+  0
+);
 
   return (
     <ModalBase
@@ -110,14 +114,14 @@ export default function ViewPackageModal({
                       {catName}
                     </h4>
                     <p className="text-[10px] text-slate-400 dark:text-slate-500">
-                      {details[catName].length} items
+                       {details[catName]?.count} items
                     </p>
                   </div>
                 </div>
 
                 {/* Item list */}
                 <ul className="space-y-1.5">
-                  {details[catName].map((item) => (
+                 {details[catName]?.items?.map((item) => (
                     <li
                       key={item.id}
                       className="flex items-center justify-between rounded-xl bg-white px-3 py-2 dark:bg-white/[0.04]"
