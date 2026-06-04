@@ -1,14 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+
 import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
 
 import { useAuth } from "@/context/AuthContext";
 import LoginModal from "@/app/[locale]/[country]/home/components/LoginModal";
+import PropertyTypeModal from "@/app/[locale]/[country]/vendor/listing/components/PropertyTypeModal";
+import VendorAlreadyModal from "./components/VendorAlreadyModal";
 
 import { useGlobal } from "@/context/GlobalProvider";
+import { country_of_category } from "@/services/global.service";
 
 /* ─────────────────────────────────────────────────────────────────── */
 /*  Data                                                                */
@@ -21,29 +25,21 @@ const STAT_KEYS = ["earning", "hosts", "time", "guests"];
 /* ─────────────────────────────────────────────────────────────────── */
 
 export default function ListYourPropertyPage() {
-  const {
-    categorys,
-    // properties,
-    // loading,
-  } = useGlobal();
+  const { categorys } = useGlobal();
+  const [loadData, setLoadData] = useState([]);
 
   const t = useTranslations("listing");
 
   const [selected, setSelected] = useState("venue");
-  // const [selected, setSelected] = useState(1);
-  const params = useParams();
-  const router = useRouter();
-  const locale = params?.locale || "en";
+  const params  = useParams();
+  const router  = useRouter();
+  const locale  = params?.locale  || "en";
   const country = params?.country || "in";
 
-  const region = country.toUpperCase();
-  // const category = categorys.find((c) => c.id === selected);
+  const region   = country.toUpperCase();
   const category = categorys?.find((c) => c.name === selected) || {};
 
-  // const stat = category.stat || {};
-
   let stat = {};
-
   try {
     stat =
       typeof category?.stat === "string"
@@ -53,38 +49,99 @@ export default function ListYourPropertyPage() {
     stat = {};
   }
 
-  console.log(stat);
-
   const isComingSoon = selected === 6;
-  const ctaHref = `/${locale}/${country}/start-listing/${selected}`;
 
-  // Auth gate
+  // ── Auth ──────────────────────────────────────────────────────────
   const { isLoggedIn, user } = useAuth();
-  const [showLogin, setShowLogin] = useState(false);
 
-  const isParent = Number(user?.is_parent) === 1;
+  // authIntent tracks WHY the login modal was opened.
+  // "start-listing" → triggered by the CTA; runs vendor/structure checks after login.
+  // "general"       → triggered by header/nav; normal login only, no routing modals.
+  const [authIntent,        setAuthIntent]        = useState("general");
+  const [showLogin,         setShowLogin]         = useState(false);
+  const [showPropertyModal, setShowPropertyModal] = useState(false);
+  const [showVendorModal,   setShowVendorModal]   = useState(false);
 
-  // Click handler for the CTA button
+  // Determine if a user object is an existing vendor
+  const resolveIsVendor = (u) =>
+    Number(u?.is_parent) === 1 || Number(u?.is_vendor) === 1;
+
+  // Open login modal with an intent so post-login routing is correct
+  const openLogin = (intent = "general") => {
+    setAuthIntent(intent);
+    setShowLogin(true);
+  };
+
+  const openStructureModal = () => setShowPropertyModal(true);
+  const openVendorModal    = () => setShowVendorModal(true);
+
+  // ── CTA click (Start Listing button) ──────────────────────────────
   const handleCtaClick = () => {
     if (isComingSoon) return;
 
     if (!isLoggedIn) {
-      setShowLogin(true);
+      // Open login specifically for the Start Listing flow
+      openLogin("start-listing");
       return;
     }
 
-    router.push(isParent ? "/" : ctaHref);
+    // User already logged in — check vendor status using live state
+    console.log("[StartListing] CTA clicked — already logged in:", {
+      id:          user?.id,
+      role:        user?.role,
+      accountType: user?.account_type,
+      isVendor:    Number(user?.is_vendor),
+      isParent:    Number(user?.is_parent),
+    });
+
+    if (resolveIsVendor(user)) {
+      openVendorModal();
+      return;
+    }
+
+    openStructureModal();
   };
 
-  const handleSwitchVendor = () => {
-    router.push(`/${locale}/${country}/vendor/dashboard`);
-  };
-
-  // After successful login → navigate to the listing flow
-  const handleLoginSuccess = () => {
+  // ── Post-login callback ────────────────────────────────────────────
+  // freshUser arrives directly from fetchUser() — no stale state.
+  const handleLoginSuccess = (freshUser) => {
     setShowLogin(false);
 
-    router.push(isParent ? "/" : ctaHref);
+    console.log("[Login] Post-login user resolved:", {
+      intent:      authIntent,
+      id:          freshUser?.id,
+      role:        freshUser?.role,
+      accountType: freshUser?.account_type,
+      isVendor:    Number(freshUser?.is_vendor),
+      isParent:    Number(freshUser?.is_parent),
+      email:       freshUser?.email,
+    });
+
+    // Only run Start Listing routing when user deliberately clicked Start Listing.
+    // Header / global logins (authIntent = "general") do nothing extra here.
+    if (authIntent !== "start-listing") {
+      console.log("[Login] General login — no listing modals triggered.");
+      return;
+    }
+
+    if (resolveIsVendor(freshUser)) {
+      console.log("[Login] → Existing vendor → VendorAlreadyModal");
+      openVendorModal();
+      return;
+    }
+
+    console.log("[Login] → New / consumer user → PropertyTypeModal");
+    openStructureModal();
+  };
+
+  // ── Property type continue ─────────────────────────────────────────
+  const handlePropertyTypeContinue = (type) => {
+    setShowPropertyModal(false);
+    if (type === "single") {
+      router.push(`/${locale}/${country}/start-listing/${selected}/basic-details`);
+    } else {
+      router.push(`/${locale}/${country}/start-listing/${selected}/parent-setup`);
+    }
   };
 
   const getImageUrl = (path) => {
@@ -92,16 +149,53 @@ export default function ListYourPropertyPage() {
     return `${process.env.NEXT_PUBLIC_AWS_BUCKET_URL}/${path}`;
   };
 
+  useEffect(() => {
+    load();
+  }, []);
+
+  const load = async () => {
+    try {
+      const res = await country_of_category();
+      setLoadData(Array.isArray(res?.data) ? res.data : []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // ── Render ─────────────────────────────────────────────────────────
   return (
     <main className="bg-white dark:bg-gray-950">
-      {/* Login modal — shown when unauthenticated user clicks CTA */}
+
+      {/* Login modal — intent-aware */}
       <LoginModal
         open={showLogin}
         setOpen={setShowLogin}
         onSuccess={handleLoginSuccess}
       />
 
+      {/* Property structure modal — Single vs Multi-Unit (new users only) */}
+      <PropertyTypeModal
+        open={showPropertyModal}
+        onClose={() => setShowPropertyModal(false)}
+        onContinue={handlePropertyTypeContinue}
+        category={selected}
+      />
+
+      {/* Existing vendor routing modal — non-dismissible */}
+      <VendorAlreadyModal
+        open={showVendorModal}
+        onDashboard={() => {
+          setShowVendorModal(false);
+          router.push(`/${locale}/${country}/vendor/listing`);
+        }}
+        onHome={() => {
+          setShowVendorModal(false);
+          router.push(`/${locale}/${country}/home`);
+        }}
+      />
+
       <section className="flex flex-col lg:flex-row lg:min-h-[calc(100vh-72px)] pt-[64px] md:pt-[72px] w-full lg:max-w-[1400px] lg:mx-auto">
+
         {/* ── RIGHT: illustration ── */}
         <div
           className={[
@@ -117,13 +211,11 @@ export default function ListYourPropertyPage() {
               <motion.img
                 key={selected}
                 src={getImageUrl(category?.image)}
-                alt={
-                  category ? t(`category.${selected}.label`) : "Category Image"
-                }
+                alt={category ? t(`category.${selected}.label`) : "Category Image"}
                 className="w-full h-full object-contain drop-shadow-md"
                 initial={{ opacity: 0, y: 10, scale: 0.97 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0,  scale: 1    }}
+                exit={{    opacity: 0, y: -6,  scale: 0.98 }}
                 transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
                 draggable="false"
               />
@@ -133,6 +225,7 @@ export default function ListYourPropertyPage() {
 
         {/* ── LEFT: content ── */}
         <div className="order-last lg:order-first lg:w-1/2 flex flex-col justify-center lg:overflow-y-auto px-5 sm:px-8 lg:pl-10 lg:pr-6 xl:pl-16 xl:pr-8 py-10 lg:py-12">
+
           {/* Eyebrow */}
           <div className="inline-flex items-center gap-2 rounded-full border border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/40 px-3.5 py-1.5 mb-6 self-start">
             <span className="h-1.5 w-1.5 rounded-full bg-violet-500 animate-pulse" />
@@ -168,9 +261,9 @@ export default function ListYourPropertyPage() {
               {t("what_listing")}
             </p>
             <div className="flex flex-wrap gap-2">
-              {categorys.map((cat) => {
+              {loadData.map((cat) => {
                 const active = cat.name === selected;
-                const soon = cat.name === "experience";
+                const soon   = cat.name === "experience";
                 return (
                   <button
                     key={cat.name}
@@ -178,12 +271,12 @@ export default function ListYourPropertyPage() {
                     onClick={() => !soon && setSelected(cat.name)}
                     disabled={soon}
                     className={[
-                      "relative inline-flex items-center justify-center rounded-full border px-4 py-2 text-sm font-medium ",
-                      "transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 ",
+                      "relative inline-flex items-center justify-center rounded-full border px-4 py-2 text-sm font-medium",
+                      "transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500",
                       soon
                         ? "border-gray-200 dark:border-gray-800 text-gray-300 dark:text-gray-600 cursor-not-allowed opacity-60"
                         : active
-                          ? "bg-violet-600 border-violet-600 text-white shadow-sm scale-[1.03] "
+                          ? "bg-violet-600 border-violet-600 text-white shadow-sm scale-[1.03]"
                           : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-violet-300 dark:hover:border-violet-700 hover:text-violet-600 dark:hover:text-violet-400 cursor-pointer",
                     ].join(" ")}
                   >
@@ -201,9 +294,9 @@ export default function ListYourPropertyPage() {
             <AnimatePresence mode="wait">
               <motion.p
                 key={selected}
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -4 }}
+                initial={{ opacity: 0, y: 4  }}
+                animate={{ opacity: 1, y: 0  }}
+                exit={{    opacity: 0, y: -4 }}
                 transition={{ duration: 0.18 }}
                 className="mt-2.5 text-sm text-gray-400 dark:text-gray-500"
               >
@@ -212,54 +305,29 @@ export default function ListYourPropertyPage() {
             </AnimatePresence>
           </div>
 
-          {/* CTA */}
+          {/* CTA — always shows Start Listing; vendor check happens inside handleCtaClick */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-8">
             {isComingSoon ? (
               <div className="inline-flex items-center gap-2.5 rounded-xl px-7 py-3.5 text-sm font-semibold text-gray-400 dark:text-gray-600 cursor-not-allowed shrink-0 border border-gray-200 dark:border-gray-800">
                 {t(`cta_button.${selected}`)}
               </div>
-            ) : !isParent ? (
+            ) : (
               <button
                 type="button"
                 onClick={handleCtaClick}
                 className="inline-flex items-center gap-2.5 rounded-xl px-7 py-3.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 active:opacity-80 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 shrink-0"
-                style={{
-                  background: "linear-gradient(242deg, #a44bf3, #499ce8)",
-                }}
+                style={{ background: "linear-gradient(242deg, #a44bf3, #499ce8)" }}
               >
                 <AnimatePresence mode="wait">
                   <motion.span
                     key={selected}
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -6 }}
+                    initial={{ opacity: 0, y: 6  }}
+                    animate={{ opacity: 1, y: 0  }}
+                    exit={{    opacity: 0, y: -6 }}
                     transition={{ duration: 0.18 }}
                     className="flex items-center gap-2.5"
                   >
                     {t(`cta_button.${selected}`)}
-                    <ArrowRightIcon />
-                  </motion.span>
-                </AnimatePresence>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={handleSwitchVendor}
-                className="inline-flex items-center gap-2.5 rounded-xl px-7 py-3.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 active:opacity-80 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 shrink-0"
-                style={{
-                  background: "linear-gradient(242deg, #a44bf3, #499ce8)",
-                }}
-              >
-                <AnimatePresence mode="wait">
-                  <motion.span
-                    key={selected}
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -6 }}
-                    transition={{ duration: 0.18 }}
-                    className="flex items-center gap-2.5"
-                  >
-                    Switch to Vendor
                     <ArrowRightIcon />
                   </motion.span>
                 </AnimatePresence>
@@ -275,21 +343,20 @@ export default function ListYourPropertyPage() {
                   key={`${selected}-${key}`}
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
+                  exit={{    opacity: 0        }}
                   transition={{ duration: 0.2 }}
                 >
                   <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1">
                     {t(`stat.${key}`)}
                   </p>
                   <p className="text-xl font-bold text-gray-900 dark:text-white">
-                    {key === "earning"
-                      ? t(`earning.${region}`)
-                      : (stat?.[key] ?? "-")}
+                    {key === "earning" ? t(`earning.${region}`) : stat?.[key] ?? "-"}
                   </p>
                 </motion.div>
               ))}
             </AnimatePresence>
           </div>
+
         </div>
       </section>
     </main>
@@ -299,18 +366,12 @@ export default function ListYourPropertyPage() {
 /* ─────────────────────────────────────────────────────────────────── */
 /*  Icon                                                                */
 /* ─────────────────────────────────────────────────────────────────── */
-
 function ArrowRightIcon() {
   return (
     <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
+      width="14" height="14" viewBox="0 0 24 24"
+      fill="none" stroke="currentColor"
+      strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
       aria-hidden="true"
     >
       <line x1="5" y1="12" x2="19" y2="12" />
