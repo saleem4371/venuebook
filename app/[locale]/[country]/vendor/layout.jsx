@@ -12,6 +12,8 @@ import { VendorCategoryProvider, useVendorCategory } from "@/context/VendorCateg
 import VendorCategoryNavigator   from "./components/VendorCategoryNavigator";
 import CategoryTransitionOverlay from "./components/CategoryTransitionOverlay";
 import { AuthProvider } from "@/context/AuthContext";
+import { PropertyTypeModalProvider, usePropertyTypeModal } from "@/context/PropertyTypeModalContext";
+import PropertyTypeModal from "./listing/components/PropertyTypeModal";
 // ─────────────────────────────────────────────────────────────────────────────
 // VENDOR ENABLED CATEGORIES
 // Replace with API/session data once auth is wired.
@@ -79,6 +81,24 @@ function PageMainWrapper({ isListingEditor, isFullBleedPage, isFullBleedPage1, c
 /* ══════════════════════════════════════════════════════════════════════
    VENDOR LAYOUT
 ══════════════════════════════════════════════════════════════════════ */
+/* Renders the modal at layout level — outside PageMainWrapper's transforms */
+function PropertyModalRenderer() {
+  const { state, closePropertyModal } = usePropertyTypeModal();
+  return (
+    <PropertyTypeModal
+      open={state.open}
+      onClose={closePropertyModal}
+      onContinue={(type) => {
+        closePropertyModal();
+        state.onContinue?.(type);
+      }}
+      accentFrom={state.accentFrom}
+      accentTo={state.accentTo}
+      category={state.category}
+    />
+  );
+}
+
 export default function AdminLayout({ children }) {
   const pathname = usePathname();
 
@@ -93,6 +113,7 @@ export default function AdminLayout({ children }) {
       <VendorCategoryProvider vendorCategories={VENDOR_CATEGORIES}>
         <AuthProvider>
         <VendorUIProvider>
+        <PropertyTypeModalProvider>
 
           {/* PRIMARY HEADER */}
           <Navbar />
@@ -136,6 +157,10 @@ export default function AdminLayout({ children }) {
             {!isListingEditor && <BottomDock />}
           </div>
 
+          {/* PROPERTY TYPE MODAL — rendered here, outside PageMainWrapper transforms */}
+          <PropertyModalRenderer />
+
+        </PropertyTypeModalProvider>
         </VendorUIProvider>
         </AuthProvider>
       </VendorCategoryProvider>
