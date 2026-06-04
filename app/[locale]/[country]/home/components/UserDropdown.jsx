@@ -9,6 +9,7 @@ import { useTranslations } from "next-intl";
 import { useDropdown } from "@/context/DropdownContext";
 import { useAuth }     from "@/context/AuthContext";
 import { useUI }       from "@/context/UIContext";
+import LogoutConfirmationModal from "@/components/shared/LogoutConfirmationModal";
 
 /* ------------------------------------------------------------------ */
 /*  Avatar color palette — one stable color per first letter            */
@@ -88,26 +89,14 @@ export default function UserDropdown({ onOpenRegionModal }) {
   setConfirmLogout(true);
 };
 
-const confirmLogoutAction = () => {
+const confirmLogoutAction = async () => {
   setConfirmLogout(false);
-  logout();
+  await logout();
+  // Replace so the current page isn't in back-history after logout,
+  // then refresh to flush Next.js router cache and re-render server components.
+  router.replace(`/${locale}/${country}/home`);
+  router.refresh();
 };
-
-useEffect(() => {
-  if (!confirmLogout) return;
-
-  const originalStyle = window.getComputedStyle(document.body).overflow;
-
-  document.body.style.overflow = "hidden";
-  document.body.style.position = "fixed";
-  document.body.style.width = "100%";
-
-  return () => {
-    document.body.style.overflow = originalStyle;
-    document.body.style.position = "";
-    document.body.style.width = "";
-  };
-}, [confirmLogout]);
 
   return (
     <div className="relative" ref={wrapRef}>
@@ -189,32 +178,11 @@ useEffect(() => {
         
       </AnimatePresence>
 
-      {confirmLogout && (
- <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/30 backdrop-blur-xl">
-    <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl w-[320px] shadow-xl">
-      <h2 className="text-lg font-semibold mb-2">Confirm Logout</h2>
-      <p className="text-sm text-gray-500 mb-5">
-        Are you sure you want to logout?
-      </p>
-
-      <div className="flex gap-3 justify-end">
-        <button
-          onClick={() => setConfirmLogout(false)}
-          className="px-4 py-2 rounded-lg border text-sm"
-        >
-          Cancel
-        </button>
-
-        <button
-          onClick={confirmLogoutAction}
-          className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm"
-        >
-          Logout
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+      <LogoutConfirmationModal
+        open={confirmLogout}
+        onCancel={() => setConfirmLogout(false)}
+        onConfirm={confirmLogoutAction}
+      />
     </div>
   );
 }

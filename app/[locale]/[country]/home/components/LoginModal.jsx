@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Fragment } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -118,12 +118,11 @@ const [googleProfile, setGoogleProfile] = useState(null);
       });
 
       document.cookie = `token=${res.data.token}; path=/`;
-      await fetchUser();
+      const freshUser = await fetchUser();
       close();
       // if (onSuccess) onSuccess(); else router.push("/");
       if (onSuccess) {
-
-        onSuccess()
+        onSuccess(freshUser)
       } else {
  const redirectPath =
   sessionStorage.getItem("redirectAfterLogin") || "/";
@@ -200,12 +199,11 @@ router.push(redirectPath);
       });
 
       document.cookie = `token=${res.data.token}; path=/`;
-      await fetchUser();
+      const freshUser = await fetchUser();
       close();
       // if (onSuccess) onSuccess(); else router.push("/");
         if (onSuccess) {
-
-        onSuccess()
+        onSuccess(freshUser)
       } else {
  const redirectPath =
   sessionStorage.getItem("redirectAfterLogin") || "/";
@@ -231,12 +229,11 @@ router.push(redirectPath);
       const res = await socialLoginApi(provider, fakeToken);
 
       document.cookie = `token=${res.data.token}; path=/`;
-      await fetchUser();
+      const freshUser = await fetchUser();
       close();
       // if (onSuccess) onSuccess(); else router.push("/");
         if (onSuccess) {
-
-        onSuccess()
+        onSuccess(freshUser)
       } else {
  const redirectPath =
   sessionStorage.getItem("redirectAfterLogin") || "/";
@@ -339,7 +336,7 @@ const handleGoogleContinue = async () => {
 
     document.cookie = `token=${res.data.token}; path=/`;
 
-    await fetchUser();
+    const freshUser = await fetchUser();
 
     setShowGoogleConfirm(false);
 
@@ -348,8 +345,7 @@ const handleGoogleContinue = async () => {
     // if (onSuccess) onSuccess();
     // else router.push("/");
       if (onSuccess) {
-
-        onSuccess()
+        onSuccess(freshUser)
       } else {
  const redirectPath =
   sessionStorage.getItem("redirectAfterLogin") || "/";
@@ -431,7 +427,7 @@ router.push(redirectPath);
   return (
     <AnimatePresence>
       {open && (
-        <>
+        <Fragment key="login-root">
           {/* Backdrop */}
           <motion.div
             key="login-backdrop"
@@ -611,13 +607,13 @@ router.push(redirectPath);
                         }
                         onClick={() => googleLogin()}
                       />
-
+{/* 
                       <SocialButton
                         icon={<FacebookIcon />}
                         label={t("continueWithFacebook")}
                         tint
                         onClick={() => handleSocialLogin("facebook")}
-                      />
+                      /> */}
                       <SocialButton
                         icon={<PhoneIcon />}
                         label={t("continueWithPhone")}
@@ -912,10 +908,10 @@ router.push(redirectPath);
               </div>
             </div>
           </motion.div>
-        </>
+        </Fragment>
       )}
       {showGoogleConfirm && (
-  <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+  <div key="google-confirm" className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
     
     <div className="w-full max-w-md rounded-3xl bg-white dark:bg-gray-900 p-6 shadow-2xl">
 
