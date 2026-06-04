@@ -115,11 +115,12 @@ export default async function RootLayout({ children }) {
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="NextPWA" />
         <meta name="description" content="Progressive Web App with Notifications" />
-           <script
+        <script
           src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAzQBQV6-t21jRrYTU9WGOnAO0iz-fpGEI&libraries=places"
           async
           defer
         ></script>
+ 
         {/* Capture beforeinstallprompt BEFORE React mounts so we never miss it */}
         <script dangerouslySetInnerHTML={{ __html: `
           window.__pwaInstallEvent = null;
@@ -133,7 +134,7 @@ export default async function RootLayout({ children }) {
             window.dispatchEvent(new Event('pwa-installed'));
           });
         ` }} />
-          </head>
+      </head>
 
       <body
         suppressHydrationWarning
