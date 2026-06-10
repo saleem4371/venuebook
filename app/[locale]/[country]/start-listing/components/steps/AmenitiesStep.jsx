@@ -1,17 +1,20 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { AmenitiesSkeleton, useSkeletonDelay } from "./skeletons/index";
 
-import {
-  Wifi, Zap, Shield, Camera, Wind, Car, Coffee, Printer, Bell,
-  Music, Volume2, Lightbulb, Monitor, Mic, Video, ChefHat, Wine,
-  Utensils, Flame, Mountain, Bike, Leaf, Heart, HeartPulse, Star,
-  Building, Trees, Shirt, Dumbbell, Package, Waves, Tent,
-  PawPrint, Droplets, SlidersHorizontal, Tag, Sun,
-  Image, Move, Radio, Layers, Sparkles, ArrowUpDown,
-  UserCheck, Flower2, Gamepad2, DoorOpen, PenLine, Tv, Check,
-  RefreshCw,
-} from "lucide-react";
+// import {
+//   Wifi, Zap, Shield, Camera, Wind, Car, Coffee, Printer, Bell,
+//   Music, Volume2, Lightbulb, Monitor, Mic, Video, ChefHat, Wine,
+//   Utensils, Flame, Mountain, Bike, Leaf, Heart, HeartPulse, Star,
+//   Building, Trees, Shirt, Dumbbell, Package, Waves, Tent,
+//   PawPrint, Droplets, SlidersHorizontal, Tag, Sun,
+//   Image, Move, Radio, Layers, Sparkles, ArrowUpDown,
+//   UserCheck, Flower2, Gamepad2, DoorOpen, PenLine, Tv, Check,
+//   RefreshCw,
+// } from "lucide-react";
+
+import * as Icons from "lucide-react";
 
 import { AMENITY_META, FARMSTAY_FOOD_OPTIONS, FARMSTAY_PARKING_OPTIONS } from "./config/amenitiesConfig";
 import { getAmenties } from "@/services/global.service";
@@ -20,20 +23,29 @@ import { getAmenties } from "@/services/global.service";
 // Icon lookup
 // ─────────────────────────────────────────────────────────────────────────────
 
-const ICON_MAP = {
-  Wifi, Zap, Shield, Camera, Wind, Car, Coffee, Printer, Bell,
-  Music, Volume2, Lightbulb, Monitor, Mic, Video, ChefHat, Wine,
-  Utensils, Flame, Mountain, Bike, Leaf, Heart, HeartPulse, Star,
-  Building, Trees, Shirt, Dumbbell, Package, Waves, Tent,
-  PawPrint, Droplets, SlidersHorizontal, Tag, Sun,
-  Image, Move, Radio, Layers, Sparkles, ArrowUpDown,
-  UserCheck, Flower2, Gamepad2, DoorOpen, PenLine, Tv, Check,
-  RefreshCw,
-};
+// const ICON_MAP = {
+//   Wifi, Zap, Shield, Camera, Wind, Car, Coffee, Printer, Bell,
+//   Music, Volume2, Lightbulb, Monitor, Mic, Video, ChefHat, Wine,
+//   Utensils, Flame, Mountain, Bike, Leaf, Heart, HeartPulse, Star,
+//   Building, Trees, Shirt, Dumbbell, Package, Waves, Tent,
+//   PawPrint, Droplets, SlidersHorizontal, Tag, Sun,
+//   Image, Move, Radio, Layers, Sparkles, ArrowUpDown,
+//   UserCheck, Flower2, Gamepad2, DoorOpen, PenLine, Tv, Check,
+//   RefreshCw,
+// };
 
-function AmenityIcon({ iconName, size = 18 }) {
-  const Comp = ICON_MAP[iconName] || Check;
-  return <Comp size={size} aria-hidden="true" />;
+// function AmenityIcon({ iconName, size = 18 }) {
+//   const Comp = iconName || Check;
+//   return <Comp size={iconName} aria-hidden="true" />;
+// }
+function AmenityIcon({
+  iconName,
+  size = 18,
+  className = "",
+}) {
+  const Icon = Icons[iconName] || Icons.Circle;
+
+  return <Icon size={size} className={className} />;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -51,36 +63,33 @@ export default function AmenitiesStep({
   const showError = !!attempted?.amenities && selected.length < 1;
 
   // API
-  const [amenities, setAmenities] = useState([]);
+  const [amenities,  setAmenities]  = useState([]);
+  const [isLoading,  setIsLoading]  = useState(true);
+  const showSkeleton = useSkeletonDelay(isLoading);
 
   useEffect(() => {
     load();
   }, [form.category]);
 
   const load = async () => {
+    setIsLoading(true);
     try {
       const res = await getAmenties(form.category);
 
-      // 🔥 Merge API data with AMENITY_META
-       //
+      // Merge API data with AMENITY_META for icon/color metadata
       const mergedData = (res?.data?.data || []).map((group) => ({
         ...group,
         children: (group.children || []).map((item) => {
           const meta = AMENITY_META[item.name] || {};
-
-           
-
-          return {
-            ...item,
-            icon: meta.icon || "Check",
-            color: meta.color || "",
-          };
+          return { ...item, color: meta.color || "" };
         }),
       }));
 
       setAmenities(mergedData);
     } catch (err) {
       console.log(err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -94,8 +103,10 @@ export default function AmenitiesStep({
 
   const totalSelected = selected.length;
 
+  if (showSkeleton) return <AmenitiesSkeleton />;
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 sk-fade-in">
 
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -105,7 +116,7 @@ export default function AmenitiesStep({
 
         {totalSelected > 0 && (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-violet-50 dark:bg-violet-950/40 border border-violet-200 dark:border-violet-800 text-xs font-semibold text-violet-700 dark:text-violet-300">
-            <Check size={11} />
+            <AmenityIcon  iconName='Check' />
             {totalSelected} selected
           </span>
         )}
@@ -155,6 +166,7 @@ export default function AmenitiesStep({
                         : "text-gray-400 dark:text-gray-500",
                     ].join(" ")}
                   >
+                    {item.svg_icon}
                     <AmenityIcon
                       iconName={item.icon}
                       size={17}
@@ -169,11 +181,10 @@ export default function AmenitiesStep({
                   {/* Check */}
                   {checked && (
                     <span className="flex-shrink-0 w-4 h-4 rounded-full bg-violet-600 flex items-center justify-center">
-                      <Check
-                        size={9}
+                        <AmenityIcon  iconName='Check' size={9}
                         strokeWidth={3}
-                        className="text-white"
-                      />
+                        className="text-white"/>
+                      
                     </span>
                   )}
 
@@ -185,14 +196,24 @@ export default function AmenitiesStep({
       ))}
 
       {/* ── Farmstay-specific extra sections ── */}
-      {isFarmstay && (
+      {/* {isFarmstay && (
         <FarmstayExtraSections form={form} updateForm={updateForm} />
-      )}
+      )} */}
 
-      {/* Footer */}
-      <p className="text-xs text-gray-400 dark:text-gray-500">
-        Tip: Listings with 8+ amenities get 40% more bookings on average
-      </p>
+      {/* ── Listing Insight card ── */}
+      <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-800/40">
+        <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center flex-shrink-0 mt-0.5">
+          <Icons.Lightbulb size={16} className="text-amber-600 dark:text-amber-400" />
+        </div>
+        <div>
+          <p className="text-xs font-semibold text-amber-800 dark:text-amber-300 mb-0.5">
+            Listing insight
+          </p>
+          <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">
+            Properties with 8+ amenities typically receive more enquiries and bookings.
+          </p>
+        </div>
+      </div>
 
     </div>
   );
@@ -223,7 +244,9 @@ function ChipToggle({ label, active, onClick }) {
       <span className="flex-1 min-w-0 truncate">{label}</span>
       {active && (
         <span className="flex-shrink-0 w-4 h-4 rounded-full bg-violet-600 flex items-center justify-center">
-          <Check size={9} strokeWidth={3} className="text-white" />
+            <AmenityIcon  iconName='Check' size={9}
+                        strokeWidth={3}
+                        className="text-white"/>
         </span>
       )}
     </button>

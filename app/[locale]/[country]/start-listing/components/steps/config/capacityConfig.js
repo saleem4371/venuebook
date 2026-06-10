@@ -3,13 +3,14 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Seating arrangement options for venues
+// Ordered by frequency of use (most common first)
 export const SEATING_STYLES = [
-  { key: "theatre",      label: "Theatre Style",  desc: "Rows of chairs facing a stage or screen" },
-  { key: "classroom",    label: "Classroom Style", desc: "Tables with chairs in rows" },
-  { key: "ushape",       label: "U-Shape",        desc: "Tables arranged in a U formation" },
+  { key: "theatre",      label: "Theatre",       desc: "Rows of chairs facing a stage or screen" },
+  { key: "banquet",      label: "Banquet",        desc: "Round tables with chairs" },
+  { key: "classroom",    label: "Classroom",      desc: "Tables with chairs in rows" },
   { key: "boardroom",    label: "Boardroom",      desc: "Single large central table" },
-  { key: "banquet",      label: "Banquet Style",  desc: "Round tables with chairs" },
-  { key: "cocktail",     label: "Cocktail / Standing", desc: "High tables, no assigned seating" },
+  { key: "ushape",       label: "U-Shape",        desc: "Tables arranged in a U formation" },
+  { key: "cocktail",     label: "Cocktail",       desc: "High tables, no assigned seating" },
   { key: "cabaret",      label: "Cabaret",        desc: "Grouped tables facing a stage" },
   { key: "hollow_square", label: "Hollow Square", desc: "Tables forming a square with open centre" },
 ];
@@ -19,8 +20,8 @@ export const CAPACITY_CONFIG = {
   venue: {
     type: "venue",
     fields: [
-      { key: "minGuests",   label: "Minimum guests",  placeholder: "50",  required: true, unit: "guests" },
-      { key: "maxGuests",   label: "Maximum guests",  placeholder: "500", required: true, unit: "guests" },
+      { key: "maxGuests", label: "Maximum guests", placeholder: "500", required: true, unit: "guests" },
+      { key: "minGuests", label: "Minimum guests", placeholder: "50",  required: true, unit: "guests" },
     ],
     seatingStyles: true,
   },

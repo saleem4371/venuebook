@@ -33,18 +33,17 @@ export default function WizardFooter({
       <div className="w-full px-5 sm:px-10 py-4 flex items-center justify-between gap-3">
 
         {/* ── Back ──────────────────────────────────────────────────── */}
+        {/* Back is always visible; on step 1, WizardShell.handleBack navigates to
+            the listing landing page instead of a previous wizard step (Rule 4) */}
         <button
           type="button"
           onClick={onBack}
-          disabled={isFirst}
           aria-label="Previous step"
           className={[
             "min-h-[44px] px-6 rounded-xl text-sm font-semibold border flex-shrink-0",
             "inline-flex items-center transition-all duration-150",
             "focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500",
-            isFirst
-              ? "opacity-0 pointer-events-none border-transparent"
-              : "border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 active:scale-[0.97]",
+            "border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 active:scale-[0.97]",
           ].join(" ")}
         >
           Back

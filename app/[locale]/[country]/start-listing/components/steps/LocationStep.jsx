@@ -274,6 +274,9 @@ export default function LocationStep({ form, updateForm, attempted }) {
   const [showSugg,    setShowSugg]    = useState(false);
   const [mapsReady,   setMapsReady]   = useState(false);
   const [mapMounted,  setMapMounted]  = useState(false);
+  // Loading indicators — shown inline (never block the full page)
+  const [detailing,   setDetailing]   = useState(false);  // place detail lookup after suggestion select
+  const [geocoding,   setGeocoding]   = useState(false);  // reverse geocode after map drag
   const [locating,    setLocating]    = useState(false);
   const [isDragging,  setIsDragging]  = useState(false);  // drives CenterPin animation
 
@@ -344,7 +347,9 @@ export default function LocationStep({ form, updateForm, attempted }) {
 
     // ── Reverse geocode the map center ──
     const doReverseGeocode = (lat, lng) => {
+      setGeocoding(true);
       geocoderRef.current.geocode({ location: { lat, lng } }, (results, status) => {
+        setGeocoding(false);
         if (status === "OK" && results[0]) {
           const p = parseAddressComponents(results[0].address_components);
           updateForm({
@@ -422,9 +427,11 @@ export default function LocationStep({ form, updateForm, attempted }) {
     setSuggestions([]);
     if (!placesRef.current) return;
 
+    setDetailing(true);
     placesRef.current.getDetails(
       { placeId: prediction.place_id, fields: ["address_components", "geometry"] },
       (place, status) => {
+        setDetailing(false);
         if (status !== "OK" || !place) return;
         const p   = parseAddressComponents(place.address_components || []);
         const lat = place.geometry?.location?.lat();
@@ -485,19 +492,31 @@ export default function LocationStep({ form, updateForm, attempted }) {
 
   const selectedCountry = COUNTRY_LIST.find((c) => c.code === effectiveCountry);
 
-  // ── Sync map when editing lat/lng (IMPORTANT FIX) ──
-useEffect(() => {
-  if (!mapInst.current || !form.lat || !form.lng) return;
+  // ── Sync map when lat/lng is set externally (address search, "Use my location") ──
+  // Skip re-pan when coordinates already match the map center — this happens right
+  // after the user drags (idle handler sets form.lat/lng from map.getCenter()) and
+  // prevents the round-trip pan that caused a visual jump / secondary repositioning.
+  useEffect(() => {
+    if (!mapInst.current || !form.lat || !form.lng) return;
 
-  const pos = {
-    lat: Number(form.lat),
-    lng: Number(form.lng),
-  };
+    const newLat = Number(form.lat);
+    const newLng = Number(form.lng);
+    const center = mapInst.current.getCenter();
 
-  skipNextIdle.current = true;
-  mapInst.current.panTo(pos);
-  mapInst.current.setZoom(16);
-}, [form.lat, form.lng]);
+    if (center) {
+      const THRESHOLD = 0.000015; // ~1.5 m — ignore floating-point noise from map.getCenter()
+      if (
+        Math.abs(center.lat() - newLat) < THRESHOLD &&
+        Math.abs(center.lng() - newLng) < THRESHOLD
+      ) {
+        return; // already at this position — no pan needed
+      }
+    }
+
+    skipNextIdle.current = true;
+    mapInst.current.panTo({ lat: newLat, lng: newLng });
+    mapInst.current.setZoom(16);
+  }, [form.lat, form.lng]);
 
   return (
     <div className="space-y-6">
@@ -528,9 +547,17 @@ useEffect(() => {
           onFocus={() => setShowSugg(true)}
           onBlur={() => setTimeout(() => setShowSugg(false), 100)}
         />
-        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1.5">
-          Or move the map to pin the location · Or fill in the address fields below directly
-        </p>
+        {/* Address lookup indicator — shown while getDetails resolves */}
+        {detailing ? (
+          <p className="flex items-center gap-1.5 text-xs text-violet-600 dark:text-violet-400 mt-1.5">
+            <Loader2 size={11} className="animate-spin flex-shrink-0" />
+            Looking up address…
+          </p>
+        ) : (
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1.5">
+            Or move the map to pin the location · Or fill in the address fields below directly
+          </p>
+        )}
       </div>
 
       {/* ── 3. Map ── */}
@@ -596,9 +623,16 @@ useEffect(() => {
       <div className="space-y-4">
         <div className="flex items-center gap-3">
           <div className="h-px flex-1 bg-gray-100 dark:bg-gray-800" />
-          <span className="text-[11px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
-            Address Details
-          </span>
+          {geocoding ? (
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-violet-500 dark:text-violet-400">
+              <Loader2 size={10} className="animate-spin flex-shrink-0" />
+              Updating address…
+            </span>
+          ) : (
+            <span className="text-[11px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
+              Address Details
+            </span>
+          )}
           <div className="h-px flex-1 bg-gray-100 dark:bg-gray-800" />
         </div>
 

@@ -15,6 +15,11 @@ import lightLogo from "@/assets/logo.svg";
 import darkLogo  from "@/assets/logo.png";
 import { CATEGORY_TINTS } from "@/config/categoryConfig";
 
+import { cashfree_subscription,cashfree_plans } from '@/services/payment.service'
+import { last_parent_id } from "@/services/listing.service";
+
+import { load } from "@cashfreepayments/cashfree-js";
+
 // ─────────────────────────────────────────────────────────────────────────────
 //  Config
 // ─────────────────────────────────────────────────────────────────────────────
@@ -113,8 +118,8 @@ export default function PaymentPage() {
   const [isDark,          setIsDark]         = useState(false);
   const [listingInfo,     setListingInfo]    = useState(null);
   const [selectedModes,   setSelectedModes]  = useState(new Set(["enquiry"]));
-  const [selectedPlan,    setSelectedPlan]   = useState("starter");
-  const [billing,         setBilling]        = useState("monthly");
+  const [selectedPlan,    setSelectedPlan]   = useState(null);
+  const [billing,         setBilling]        = useState("1");
   const [coupon,          setCoupon]         = useState("");
   const [couponStatus,    setCouponStatus]   = useState(null);
   const [couponDiscount,  setCouponDiscount] = useState(0);
@@ -122,6 +127,21 @@ export default function PaymentPage() {
   const [activating,      setActivating]     = useState(false);
   const [showTermsModal,  setShowTermsModal] = useState(false);
 
+  console.log(selectedModes)
+
+ 
+
+  const [plans,  setPlans] = useState([]);
+  const [parentId,  setParentId] = useState('');
+useEffect(() => {
+  const filtered = plans.filter(
+    (p) => String(p.plan_title) === billing
+  );
+
+  if (filtered.length) {
+    setSelectedPlan(filtered[0].id);
+  }
+}, [plans, billing]);
   // Dark mode sync
   useEffect(() => {
     const sync = () => setIsDark(document.documentElement.classList.contains("dark"));
@@ -137,15 +157,61 @@ export default function PaymentPage() {
       const raw = localStorage.getItem("vb_pending_" + category);
       if (raw) setListingInfo(JSON.parse(raw));
     } catch (_) {}
+
+    load_plan()
   }, [category]);
 
+const load_plan = async () => {
+  try {
+    const parents = await last_parent_id(category);
+
+    const parentIdData = parents?.data;
+
+    if (!parentIdData) return;
+
+    setParentId(parentIdData);
+
+    const plan = await cashfree_plans(parentIdData);
+
+    setPlans(plan?.data || []);
+  } catch (error) {
+    console.error("Failed to load plans:", error);
+  }
+};
+
+useEffect(() => {
+  if (!parentId) return;
+
+  const fetchPlans = async () => {
+    const plan = await cashfree_plans(parentId);
+    setPlans(plan.data);
+  };
+
+  fetchPlans();
+}, [parentId]);
+
   // Pricing
-  const plan      = PLANS.find((p) => p.key === selectedPlan) || PLANS[0];
-  const basePrice = billing === "annual" ? plan.annualPrice : plan.price;
-  const gst       = Math.round(basePrice * 0.18);
-  const subtotal  = Math.max(0, basePrice - couponDiscount);
-  const total     = subtotal + gst;
-  const fmt       = (n) => n === 0 ? "₹0" : "₹" + n.toLocaleString("en-IN");
+ const visiblePlans = plans.filter(
+  (p) => String(p.plan_title) === billing
+);
+
+const plan =
+  visiblePlans.find((p) => p.id === selectedPlan) ||
+  visiblePlans[0];
+
+const basePrice = Number(
+  plan?.offer_amount ||
+  plan?.amount ||
+  0
+);
+const subtotal = Math.max(0, basePrice );
+
+const gst = Math.round(subtotal * 0.18);
+
+const total = subtotal + gst;
+
+const fmt = (n) =>
+  n === 0 ? "₹0" : `₹${n.toLocaleString("en-IN")}`;
 
   const toggleMode = useCallback((key) => {
     setSelectedModes((prev) => {
@@ -174,14 +240,56 @@ export default function PaymentPage() {
   const handleActivate = async () => {
     if (!agreed || activating) return;
     setActivating(true);
-    await new Promise((r) => setTimeout(r, 1100));
-    try { localStorage.removeItem("vb_pending_" + category); } catch (_) {}
-    router.push("/" + locale + "/" + country + "/vendor/dashboard");
+
+   
+payment_gateway(1)
+   
+
+
   };
+  const payment_gateway = async (selected) => {
+  try {
+   
+
+    const payload = {
+      selected:selected,
+      selectedPlan:selectedPlan,
+      agreed:agreed,
+      selectedModes:Array.from(selectedModes),
+      coupon:coupon,
+      billing:billing,
+      parent_venue_id:parentId,
+      category:category,
+    }
+    
+    const paymentGateway = await cashfree_subscription(payload);
+
+
+    const cashfree = await load({
+      mode: "sandbox",
+    });
+
+    const result = await cashfree.subscriptionsCheckout({
+      subsSessionId: paymentGateway.data.subscription_session_id,
+      redirectTarget: "_self",
+    });
+
+    if (result?.error) {
+      console.error(result.error);
+    }
+  } catch (error) {
+    console.error("Cashfree Error:", error);
+  } finally {
+    setActivating(false);
+    
+  }
+};
 
   const handlePayLater = () => {
-    try { localStorage.removeItem("vb_pending_" + category); } catch (_) {}
-    router.push("/" + locale + "/" + country + "/vendor/dashboard");
+ if (!agreed || activating) return;
+payment_gateway(0)
+    // try { localStorage.removeItem("vb_pending_" + category); } catch (_) {}
+    // router.push("/" + locale + "/" + country + "/vendor/dashboard");
   };
 
   const reviewUrl  = "/" + locale + "/" + country + "/start-listing/" + category + "/review";
@@ -413,8 +521,8 @@ export default function PaymentPage() {
                   {/* Billing toggle */}
                   <div className="flex items-center p-1 rounded-xl bg-gray-100/90 dark:bg-gray-800/90 flex-shrink-0 gap-0.5">
                     {[
-                      { key: "monthly", label: "Monthly" },
-                      { key: "annual",  label: "Annual"  },
+                      { key: "1", label: "Monthly" },
+                      { key: "2",  label: "Annual"  },
                     ].map((b) => (
                       <button
                         key={b.key}
@@ -429,8 +537,8 @@ export default function PaymentPage() {
                         ].join(" ")}
                       >
                         {b.label}
-                        {b.key === "annual" && (
-                          <span className="text-[9px] font-extrabold text-emerald-500">−20%</span>
+                        {b.key === "2" && (
+                          <span className="text-[9px] font-extrabold text-emerald-500">−off(%)</span>
                         )}
                       </button>
                     ))}
@@ -438,23 +546,23 @@ export default function PaymentPage() {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                  {PLANS.map((p, i) => {
-                    const price  = billing === "annual" ? p.annualPrice : p.price;
-                    const active = selectedPlan === p.key;
-                    const saving = p.price > 0
-                      ? Math.round(((p.price - p.annualPrice) / p.price) * 100)
+                  {visiblePlans.map((p, i) => {
+                   const price = Number(p.offer_amount || p.amount || 0);
+                    const active = selectedPlan === p.id;
+                    const saving = p.discount > 0
+                      ? p.discount
                       : 0;
 
                     return (
                       <motion.button
-                        key={p.key}
+                        key={p.id}
                         type="button"
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.28, delay: 0.18 + i * 0.06, ease: [0.16, 1, 0.3, 1] }}
                         whileHover={{ y: -2, transition: { duration: 0.15 } }}
                         whileTap={{ scale: 0.985 }}
-                        onClick={() => setSelectedPlan(p.key)}
+                        onClick={() => setSelectedPlan(p.id)}
                         className={[
                           "relative text-start p-4 sm:p-5 rounded-2xl border transition-all duration-200",
                           "focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500",
@@ -488,7 +596,7 @@ export default function PaymentPage() {
                           "text-[13px] font-bold mb-2.5",
                           active ? "text-gray-900 dark:text-white" : "text-gray-700 dark:text-gray-300",
                         ].join(" ")}>
-                          {p.name}
+                          {p.plan_name}
                         </p>
 
                         {/* Price */}
@@ -506,7 +614,7 @@ export default function PaymentPage() {
                               <span className="text-xs text-gray-400 dark:text-gray-500 ms-0.5">/mo</span>
                             </div>
                           )}
-                          {billing === "annual" && saving > 0 && (
+                          {billing === "2" && saving > 0 && (
                             <p className="text-[10px] text-emerald-500 font-bold mt-1">Save {saving}%</p>
                           )}
                         </div>
@@ -596,7 +704,7 @@ export default function PaymentPage() {
             <div className="flex items-center justify-between mb-3 gap-3">
               <div className="min-w-0">
                 <p className="text-[11px] text-gray-400 dark:text-gray-500 truncate">
-                  {plan.name} · {selectedModes.size} mode{selectedModes.size !== 1 ? "s" : ""}
+                  {plan?.plan_name} · {selectedModes.size} mode{selectedModes.size !== 1 ? "s" : ""}
                 </p>
                 <p className="text-[17px] font-extrabold text-gray-900 dark:text-white leading-tight">
                   {total === 0 ? "Free" : fmt(total) + "/mo"}
@@ -654,7 +762,7 @@ export default function PaymentPage() {
                 {activating ? (
                   <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Activating…</>
                 ) : (
-                  <>Activate Listing <ChevronRight size={14} /></>
+                  <> Pay  <ChevronRight size={14} /></>
                 )}
               </button>
             </div>
@@ -704,9 +812,9 @@ function SummaryPanel({
           {/* Plan row */}
           <div className="flex items-start justify-between gap-2">
             <div>
-              <p className="text-[13px] font-bold text-gray-900 dark:text-white">{plan.name} Plan</p>
+              <p className="text-[13px] font-bold text-gray-900 dark:text-white">{plan?.plan_name} Plan</p>
               <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">
-                {billing === "annual" && basePrice > 0 ? "Billed annually" : "Billed monthly"}
+                {billing === "2" && basePrice > 0 ? "Billed annually" : "Billed monthly"}
               </p>
             </div>
             <span className="text-[15px] font-extrabold text-gray-900 dark:text-white flex-shrink-0 text-end">
@@ -755,7 +863,7 @@ function SummaryPanel({
             )}
             <div className="flex items-center justify-between gap-2 text-[12px]">
               <span className="text-gray-400 dark:text-gray-500">GST (18%)</span>
-              <span className="font-medium text-gray-700 dark:text-gray-300">{fmt(gst)}</span>
+              <span className="font-medium text-gray-700 dark:text-gray-300">  {fmt(gst)}</span>
             </div>
           </div>
 
@@ -883,10 +991,10 @@ function SummaryPanel({
         {activating ? (
           <>
             <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            Activating your listing…
+            processing…
           </>
         ) : (
-          <><Zap size={15} className="flex-shrink-0" /> Activate Listing</>
+          <><Zap size={15} className="flex-shrink-0" /> Pay</>
         )}
       </button>
 
@@ -896,7 +1004,7 @@ function SummaryPanel({
         onClick={onPayLater}
         className="w-full py-2.5 text-[13px] font-medium text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 rounded-xl"
       >
-        Save &amp; Activate Later
+         1 Month Free Activate
       </button>
 
       {/* Trust row */}

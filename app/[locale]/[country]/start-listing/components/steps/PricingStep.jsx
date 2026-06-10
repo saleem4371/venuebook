@@ -336,7 +336,7 @@ function InfoNote() {
     <div className="flex gap-2.5 p-3.5 rounded-xl bg-violet-50 dark:bg-violet-950/30 border border-violet-100 dark:border-violet-900">
       <Info size={14} className="text-violet-500 flex-shrink-0 mt-0.5" />
       <p className="text-xs text-violet-700 dark:text-violet-300 leading-relaxed">
-        Pricing can be updated at any time. VenueBook charges zero commission on your first 3 bookings.
+        Pricing can be updated at any time.
       </p>
     </div>
   );
@@ -403,9 +403,11 @@ const update = (key, val) => {
   if (config.type === "venue_shifts") {
     // Compute total of enabled + priced shifts for deposit cap validation
     const shifts = pricing.shifts || {};
-    const totalShiftPrice = Object.values(shifts)
-      .filter((s) => s?.enabled && Number(s?.price) > 0)
-      .reduce((sum, s) => sum + Number(s.price), 0);
+    const prices = Object.values(shifts)
+  .filter((s) => s?.enabled && Number(s?.price) > 0)
+  .map((s) => Number(s.price));
+
+const totalShiftPrice = prices.length ? Math.min(...prices) : 0;
 
     return (
       <div className="space-y-7">

@@ -256,6 +256,8 @@ export default function CapacityStep({ form, updateForm, attempted }) {
   const config   = CAPACITY_CONFIG[category] || CAPACITY_CONFIG.venue;
   const capacity = form.capacity || {};
 
+  
+
   const updateCap = (key, val) =>
     updateForm({ capacity: { ...capacity, [key]: val } });
 
@@ -354,7 +356,7 @@ export default function CapacityStep({ form, updateForm, attempted }) {
             {!seatingReady && (
               <span className="inline-flex items-center gap-1 ml-1 text-[11px] font-medium text-amber-600 dark:text-amber-400">
                 <Lock size={11} />
-                Enter min &amp; max guests first
+                Enter max &amp; min guests first
               </span>
             )}
           </div>
@@ -367,95 +369,83 @@ export default function CapacityStep({ form, updateForm, attempted }) {
             )}
           </p>
 
-          <div className="space-y-2.5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             {SEATING_STYLES.map((style) => {
-              const entry   = seating[style.key] || { enabled: false, capacity: "" };
-              const enabled = !!entry.enabled && seatingReady;
-              const seatMax = maxGuests > 0 ? maxGuests : MAX_GUESTS;
+              const entry      = seating[style.key] || { enabled: false, capacity: "" };
+              const enabled    = !!entry.enabled && seatingReady;
+              const seatMax    = maxGuests > 0 ? maxGuests : MAX_GUESTS;
+              const seatInvalid = !!attempted?.capacity && enabled &&
+                (!entry.capacity || Number(entry.capacity) <= 0);
 
               return (
                 <div
                   key={style.key}
+                  role="button"
+                  tabIndex={seatingReady ? 0 : -1}
+                  onClick={() => toggleSeating(style.key)}
+                  onKeyDown={(e) => (e.key === " " || e.key === "Enter") && toggleSeating(style.key)}
                   className={[
-                    "rounded-xl border transition-all duration-150 overflow-hidden",
+                    "relative rounded-xl border transition-all duration-150 select-none",
+                    "focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500",
                     !seatingReady
                       ? "border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/40 opacity-50 pointer-events-none"
                       : enabled
-                        ? "border-violet-400 dark:border-violet-700 bg-violet-50/40 dark:bg-violet-950/20"
-                        : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900",
+                        ? "border-violet-400 dark:border-violet-600 bg-violet-50/60 dark:bg-violet-950/30 cursor-pointer"
+                        : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:border-violet-300 dark:hover:border-violet-700 cursor-pointer",
                   ].join(" ")}
                 >
-                  {/* Toggle header */}
-                  <button
-                    type="button"
-                    onClick={() => toggleSeating(style.key)}
-                    disabled={!seatingReady}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-left"
-                  >
-                    {/* Checkbox */}
-                    <span
-                      className={[
-                        "w-5 h-5 rounded-md border flex items-center justify-center flex-shrink-0 transition-colors",
-                        enabled
-                          ? "bg-violet-600 border-violet-600"
-                          : "border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800",
-                      ].join(" ")}
-                    >
-                      {enabled && <Check size={11} strokeWidth={3} className="text-white" />}
+                  {/* Selected checkmark badge */}
+                  {enabled && (
+                    <span className="absolute top-2 right-2 w-5 h-5 rounded-full bg-violet-600 flex items-center justify-center pointer-events-none z-10">
+                      <Check size={10} strokeWidth={3} className="text-white" />
                     </span>
+                  )}
 
-                    {/* SVG icon */}
-                    <span
-                      className={[
-                        "flex-shrink-0 transition-colors",
-                        enabled
-                          ? "text-violet-600 dark:text-violet-400"
-                          : "text-gray-400 dark:text-gray-500",
-                      ].join(" ")}
-                    >
+                  <div className="flex flex-col items-center gap-1.5 p-3 pt-4">
+                    {/* Icon */}
+                    <span className={[
+                      "transition-colors",
+                      enabled ? "text-violet-600 dark:text-violet-400" : "text-gray-400 dark:text-gray-500",
+                    ].join(" ")}>
                       {SEATING_ICONS[style.key]}
                     </span>
 
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
-                        {style.label}
-                      </p>
-                      <p className="text-xs text-gray-400 dark:text-gray-500">
-                        {style.desc}
-                      </p>
-                    </div>
-                  </button>
+                    {/* Label */}
+                    <p className={[
+                      "text-xs font-semibold text-center leading-tight",
+                      enabled ? "text-violet-700 dark:text-violet-300" : "text-gray-700 dark:text-gray-300",
+                    ].join(" ")}>
+                      {style.label}
+                    </p>
 
-                  {/* Capacity input when enabled */}
-                  {enabled && (() => {
-                    const seatInvalid =
-                      !!attempted?.capacity &&
-                      (!entry.capacity || Number(entry.capacity) <= 0);
-                    return (
-                      <div className="px-4 pb-3 space-y-1.5">
-                        <div className="flex items-center gap-3">
-                          <span className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
-                            Capacity for this layout:
-                          </span>
-                          <div className="w-36">
-                            <Counter
-                              value={entry.capacity}
-                              onChange={(v) => setSeatingCap(style.key, v)}
-                              min={1}
-                              max={seatMax}
-                              invalid={seatInvalid}
-                            />
-                          </div>
-                          <span className="text-xs text-gray-400">guests</span>
-                        </div>
+                    {/* Capacity input — visible only when selected */}
+                    {enabled && (
+                      <div
+                        className="w-full mt-1"
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
+                      >
+                        <input
+                          type="number"
+                          min="1"
+                          max={seatMax}
+                          value={entry.capacity || ""}
+                          onChange={(e) => setSeatingCap(style.key, e.target.value)}
+                          placeholder="Capacity"
+                          className={[
+                            "w-full px-2 py-1.5 rounded-lg border text-xs text-center outline-none transition",
+                            "bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400",
+                            seatInvalid
+                              ? "border-red-400 ring-1 ring-red-400"
+                              : "border-violet-200 dark:border-violet-700 focus:border-violet-500 focus:ring-1 focus:ring-violet-500",
+                          ].join(" ")}
+                        />
                         {seatInvalid && (
-                          <p className="text-xs text-red-500 pl-0.5">
-                            Enter capacity for {style.label}
-                          </p>
+                          <p className="text-[10px] text-red-500 text-center mt-0.5">Required</p>
                         )}
                       </div>
-                    );
-                  })()}
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -593,6 +583,10 @@ function FarmstayCapacity({ capacity, updateCap, attempted, touched, touch }) {
       {/* Room Combination */}
       <FsSection title="Room Configuration">
         <FsRadio label="Can rooms be combined for larger groups?" value={capacity.roomCombination || ""} onChange={(v) => updateCap("roomCombination", v)} />
+      </FsSection>
+
+      <FsSection title="">
+        <FsRadio label="Pets Allowed ?" value={capacity.pet_allowed || ""} onChange={(v) => updateCap("pet_allowed", v)} />
       </FsSection>
 
       {/* Bed Types */}

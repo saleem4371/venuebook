@@ -4,8 +4,8 @@ import { useState, useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import { BookmarkCheck } from "lucide-react";
+import { useParams, useRouter , useSearchParams } from "next/navigation";
+import { BookmarkCheck, Loader2 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 
 import lightLogo from "@/assets/logo.svg";
@@ -29,6 +29,8 @@ import {
   SLUG_TO_STEP,
 } from "./wizardConfig";
 
+
+
 import BasicsStep from "./steps/BasicsStep";
 import LocationStep from "./steps/LocationStep";
 import AmenitiesStep from "./steps/AmenitiesStep";
@@ -40,9 +42,10 @@ import ReviewStep from "./steps/ReviewStep";
 import { useAuth } from "@/context/AuthContext";
 import LoginModal from "@/app/[locale]/[country]/home/components/LoginModal";
 import { URL_COUNTRY_TO_CODE } from "./steps/config/locationConfig";
+import { StepSkeleton, useSkeletonDelay } from "./steps/skeletons/index";
 
 import { getProperty } from "@/services/global.service";
-import { listing_create } from "@/services/listing.service";
+import { listing_create,last_parent_id } from "@/services/listing.service";
 
 /* ─────────────────────────────────────────────────────────────────────── */
 
@@ -79,6 +82,8 @@ export default function WizardShell({ initialCategory }) {
   const locale = params?.locale || "en";
   const country = params?.country || "in";
 
+  
+
   // ── Derive current step from URL slug ──────────────────────────────────
 const stepParam = params?.step || "basic-details";
 
@@ -103,6 +108,7 @@ const currentStepKey =
   // Auth
   const { isLoggedIn } = useAuth();
   const [showLogin, setShowLogin] = useState(false);
+  const [parentId, setParentId] = useState(false);
   const pendingSave = useRef(false);
 
   // ISO code for initial map center
@@ -134,6 +140,8 @@ const currentStepKey =
     markReviewReached,
     saveDraft,
     clearDraft,
+    hasDraft,
+    resetForm,
   } = useListingWizard(initialCategory, urlCountry);
 
   // ── Auto-restore: redirect to last active step on bare category URL ────
@@ -148,6 +156,59 @@ const currentStepKey =
       markReviewReached();
     }
   }, [currentStep.key, hydrated, markReviewReached]);
+
+  // ── Draft recovery modal state (Rule 5) ────────────────────────────────
+  const [showDraftModal, setShowDraftModal] = useState(false);
+
+  // Rule 5: show "Continue Your Listing?" once per session when draft exists
+  useEffect(() => {
+    if (!hydrated || !hasDraft || !lastSavedKey || stepIndex !== 0) return;
+    const sessionKey = `draft_modal_shown_${initialCategory}`;
+    if (sessionStorage.getItem(sessionKey)) return;
+    setShowDraftModal(true);
+  }, [hydrated, hasDraft, lastSavedKey, stepIndex, initialCategory]);
+
+  const handleContinueDraft = () => {
+    setShowDraftModal(false);
+    sessionStorage.setItem(`draft_modal_shown_${initialCategory}`, "1");
+    router.push(stepUrl(lastSavedKey));
+  };
+
+  const handleStartFresh = () => {
+    setShowDraftModal(false);
+    sessionStorage.setItem(`draft_modal_shown_${initialCategory}`, "1");
+    resetForm();
+  };
+
+  // Rule 2 & 8: step sequence guard — redirect URL-jumpers to earliest incomplete step
+  useEffect(() => {
+    if (!hydrated) return;
+    const maxAllowed = lastSavedKey
+      ? WIZARD_STEPS.findIndex((s) => s.key === lastSavedKey) + 1
+      : 0;
+    if (stepIndex > maxAllowed) {
+      router.replace(stepUrl(WIZARD_STEPS[maxAllowed].key));
+    }
+  }, [hydrated, lastSavedKey, stepIndex]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Rule 10: warn before tab close / refresh when form has unsaved data
+  useEffect(() => {
+    if (!hydrated) return;
+    const isDirty = !!(
+      form.title ||
+      form.description ||
+      form.address ||
+      form.amenities?.length > 0 ||
+      form.images?.length > 0
+    );
+    if (!isDirty) return;
+    const handler = (e) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [hydrated, form.title, form.description, form.address, form.amenities, form.images]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isCurrentValid = isStepValid(currentStep.key);
 
@@ -166,7 +227,11 @@ const currentStepKey =
   };
 
   const handleBack = () => {
-    if (isFirst) return;
+    // Rule 4: first step back → listing landing page
+    if (isFirst) {
+      router.push(`/${locale}/${country}/list`);
+      return;
+    }
     const prev = WIZARD_STEPS[stepIndex - 1];
     setDir(-1);
     router.push(stepUrl(prev.key));
@@ -196,6 +261,7 @@ const currentStepKey =
       /*                               BASIC FIELDS                                 */
       /* -------------------------------------------------------------------------- */
 
+      formData.append("parent_venue_id", parentId || "");
       formData.append("title", form.title || "");
       formData.append("description", form.description || "");
       formData.append("category", form.category || "");
@@ -219,12 +285,12 @@ const currentStepKey =
       /* -------------------------------------------------------------------------- */
 
       formData.append(
-        "capacity[minGuests]",
+        "capacity_minGuests",
         String(form.capacity?.minGuests || 0),
       );
 
       formData.append(
-        "capacity[maxGuests]",
+        "capacity_maxGuests",
         String(form.capacity?.maxGuests || 0),
       );
 
@@ -397,6 +463,23 @@ formData.append("pricing", JSON.stringify(form.pricing));
   // reached the review step at least once (persisted across refresh).
   const showBackToReview = reviewReached && !isLast;
 
+  //last_parent_id
+  const load = async () => {
+    try {
+      console.log('venues')
+      const addons = await last_parent_id(form.category);
+      setParentId(addons?.data);
+
+    } catch (err) {
+      console.error("Addons load error:", err);
+    }
+  };
+  
+    useEffect( () => {
+        load();
+      }, []);
+  
+
   return (
     <div className="flex flex-col min-h-screen bg-white dark:bg-gray-950">
       <Toaster position="top-center" toastOptions={{ duration: 2000 }} />
@@ -408,15 +491,74 @@ formData.append("pricing", JSON.stringify(form.pricing));
       />
 
       {/* ══════════════════════════════════════════════════════════════
+          DRAFT RECOVERY MODAL  (Rule 5)
+          Shown once per session when a saved draft is detected on
+          the first step.  User can continue from last step or start fresh.
+      ══════════════════════════════════════════════════════════════ */}
+      {showDraftModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Overlay */}
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+
+          {/* Card */}
+          <div className="relative w-full max-w-sm bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-6 flex flex-col gap-5">
+            {/* Icon */}
+            <div className="w-12 h-12 rounded-xl bg-violet-50 dark:bg-violet-950/40 border border-violet-200 dark:border-violet-800 flex items-center justify-center mx-auto">
+              <BookmarkCheck size={22} className="text-violet-600 dark:text-violet-400" />
+            </div>
+
+            {/* Copy */}
+            <div className="text-center">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-1">
+                Continue where you left off?
+              </h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+                You have an unfinished listing saved. Pick up from your last step or start over.
+              </p>
+            </div>
+
+            {/* Last step badge */}
+            {lastSavedKey && (
+              <div className="flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                <span className="text-xs text-gray-500 dark:text-gray-400">Last saved step:</span>
+                <span className="text-xs font-semibold text-gray-800 dark:text-gray-200 capitalize">
+                  {lastSavedKey.replace(/-/g, " ")}
+                </span>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex flex-col gap-2.5">
+              <button
+                type="button"
+                onClick={handleContinueDraft}
+                className="w-full min-h-[44px] rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-[0.98]"
+                style={{ background: "linear-gradient(242deg, #a44bf3, #499ce8)" }}
+              >
+                Continue listing
+              </button>
+              <button
+                type="button"
+                onClick={handleStartFresh}
+                className="w-full min-h-[44px] rounded-xl text-sm font-semibold border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all active:scale-[0.98]"
+              >
+                Start fresh
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════
           STICKY HEADER
       ══════════════════════════════════════════════════════════════ */}
       <header className="sticky top-0 z-40 w-full bg-white dark:bg-gray-950 border-b border-transparent">
         <div className="w-full px-5 sm:px-10 py-3.5 sm:py-4">
           <div className="flex items-center gap-3 sm:gap-6">
-            <Link
-              href={`/${locale}/${country}/home`}
-              aria-label="VenueBook home"
-              className="flex-shrink-0 transition-opacity hover:opacity-75 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 rounded-md"
+            {/* Logo is non-navigable inside the listing wizard (Rule 1) */}
+            <div
+              aria-label="VenueBook"
+              className="flex-shrink-0 select-none"
             >
               <Image
                 src={isDark ? darkLogo : lightLogo}
@@ -425,7 +567,7 @@ formData.append("pricing", JSON.stringify(form.pricing));
                 className="h-7 sm:h-8 w-auto object-contain min-w-[88px]"
                 priority
               />
-            </Link>
+            </div>
 
             {catLabel && (
               <div className="hidden sm:flex flex-1 items-center justify-center">
@@ -443,13 +585,23 @@ formData.append("pricing", JSON.stringify(form.pricing));
                 "text-sm font-semibold border transition-all duration-150",
                 "focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500",
                 saving
-                  ? "opacity-50 cursor-not-allowed border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-600"
+                  ? "border-violet-200 dark:border-violet-800 text-violet-500 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/30 cursor-not-allowed"
                   : "cursor-pointer text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-violet-400 hover:text-violet-600 dark:hover:text-violet-400 dark:hover:border-violet-700 hover:bg-violet-50 dark:hover:bg-violet-950/30",
               ].join(" ")}
             >
-              <BookmarkCheck size={15} strokeWidth={2} />
-              <span className="hidden sm:inline">Save &amp; Exit</span>
-              <span className="sm:hidden">Save</span>
+              {saving ? (
+                <>
+                  <Loader2 size={14} className="animate-spin flex-shrink-0" />
+                  <span className="hidden sm:inline">Saving…</span>
+                  <span className="sm:hidden">Saving</span>
+                </>
+              ) : (
+                <>
+                  <BookmarkCheck size={15} strokeWidth={2} />
+                  <span className="hidden sm:inline">Save &amp; Exit</span>
+                  <span className="sm:hidden">Save</span>
+                </>
+              )}
             </button>
           </div>
 
@@ -463,9 +615,7 @@ formData.append("pricing", JSON.stringify(form.pricing));
         <ProgressBar stepIndex={stepIndex} totalSteps={totalSteps} />
       </header>
 
-      {/* ══════════════════════════════════════════════════════════════
-          SCROLLABLE CONTENT
-      ══════════════════════════════════════════════════════════════ */}
+      {/* SCROLLABLE CONTENT */}
       <main className="flex-1 overflow-y-auto">
         <div className="max-w-[720px] mx-auto px-5 sm:px-8 pt-10 pb-12">
           <div className="mb-8">
@@ -477,31 +627,36 @@ formData.append("pricing", JSON.stringify(form.pricing));
             </p>
           </div>
 
-          <AnimatePresence mode="wait" custom={dir}>
-            <motion.div
-              key={currentStep.key}
-              custom={dir}
-              variants={variants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-            >
-              <StepComponent
-                form={form}
-                updateForm={updateForm}
-                attempted={attempted}
-                goToStep={handleGoToStep}
-                api={getProperty}
-              />
-            </motion.div>
-          </AnimatePresence>
+          {/* Hydration / draft-restore skeleton */}
+          {!hydrated ? (
+            <div className="sk-fade-in">
+              <StepSkeleton stepKey={currentStep.key} />
+            </div>
+          ) : (
+            <AnimatePresence mode="wait" custom={dir}>
+              <motion.div
+                key={currentStep.key}
+                custom={dir}
+                variants={variants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              >
+                <StepComponent
+                  form={form}
+                  updateForm={updateForm}
+                  attempted={attempted}
+                  goToStep={handleGoToStep}
+                  api={getProperty}
+                />
+              </motion.div>
+            </AnimatePresence>
+          )}
         </div>
       </main>
 
-      {/* ══════════════════════════════════════════════════════════════
-          STICKY FOOTER
-      ══════════════════════════════════════════════════════════════ */}
+      {/* STICKY FOOTER */}
       <WizardFooter
         isFirst={isFirst}
         isLast={isLast}
@@ -516,9 +671,9 @@ formData.append("pricing", JSON.stringify(form.pricing));
   );
 }
 
-/* ─────────────────────────────────────────────────────────────────────── */
-/*  Category tag                                                            */
-/* ─────────────────────────────────────────────────────────────────────── */
+/* -------------------------------------------------------------------------- */
+/*  Category tag                                                                */
+/* -------------------------------------------------------------------------- */
 
 function CategoryTag({ catImage, catLabel }) {
   return (

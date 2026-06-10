@@ -3,8 +3,89 @@
 import { useRef, useState, useEffect, useCallback } from "react";
 import {
   ImagePlus, X, Star, ChevronLeft, ChevronRight, AlertCircle,
+  MoreVertical, Trash2, GripVertical,
 } from "lucide-react";
 import { saveBlob, deleteBlob } from "../imageStore";
+
+// ─── Mobile bottom action sheet ───────────────────────────────────────────
+//  Rendered only on <md (768 px). Slides up from the bottom with photo actions.
+//  Backdrop click dismisses the sheet.
+
+function MobileActionSheet({ img, onSetCover, onDelete, onClose }) {
+  // Lock body scroll while sheet is open
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
+  return (
+    <div className="fixed inset-0 z-50 md:hidden flex items-end" onClick={onClose}>
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+
+      {/* Sheet */}
+      <div
+        className="relative w-full bg-white dark:bg-gray-900 rounded-t-2xl shadow-2xl overflow-hidden"
+        style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Drag handle */}
+        <div className="flex justify-center pt-3 pb-1">
+          <div className="w-10 h-1 rounded-full bg-gray-200 dark:bg-gray-700" />
+        </div>
+
+        {/* Title */}
+        <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 text-center py-3 border-b border-gray-100 dark:border-gray-800">
+          Photo Actions
+        </p>
+
+        {/* Actions */}
+        <div className="p-3 space-y-1">
+          {!img.cover && (
+            <button
+              type="button"
+              onClick={onSetCover}
+              className="w-full flex items-center gap-3.5 px-4 py-3.5 rounded-xl text-left transition-colors hover:bg-gray-50 dark:hover:bg-gray-800 active:bg-gray-100 dark:active:bg-gray-800"
+            >
+              <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/30 flex items-center justify-center flex-shrink-0">
+                <Star size={17} className="text-amber-500" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">Set as Cover</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">First image guests see</p>
+              </div>
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onDelete}
+            className="w-full flex items-center gap-3.5 px-4 py-3.5 rounded-xl text-left transition-colors hover:bg-red-50 dark:hover:bg-red-950/20 active:bg-red-100 dark:active:bg-red-950/30"
+          >
+            <div className="w-9 h-9 rounded-xl bg-red-50 dark:bg-red-950/30 flex items-center justify-center flex-shrink-0">
+              <Trash2 size={17} className="text-red-500" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-red-600 dark:text-red-400">Delete Photo</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Remove from your listing</p>
+            </div>
+          </button>
+        </div>
+
+        {/* Cancel */}
+        <div className="px-3 pb-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full py-3.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-sm font-semibold text-gray-700 dark:text-gray-300 transition-colors hover:bg-gray-200 dark:hover:bg-gray-700 active:bg-gray-200"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ─── Upload progress overlay ───────────────────────────────────────────────
 
@@ -44,6 +125,25 @@ export default function MediaStep({ form, updateForm, attempted }) {
   const dragFrom  = useRef(null);
   const [dragOver, setDragOver] = useState(null);
   const [dropActive, setDropActive] = useState(false); // upload zone highlight
+
+  // Mobile-only state
+  const [activeSheet,       setActiveSheet]       = useState(null);  // img.id whose sheet is open
+  const [mobileReorderMode, setMobileReorderMode] = useState(false);
+
+  // Long-press detection (500 ms) — enters reorder mode on mobile
+  const longPressTimer = useRef(null);
+  const handleLongPressStart = useCallback(() => {
+    if (mobileReorderMode) return;
+    longPressTimer.current = setTimeout(() => {
+      setMobileReorderMode(true);
+      if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(40);
+    }, 500);
+  }, [mobileReorderMode]);
+  const handleLongPressEnd = useCallback(() => {
+    if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
+  }, []);
+  // Cleanup timer on unmount
+  useEffect(() => () => { if (longPressTimer.current) clearTimeout(longPressTimer.current); }, []);
 
   // ── Simulate upload progress for new images ──
   const simulateUpload = useCallback((id) => {
@@ -261,30 +361,59 @@ export default function MediaStep({ form, updateForm, attempted }) {
             <p className="text-[11px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
               {images.length} / {MAX_PHOTOS} photos
               {images.length < 5 && (
-                <span className="ml-1.5 text-violet-500 normal-case tracking-normal font-normal">
+                <span className="ml-1.5 text-violet-500 normal-case tracking-normal font-normal hidden sm:inline">
                   — add {5 - images.length} more for best results
                 </span>
               )}
             </p>
-            <div className="flex items-center gap-3">
-              <p className="hidden sm:block text-[11px] text-gray-400 dark:text-gray-500">
+            <div className="flex items-center gap-2">
+              <p className="hidden md:block text-[11px] text-gray-400 dark:text-gray-500">
                 Drag to reorder
               </p>
               {images.length < MAX_PHOTOS && (
-                <button
-                  type="button"
-                  onClick={() => inputRef.current?.click()}
-                  className="flex items-center gap-1.5 text-[11px] font-semibold text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 rounded"
-                >
-                  <ImagePlus size={12} />
-                  Add photos
-                </button>
+                <>
+                  {/* Desktop: subtle text link */}
+                  <button
+                    type="button"
+                    onClick={() => inputRef.current?.click()}
+                    className="hidden md:flex items-center gap-1.5 text-[11px] font-semibold text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 rounded"
+                  >
+                    <ImagePlus size={12} />
+                    Add photos
+                  </button>
+                  {/* Mobile: filled pill button — always discoverable */}
+                  <button
+                    type="button"
+                    onClick={() => inputRef.current?.click()}
+                    className="md:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-violet-600 hover:bg-violet-700 active:bg-violet-800 text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+                  >
+                    <ImagePlus size={12} />
+                    Add Photos
+                  </button>
+                </>
               )}
             </div>
           </div>
 
-          {/* Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          {/* Mobile: reorder mode banner */}
+          {mobileReorderMode && (
+            <div className="md:hidden mb-3 flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-violet-50 dark:bg-violet-950/30 border border-violet-100 dark:border-violet-800">
+              <p className="flex items-center gap-2 text-xs font-medium text-violet-700 dark:text-violet-300">
+                <GripVertical size={13} />
+                Tap ‹ › on a photo to reorder
+              </p>
+              <button
+                type="button"
+                onClick={() => setMobileReorderMode(false)}
+                className="text-xs font-semibold text-violet-600 dark:text-violet-400 hover:text-violet-700 transition-colors"
+              >
+                Done
+              </button>
+            </div>
+          )}
+
+          {/* Grid — tighter gap on mobile */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-4">
             {images.map((img, i) => {
               const uploading     = isUploading(img.id);
               const pct           = progress[img.id] ?? 100;
@@ -298,10 +427,13 @@ export default function MediaStep({ form, updateForm, attempted }) {
                   onDragEnter={() => onItemDragEnter(i)}
                   onDragOver={onItemDragOver}
                   onDragEnd={onItemDragEnd}
+                  onTouchStart={handleLongPressStart}
+                  onTouchEnd={handleLongPressEnd}
+                  onTouchCancel={handleLongPressEnd}
                   className={[
                     "relative group aspect-square rounded-xl overflow-hidden",
                     "bg-gray-100 dark:bg-gray-800 select-none transition-all duration-150",
-                    !uploading && "cursor-grab active:cursor-grabbing",
+                    !uploading && !mobileReorderMode && "md:cursor-grab md:active:cursor-grabbing",
                     isDraggedOver ? "ring-2 ring-violet-500 ring-offset-2 dark:ring-offset-gray-950 scale-[0.96]" : "",
                   ].join(" ")}
                 >
@@ -317,17 +449,63 @@ export default function MediaStep({ form, updateForm, attempted }) {
                   {/* Upload progress */}
                   <ProgressOverlay pct={pct} />
 
-                  {/* Cover badge */}
+                  {/* Cover badge — z-30 so it stays visible above overlays */}
                   {img.cover && !uploading && (
-                    <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-black/70 backdrop-blur-sm text-white text-[10px] font-semibold px-2 py-1 rounded-full pointer-events-none z-10">
+                    <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-black/70 backdrop-blur-sm text-white text-[10px] font-semibold px-2 py-1 rounded-full pointer-events-none z-30">
                       <Star size={8} fill="white" className="flex-shrink-0" />
                       Cover
                     </div>
                   )}
 
-                  {/* Hover overlay (desktop controls) */}
+                  {/* ── Mobile: 3-dot menu button (always visible, not in reorder mode) ── */}
+                  {!mobileReorderMode && !uploading && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setActiveSheet(img.id); }}
+                      aria-label="Photo options"
+                      className="md:hidden absolute top-2 right-2 z-20 w-7 h-7 rounded-full bg-black/55 backdrop-blur-sm flex items-center justify-center transition-colors active:bg-black/75"
+                    >
+                      <MoreVertical size={14} className="text-white" />
+                    </button>
+                  )}
+
+                  {/* ── Mobile: reorder mode overlay ── */}
+                  {mobileReorderMode && !uploading && (
+                    <div className="md:hidden absolute inset-0 z-20 bg-black/30 flex flex-col items-center justify-between p-2">
+                      {/* Drag handle badge */}
+                      <div className="self-start w-7 h-7 bg-black/60 rounded-lg flex items-center justify-center">
+                        <GripVertical size={14} className="text-white" />
+                      </div>
+                      {/* Arrow reorder buttons */}
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          disabled={i === 0}
+                          onClick={(e) => { e.stopPropagation(); moveImage(i, i - 1); }}
+                          className="w-8 h-8 bg-black/60 rounded-lg flex items-center justify-center disabled:opacity-25 text-white transition-colors active:bg-black/80"
+                          aria-label="Move earlier"
+                        >
+                          <ChevronLeft size={15} />
+                        </button>
+                        <span className="text-white/70 text-[11px] font-semibold tabular-nums w-5 text-center">
+                          {i + 1}
+                        </span>
+                        <button
+                          type="button"
+                          disabled={i === images.length - 1}
+                          onClick={(e) => { e.stopPropagation(); moveImage(i, i + 1); }}
+                          className="w-8 h-8 bg-black/60 rounded-lg flex items-center justify-center disabled:opacity-25 text-white transition-colors active:bg-black/80"
+                          aria-label="Move later"
+                        >
+                          <ChevronRight size={15} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── Desktop: hover overlay (unchanged) ── */}
                   {!uploading && (
-                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex flex-col items-center justify-center gap-2">
+                    <div className="hidden md:flex absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex-col items-center justify-center gap-2">
                       {/* Action buttons */}
                       <div className="flex items-center gap-1.5">
                         {!img.cover && (
@@ -350,7 +528,7 @@ export default function MediaStep({ form, updateForm, attempted }) {
                         </button>
                       </div>
 
-                      {/* Arrow reorder — essential on mobile */}
+                      {/* Arrow reorder */}
                       <div className="flex items-center gap-1">
                         <button
                           type="button"
@@ -379,14 +557,30 @@ export default function MediaStep({ form, updateForm, attempted }) {
                 </div>
               );
             })}
-
           </div>
 
-          <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-2.5 sm:hidden text-center">
-            Hover a photo and use ‹ › arrows to reorder
-          </p>
+          {/* Mobile: long-press hint (only when not in reorder mode) */}
+          {!mobileReorderMode && (
+            <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-2 md:hidden text-center">
+              Long press any photo to reorder · tap ⋮ for options
+            </p>
+          )}
         </div>
       )}
+
+      {/* ── Mobile bottom action sheet ── */}
+      {activeSheet && (() => {
+        const sheetImg = images.find((img) => img.id === activeSheet);
+        if (!sheetImg) return null;
+        return (
+          <MobileActionSheet
+            img={sheetImg}
+            onSetCover={() => { setCover(sheetImg.id); setActiveSheet(null); }}
+            onDelete={() => { removeImage(sheetImg.id); setActiveSheet(null); }}
+            onClose={() => setActiveSheet(null)}
+          />
+        );
+      })()}
 
       {/* ── Photo tips ── */}
       <div className="rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50 px-4 py-3.5">

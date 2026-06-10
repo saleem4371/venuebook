@@ -8,18 +8,21 @@ import Link from "next/link";
 import { BookmarkCheck, Loader2, Upload, X } from "lucide-react";
 
 import lightLogo from "@/assets/logo.svg";
-import darkLogo  from "@/assets/logo.png";
+import darkLogo from "@/assets/logo.png";
 import { CATEGORY_LABELS } from "../../components/wizardConfig";
 
+import { parent_create } from "@/services/listing.service";
+
 // ─── Input / label helpers (identical to BasicsStep) ──────────────────────
-const inputCls = (invalid = false) => [
-  "w-full px-4 py-3 rounded-xl border bg-white dark:bg-gray-900",
-  "text-gray-900 dark:text-white text-sm outline-none transition",
-  "placeholder:text-gray-400 dark:placeholder:text-gray-500",
-  invalid
-    ? "border-red-400 ring-1 ring-red-400"
-    : "border-gray-200 dark:border-gray-700 focus:border-violet-500 focus:ring-1 focus:ring-violet-500",
-].join(" ");
+const inputCls = (invalid = false) =>
+  [
+    "w-full px-4 py-3 rounded-xl border bg-white dark:bg-gray-900",
+    "text-gray-900 dark:text-white text-sm outline-none transition",
+    "placeholder:text-gray-400 dark:placeholder:text-gray-500",
+    invalid
+      ? "border-red-400 ring-1 ring-red-400"
+      : "border-gray-200 dark:border-gray-700 focus:border-violet-500 focus:ring-1 focus:ring-violet-500",
+  ].join(" ");
 
 const Label = ({ children, required }) => (
   <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">
@@ -49,14 +52,16 @@ function ImageUpload({ label, hint, file, onChange, square = false }) {
   }
 
   const preview = file ? URL.createObjectURL(file) : null;
-  const boxCls  = square
+  const boxCls = square
     ? "relative w-full aspect-square rounded-xl overflow-hidden border"
     : "relative w-full h-36 rounded-xl overflow-hidden border";
 
   return (
     <div>
       <Label>{label}</Label>
-      {hint && <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">{hint}</p>}
+      {hint && (
+        <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">{hint}</p>
+      )}
       {preview ? (
         <div className={boxCls + " border-gray-200 dark:border-gray-700 group"}>
           <img src={preview} alt="" className="w-full h-full object-cover" />
@@ -78,8 +83,16 @@ function ImageUpload({ label, hint, file, onChange, square = false }) {
           }
         >
           <Upload className="w-4 h-4 text-gray-300 dark:text-gray-600" />
-          <span className="text-[11px] text-gray-400 dark:text-gray-500">Upload</span>
-          <input ref={ref} type="file" accept="image/*" className="hidden" onChange={pick} />
+          <span className="text-[11px] text-gray-400 dark:text-gray-500">
+            Upload
+          </span>
+          <input
+            ref={ref}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={pick}
+          />
         </button>
       )}
     </div>
@@ -88,7 +101,7 @@ function ImageUpload({ label, hint, file, onChange, square = false }) {
 
 // ─── Page ──────────────────────────────────────────────────────────────────
 export default function ParentSetupPage() {
-  const router   = useRouter();
+  const router = useRouter();
   const { locale, country, category } = useParams();
   const catLabel = CATEGORY_LABELS[category] ?? "Property";
 
@@ -99,39 +112,66 @@ export default function ParentSetupPage() {
       setIsDark(document.documentElement.classList.contains("dark"));
     sync();
     const obs = new MutationObserver(sync);
-    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    obs.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
     return () => obs.disconnect();
   }, []);
 
   // ── Form state ────────────────────────────────────────────────────────
   const [form, setForm] = useState({
-    propertyName:   "",
-    description:    "",
-    builtYear:      "",
+    propertyName: "",
+    description: "",
+    builtYear: "",
     operatingSince: "",
-    propertySize:   "",
-    sizeUnit:       "Sq Ft",
-    contactPerson:  "",
-    phone:          "",
-    email:          "",
+    propertySize: "",
+    sizeUnit: "Sq Ft",
+    contactPerson: "",
+    phone: "",
+    email: "",
+    childVenueCount: "",
   });
   const [logo, setLogo] = useState(null);
 
-  const [touched,   setTouch]    = useState({});
+  const [touched, setTouch] = useState({});
   const [attempted, setAttempted] = useState(false);
-  const [saving,    setSaving]   = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const touch = (f) => setTouch((p) => ({ ...p, [f]: true }));
-  const set   = (k, v) => setForm((p) => ({ ...p, [k]: v }));
+  const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
 
   const showErr = (f) => touched[f] || attempted;
 
   // ── Validation ────────────────────────────────────────────────────────
+  // const v = {
+  //   propertyName: form.propertyName.trim().length > 3,
+  //   description:  form.description.trim().length >= 10,
+  //   email:        !form.email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email),
+  // };
+  // const isValid = Object.values(v).every(Boolean);
+  const currentYear = new Date().getFullYear();
+
   const v = {
-    propertyName: form.propertyName.trim().length > 3,
-    description:  form.description.trim().length >= 10,
-    email:        !form.email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email),
+    propertyName: form.propertyName.trim().length >= 3,
+
+    description: form.description.trim().length >= 20,
+
+    builtYear:
+      /^\d{4}$/.test(form.builtYear) && Number(form.builtYear) <= currentYear,
+
+    operatingSince:
+      /^\d{4}$/.test(form.operatingSince) &&
+      Number(form.operatingSince) <= currentYear &&
+      Number(form.operatingSince) >= Number(form.builtYear),
+
+    phone: /^\d{10}$/.test(form.phone),
+
+    email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email),
+
+    childVenueCount: Number(form.childVenueCount) > 0,
   };
+
   const isValid = Object.values(v).every(Boolean);
 
   // ── Submit ─────────────────────────────────────────────────────────────
@@ -141,7 +181,27 @@ export default function ParentSetupPage() {
     setSaving(true);
     try {
       // TODO: await SaveParent({ ...form, logo, cover, category });
-      router.push(`/${locale}/${country}/start-listing/${category}/basic-details`);
+      const formData = new FormData();
+
+      formData.append("property_name", form.propertyName);
+      formData.append("description", form.description);
+      formData.append("built_year", form.builtYear);
+      formData.append("operating_since", form.operatingSince);
+      formData.append("property_size", form.propertySize);
+      formData.append("size_unit", form.sizeUnit);
+      formData.append("contact_person", form.contactPerson);
+      formData.append("phone", form.phone);
+      formData.append("email", form.email);
+      formData.append("child_venue_count", form.childVenueCount);
+
+      if (logo) {
+        formData.append("logo", logo);
+      }
+      const parent_id = await parent_create(formData);
+      console.log(form);
+      router.push(
+        `/${locale}/${country}/start-listing/${category}/basic-details`,
+      );
     } catch (e) {
       console.error(e);
     } finally {
@@ -149,22 +209,24 @@ export default function ParentSetupPage() {
     }
   }
 
-  function handleBack() {
-    router.push(`/${locale}/${country}/vendor/listing`);
+function handleBack() {
+    router.push(`/${locale}/${country}/list`);
   }
 
   // ─────────────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col min-h-screen bg-white dark:bg-gray-950">
-
       {/* ══════════════════════════════════════════════════════════════
           STICKY HEADER  — exact clone of WizardShell header
       ══════════════════════════════════════════════════════════════ */}
       <header className="sticky top-0 z-40 w-full bg-white dark:bg-gray-950 border-b border-gray-100 dark:border-gray-800">
         <div className="w-full px-5 sm:px-10 py-3.5 sm:py-4">
           <div className="flex items-center gap-3 sm:gap-6">
-            <Link href={`/${locale}/${country}/home`} aria-label="VenueBook home"
-              className="flex-shrink-0 transition-opacity hover:opacity-75">
+            <Link
+              href={`/${locale}/${country}/home`}
+              aria-label="VenueBook home"
+              className="flex-shrink-0 transition-opacity hover:opacity-75"
+            >
               <Image
                 src={isDark ? darkLogo : lightLogo}
                 alt="VenueBook"
@@ -179,7 +241,9 @@ export default function ParentSetupPage() {
               <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-xs font-semibold text-gray-600 dark:text-gray-300">
                 {catLabel}
                 <span className="w-px h-3 bg-gray-300 dark:bg-gray-600" />
-                <span className="text-gray-400 font-normal">Parent Property Setup</span>
+                <span className="text-gray-400 font-normal">
+                  Parent Property Setup
+                </span>
               </span>
             </div>
 
@@ -199,7 +263,10 @@ export default function ParentSetupPage() {
         <div className="w-full h-[3px] bg-gray-100 dark:bg-gray-800">
           <div
             className="h-full"
-            style={{ width: "4%", background: "linear-gradient(90deg, #a44bf3, #499ce8)" }}
+            style={{
+              width: "4%",
+              background: "linear-gradient(90deg, #a44bf3, #499ce8)",
+            }}
           />
         </div>
       </header>
@@ -209,15 +276,14 @@ export default function ParentSetupPage() {
       ══════════════════════════════════════════════════════════════ */}
       <main className="flex-1 overflow-y-auto">
         <div className="max-w-[720px] mx-auto px-5 sm:px-8 pt-10 pb-12">
-
           {/* Page title block */}
           <div className="mb-8">
             <h1 className="text-2xl sm:text-[28px] font-bold text-gray-900 dark:text-white leading-tight tracking-tight">
               Property Information
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 leading-relaxed">
-              Provide information about your overall property.
-              Individual units and spaces will be added in the next steps.
+              Provide information about your overall property. Individual units
+              and spaces will be added in the next steps.
             </p>
           </div>
 
@@ -227,7 +293,6 @@ export default function ParentSetupPage() {
             transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
             className="space-y-8"
           >
-
             {/* ══════════════════════════════════════════════════════
                 SECTION 1 — Property Details
             ══════════════════════════════════════════════════════ */}
@@ -247,9 +312,13 @@ export default function ParentSetupPage() {
               />
               <div className="flex justify-between mt-1.5">
                 <span className="text-xs text-red-500">
-                  {showErr("propertyName") && !v.propertyName ? "Minimum 4 characters required" : ""}
+                  {showErr("propertyName") && !v.propertyName
+                    ? "Minimum 4 characters required"
+                    : ""}
                 </span>
-                <span className="text-xs text-gray-400">{form.propertyName.length}/80</span>
+                <span className="text-xs text-gray-400">
+                  {form.propertyName.length}/80
+                </span>
               </div>
             </div>
 
@@ -274,9 +343,13 @@ export default function ParentSetupPage() {
               />
               <div className="flex justify-between mt-1.5">
                 <span className="text-xs text-red-500">
-                  {showErr("description") && !v.description ? "Please add a description (min 10 characters)" : ""}
+                  {showErr("description") && !v.description
+                    ? "Please add a description (min 10 characters)"
+                    : ""}
                 </span>
-                <span className="text-xs text-gray-400">{form.description.length}/600</span>
+                <span className="text-xs text-gray-400">
+                  {form.description.length}/600
+                </span>
               </div>
             </div>
 
@@ -289,8 +362,14 @@ export default function ParentSetupPage() {
                   value={form.builtYear}
                   onChange={(e) => set("builtYear", e.target.value)}
                   placeholder="e.g. 2008"
-                  className={inputCls()}
+                  className={inputCls(showErr("builtYear") && !v.builtYear)}
+                  onBlur={() => touch("builtYear")}
                 />
+                {showErr("builtYear") && !v.builtYear && (
+                  <span className="text-xs text-red-500 mt-1.5 block">
+                    Enter valid 4 digit year
+                  </span>
+                )}
               </div>
               <div>
                 <Label>Operating since</Label>
@@ -299,8 +378,16 @@ export default function ParentSetupPage() {
                   value={form.operatingSince}
                   onChange={(e) => set("operatingSince", e.target.value)}
                   placeholder="e.g. 2010"
-                  className={inputCls()}
+                  className={inputCls(
+                    showErr("operatingSince") && !v.operatingSince,
+                  )}
+                  onBlur={() => touch("operatingSince")}
                 />
+                {showErr("operatingSince") && !v.operatingSince && (
+                  <span className="text-xs text-red-500 mt-1.5 block">
+                    Must be same or after built year
+                  </span>
+                )}
               </div>
             </div>
 
@@ -327,6 +414,28 @@ export default function ParentSetupPage() {
               </div>
             </div>
 
+            <div>
+              <Label required>Number of Child Venues</Label>
+
+              <input
+                type="number"
+                min="1"
+                value={form.childVenueCount}
+                onChange={(e) => set("childVenueCount", e.target.value)}
+                onBlur={() => touch("childVenueCount")}
+                placeholder="e.g. 5"
+                className={inputCls(
+                  showErr("childVenueCount") && !v.childVenueCount,
+                )}
+              />
+
+              {showErr("childVenueCount") && !v.childVenueCount && (
+                <span className="text-xs text-red-500 mt-1.5 block">
+                  Enter valid child venue count
+                </span>
+              )}
+            </div>
+
             {/* ══════════════════════════════════════════════════════
                 SECTION 2 — Business Contact
             ══════════════════════════════════════════════════════ */}
@@ -348,10 +457,18 @@ export default function ParentSetupPage() {
                 <input
                   type="tel"
                   value={form.phone}
-                  onChange={(e) => set("phone", e.target.value)}
-                  placeholder="+91 98765 43210"
-                  className={inputCls()}
+                  onChange={(e) =>
+                    set("phone", e.target.value.replace(/\D/g, "").slice(0, 10))
+                  }
+                  onBlur={() => touch("phone")}
+                  placeholder="9876543210"
+                  className={inputCls(showErr("phone") && !v.phone)}
                 />
+                {showErr("phone") && !v.phone && (
+                  <span className="text-xs text-red-500 mt-1.5 block">
+                    Phone must be exactly 10 digits
+                  </span>
+                )}
               </div>
             </div>
 
@@ -366,7 +483,9 @@ export default function ParentSetupPage() {
                 className={inputCls(showErr("email") && !v.email)}
               />
               {showErr("email") && !v.email && (
-                <span className="text-xs text-red-500 mt-1.5 block">Enter a valid email address</span>
+                <span className="text-xs text-red-500 mt-1.5 block">
+                  Enter a valid email address
+                </span>
               )}
             </div>
 
@@ -375,7 +494,9 @@ export default function ParentSetupPage() {
             ══════════════════════════════════════════════════════ */}
             <SectionHeading>
               Branding{" "}
-              <span className="text-sm font-normal text-gray-400">(optional)</span>
+              <span className="text-sm font-normal text-gray-400">
+                (optional)
+              </span>
             </SectionHeading>
 
             {/* Logo — small square uploader, not full-width */}
@@ -390,11 +511,10 @@ export default function ParentSetupPage() {
                 />
               </div>
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-8 leading-relaxed">
-                Your logo will appear on all unit listings that belong to this property.
-                You can update it at any time from your dashboard.
+                Your logo will appear on all unit listings that belong to this
+                property. You can update it at any time from your dashboard.
               </p>
             </div>
-
           </motion.div>
         </div>
       </main>
@@ -404,7 +524,6 @@ export default function ParentSetupPage() {
       ══════════════════════════════════════════════════════════════ */}
       <div className="sticky bottom-0 z-40 w-full bg-white/95 dark:bg-gray-950/95 backdrop-blur-md border-t border-gray-200 dark:border-gray-800">
         <div className="w-full px-5 sm:px-10 py-4 flex items-center justify-between gap-3">
-
           <button
             type="button"
             onClick={handleBack}
@@ -428,10 +547,13 @@ export default function ParentSetupPage() {
             ].join(" ")}
             style={{ background: "linear-gradient(242deg, #a44bf3, #499ce8)" }}
           >
-            {saving
-              ? <><Loader2 size={15} className="animate-spin" /> Saving…</>
-              : "Continue"
-            }
+            {saving ? (
+              <>
+                <Loader2 size={15} className="animate-spin" /> Saving…
+              </>
+            ) : (
+              "Continue"
+            )}
           </button>
         </div>
       </div>

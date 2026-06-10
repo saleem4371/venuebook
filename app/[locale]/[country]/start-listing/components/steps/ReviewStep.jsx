@@ -8,6 +8,7 @@ import { PRICING_CONFIG, VENUE_SHIFTS }    from "./config/pricingConfig";
 import { getCountryName, getLocationConfig } from "./config/locationConfig";
 
 import { getAmenties } from "@/services/global.service";
+import { ReviewSkeleton, useSkeletonDelay } from "./skeletons/index";
 
 
 // ─── Section card ──────────────────────────────────────────────────────────
@@ -87,25 +88,28 @@ export default function ReviewStep({ form, goToStep }) {
   const capacity = form.capacity || {};
   const amenities = form.amenities || [];
 
-   // API
-  const [amenitie, setAmenities] = useState([]);
+  // API — load amenity list for display names in the review card
+  const [amenitie,  setAmenities]  = useState([]);
+  const [isLoading, setIsLoading]  = useState(true);
+  const showSkeleton = useSkeletonDelay(isLoading);
 
-  console.log(amenitie)
-  
-    useEffect(() => {
-      load();
-    }, [form.category]);
-  
-    const load = async () => {
-      try {
-        const res = await getAmenties(form.category);
-        const mergedData = res?.data?.data;
-        const flatAmenities = mergedData.flatMap((group) => group.children);
-        setAmenities(flatAmenities);
-      } catch (err) {
-        console.log(err);
-      }
-    };
+  useEffect(() => {
+    load();
+  }, [form.category]);
+
+  const load = async () => {
+    setIsLoading(true);
+    try {
+      const res          = await getAmenties(form.category);
+      const mergedData   = res?.data?.data;
+      const flatAmenities = mergedData.flatMap((group) => group.children);
+      setAmenities(flatAmenities);
+    } catch (err) {
+      console.log(err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const coverImage = images.find((img) => img.cover) || images[0];
   const catLabel   = CATEGORY_LABELS[form.category] || form.category || "";
@@ -204,8 +208,10 @@ export default function ReviewStep({ form, goToStep }) {
     );
   };
 
+  if (showSkeleton) return <ReviewSkeleton />;
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 sk-fade-in">
 
       {/* ── Hero cover image ── */}
       {coverImage && (

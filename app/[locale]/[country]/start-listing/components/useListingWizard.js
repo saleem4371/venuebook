@@ -10,29 +10,29 @@ import { getBlob, deleteByPrefix } from "./imageStore";
 //  Step navigation is NOT managed here — WizardShell owns the URL routing.
 //
 //  Image persistence strategy:
-//    • MediaStep saves each uploaded File blob to IndexedDB at upload time,
+//    * MediaStep saves each uploaded File blob to IndexedDB at upload time,
 //      keyed as `{category}/{imageId}`.
-//    • saveDraft stores image metadata (id, name, size, dupKey, cover) in
+//    * saveDraft stores image metadata (id, name, size, dupKey, cover) in
 //      localStorage — blob URLs are stripped since they're session-only.
-//    • On restore, image metadata is read from localStorage and blobs are
+//    * On restore, image metadata is read from localStorage and blobs are
 //      fetched from IndexedDB to create fresh blob URLs.
-//    • clearDraft purges both localStorage and IndexedDB for the category.
+//    * clearDraft purges both localStorage and IndexedDB for the category.
 //
 //  Review-navigation mode (reviewReached):
-//    • Once the user lands on the Review step for the first time,
+//    * Once the user lands on the Review step for the first time,
 //      markReviewReached() is called by WizardShell.
-//    • This sets reviewReached = true in state AND immediately merges it into
+//    * This sets reviewReached = true in state AND immediately merges it into
 //      the localStorage draft so it survives refresh, back/forward, and any
 //      subsequent route navigation.
-//    • While reviewReached is true, WizardShell passes fromReview=true to
+//    * While reviewReached is true, WizardShell passes fromReview=true to
 //      WizardFooter for every non-review step, showing "Back to Review" beside
 //      "Continue" at all times.
 //
 //  Auto-save behaviour:
-//    • saveDraft(stepKey) is called by WizardShell on every successful Continue
+//    * saveDraft(stepKey) is called by WizardShell on every successful Continue
 //      and on Save & Exit.
-//    • The draft stores form data, the last active step key, and reviewReached.
-//    • On restoration, lastSavedKey is exposed so WizardShell can redirect
+//    * The draft stores form data, the last active step key, and reviewReached.
+//    * On restoration, lastSavedKey is exposed so WizardShell can redirect
 //      the user back to where they left off when they visit the bare category URL.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -44,10 +44,12 @@ export function useListingWizard(initialCategory = "", initialCountry = "") {
     country:  initialCountry,
     images:   [],
   });
-  const [attempted,      setAttempted]      = useState({});
-  const [hydrated,       setHydrated]       = useState(false);
-  const [lastSavedKey,   setLastSavedKey]   = useState(null);
-  const [reviewReached,  setReviewReached]  = useState(false);
+  const [attempted,     setAttempted]     = useState({});
+  const [hydrated,      setHydrated]      = useState(false);
+  const [lastSavedKey,  setLastSavedKey]  = useState(null);
+  const [reviewReached, setReviewReached] = useState(false);
+  // hasDraft is true when localStorage contains a draft with actual step progress
+  const [hasDraft,      setHasDraft]      = useState(false);
 
   // ── Restore draft on mount ─────────────────────────────────────────────
   useEffect(() => {
@@ -56,6 +58,15 @@ export function useListingWizard(initialCategory = "", initialCountry = "") {
     async function restore() {
       try {
         const raw = localStorage.getItem(DRAFT_KEY(initialCategory));
+
+        // Detect draft with progress before async restore begins
+        if (raw) {
+          try {
+            const parsed = JSON.parse(raw);
+            if (parsed?.stepKey) setHasDraft(true);
+          } catch (_) {}
+        }
+
         if (raw) {
           const saved = JSON.parse(raw);
 
@@ -167,6 +178,19 @@ export function useListingWizard(initialCategory = "", initialCountry = "") {
     deleteByPrefix(`${initialCategory}/`).catch(() => {});
   }, [initialCategory]);
 
+  // --- Reset form (Start Fresh) ---
+  // Clears draft from storage AND resets all in-memory state to blank.
+  // Used by the "Start Fresh" action in the draft recovery modal.
+
+  const resetForm = useCallback(() => {
+    clearDraft();
+    setForm({ category: initialCategory, country: initialCountry, images: [] });
+    setAttempted({});
+    setLastSavedKey(null);
+    setReviewReached(false);
+    setHasDraft(false);
+  }, [initialCategory, initialCountry, clearDraft]);
+
   return {
     form,
     updateForm,
@@ -179,5 +203,7 @@ export function useListingWizard(initialCategory = "", initialCountry = "") {
     markReviewReached,
     saveDraft,
     clearDraft,
+    hasDraft,
+    resetForm,
   };
 }

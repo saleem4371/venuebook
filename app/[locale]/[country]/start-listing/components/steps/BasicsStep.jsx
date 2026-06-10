@@ -2,6 +2,7 @@
 
 import { useState , useEffect } from "react";
 import { SUBCATEGORIES } from "./config/subcategoryConfig";
+import { BasicsSkeleton, useSkeletonDelay } from "./skeletons/index";
 
 // ─── Shared input class helper ─────────────────────────────────────────────
 const inputCls = (invalid) => [
@@ -34,26 +35,33 @@ export default function BasicsStep({ form, updateForm, attempted  }) {
   const isSubcatValid = !!form.subcategory;
   // const subcategories = SUBCATEGORIES[form.category] || [];
 
-   //API
-   const [property, setProperty] = useState([]);
+  // API — load subcategory / property-type options
+  const [property,  setProperty]  = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const showSkeleton = useSkeletonDelay(isLoading);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [form.category]);
 
   const load = async () => {
+    setIsLoading(true);
     try {
       const res = await getPropertyName(form.category);
       setProperty(res.data.data);
     } catch (err) {
       console.log(err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   
 
+  if (showSkeleton) return <BasicsSkeleton />;
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 sk-fade-in">
 
       {/* ── Property name ── */}
       <div>

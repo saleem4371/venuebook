@@ -128,21 +128,23 @@ export default function CenterPin({ category = "venue", isDragging = false }) {
       */}
       <style>{`
         @keyframes vbPinIdle {
-          0%,  100% { transform: translateY(0px)    scale(1)     rotate(0deg); }
-          50%        { transform: translateY(-2.5px) scale(1.013) rotate(0deg); }
+          0%,  100% { transform: scale(1);     }
+          50%        { transform: scale(1.014); }
         }
       `}</style>
 
       {/*
-        Anchor: the BOTTOM of this div is placed at the map center (50% / 50%).
-        translate(-50%, -100%) shifts it so the pin TIP aligns with that point.
+        Anchor: the pin TIP is placed exactly at the map center (50% / 50%).
+        The SVG tip lands at y≈54.8px inside a 60px container.
+        Without correction the tip sits 5.2px above the true coordinate.
+        calc(-100% + 5px) shifts the container down so the tip aligns precisely.
       */}
       <div
         style={{
           position:  "absolute",
           top:       "50%",
           left:      "50%",
-          transform: "translate(-50%, -100%)",
+          transform: "translate(-50%, calc(-100% + 5px))",
         }}
       >
 
@@ -159,22 +161,22 @@ export default function CenterPin({ category = "venue", isDragging = false }) {
             left:         "50%",
             bottom:       -5,
 
-            width:  isDragging ? 56 : 34,
-            height: isDragging ? 18 : 11,
+            width:  isDragging ? 46 : 34,
+            height: isDragging ? 14 : 11,
 
-            transform: `translateX(-50%) scale(${isDragging ? 1.15 : 1})`,
+            transform: `translateX(-50%) scale(${isDragging ? 1.1 : 1})`,
 
             borderRadius: "999px",
 
             background: `radial-gradient(
               ellipse at center,
-              rgba(0,0,0,${isDragging ? 0.13 : 0.22}) 0%,
-              rgba(0,0,0,${isDragging ? 0.05 : 0.10}) 50%,
+              rgba(0,0,0,${isDragging ? 0.14 : 0.22}) 0%,
+              rgba(0,0,0,${isDragging ? 0.06 : 0.10}) 50%,
               transparent 100%
             )`,
 
-            filter:  `blur(${isDragging ? 10 : 6}px)`,
-            opacity: isDragging ? 0.70 : 1,
+            filter:  `blur(${isDragging ? 8 : 6}px)`,
+            opacity: isDragging ? 0.75 : 1,
 
             // All shadow properties transition together with the same ease
             transition: "width 680ms cubic-bezier(0.22, 1, 0.36, 1), " +
@@ -198,13 +200,17 @@ export default function CenterPin({ category = "venue", isDragging = false }) {
         ──────────────────────────────────────────────────────────────────── */}
         <div
           style={{
+            // No translateY — keeping the tip pixel-locked on the map center at all
+            // times. Scale-only feedback means the pin tip never moves vertically
+            // during drag or on release, so the saved coordinate always matches
+            // exactly where the user sees the pin tip land.
             transform: isDragging
-              ? "translateY(-28px) scale(1.06) rotate(-1.5deg)"
-              : "translateY(0px)   scale(1)    rotate(0deg)",
+              ? "scale(1.08)"
+              : "scale(1)",
 
             transition: isDragging
-              ? "transform 260ms cubic-bezier(0.22, 1, 0.36, 1)"        // lift — fast ease-out
-              : "transform 820ms cubic-bezier(0.22, 1.45, 0.36, 1)",    // land — slow spring bounce
+              ? "transform 180ms cubic-bezier(0.22, 1, 0.36, 1)"      // scale up — snappy
+              : "transform 400ms cubic-bezier(0.34, 1.20, 0.64, 1)",  // scale back — gentle spring
 
             animation: isDragging
               ? "none"
