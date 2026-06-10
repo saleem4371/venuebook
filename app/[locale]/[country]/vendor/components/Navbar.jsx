@@ -8,6 +8,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import lightLogo from "@/assets/logo.svg";
 import darkLogo from "@/assets/logo.png";
 
+import { useTranslations } from "next-intl";
 import RegionLanguageModal from "../../home/components/RegionLanguageModal";
 import { useAuth } from "@/context/AuthContext";
 import KycStatusChip from "./KycStatusChip";
@@ -192,6 +193,7 @@ function AvatarArea({
   base,
   onRegion,
   onLogout,
+  onSwitchToCustomer,
   notifications,
   logout
 }) {
@@ -306,8 +308,9 @@ function AvatarArea({
               </div>
             </div>
 
-            {/* Items: Account, Region, Notifications, Settings, Team Management, Logout */}
+            {/* Items list */}
             <ul className="py-1.5" role="none">
+
               <li role="none">
                 <MenuItem
                   icon={<UserIcon />}
@@ -329,9 +332,7 @@ function AvatarArea({
                   label="Notifications"
                   badge={unread}
                   href={`${base}/notifications`}
-                  onClick={() => {
-                    setShowProfile(false);
-                  }}
+                  onClick={() => setShowProfile(false)}
                 />
               </li>
               <li role="none">
@@ -342,6 +343,22 @@ function AvatarArea({
                   onClick={() => setShowProfile(false)}
                 />
               </li>
+
+              {/* ── Switch to Customer — tablet + mobile only (<1024px)
+                  Desktop: visible as a standalone button in the header.
+                  Positioned after Settings, before Team Management. */}
+              <div className="lg:hidden">
+                <Divider />
+                <li role="none">
+                  <MenuItem
+                    icon={<HomeIcon className="h-4 w-4" />}
+                    label="Switch to Customer"
+                    onClick={() => { setShowProfile(false); onSwitchToCustomer?.(); }}
+                    variant="accent"
+                  />
+                </li>
+              </div>
+
               <Divider />
               <li role="none">
                 <MenuItem
@@ -388,13 +405,16 @@ export default function PremiumNavbar() {
   const userName = user?.name || "Vendor";
   const userEmail = user?.email || "vendor@venuebook.in";
 
+  // subscribe_status is now rendered inside KycStatusChip (DEMO_PLAN)
+
   const [showNotif,       setShowNotif]       = useState(false);
   const [showProfile,     setShowProfile]     = useState(false);
   const [regionOpen,      setRegionOpen]      = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const [kycStatus, setKycStatus] = useState("pending"); // wire to API/session later
-  const [kycOpen, setKycOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const [kycStatus,       setKycStatus]       = useState("pending"); // wire to API/session later
+  const [kycOpen,         setKycOpen]         = useState(false);
+  const [mounted,         setMounted]         = useState(false);
+  const [switchLoading,   setSwitchLoading]   = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
   /* Separate refs for desktop + mobile (both rendered but only one visible) */
@@ -408,10 +428,15 @@ export default function PremiumNavbar() {
   useClickOutside(profileRefD, closeArea);
   useClickOutside(profileRefM, closeArea);
 
-  const goCustomer = useCallback(
-    () => router.push(`/${locale}/${country}/home`),
-    [router, locale, country],
-  );
+  const goCustomer = useCallback(() => {
+    if (switchLoading) return;
+    setSwitchLoading(true);
+    /* Same timing as customer's handleVendorClick (650ms) for identical feel */
+    setTimeout(() => {
+      setSwitchLoading(false);
+      router.push(`/${locale}/${country}/home`);
+    }, 650);
+  }, [switchLoading, router, locale, country]);
 
   const notifications = [
     { text: "New lead received", time: "2 min ago" },
@@ -435,10 +460,19 @@ export default function PremiumNavbar() {
       setRegionOpen(true);
     },
     onLogout: () => { setShowProfile(false); setShowLogoutModal(true); },
+    onSwitchToCustomer: goCustomer,
   };
 
   return (
     <>
+      {/* Keyframe shared by desktop + mobile Switch buttons */}
+      <style>{`
+        @keyframes vb-border-spin {
+          from { transform: rotate(0deg); }
+          to   { transform: rotate(360deg); }
+        }
+      `}</style>
+
       <header
         suppressHydrationWarning
         className={[
@@ -456,34 +490,56 @@ export default function PremiumNavbar() {
         >
           <Brandlogo href={`${base}/dashboard`} isDark={isDark} />
 
-          <div className="flex items-center gap-1">
-            {/* KYC Status Chip */}
-            <span className="me-2">
-              <KycStatusChip
-                status={kycStatus}
-                onClick={() => setKycOpen(true)}
-              />
-            </span>
+          <div className="flex items-center gap-1.5 lg:gap-2">
+            {/* ── KYC status (independent badge) ─────────────────── */}
+            <KycStatusChip onClick={() => setKycOpen(true)} />
 
-            {/* Switch to Customer */}
-            <button
-              type="button"
-              onClick={goCustomer}
+            {/* ── Switch to Customer — only visible on desktop (1024px+)
+                At tablet (768–1024px) it moves into the profile dropdown ── */}
+            <span
               className={[
-                "inline-flex items-center gap-2 rounded-full cursor-pointer",
-                "px-4 py-2 text-sm font-medium",
-                "bg-white dark:bg-gray-950",
-                "text-gray-800 dark:text-gray-200",
-                "border border-gray-200 dark:border-gray-700",
-                "transition hover:bg-gray-50 dark:hover:bg-gray-800/60 hover:border-gray-300 dark:hover:border-gray-600",
-                "focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2",
+                "relative inline-flex rounded-full overflow-hidden",
+                "hidden lg:inline-flex",
+                switchLoading ? "p-[1.5px]" : "",
               ].join(" ")}
             >
-              <HomeIcon className="h-4 w-4 shrink-0" />
-              <span>Switch to customer</span>
-            </button>
+              {/* Spinning conic-gradient border — only active while loading */}
+              {switchLoading && (
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-[-200%]"
+                  style={{
+                    background:
+                      "conic-gradient(from 0deg, transparent 0%, #a44bf3 20%, #499ce8 45%, transparent 70%)",
+                    animation: "vb-border-spin 1.4s linear infinite",
+                  }}
+                />
+              )}
+              <button
+                type="button"
+                onClick={goCustomer}
+                disabled={switchLoading}
+                className={[
+                  "relative inline-flex items-center gap-2 rounded-full",
+                  "px-4 py-2 text-sm font-medium",
+                  "bg-white dark:bg-gray-950",
+                  "text-gray-800 dark:text-gray-200",
+                  "focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2",
+                  switchLoading
+                    ? "cursor-not-allowed"
+                    : "border border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/60 hover:border-gray-300 dark:hover:border-gray-600",
+                ].join(" ")}
+              >
+                <HomeIcon className="h-4 w-4 shrink-0" />
+                <span>Switch to customer</span>
+              </button>
+            </span>
 
-            {/* Theme */}
+            {/* Separator — desktop: between Switch to Customer and Theme
+                           tablet: between KYC and Theme (Switch is hidden) */}
+            <span className="mx-0.5 h-5 w-px bg-gray-200 dark:bg-gray-700 inline-block" aria-hidden="true" />
+
+            {/* Theme toggle */}
             <button
               type="button"
               onClick={toggleTheme}
@@ -511,8 +567,11 @@ export default function PremiumNavbar() {
               <GlobeIcon className="h-[18px] w-[18px]" />
             </button>
 
+            {/* Plan badge — separate from KYC, between Globe and avatar */}
+            <PlanBadge plan={user?.plan || "starter"} base={base} />
+
             {/* Avatar + profile dropdown + notif panel */}
-            <AvatarArea profileRef={profileRefD} {...sharedAreaProps} logout = { logout }/>
+            <AvatarArea profileRef={profileRefD} {...sharedAreaProps} logout={logout} />
           </div>
         </nav>
 
@@ -523,14 +582,16 @@ export default function PremiumNavbar() {
         >
           <Brandlogo href={`${base}/dashboard`} isDark={isDark} />
 
-         <div className="flex items-center gap-1">
-            {/* KYC Status Chip — prefix on mobile too */}
-            <KycStatusChip
-              status={kycStatus}
-              onClick={() => setKycOpen(true)}
-            />
+          {/*
+            Mobile header order: [KYC] [Theme] [Globe] [Plan] [Profile]
+            "Switch to Customer" is moved into the Profile dropdown (md:hidden item).
+            This keeps the header on exactly one row even on 320px phones.
+          */}
+          <div className="flex items-center gap-1 flex-nowrap min-w-0">
+            {/* KYC chip — compact on xs (icon only), adds "KYC" from sm */}
+            <KycStatusChip onClick={() => setKycOpen(true)} />
 
-          {/* Theme */}
+            {/* Theme toggle */}
             <button
               type="button"
               onClick={toggleTheme}
@@ -544,7 +605,7 @@ export default function PremiumNavbar() {
               )}
             </button>
 
-            {/* Globe */}
+            {/* Globe — hidden on xs (<640px) to preserve one-row on tiny phones */}
             <button
               type="button"
               onClick={() => {
@@ -553,12 +614,16 @@ export default function PremiumNavbar() {
                 setRegionOpen(true);
               }}
               aria-label="Region and language"
-              className={IBTN}
+              className={[IBTN, "hidden sm:inline-flex"].join(" ")}
             >
               <GlobeIcon className="h-[18px] w-[18px]" />
             </button>
 
-          <AvatarArea profileRef={profileRefM} {...sharedAreaProps} logout = { logout } />
+            {/* Subscription / plan badge — stays beside profile, same as desktop */}
+            <PlanBadge plan={user?.plan || "starter"} base={base} />
+
+            {/* Avatar + profile dropdown (Switch to Customer lives inside here on mobile) */}
+            <AvatarArea profileRef={profileRefM} {...sharedAreaProps} logout={logout} />
           </div>
         </nav>
       </header>
@@ -585,6 +650,167 @@ export default function PremiumNavbar() {
         }}
       />
     </>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PLAN BADGE
+   Separate from KYC — shows current subscription tier.
+   Clicking opens a subscription details dropdown.
+   Replace DEMO_SUBSCRIPTION + `user?.plan` with real API data
+   when subscription backend is wired up.
+═══════════════════════════════════════════════════════════════ */
+const PLAN_CONFIG = {
+  starter: {
+    label:     "Starter",
+    labelFull: "Starter Plan",
+    text:      "text-amber-700 dark:text-amber-400",
+    bg:        "bg-amber-50 dark:bg-amber-950/25",
+    border:    "border-amber-200/60 dark:border-amber-700/30",
+  },
+  professional: {
+    label:     "Professional",
+    labelFull: "Professional Plan",
+    text:      "text-blue-700 dark:text-blue-400",
+    bg:        "bg-blue-50 dark:bg-blue-950/25",
+    border:    "border-blue-200/60 dark:border-blue-700/30",
+  },
+  business: {
+    label:     "Business",
+    labelFull: "Business Plan",
+    text:      "text-purple-700 dark:text-purple-400",
+    bg:        "bg-purple-50 dark:bg-purple-950/25",
+    border:    "border-purple-200/60 dark:border-purple-700/30",
+  },
+  enterprise: {
+    label:     "Enterprise",
+    labelFull: "Enterprise Plan",
+    text:      "text-white",
+    bg:        "",          /* gradient via inline style */
+    border:    "border-transparent",
+    gradient:  "linear-gradient(135deg, #7c3aed 0%, #4f46e5 50%, #0ea5e9 100%)",
+  },
+};
+
+/* Demo subscription data — replace with real API call */
+const DEMO_SUBSCRIPTION = {
+  cycle:      "Monthly",
+  nextRenewal: "Jul 9, 2026",
+};
+
+function PlanBadge({ plan = "starter", base = "" }) {
+  const t   = useTranslations("header");
+  const key = (plan || "starter").toLowerCase();
+  const cfg = PLAN_CONFIG[key] ?? PLAN_CONFIG.starter;
+
+  const [open, setOpen] = useState(false);
+  const ref             = useRef(null);
+  useClickOutside(ref, () => setOpen(false));
+
+  return (
+    <div ref={ref} className="relative">
+      {/* ── Badge trigger ── */}
+      <motion.button
+        type="button"
+        onClick={() => setOpen((p) => !p)}
+        aria-label={`Current plan: ${cfg.label}`}
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.97 }}
+        transition={{ duration: 0.12 }}
+        className={[
+          "inline-flex items-center cursor-pointer",
+          "rounded-full border",
+          "px-2.5 py-1 sm:px-3 sm:py-1.5",
+          "text-xs font-semibold leading-none",
+          "transition-all duration-150 hover:shadow-sm",
+          "focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2",
+          cfg.text, cfg.bg, cfg.border,
+        ].join(" ")}
+        style={cfg.gradient ? { background: cfg.gradient } : undefined}
+      >
+        {/* Tablet + Mobile (<1024px): short label e.g. "Starter" */}
+        <span className="lg:hidden">{cfg.label}</span>
+        {/* Desktop (1024px+): full label e.g. "Starter Plan" */}
+        <span className="hidden lg:inline">{cfg.labelFull}</span>
+      </motion.button>
+
+      {/* ── Subscription dropdown ── */}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            role="dialog"
+            aria-label="Subscription details"
+            initial={{ opacity: 0, scale: 0.95, y: -6 }}
+            animate={{ opacity: 1, scale: 1,    y: 0   }}
+            exit={{    opacity: 0, scale: 0.95, y: -6  }}
+            transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+            className={[
+              "absolute end-0 top-full mt-5 md:mt-6 z-50 w-64",
+              "rounded-2xl overflow-hidden",
+              "bg-white dark:bg-gray-900",
+              "border border-gray-100 dark:border-gray-800",
+              "shadow-xl shadow-gray-300/40 dark:shadow-black/50",
+            ].join(" ")}
+          >
+            {/* Plan + billing info */}
+            <div className="px-4 pt-4 pb-3 border-b border-gray-100 dark:border-gray-800">
+              <p className={`text-sm font-bold ${cfg.text}`}>
+                {t("vendor_plan_label", { plan: cfg.label })}
+              </p>
+              <div className="mt-2.5 space-y-1.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-gray-500 dark:text-gray-400">
+                    {t("vendor_billing_cycle")}
+                  </span>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                    {DEMO_SUBSCRIPTION.cycle}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-gray-500 dark:text-gray-400">
+                    {t("vendor_next_renewal")}
+                  </span>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                    {DEMO_SUBSCRIPTION.nextRenewal}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <ul className="py-1.5" role="none">
+              <li role="none">
+                <MenuItem
+                  icon={<ZapIcon />}
+                  label={t("vendor_upgrade_plan")}
+                  href={`${base}/subscription/upgrade`}
+                  onClick={() => setOpen(false)}
+                  variant="accent"
+                />
+              </li>
+              <li role="none">
+                <MenuItem
+                  icon={<StarIcon />}
+                  label={t("vendor_plan_benefits")}
+                  href={`${base}/subscription#benefits`}
+                  onClick={() => setOpen(false)}
+                />
+              </li>
+              <li role="none">
+                <MenuItem
+                  icon={<SettingsIcon />}
+                  label={t("vendor_manage_subscription")}
+                  href={`${base}/subscription`}
+                  onClick={() => setOpen(false)}
+                />
+              </li>
+            </ul>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 
@@ -708,6 +934,20 @@ function TeamIcon() {
       <circle cx="9" cy="7" r="4" />
       <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
       <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  );
+}
+function ZapIcon() {
+  return (
+    <svg width="16" height="16" {...P}>
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+    </svg>
+  );
+}
+function StarIcon() {
+  return (
+    <svg width="16" height="16" {...P}>
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
     </svg>
   );
 }

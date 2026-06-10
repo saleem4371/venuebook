@@ -1,6 +1,7 @@
 "use client";
+import { useState, useEffect, useRef } from "react";
 
-import { usePathname }           from "next/navigation";
+import { usePathname, useParams, useRouter } from "next/navigation";
 import { motion }                from "framer-motion";
 import Navbar                    from "./components/Navbar";
 import VendorNavTabs             from "./components/VendorNavTabs";
@@ -11,14 +12,48 @@ import { VendorUIProvider }      from "@/context/VendorUIContext";
 import { VendorCategoryProvider, useVendorCategory } from "@/context/VendorCategoryContext";
 import VendorCategoryNavigator   from "./components/VendorCategoryNavigator";
 import CategoryTransitionOverlay from "./components/CategoryTransitionOverlay";
-import { AuthProvider } from "@/context/AuthContext";
+import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { PropertyTypeModalProvider, usePropertyTypeModal } from "@/context/PropertyTypeModalContext";
 import PropertyTypeModal from "./listing/components/PropertyTypeModal";
+
+import { vendor_category } from "@/services/home.service";
+
+
 // ─────────────────────────────────────────────────────────────────────────────
 // VENDOR ENABLED CATEGORIES
 // Replace with API/session data once auth is wired.
 // ─────────────────────────────────────────────────────────────────────────────
 const VENDOR_CATEGORIES = ["venues", "farmstays", "studios"];
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   VendorAuthGuard  (Rules 6 & 7)
+   Renders inside AuthProvider so useAuth() is available.
+   - Not logged in -> redirect to home
+   - Logged in but is_vendor = 0 -> redirect to list-your-property
+   All vendor pages are protected by this single guard.
+───────────────────────────────────────────────────────────────────────────── */
+function VendorAuthGuard({ children }) {
+  const { isLoggedIn, isListed, user } = useAuth();
+  const router  = useRouter();
+  const params  = useParams();
+  const locale  = params?.locale  || "en";
+  const country = params?.country || "in";
+
+  useEffect(() => {
+    if (user === undefined) return; // auth still resolving
+    if (!isLoggedIn) {
+      router.replace(`/${locale}/${country}/home`);
+      return;
+    }
+    if (!isListed) {
+      router.replace(`/${locale}/${country}/list`);
+    }
+  }, [user, isLoggedIn, isListed, locale, country, router]);
+
+  if (user === undefined || !isLoggedIn || !isListed) return null;
+
+  return children;
+}
 
 /* ── Animation config ─────────────────────────────────────────────── */
 const EASE_OUT = [0.16, 1, 0.3, 1];
@@ -71,9 +106,9 @@ function PageMainWrapper({ isListingEditor, isFullBleedPage, isFullBleedPage1, c
         .join(" ")}
       style={{ transformOrigin: "center top" }}
     >
-      
+
   {children}
-    
+
     </motion.main>
   );
 }
@@ -108,10 +143,32 @@ export default function AdminLayout({ children }) {
   /* Messages page owns its own padding/layout for the split-pane viewport fill */
   const isMessagesPage   = /\/vendor\/messages/.test(pathname);
 
+  const loadCategory = async () => {
+    try {
+      const addons = await vendor_category();
+      setVendorCategorie(addons?.data);
+
+    } catch (err) {
+      console.error("Addons load error:", err);
+    }
+  };
+
+
+  const [vendorCategorie, setVendorCategorie] = useState([]);
+
+  useEffect(() => {
+    loadCategory();
+  }, []);
+
+  if (vendorCategorie === null) {
+    return null; // or loading spinner
+  }
+
   return (
     <div className="min-h-screen bg-white dark:bg-gray-950" suppressHydrationWarning>
-      <VendorCategoryProvider vendorCategories={VENDOR_CATEGORIES}>
+      <VendorCategoryProvider vendorCategories={vendorCategorie}>
         <AuthProvider>
+        <VendorAuthGuard>
         <VendorUIProvider>
         <PropertyTypeModalProvider>
 
@@ -148,7 +205,7 @@ export default function AdminLayout({ children }) {
             {children}
           </PageMainWrapper>
 
-          {/* CINEMATIC CATEGORY TRANSITION OVERLAY — portal to document.body */}
+          {/* CINEMATIC CATEGORY TRANSITION OVERLAY -- portal to document.body */}
           <CategoryTransitionOverlay />
 
           {/* FLOATING ELEMENTS */}
@@ -157,11 +214,12 @@ export default function AdminLayout({ children }) {
             {!isListingEditor && <BottomDock />}
           </div>
 
-          {/* PROPERTY TYPE MODAL — rendered here, outside PageMainWrapper transforms */}
+          {/* PROPERTY TYPE MODAL -- rendered here, outside PageMainWrapper transforms */}
           <PropertyModalRenderer />
 
         </PropertyTypeModalProvider>
         </VendorUIProvider>
+        </VendorAuthGuard>
         </AuthProvider>
       </VendorCategoryProvider>
     </div>

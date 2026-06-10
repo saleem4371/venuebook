@@ -2,150 +2,113 @@
 
 /**
  * KycStatusChip
- * ─────────────
- * Compact navbar-integrated KYC alert chip.
- * Lives in the top-right header cluster beside "Switch to Customer".
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Independent KYC status badge in the vendor header.
+ * Clicking directly opens the KYC modal — no intermediate dropdown.
  *
  * States:
- *   pending  → amber  + pulse dot  (action required)
- *   review   → blue               (submitted, waiting)
- *   verified → hidden             (nothing to show)
- *   rejected → red   + pulse dot  (re-submission required)
- *
- * Responsive:
- *   ≥ md  → icon + full label  ("KYC Pending")
- *   sm    → icon + short label ("KYC")
- *   xs    → icon + dot only
+ *   pending                  → Amber  + pulse  (action required)
+ *   verification_in_progress → Blue            (submitted, in review)
+ *   approved / verified      → hidden           (nothing to show)
+ *   rejected                 → Red   + pulse   (re-submission required)
  */
 
-import { useState, useEffect} from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { ShieldAlert, ShieldCheck, ShieldX, Clock } from "lucide-react";
+import { ShieldAlert, ShieldX, Clock } from "lucide-react";
 
-import { kyc_status } from '@/services/kyc.service'
-
-import { useAuth } from "@/context/AuthContext";
+import { kyc_status } from "@/services/kyc.service";
+import { useAuth }    from "@/context/AuthContext";
 
 /* ── Per-status design tokens ───────────────────────────────────────── */
 const STATUS = {
   pending: {
-    label:  "KYC pending",
-    short:  "KYC",
-    Icon:   ShieldAlert,
-    chip:   [
-      "bg-amber-50 dark:bg-amber-950/30",
-      "border-amber-200/80 dark:border-amber-700/40",
-      "text-amber-700 dark:text-amber-400",
-      "hover:bg-amber-100 dark:hover:bg-amber-950/50",
-      "focus-visible:ring-amber-500",
-    ].join(" "),
+    Icon:  ShieldAlert,
+    chip:  "bg-amber-50 dark:bg-amber-950/30 border-amber-200/80 dark:border-amber-700/40 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-950/50 focus-visible:ring-amber-500",
     dot:   "bg-amber-500",
     pulse: true,
+    label: "KYC Pending",
+    short: "KYC",
   },
   verification_in_progress: {
-    label:  "Under Review",
-    short:  "Review",
-    Icon:   Clock,
-    chip:   [
-      "bg-blue-50 dark:bg-blue-950/30",
-      "border-blue-200/80 dark:border-blue-700/40",
-      "text-blue-700 dark:text-blue-400",
-      "hover:bg-blue-100 dark:hover:bg-blue-950/50",
-      "focus-visible:ring-blue-500",
-    ].join(" "),
+    Icon:  Clock,
+    chip:  "bg-blue-50 dark:bg-blue-950/30 border-blue-200/80 dark:border-blue-700/40 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-950/50 focus-visible:ring-blue-500",
     dot:   "bg-blue-500",
     pulse: false,
+    label: "Under Review",
+    short: "Review",
   },
-  verified: null, /* chip hidden when verified */
+  verified: null, /* hidden when approved */
   rejected: {
-    label:  "KYC Rejected",
-    short:  "Rejected",
-    Icon:   ShieldX,
-    chip:   [
-      "bg-red-50 dark:bg-red-950/30",
-      "border-red-200/80 dark:border-red-700/40",
-      "text-red-700 dark:text-red-400",
-      "hover:bg-red-100 dark:hover:bg-red-950/50",
-      "focus-visible:ring-red-500",
-    ].join(" "),
+    Icon:  ShieldX,
+    chip:  "bg-red-50 dark:bg-red-950/30 border-red-200/80 dark:border-red-700/40 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950/50 focus-visible:ring-red-500",
     dot:   "bg-red-500",
     pulse: true,
+    label: "Action Required",
+    short: "Action",
   },
 };
 
+export default function KycStatusChip({ onClick }) {
+  const { user }              = useAuth();
+  const [kycState, setKycState] = useState(null);
 
-export default function KycStatusChip({ status = "pending", onClick }) {
+  /* Border glow keyframe — injected once per mount */
+  const glowStyle = "@keyframes vb-kyc-glow { 0%,100%{box-shadow:0 0 0 0px rgba(245,158,11,0.45)} 50%{box-shadow:0 0 0 3.5px rgba(245,158,11,0)} }";
 
-  const { user } = useAuth();
-
-  //kyc_status
- const [kycState, setKycState] = useState(null);
-
-useEffect(() => {
-  const kyc_check = async () => {
+  /* Fetch KYC status */
+  useEffect(() => {
     if (!user) return;
+    const doFetch = async () => {
+      try {
+        const res = await kyc_status();
+        setKycState(res?.data ?? null);
+      } catch (err) {
+        console.error("KYC status fetch error:", err);
+      }
+    };
+    doFetch();
+  }, [user]);
 
-    try {
-      const res = await kyc_status();
-      setKycState(res?.data || null);
-    } catch (err) {
-      console.error(err);
-    }
-  };
+  if (!kycState) return null;
 
-  kyc_check();
-}, [user]);
+  const statusKey = kycState?.kyc_status === "approved" ? "verified" : kycState?.kyc_status;
+  const cfg       = STATUS[statusKey];
+  if (!cfg) return null;
 
-if (!kycState) return null;
-
-const statusKey =
-  kycState?.kyc_status === "approved"
-    ? "verified"
-    : kycState?.kyc_status;
-
-const cfg = STATUS[statusKey];
-
-if (!cfg) return null;
-
-
-  const { label, short, Icon, chip, dot, pulse } = cfg;
+  const { Icon, chip, dot, pulse, label, short } = cfg;
 
   return (
-    <motion.button
-      type="button"
-      onClick={onClick}
-      aria-label={`${label} — click to complete KYC verification`}
-      whileHover={{ scale: 1.03 }}
-      whileTap={{ scale: 0.96 }}
-      transition={{ duration: 0.15 }}
-      className={[
-        "relative inline-flex items-center gap-1.5 cursor-pointer",
-        "rounded-full border",
-        /* same height as Switch to Customer button */
-        "px-4 py-2",
-        "text-sm font-semibold",
-        "transition-colors duration-150",
-        "focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
-        "focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-950",
-        chip,
-      ].join(" ")}
-    >
-      {/* Status dot — pulses for action-required states */}
-      <span className="relative inline-flex h-[7px] w-[7px] shrink-0" aria-hidden="true">
-        {pulse && (
-          <span
-            className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-70 ${dot}`}
-          />
-        )}
-        <span className={`relative inline-flex h-[7px] w-[7px] rounded-full ${dot}`} />
-      </span>
+    <>
+      {/* Inject glow keyframe once (noop on server, safe on client) */}
+      {pulse && <style>{glowStyle}</style>}
 
-      {/* Shield/status icon */}
-      <Icon size={16} className="shrink-0" aria-hidden="true" />
+      <motion.button
+        type="button"
+        onClick={() => onClick?.()}
+        aria-label={`${label} — click to open KYC verification`}
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.97 }}
+        transition={{ duration: 0.12 }}
+        style={pulse ? { animation: "vb-kyc-glow 2.8s ease-in-out infinite" } : undefined}
+        className={[
+          "relative inline-flex items-center gap-1.5 cursor-pointer",
+          "rounded-full border",
+          /* Compact on xs (<640px), medium on sm–lg (tablet), full on lg+ (desktop) */
+          "px-2 py-1.5 sm:px-2.5 sm:py-[6px] lg:px-3.5 lg:py-[7px]",
+          "text-sm font-semibold",
+          "transition-colors duration-150",
+          "focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+          "focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-950",
+          chip,
+        ].join(" ")}
+      >
+        <Icon size={15} className="shrink-0" aria-hidden="true" />
 
-      {/* Label — progressive disclosure by breakpoint */}
-      <span className="hidden sm:inline md:hidden">{short}</span>
-      <span className="hidden md:inline">{label}</span>
-    </motion.button>
+        {/* Responsive label: nothing below sm, short on sm–lg (tablet+mobile), full on lg+ (desktop) */}
+        <span className="hidden sm:inline lg:hidden">{short}</span>
+        <span className="hidden lg:inline">{label}</span>
+      </motion.button>
+    </>
   );
 }
