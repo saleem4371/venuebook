@@ -50,6 +50,7 @@ const isListed =
     // 4. Clear any auth-scoped session storage
     try { sessionStorage.removeItem("auth_user"); } catch (_) {}
     try { sessionStorage.removeItem("user"); } catch (_) {}
+    window.location.href ="/";
   }, []);
 
   // ✅ auto check on refresh

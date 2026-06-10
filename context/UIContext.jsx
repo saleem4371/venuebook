@@ -35,13 +35,13 @@ import { createContext, useContext, useState } from "react";
 const UIContext = createContext();
 
 export function UIProvider({ children }) {
-  const [loginOpen, setLoginOpen] = useState(false);
-  const [filterOpen, setFilterOpen] = useState(false);
-  const [showMap, setShowMap] = useState(false);
-  const [compareOpen, setCompareOpen] = useState(false);
-//   const [hideBottomMenu, setHideBottomMenu] = useState(false);
+  const [loginOpen,          setLoginOpen]          = useState(false);
+  const [filterOpen,         setFilterOpen]         = useState(false);
+  const [showMap,            setShowMap]            = useState(false);
+  const [compareOpen,        setCompareOpen]        = useState(false);
+  const [categorySheetOpen,  setCategorySheetOpen]  = useState(false);
 
-   const hideBottomMenu = showMap || filterOpen || compareOpen;
+  const hideBottomMenu = showMap || filterOpen || compareOpen;
 
   return (
     <UIContext.Provider
@@ -52,10 +52,11 @@ export function UIProvider({ children }) {
         setFilterOpen,
         showMap,
         setShowMap,
-         compareOpen,
+        compareOpen,
         setCompareOpen,
-       
-        hideBottomMenu
+        categorySheetOpen,
+        setCategorySheetOpen,
+        hideBottomMenu,
       }}
     >
       {children}
