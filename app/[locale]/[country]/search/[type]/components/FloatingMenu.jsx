@@ -2,136 +2,172 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Home, Share2, Scale, Building2, X } from "lucide-react";
+import { Home, Scale, Building2, X } from "lucide-react";
 import { useUI } from "@/context/UIContext";
-import { useSearchParams, usePathname ,useRouter} from "next/navigation";
+import { useSearchParams, usePathname, useRouter } from "next/navigation";
 
+/*
+ * FAB_BOTTOM must match BottomMenu's constant so Compare (left) and Map (right)
+ * sit on the EXACT same horizontal plane:
+ *
+ *   [ Compare ]                              [ Map ]
+ *             ↑ both at this bottom value ↑
+ *
+ *              ──────── Footer ─────────
+ */
+const FAB_BOTTOM        = "calc(68px + env(safe-area-inset-bottom, 0px) + 12px)";
+// Home shortcut button stacks above Map FAB (46px height + 10px gap = 56px offset)
+const HOME_BTN_BOTTOM   = "calc(68px + env(safe-area-inset-bottom, 0px) + 12px + 56px)";
+const SCROLL_THRESHOLD  = 80;
 
+const FADE = {
+  initial:    { opacity: 0, y: 10 },
+  animate:    { opacity: 1, y: 0  },
+  exit:       { opacity: 0, y: 10 },
+  transition: { duration: 0.22, ease: [0.25, 0.46, 0.45, 0.94] },
+};
 
-
-export default function FloatingMenu( {compareList, setCompareList }) {
-  const [open, setOpen] = useState(false);
-
-  
+export default function FloatingMenu({ compareList, setCompareList }) {
+  const [open,    setOpen]    = useState(false);
+  const [visible, setVisible] = useState(true);
+  const lastScroll = useRef(0);
+  const ref        = useRef(null);
 
   const searchParams = useSearchParams();
-const pathname = usePathname();
-const router = useRouter();
-
-const useLastRoute = () => {
-  const pathname = usePathname();
-  return pathname.split("/").filter(Boolean).pop();
-};
-
-// usage
-const lastSegment = useLastRoute();
-
+  const pathname     = usePathname();
+  const router       = useRouter();
   const { compareOpen, setCompareOpen } = useUI();
-  const ref = useRef(null);
 
-  /* 👉 CLOSE ON OUTSIDE CLICK */
+  /* ── Scroll tracking: hide on scroll-down, show on scroll-up ── */
   useEffect(() => {
-    const handleClick = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) {
-        setOpen(false);
-      }
+    const onScroll = () => {
+      const y = window.scrollY;
+      setVisible(y <= lastScroll.current || y <= SCROLL_THRESHOLD);
+      lastScroll.current = y;
     };
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  /* 🔗 SHARE FUNCTION */
-const handleShare = async () => {
-  const fullUrl = window.location.origin + pathname + "?" + searchParams.toString();
+  /* ── Close home submenu on outside click ─────────────────────── */
+  useEffect(() => {
+    const handle = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
+  }, []);
 
-  if (navigator.share) {
-    await navigator.share({
-      title: "Check this venue",
-      url: fullUrl,
-    });
-  } else {
-    window.open(
-      `https://wa.me/?text=${encodeURIComponent(fullUrl)}`,
-      "_blank"
-    );
-  }
-};
+  const lastSegment = pathname.split("/").filter(Boolean).pop();
 
   const handleNavigate = (key) => {
-  // keep same prefix (/in/en/search/)
-  const basePath = pathname.split("/").slice(0, -1).join("/");
+    const basePath = pathname.split("/").slice(0, -1).join("/");
+    router.push(`${basePath}/${key}`);
+    setOpen(false);
+  };
 
-  router.push(`${basePath}/${key}`);
-  setOpen(false);
-};
+  const handleShare = async () => {
+    const fullUrl = window.location.origin + pathname + "?" + searchParams.toString();
+    if (navigator.share) {
+      await navigator.share({ title: "Check this venue", url: fullUrl });
+    } else {
+      window.open(`https://wa.me/?text=${encodeURIComponent(fullUrl)}`, "_blank");
+    }
+  };
 
-
-  // 🔥 trigger animation when count changes
-
+  const showButtons = visible && !compareOpen;
 
   return (
     <>
-      {/* 🔥 FLOATING MENU (MOBILE ONLY) */}
+      {/*
+        ┌─────────────────────────────────────────────────────────┐
+        │ LEFT — Compare button                                   │
+        │ Breakpoint: md:hidden (mobile <768px only)              │
+        │ Bottom: same as Map FAB → horizontal alignment          │
+        └─────────────────────────────────────────────────────────┘
+      */}
       <AnimatePresence>
-        {!compareOpen && (
+        {showButtons && (
           <motion.div
-            ref={ref}
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 40 }}
-            className="fixed md:hidden right-4 bottom-24 flex flex-col items-end gap-3 z-50"
+            key="compare-fab"
+            {...FADE}
+            style={{ position: "fixed", left: 16, bottom: FAB_BOTTOM, zIndex: 50 }}
+            className="md:hidden"
           >
-            {/* 🔝 HOME MENU */}
-            <div className="relative flex flex-col items-end">
-              <AnimatePresence>
-                {open && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 40, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 40, scale: 0.95 }}
-                    className="absolute bottom-16 flex flex-col items-end gap-3"
-                  >
-                    <MenuItem
-                      icon={<Building2 size={18} />}
-                      label="Venue"
-                      active={lastSegment === "venues"}
-                       onClick={() => handleNavigate('venues')}
-                    />
-
-                    
-
-                    <MenuItem
-                      icon={<Home size={18} />}
-                      label="Farmstay"
-                      active={lastSegment === "farmstay"}
-                       onClick={() => handleNavigate('farmstay')}
-                    />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* HOME BUTTON */}
-              <motion.button
-                onClick={() => setOpen(!open)}
-                whileTap={{ scale: 0.9 }}
-                className="bg-white/80 backdrop-blur-md shadow-lg border border-white/40 rounded-full p-3 hover:scale-105 transition"
-              >
-                <Home size={18} />
-              </motion.button>
-            </div>
-
-            {/* 🔥 FIXED BUTTONS */}
-            <CompareButton
-              count={compareList.length}
-              onClick={() => setCompareOpen(true)}
-            />
-
-            {/* <IconButton icon={<Share2 size={18} />} onClick={handleShare} /> */}
+            <CompareButton count={compareList.length} onClick={() => setCompareOpen(true)} />
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* 🧾 COMPARE MODAL */}
+      {/*
+        ┌─────────────────────────────────────────────────────────┐
+        │ RIGHT — Category shortcut (Home submenu)                │
+        │ Breakpoint: md:hidden (mobile <768px only)              │
+        │ Bottom: HOME_BTN_BOTTOM = FAB_BOTTOM + 56px             │
+        │ Sits above Map FAB so they don't overlap                │
+        └─────────────────────────────────────────────────────────┘
+      */}
+      <AnimatePresence>
+        {showButtons && (
+          <motion.div
+            ref={ref}
+            key="home-fab"
+            {...FADE}
+            style={{ position: "fixed", right: 16, bottom: HOME_BTN_BOTTOM, zIndex: 50 }}
+            className="md:hidden flex flex-col items-end gap-2"
+          >
+            {/* Sub-items slide up from button */}
+            <AnimatePresence>
+              {open && (
+                <motion.div
+                  initial={{ opacity: 0, y: 16, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0,  scale: 1 }}
+                  exit={{    opacity: 0, y: 16, scale: 0.95 }}
+                  transition={{ duration: 0.18, ease: [0.25, 0.46, 0.45, 0.94] }}
+                  className="flex flex-col items-end gap-2 pb-1"
+                >
+                  <MenuItem
+                    icon={<Building2 size={15} />}
+                    label="Venue"
+                    active={lastSegment === "venues"}
+                    onClick={() => handleNavigate("venues")}
+                  />
+                  <MenuItem
+                    icon={<Home size={15} />}
+                    label="Farmstay"
+                    active={lastSegment === "farmstay"}
+                    onClick={() => handleNavigate("farmstay")}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <motion.button
+              onClick={() => setOpen((v) => !v)}
+              whileTap={{ scale: 0.9 }}
+              aria-label="Switch category"
+              aria-expanded={open}
+              className={[
+                "rounded-full p-[11px] transition",
+                "bg-white/90 dark:bg-gray-900/90",
+                "backdrop-blur-md",
+                "border border-white/40 dark:border-white/[0.08]",
+                "shadow-[0_4px_16px_rgba(0,0,0,0.10)]",
+                "hover:scale-105",
+              ].join(" ")}
+            >
+              <Home size={17} className="text-gray-700 dark:text-gray-300" />
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/*
+        ┌─────────────────────────────────────────────────────────┐
+        │ Compare modal — bottom sheet                            │
+        │ md:hidden so it only renders on mobile                  │
+        └─────────────────────────────────────────────────────────┘
+      */}
       <AnimatePresence>
         {compareOpen && (
           <motion.div
@@ -139,6 +175,7 @@ const handleShare = async () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
             onClick={() => setCompareOpen(false)}
           >
             <motion.div
@@ -147,35 +184,34 @@ const handleShare = async () => {
               animate={{ y: 0 }}
               exit={{ y: 300 }}
               transition={{ type: "spring", stiffness: 260, damping: 25 }}
-              className="bg-white w-full max-w-md rounded-t-3xl p-5 shadow-xl"
+              className="bg-white dark:bg-gray-900 w-full max-w-md rounded-t-3xl p-5 shadow-xl"
             >
-              {/* HEADER */}
               <div className="flex justify-between items-center mb-4">
-                <h2 className="font-semibold text-lg">
+                <h2 className="font-semibold text-lg dark:text-white">
                   Compare List ({compareList.length}/4)
                 </h2>
-                <X onClick={() => setCompareOpen(false)} />
+                <button
+                  onClick={() => setCompareOpen(false)}
+                  aria-label="Close compare"
+                  className="rounded-full p-1 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                >
+                  <X size={20} />
+                </button>
               </div>
 
-              {/* LIST */}
               {compareList.length === 0 ? (
-                <p className="text-gray-500 text-sm">No items added</p>
+                <p className="text-gray-500 dark:text-gray-400 text-sm">No items added yet</p>
               ) : (
                 <ul className="space-y-2 mb-4">
                   {compareList.map((item, i) => (
                     <li
                       key={i}
-                      className="flex justify-between items-center bg-gray-100 rounded-lg px-3 py-2 text-sm"
+                      className="flex justify-between items-center bg-gray-100 dark:bg-gray-800 rounded-lg px-3 py-2 text-sm dark:text-white"
                     >
                       {item}
-
                       <button
-                        onClick={() =>
-                          setCompareList((prev) =>
-                            prev.filter((_, index) => index !== i)
-                          )
-                        }
-                        className="text-red-500 text-xs"
+                        onClick={() => setCompareList((prev) => prev.filter((_, idx) => idx !== i))}
+                        className="text-red-500 text-xs ml-2 shrink-0"
                       >
                         Remove
                       </button>
@@ -184,25 +220,19 @@ const handleShare = async () => {
                 </ul>
               )}
 
-              {/* LIMIT MESSAGE */}
               {compareList.length >= 4 && (
-                <p className="text-xs text-red-500 mb-2">
-                  Maximum 4 items allowed
-                </p>
+                <p className="text-xs text-red-500 mb-2">Maximum 4 items allowed</p>
               )}
 
-              {/* ACTION BUTTON */}
               <button
                 disabled={compareList.length < 2}
                 onClick={() => {
-                  window.location.href = `/compare?items=${compareList.join(
-                    ","
-                  )}`;
+                  window.location.href = `/compare?items=${compareList.join(",")}`;
                 }}
                 className={`w-full py-3 rounded-xl font-medium transition ${
                   compareList.length < 2
-                    ? "bg-gray-300 text-gray-500"
-                    : "bg-purple-600 text-white hover:bg-purple-700"
+                    ? "bg-gray-200 dark:bg-gray-700 text-gray-400"
+                    : "bg-purple-600 text-white hover:bg-purple-700 active:bg-purple-800"
                 }`}
               >
                 Compare Now
@@ -215,97 +245,63 @@ const handleShare = async () => {
   );
 }
 
-/* 🔘 ICON BUTTON */
-function IconButton({ icon, onClick }) {
-  return (
-    <button
-      onClick={onClick}
-      className="bg-white/80 backdrop-blur-md shadow-lg border border-white/40 rounded-full p-3 hover:scale-105 transition"
-    >
-      {icon}
-    </button>
-  );
-}
-
-/* 🔥 COMPARE BUTTON */
+/* ── CompareButton ──────────────────────────────────────────────── */
 function CompareButton({ count, onClick }) {
-const [animateKey, setAnimateKey] = useState(0);
+  const [animKey, setAnimKey] = useState(0);
+  useEffect(() => { if (count > 0) setAnimKey((p) => p + 1); }, [count]);
 
-
-      useEffect(() => {
-    if (count > 0) {
-      setAnimateKey((prev) => prev + 1);
-    }
-  }, [count]);
   return (
-     <div className="relative flex items-center justify-center">
-
-      {/* BUTTON */}
+    <div className="relative flex items-center justify-center">
       <motion.button
-        key={animateKey} // 🔥 re-trigger animation
+        key={animKey}
         onClick={onClick}
         initial={{ scale: 1 }}
-        animate={{
-          scale: [1, 1.25, 0.95, 1],
-          rotate: [0, -8, 8, 0],
-        }}
-        transition={{ duration: 0.5 }}
-        whileHover={{ scale: 1.1 }}
+        animate={{ scale: [1, 1.18, 0.95, 1], rotate: [0, -5, 5, 0] }}
+        transition={{ duration: 0.4 }}
+        whileHover={{ scale: 1.08 }}
         whileTap={{ scale: 0.9 }}
-        className="relative p-3 rounded-full 
-        bg-gradient-to-br from-[#7B61FF] to-[#9F7AEA] 
-        text-white shadow-lg transition-all duration-300"
+        aria-label="Open compare list"
+        className="relative p-[11px] rounded-full bg-gradient-to-br from-[#7B61FF] to-[#9F7AEA] text-white shadow-[0_4px_16px_rgba(123,97,255,0.35)] transition-all duration-300"
       >
-        {/* Glow Pulse */}
-        <span className="absolute inset-0 rounded-full bg-purple-400 opacity-20 blur-md animate-ping"></span>
-
-        <Scale size={18} className="relative z-10" />
+        <span className="absolute inset-0 rounded-full bg-purple-400 opacity-20 blur-md animate-ping" />
+        <Scale size={17} className="relative z-10" />
       </motion.button>
 
-      {/* BADGE */}
       <AnimatePresence>
         {count > 0 && (
           <motion.span
             key={count}
-            initial={{ scale: 0.5, opacity: 0, y: -5 }}
-            animate={{
-              scale: [1, 1.4, 1],
-              opacity: 1,
-              y: 0,
-            }}
+            initial={{ scale: 0.5, opacity: 0, y: -4 }}
+            animate={{ scale: [1, 1.3, 1], opacity: 1, y: 0 }}
             exit={{ scale: 0.5, opacity: 0 }}
-            transition={{ duration: 0.4 }}
-            className="absolute -top-1 -right-1 min-w-[20px] h-[20px] 
-            flex items-center justify-center 
-            bg-white text-purple-700 text-[10px] font-bold 
-            rounded-full shadow-md"
+            transition={{ duration: 0.3 }}
+            className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center bg-white text-purple-700 text-[9px] font-bold rounded-full shadow-md"
           >
             {count > 9 ? "9+" : count}
           </motion.span>
         )}
       </AnimatePresence>
-
     </div>
   );
 }
 
-
-/* 🧩 MENU ITEM */
+/* ── MenuItem ───────────────────────────────────────────────────── */
 function MenuItem({ icon, label, onClick, active }) {
   return (
-    <motion.div
+    <motion.button
+      type="button"
       onClick={onClick}
-      whileHover={{ scale: 1.05 }}
-      className={`flex items-center gap-2 rounded-full px-4 py-2 cursor-pointer transition
-        ${
-          active
-            ? "bg-purple-600 text-white shadow-lg"
-            : "bg-white/90 backdrop-blur-md shadow-xl border border-white/40"
-        }
-      `}
+      whileHover={{ scale: 1.04 }}
+      whileTap={{ scale: 0.96 }}
+      className={[
+        "flex items-center gap-2 rounded-full px-3.5 py-2 text-sm font-medium transition",
+        active
+          ? "bg-purple-600 text-white shadow-lg"
+          : "bg-white/90 dark:bg-gray-900/90 backdrop-blur-md shadow-xl border border-white/40 dark:border-white/[0.08] text-gray-800 dark:text-gray-200",
+      ].join(" ")}
     >
       {icon}
-      <span className="text-sm font-medium">{label}</span>
-    </motion.div>
+      <span>{label}</span>
+    </motion.button>
   );
 }

@@ -73,6 +73,9 @@ export default function SearchPage() {
   const [wishlist,         setWishlist]          = useState([]);
   const [compares,         setCompares]          = useState([]);
   const [showComparePanel, setShowComparePanel]  = useState(false);
+  const [fabVisible,       setFabVisible]        = useState(true);
+  const [isMobileWidth,    setIsMobileWidth]     = useState(false);
+  const fabLastScroll = useRef(0);
   const [selectedCategory, setSelectedCategory]  = useState(null);
   const [mapBounds,        setMapBounds]         = useState(null);
 
@@ -131,6 +134,25 @@ export default function SearchPage() {
     if (!hoverVenue || !mapRef.current) return;
     mapRef.current.panTo({ lat: Number(hoverVenue.lat), lng: Number(hoverVenue.lng) });
   }, [hoverVenue]);
+
+  /* ── FAB scroll tracking: hide on scroll-down, show on scroll-up (mobile only) ── */
+  useEffect(() => {
+    const onScroll = () => {
+      const y = window.scrollY;
+      setFabVisible(y <= fabLastScroll.current || y <= 80);
+      fabLastScroll.current = y;
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  /* ── Track mobile breakpoint — scroll-hide only on < 768px ── */
+  useEffect(() => {
+    const check = () => setIsMobileWidth(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check, { passive: true });
+    return () => window.removeEventListener("resize", check);
+  }, []);
 
   /* ── body scroll lock when filter open ────────────────────── */
   useEffect(() => {
@@ -273,12 +295,25 @@ export default function SearchPage() {
       <AnimatePresence>
         {compares.length > 0 && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.8, y: 20 }}
-            animate={{ opacity: 1, scale: 1,   y: 0  }}
-            exit={{   opacity: 0, scale: 0.8,  y: 20 }}
-            transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-            /* Desktop (lg+): 32px from bottom/left. Mobile: above 64px bottom nav */
-            className="fixed bottom-[88px] left-4 lg:bottom-8 lg:left-6 z-[35]"
+            key="compare-fab"
+            /* Entry: slides up + fades in */
+            initial={{ opacity: 0, scale: 0.85, y: 20 }}
+            /* Scroll-aware on mobile only — tablet/desktop always visible */
+            animate={
+              (isMobileWidth ? fabVisible : true)
+                ? { opacity: 1,  scale: 1,    y: 0  }
+                : { opacity: 0,  scale: 0.95, y: 14 }
+            }
+            /* Exit when compare list clears */
+            exit={{ opacity: 0, scale: 0.85, y: 20 }}
+            transition={{ duration: 0.22, ease: [0.25, 0.46, 0.45, 0.94] }}
+            className="fixed z-[35]"
+            style={{
+              bottom: "calc(68px + env(safe-area-inset-bottom, 0px) + 12px)",
+              left: 25,
+              /* Prevent click-through when hidden on scroll */
+              pointerEvents: (isMobileWidth && !fabVisible) ? "none" : "auto",
+            }}
           >
             <div className="relative">
               {/* FAB pill */}
