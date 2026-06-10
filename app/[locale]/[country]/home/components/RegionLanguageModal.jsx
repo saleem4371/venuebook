@@ -302,7 +302,7 @@ const AWS_URL = process.env.NEXT_PUBLIC_AWS_BUCKET_URL;
                     </p>
                     <div className="grid grid-cols-2 gap-2">
                       {loadcountry.map((region) => {
-                        const active    = region.iso_code === currentCountry;
+                        const active    = region.iso_code.toLowerCase() === currentCountry.toLowerCase();
                         const isPending = pending?.type === "region" && pending?.value === region.iso_code;
                         return (
                           <button

@@ -6,8 +6,9 @@ import { useParams, useRouter }                     from "next/navigation";
 import { useTranslations }                          from "next-intl";
 import { X }                                        from "lucide-react";
 
-import { useCategory }                                  from "@/context/CategoryContext";
-import { CATEGORIES, CATEGORY_COLORS }                  from "@/config/categoryConfig";
+import { useCategory }           from "@/context/CategoryContext";
+import { useUI }                 from "@/context/UIContext";
+import { CATEGORIES, CATEGORY_COLORS } from "@/config/categoryConfig";
 
 function useIsBelow(bp) {
   const [below, setBelow] = useState(false);
@@ -28,6 +29,7 @@ export default function CategoryNavigator({ loadData = [], fabBreakpoint = 768 }
   const isFabMode             = useIsBelow(fabBreakpoint);
 
   const { activeCategory, setActiveCategory, categoryConfig } = useCategory();
+  const { categorySheetOpen, setCategorySheetOpen } = useUI();
   const params  = useParams();
   const router  = useRouter();
   const t       = useTranslations("categories");
@@ -36,6 +38,12 @@ export default function CategoryNavigator({ loadData = [], fabBreakpoint = 768 }
 
   useEffect(() => setMounted(true), []);
 
+  /* Sync UIContext → local: BottomMenu "Categories" tap opens the sheet */
+  useEffect(() => {
+    if (isFabMode && categorySheetOpen && !isOpen) setIsOpen(true);
+  }, [isFabMode, categorySheetOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* Desktop outside-click close */
   useEffect(() => {
     if (!isOpen || isFabMode) return;
     const onMouse = (e) => {
@@ -50,26 +58,36 @@ export default function CategoryNavigator({ loadData = [], fabBreakpoint = 768 }
     };
   }, [isOpen, isFabMode]);
 
+  /* Mobile keyboard close */
   useEffect(() => {
     if (!isOpen || !isFabMode) return;
-    const onKey = (e) => { if (e.key === "Escape") setIsOpen(false); };
+    const onKey = (e) => { if (e.key === "Escape") handleSetIsOpen(false); };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [isOpen, isFabMode]);
+  }, [isOpen, isFabMode]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /**
+   * Wrapped setter — also resets UIContext so BottomMenu active state
+   * updates when the sheet closes from inside (X button, backdrop, item tap).
+   */
+  const handleSetIsOpen = useCallback((val) => {
+    setIsOpen(val);
+    if (!val) setCategorySheetOpen(false);
+  }, [setCategorySheetOpen]);
 
   const handleSelect = useCallback((id) => {
     const cat = CATEGORIES[id];
     if (!cat || cat.comingSoon) return;
     setActiveCategory(id);
-    setIsOpen(false);
+    handleSetIsOpen(false);
     router.push(`/${locale}/${country}/search/${cat.route}`);
-  }, [setActiveCategory, router, locale, country]);
+  }, [setActiveCategory, handleSetIsOpen, router, locale, country]);
 
   if (!mounted) return null;
 
   const activeColor = CATEGORY_COLORS[categoryConfig?.color ?? "violet"];
   const activeLabel = t(categoryConfig?.id ?? "venues");
-  const shared = { isOpen, setIsOpen, activeCategory, activeColor, activeLabel, onSelect: handleSelect, t, loadData };
+  const shared = { isOpen, setIsOpen: handleSetIsOpen, activeCategory, activeColor, activeLabel, onSelect: handleSelect, t, loadData };
 
   return isFabMode
     ? <FabNavigator {...shared} />
@@ -120,9 +138,13 @@ function DesktopNav({ containerRef, isOpen, setIsOpen, activeCategory, activeCol
   );
 }
 
+/**
+ * FabNavigator — mobile category sheet only.
+ * The trigger button has been removed; the sheet is opened externally
+ * via UIContext.categorySheetOpen (set by BottomMenu's Categories tab).
+ */
 function FabNavigator({ isOpen, setIsOpen, activeCategory, activeColor, activeLabel, onSelect, t, loadData }) {
-  const hasBottomNav = useIsBelow(768);
-
+  /* Body scroll lock while sheet is open */
   useEffect(() => {
     if (!isOpen) return;
     const prev = document.body.style.overflow;
@@ -130,40 +152,8 @@ function FabNavigator({ isOpen, setIsOpen, activeCategory, activeColor, activeLa
     return () => { document.body.style.overflow = prev; };
   }, [isOpen]);
 
-  const fabBottom = hasBottomNav
-    ? "calc(72px + env(safe-area-inset-bottom, 0px) + 12px)"
-    : "24px";
-
   return (
     <>
-      <motion.button
-        key="cat-fab"
-        initial={{ scale: 0.7, opacity: 0 }}
-        animate={{ scale: 1,   opacity: 1 }}
-        exit={{   scale: 0.7, opacity: 0 }}
-        transition={{ type: "spring", stiffness: 320, damping: 26 }}
-        whileTap={{ scale: 0.88 }}
-        onClick={() => setIsOpen((v) => !v)}
-        aria-label={`${activeLabel} — switch category`}
-        aria-haspopup="dialog"
-        aria-expanded={isOpen}
-        style={{
-          position: "fixed", right: 16, bottom: fabBottom,
-          width: 56, height: 56, borderRadius: "50%",
-          background: "rgba(255,255,255,0.92)",
-          backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
-          border: `1.5px solid ${activeColor.accent}30`,
-          boxShadow: "0 4px 20px rgba(0,0,0,0.14), 0 1px 6px rgba(0,0,0,0.08)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          cursor: "pointer", zIndex: 42, transition: "bottom 0.25s ease",
-        }}
-        className="dark:!bg-gray-900/90 dark:!border-white/10"
-      >
-        <span className={`inline-flex items-center justify-center overflow-hidden w-9 h-9 rounded-full ${activeColor.bg}`} aria-hidden="true">
-          <CategoryIcon id={activeCategory} sizeClass="h-5 w-5" />
-        </span>
-      </motion.button>
-
       <AnimatePresence>
         {isOpen && (
           <>
@@ -244,7 +234,7 @@ function SheetGrid({ loadData, activeCategory, onSelect }) {
             <span className={["text-[12px] font-semibold leading-snug text-center", isAct ? color.text : "text-gray-700 dark:text-gray-300"].join(" ")}>
               {item.name}
             </span>
-            {isAct && <span aria-hidden="true" className={`absolute top-2 end-2 w-2 h-2 rounded-full ${color.bg}`} />}
+            {/* active state indicated by icon/label color + ring only — no dot */}
             {cat.comingSoon && (
               <span className="absolute top-2 start-2 rounded-full bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Soon</span>
             )}

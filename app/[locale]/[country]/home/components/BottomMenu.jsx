@@ -3,147 +3,256 @@
 import { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Home, Search, Heart, User, Map } from "lucide-react";
-import { useUI } from "@/context/UIContext";
+import { Map } from "lucide-react";
+import { useUI }       from "@/context/UIContext";
+import { useCategory } from "@/context/CategoryContext";
+import { CATEGORY_COLORS } from "@/config/categoryConfig";
 
-const SCROLL_THRESHOLD = 100;
+const CAT_LABEL = {
+  venues:      "Venue",
+  farmstays:   "Farmstay",
+  studios:     "Studio",
+  rentals:     "Rental",
+  workspaces:  "Workspace",
+  experiences: "Experience",
+};
+
+const SCROLL_THRESHOLD = 80;
+
+/*
+ * Map FAB sits at this bottom value on ALL sizes where it is visible:
+ *   Mobile  (<768px)  : above the footer pill (~68px) + 12px gap = ~80px
+ *   Tablet (768–1023px): footer is hidden, so 80px from bottom = comfortable thumb zone
+ *   Desktop (1024px+) : lg:hidden — not rendered
+ *
+ * The Compare button (in FloatingMenu) uses the exact same value so they align.
+ */
+const FAB_BOTTOM = "calc(68px + env(safe-area-inset-bottom, 0px) + 12px)";
 
 export default function BottomMenu() {
-  const { setShowMap, hideBottomMenu, setLoginOpen } = useUI();
+  const {
+    showMap, setShowMap,
+    filterOpen, compareOpen,
+    hideBottomMenu,
+    setCategorySheetOpen,
+  } = useUI();
+  const { activeCategory, categoryConfig } = useCategory();
 
-  const [visible, setVisible] = useState(true);
+  const [visible,      setVisible]      = useState(true);
+  const [isMobileWidth, setIsMobileWidth] = useState(false);
   const lastScroll = useRef(0);
+  const pathname   = usePathname();
+  const router     = useRouter();
 
-  const pathname = usePathname();
-  const router = useRouter();
-
-  /* ---------------- Path parsing ---------------- */
-  const segments = useMemo(
-    () => pathname.split("/").filter(Boolean),
-    [pathname]
-  );
-
-  const locale = segments[0];
-  const country = segments[1];
+  const segments = useMemo(() => pathname.split("/").filter(Boolean), [pathname]);
+  const locale   = segments[0];
+  const country  = segments[1];
 
   const isSearchPage =
     pathname.includes("/search") || pathname.includes("/venues");
 
-  const isDetailPage =
-    segments.length === 4 &&
-    segments[2] === "search" &&
-    !["venues", "farmstay"].includes(segments[3]);
+  // 5+ segments = detail page (/locale/country/search/type/id)
+  // 4  segments = list page  (/locale/country/search/type) — show nav
+  const isDetailPage = segments.length >= 5 && segments[2] === "search";
 
   const isHome =
     pathname === `/${locale}/${country}` ||
     pathname === `/${locale}/${country}/home`;
 
-  /* ---------------- Scroll show/hide ---------------- */
   useEffect(() => {
-    const handleScroll = () => {
-      const current = window.scrollY;
-      if (current > lastScroll.current && current > SCROLL_THRESHOLD) {
-        setVisible(false);
-      } else {
-        setVisible(true);
-      }
-      lastScroll.current = current;
+    const onScroll = () => {
+      const y = window.scrollY;
+      setVisible(y <= lastScroll.current || y <= SCROLL_THRESHOLD);
+      lastScroll.current = y;
     };
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  /* ---------------- Navigation helper ---------------- */
+  /* Track mobile breakpoint — scroll-hide only applies below 768px */
+  useEffect(() => {
+    const check = () => setIsMobileWidth(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check, { passive: true });
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
   const go = useCallback(
-    (path) => {
-      router.push(`/${locale}/${country}${path}`);
-    },
+    (path) => router.push(`/${locale}/${country}${path}`),
     [router, locale, country]
   );
 
   if (!locale || !country) return null;
 
+  /*
+   * Footer nav: hide when map/filter/compare overlays are open, detail pages, or scroll-down
+   * Map FAB   : hide only on filter/compare overlays (NOT on showMap — it's the toggle!)
+   *             Always visible on scroll-up; hidden on scroll-down
+   */
+  /* Footer nav: mobile-only — scroll-hide applies only on mobile (<768px) */
+  const showNav = (isMobileWidth ? visible : true) && !hideBottomMenu && !isDetailPage;
+  /* Map FAB: scroll-hide applies only on mobile (<768px); tablet always stays visible */
+  const showFab = (isMobileWidth ? visible : true) && isSearchPage && !isDetailPage && !filterOpen && !compareOpen;
+
+  const catColor    = CATEGORY_COLORS[categoryConfig?.color ?? "violet"] ?? CATEGORY_COLORS.violet;
+  const searchRoute = `/search/${categoryConfig?.route ?? "venues"}`;
+  const isSearchActive = isSearchPage && !isDetailPage;
+
+  const purpleText = "text-violet-600 dark:text-violet-400";
+  const purpleBg   = "bg-violet-50 dark:bg-violet-500/10";
+
+  const FADE = {
+    initial:    { opacity: 0, y: 10 },
+    animate:    { opacity: 1, y: 0  },
+    exit:       { opacity: 0, y: 10 },
+    transition: { duration: 0.22, ease: [0.25, 0.46, 0.45, 0.94] },
+  };
+
   return (
-    <AnimatePresence>
-      {visible && !hideBottomMenu && !isDetailPage && (
-        <motion.nav
-          aria-label="Primary mobile"
-          initial={{ y: 96, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 96, opacity: 0 }}
-          transition={{ type: "spring", stiffness: 220, damping: 28 }}
-          className="fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-[max(env(safe-area-inset-bottom),12px)] md:hidden"
-        >
-          <ul className="flex items-center gap-1 rounded-full border border-gray-200 bg-white/90 px-2 py-1.5 shadow-[0_12px_32px_-8px_rgba(0,0,0,0.18)] backdrop-blur-md">
-            <NavItem
-              icon={<Home className="h-5 w-5" aria-hidden="true" />}
-              label="Home"
-              active={isHome}
-              onClick={() => go("/home")}
-            />
-            <NavItem
-              icon={<Search className="h-5 w-5" aria-hidden="true" />}
-              label="Search"
-              active={pathname.includes("/search") && !isDetailPage}
-              onClick={() => go("/search")}
-            />
-            <NavItem
-              icon={<Heart className="h-5 w-5" aria-hidden="true" />}
-              label="Wishlist"
-              active={pathname.includes("/wishlist")}
-              onClick={() => go("/wishlist")}
-            />
-            <NavItem
-              icon={<User className="h-5 w-5" aria-hidden="true" />}
-              label="Profile"
-              active={pathname.includes("/profile")}
-              onClick={() => setLoginOpen(true)}
-            />
-            {isSearchPage && (
+    <>
+      {/*
+        Map FAB
+        ────────
+        Breakpoints  : lg:hidden (hidden at 1024px+, visible on mobile + tablet)
+        Visibility   : scroll-aware via showFab; shown even when map view is active
+        Position     : bottom-right, mirrors Compare button on bottom-left
+        The same FAB_BOTTOM constant is exported-by-convention to FloatingMenu
+        so both buttons sit on the exact same horizontal plane.
+      */}
+      <AnimatePresence>
+        {showFab && (
+          <motion.button
+            key="map-fab"
+            type="button"
+            onClick={() => setShowMap((v) => !v)}
+            aria-label={showMap ? "Show list view" : "Show map view"}
+            aria-pressed={showMap}
+            {...FADE}
+            whileTap={{ scale: 0.88 }}
+            style={{
+              position:             "fixed",
+              right:                25,
+              bottom:               FAB_BOTTOM,
+              width:                46,
+              height:               46,
+              borderRadius:         "50%",
+              background:           "rgba(255,255,255,0.97)",
+              backdropFilter:       "blur(20px)",
+              WebkitBackdropFilter: "blur(20px)",
+              border:               "1px solid rgba(0,0,0,0.08)",
+              boxShadow:            "0 4px 16px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06)",
+              /* NOTE: no display here — let lg:hidden CSS control display */
+              alignItems:           "center",
+              justifyContent:       "center",
+              cursor:               "pointer",
+              zIndex:               42,
+            }}
+            className="flex lg:hidden dark:!bg-gray-900/97 dark:!border-white/[0.08]"
+          >
+            <Map className="h-[17px] w-[17px] text-gray-700 dark:text-gray-300" aria-hidden="true" />
+          </motion.button>
+        )}
+      </AnimatePresence>
+
+      {/*
+        Footer navigation bar
+        ──────────────────────
+        Breakpoints : md:hidden (hidden at 768px+)
+        Mobile only — tablet and desktop never render this
+      */}
+      <AnimatePresence>
+        {showNav && (
+          <motion.nav
+            aria-label="Primary mobile navigation"
+            {...FADE}
+            className="fixed inset-x-0 bottom-0 z-40 flex justify-center px-3 pb-[max(env(safe-area-inset-bottom),10px)] md:hidden"
+          >
+            <ul
+              role="list"
+              className={[
+                "flex w-full max-w-sm items-center",
+                "rounded-[22px] border border-gray-200/50 dark:border-gray-700/30",
+                "bg-white/95 dark:bg-gray-950/95",
+                "px-1.5 py-1",
+                "shadow-[0_4px_20px_-4px_rgba(0,0,0,0.10),0_2px_6px_-2px_rgba(0,0,0,0.06)]",
+                "backdrop-blur-2xl",
+              ].join(" ")}
+            >
+              <NavItem icon={<HomeIcon />}   label="Home"    active={isHome}                     textCls={purpleText} bgCls={purpleBg} onClick={() => go("/home")} />
+              <NavItem icon={<SearchIcon />} label="Search"  active={isSearchActive}              textCls={purpleText} bgCls={purpleBg} onClick={() => go(searchRoute)} />
+              <NavItem icon={<HeartIcon />}  label="Wishlist" active={pathname.includes("/wishlist")} textCls={purpleText} bgCls={purpleBg} onClick={() => go("/wishlist")} />
               <NavItem
-                icon={<Map className="h-5 w-5" aria-hidden="true" />}
-                label="Map"
-                onClick={() => setShowMap(true)}
+                icon={<CategoryTabIcon id={activeCategory} />}
+                label={CAT_LABEL[activeCategory] ?? "Categories"}
+                active={false}
+                alwaysAccented
+                textCls={catColor.text}
+                bgCls={catColor.light}
+                onClick={() => setCategorySheetOpen(true)}
               />
-            )}
-          </ul>
-        </motion.nav>
-      )}
-    </AnimatePresence>
+            </ul>
+          </motion.nav>
+        )}
+      </AnimatePresence>
+    </>
   );
 }
 
-/* ------------------------------------------------------------------ */
-/*  NavItem                                                            */
-/* ------------------------------------------------------------------ */
-function NavItem({ icon, label, onClick, active = false }) {
+/* ── NavItem ─────────────────────────────────────────────────────── */
+function NavItem({ icon, label, onClick, active = false, alwaysAccented = false, textCls, bgCls }) {
+  const accented = active || alwaysAccented;
   return (
-    <li>
+    <li className="flex-1">
       <button
         type="button"
         onClick={onClick}
         aria-label={label}
         aria-current={active ? "page" : undefined}
         className={[
-          "group relative flex min-w-[56px] flex-col items-center justify-center rounded-full px-3 py-1.5",
-          "text-[11px] font-medium transition active:scale-95",
-          "focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2",
-          active
-            ? "text-purple-700"
-            : "text-gray-600 hover:text-gray-900",
+          "group flex w-full flex-col items-center gap-[3px]",
+          "rounded-[18px] px-1 py-[5px]",
+          "text-[10px] font-medium leading-none tracking-[0.01em]",
+          "transition-colors duration-200 active:scale-[0.93]",
+          "focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-1",
+          accented
+            ? textCls
+            : "text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300",
         ].join(" ")}
       >
-        <span
+        <motion.span
+          animate={{ scale: accented ? 1.05 : 1 }}
+          transition={{ duration: 0.18, ease: [0.25, 0.46, 0.45, 0.94] }}
           className={[
-            "flex h-9 w-9 items-center justify-center rounded-full transition",
-            active ? "bg-purple-50" : "group-hover:bg-gray-100",
+            "flex h-[32px] w-[32px] items-center justify-center rounded-[11px]",
+            "transition-colors duration-200",
+            accented ? bgCls : "group-hover:bg-gray-100/80 dark:group-hover:bg-gray-800/50",
           ].join(" ")}
         >
           {icon}
-        </span>
-        <span className="mt-0.5">{label}</span>
+        </motion.span>
+        <span className="truncate max-w-[60px]">{label}</span>
       </button>
     </li>
   );
 }
+
+/* ── CategoryTabIcon ─────────────────────────────────────────────── */
+function CategoryTabIcon({ id }) {
+  const norm = id?.toLowerCase().replace(/s$/, "");
+  const p = { width:"17", height:"17", viewBox:"0 0 24 24", fill:"none", stroke:"currentColor", strokeWidth:"2", strokeLinecap:"round", strokeLinejoin:"round", "aria-hidden":"true" };
+  switch (norm) {
+    case "venue":      return <svg {...p}><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>;
+    case "farmstay":   return <svg {...p}><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 0 0 1 1h3m10-11l2 2m-2-2v10a1 1 0 0 1-1 1h-3m-6 0a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1m-6 0h6"/></svg>;
+    case "studio":     return <svg {...p}><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>;
+    case "rental":     return <svg {...p}><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>;
+    case "workspace":  return <svg {...p}><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>;
+    case "experience": return <svg {...p}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>;
+    default:           return <svg {...p}><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>;
+  }
+}
+
+/* ── Inline SVG icons ─────────────────────────────────────────────── */
+const S = { width:"17", height:"17", viewBox:"0 0 24 24", fill:"none", stroke:"currentColor", strokeWidth:"2", strokeLinecap:"round", strokeLinejoin:"round", "aria-hidden":"true" };
+function HomeIcon()   { return <svg {...S}><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>; }
+function SearchIcon() { return <svg {...S}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>; }
+function HeartIcon()  { return <svg {...S}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>; }
