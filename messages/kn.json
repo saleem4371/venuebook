@@ -41,7 +41,19 @@
     "bookings": "ಬುಕಿಂಗ್‌ಗಳು",
     "notifications": "ಅಧಿಸೂಚನೆಗಳು",
     "profile": "ಪ್ರೊಫೈಲ್",
-    "logout": "ಲಾಗ್ ಔಟ್"
+    "logout": "ಲಾಗ್ ಔಟ್",
+    "switch_to_customer": "Switch to customer",
+    "vendor_kyc_status": "KYC Status",
+    "vendor_subscription": "Subscription",
+    "vendor_billing": "Billing",
+    "vendor_plan_benefits": "ಯೋಜನೆ ಪ್ರಯೋಜನಗಳು",
+    "vendor_current_plan": "ಪ್ರಸ್ತುತ ಯೋಜನೆ",
+    "vendor_renews": "ನವೀಕರಣ",
+    "vendor_plan_label": "{plan} ಯೋಜನೆ",
+    "vendor_billing_cycle": "ಬಿಲಿಂಗ್ ಚಕ್ರ",
+    "vendor_next_renewal": "ಮುಂದಿನ ನವೀಕರಣ",
+    "vendor_upgrade_plan": "ಯೋಜನೆ ಅಪ್‌ಗ್ರೇಡ್ ಮಾಡಿ",
+    "vendor_manage_subscription": "ಚಂದಾದಾರಿಕೆ ನಿರ್ವಹಿಸಿ"
   },
   "modal": {
     "title": "ಪ್ರದೇಶ ಮತ್ತು ಭಾಷೆ",
@@ -525,5 +537,20 @@
     "go_back": "ಹಿಂತಿರುಗಿ",
     "return_home": "ಮನೆಗೆ ಹಿಂತಿರುಗಿ",
     "contact_support": "ಬೆಂಬಲ ಸಂಪರ್ಕಿಸಿ"
+  },
+  "membership": {
+    "tier_bronze": "Bronze",
+    "tier_silver": "Silver",
+    "tier_gold": "Gold",
+    "tier_platinum": "Platinum",
+    "tier_diamond": "Diamond",
+    "member_label": "{tier} Member",
+    "points_label": "{points} Points",
+    "next_tier_label": "{points} points to {tier}",
+    "benefits_title": "Benefits",
+    "benefit_priority_support": "Priority Support",
+    "benefit_faster_refunds": "Faster Refunds",
+    "benefit_exclusive_offers": "Exclusive Offers",
+    "membership_badge_aria": "Membership status: {tier} tier"
   }
 }

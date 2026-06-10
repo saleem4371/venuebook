@@ -41,7 +41,19 @@
     "bookings": "बुकिंग",
     "notifications": "सूचनाएं",
     "profile": "प्रोफ़ाइल",
-    "logout": "लॉग आउट"
+    "logout": "लॉग आउट",
+    "switch_to_customer": "Switch to customer",
+    "vendor_kyc_status": "KYC Status",
+    "vendor_subscription": "Subscription",
+    "vendor_billing": "Billing",
+    "vendor_plan_benefits": "प्लान लाभ",
+    "vendor_current_plan": "वर्तमान प्लान",
+    "vendor_renews": "नवीनीकरण",
+    "vendor_plan_label": "{plan} प्लान",
+    "vendor_billing_cycle": "बिलिंग चक्र",
+    "vendor_next_renewal": "अगला नवीनीकरण",
+    "vendor_upgrade_plan": "प्लान अपग्रेड करें",
+    "vendor_manage_subscription": "सदस्यता प्रबंधित करें"
   },
   "modal": {
     "title": "क्षेत्र और भाषा",
@@ -525,5 +537,20 @@
     "go_back": "वापस जाएं",
     "return_home": "होम पर लौटें",
     "contact_support": "सहायता से संपर्क करें"
+  },
+  "membership": {
+    "tier_bronze": "Bronze",
+    "tier_silver": "Silver",
+    "tier_gold": "Gold",
+    "tier_platinum": "Platinum",
+    "tier_diamond": "Diamond",
+    "member_label": "{tier} Member",
+    "points_label": "{points} Points",
+    "next_tier_label": "{points} points to {tier}",
+    "benefits_title": "Benefits",
+    "benefit_priority_support": "Priority Support",
+    "benefit_faster_refunds": "Faster Refunds",
+    "benefit_exclusive_offers": "Exclusive Offers",
+    "membership_badge_aria": "Membership status: {tier} tier"
   }
 }

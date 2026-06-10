@@ -41,7 +41,19 @@
     "bookings": "Bookings",
     "notifications": "Notifications",
     "profile": "Profile",
-    "logout": "Log out"
+    "logout": "Log out",
+    "switch_to_customer": "Switch to customer",
+    "vendor_kyc_status": "KYC Status",
+    "vendor_subscription": "Subscription",
+    "vendor_billing": "Billing",
+    "vendor_plan_benefits": "Plan Benefits",
+    "vendor_current_plan": "Current Plan",
+    "vendor_renews": "Renews",
+    "vendor_plan_label": "{plan} Plan",
+    "vendor_billing_cycle": "Billing Cycle",
+    "vendor_next_renewal": "Next Renewal",
+    "vendor_upgrade_plan": "Upgrade Plan",
+    "vendor_manage_subscription": "Manage Subscription"
   },
   "modal": {
     "title": "Region & Language",
@@ -693,5 +705,20 @@
     "go_back": "Go Back",
     "return_home": "Return Home",
     "contact_support": "Contact Support"
+  },
+  "membership": {
+    "tier_bronze": "Bronze",
+    "tier_silver": "Silver",
+    "tier_gold": "Gold",
+    "tier_platinum": "Platinum",
+    "tier_diamond": "Diamond",
+    "member_label": "{tier} Member",
+    "points_label": "{points} Points",
+    "next_tier_label": "{points} points to {tier}",
+    "benefits_title": "Benefits",
+    "benefit_priority_support": "Priority Support",
+    "benefit_faster_refunds": "Faster Refunds",
+    "benefit_exclusive_offers": "Exclusive Offers",
+    "membership_badge_aria": "Membership status: {tier} tier"
   }
 }

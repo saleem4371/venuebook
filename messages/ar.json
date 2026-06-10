@@ -41,7 +41,19 @@
     "bookings": "الحجوزات",
     "notifications": "الإشعارات",
     "profile": "الملف الشخصي",
-    "logout": "تسجيل الخروج"
+    "logout": "تسجيل الخروج",
+    "switch_to_customer": "Switch to customer",
+    "vendor_kyc_status": "KYC Status",
+    "vendor_subscription": "Subscription",
+    "vendor_billing": "Billing",
+    "vendor_plan_benefits": "مزايا الخطة",
+    "vendor_current_plan": "الخطة الحالية",
+    "vendor_renews": "يجدد",
+    "vendor_plan_label": "خطة {plan}",
+    "vendor_billing_cycle": "دورة الفوترة",
+    "vendor_next_renewal": "التجديد التالي",
+    "vendor_upgrade_plan": "ترقية الخطة",
+    "vendor_manage_subscription": "إدارة الاشتراك"
   },
   "modal": {
     "title": "المنطقة واللغة",
@@ -693,5 +705,20 @@
     "go_back": "رجوع",
     "return_home": "العودة للرئيسية",
     "contact_support": "تواصل مع الدعم"
+  },
+  "membership": {
+    "tier_bronze": "Bronze",
+    "tier_silver": "Silver",
+    "tier_gold": "Gold",
+    "tier_platinum": "Platinum",
+    "tier_diamond": "Diamond",
+    "member_label": "{tier} Member",
+    "points_label": "{points} Points",
+    "next_tier_label": "{points} points to {tier}",
+    "benefits_title": "Benefits",
+    "benefit_priority_support": "Priority Support",
+    "benefit_faster_refunds": "Faster Refunds",
+    "benefit_exclusive_offers": "Exclusive Offers",
+    "membership_badge_aria": "Membership status: {tier} tier"
   }
 }
