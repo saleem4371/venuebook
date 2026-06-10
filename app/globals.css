@@ -8,24 +8,12 @@
 */
 @config "../tailwind.config.js";
 
-/* ── Multilingual font routing ────────────────────────────────────
-   Routes each locale to its correct Noto Sans supplemental font
-   (CSS variables injected by layout.jsx). No line-height or
-   spacing changes — layout stays identical for every language.   */
-/* :lang(hi) { font-family: var(--font-devanagari), ui-sans-serif, system-ui, sans-serif; } */
-/* :lang(kn)  { font-family: var(--font-kannada),   ui-sans-serif, system-ui, sans-serif; } */
+/* Multilingual font routing */
 :lang(ar) {
   font-family: var(--font-arabic), ui-sans-serif, system-ui, sans-serif;
 }
 
-/* ── Optical vertical centering for Indic scripts ─────────────────
-   Noto Sans Devanagari and Kannada have larger ascenders than Plus
-   Jakarta Sans. In flex `items-center` containers the visual glyph
-   appears above-center because the tall ascender shifts the line-box
-   upward. Setting line-height on interactive elements redistributes
-   the ascender/descender space so `items-center` produces correct
-   optical centering.
-   Scope: buttons, tabs, options, menu items only — no layout impact. */
+/* Optical vertical centering for Indic scripts */
 :lang(hi) button,
 :lang(hi) [role="tab"],
 :lang(hi) [role="option"],
@@ -39,10 +27,6 @@
 :lang(kn) [role="menuitem"] {
   line-height: 1.6;
 }
-
-/* ────────────────────────────────────────────────────────────── */
-
-/* price markers */
 
 * {
   -webkit-tap-highlight-color: transparent;
@@ -140,6 +124,62 @@ html {
 .animate-shimmer {
   animation: shimmer 1.5s infinite;
 }
+
+/* ==========================================================================
+   Skeleton loading system
+   --------------------------------------------------------------------------
+   Premium shimmer for all loading states in the listing wizard.
+   CSS custom properties switch instantly on dark-mode class change.
+   GPU-accelerated: only `transform` is animated, no repaints or CLS.
+
+   Usage: <div className="sk-base rounded-xl h-11" />
+   ========================================================================== */
+
+:root {
+  --sk-base:  #F3F4F6;
+  --sk-shine: rgba(255, 255, 255, 0.82);
+}
+
+html.dark {
+  --sk-base:  #1F2937;
+  --sk-shine: rgba(255, 255, 255, 0.055);
+}
+
+@keyframes sk-shimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%);  }
+}
+
+.sk-base {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--sk-base);
+}
+
+.sk-base::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--sk-shine) 50%,
+    transparent 100%
+  );
+  animation: sk-shimmer 1.2s ease-in-out infinite;
+}
+
+/* Smooth fade-in for content that replaces a skeleton */
+@keyframes sk-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+
+.sk-fade-in {
+  animation: sk-fade-in 220ms ease-out both;
+}
+
+/* ========================================================================== */
 
 .form-input {
   width: 100%;
