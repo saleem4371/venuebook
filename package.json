@@ -12,6 +12,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@cashfreepayments/cashfree-js": "^1.0.7",
     "@headlessui/react": "^2.2.9",
     "@heroicons/react": "^2.2.0",
     "@parcel/watcher": "^2.5.6",
