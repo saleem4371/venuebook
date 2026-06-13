@@ -1,5 +1,4 @@
 "use client";
-
 /**
  * /hooks/usePackageManager.js
  *
@@ -21,6 +20,16 @@ import {
   MOCK_PATH_URL,
   nextId,
 } from "@/app/[locale]/[country]/vendor/package/data/mockData";
+
+  import {
+    package_category,
+  // create_category,
+  // create_items,
+  // updateCategoryPublish,
+  delete_items,
+  create_packages,
+  publish_packages
+} from "@/services/package.service";
 
 /* ─── Form defaults ──────────────────────────────────────────── */
 const INITIAL_ITEM_FORM = { id: "", name: "", price: "", image: null, foodType: 0 };
@@ -89,6 +98,9 @@ export function usePackageManager() {
   const [deleteTargetId,   setDeleteTargetId]   = useState(null);
   const [viewPackageData,  setViewPackageData]  = useState(null);
 
+ /* ── API ──────────────────────────────────────────────── */
+  const [packCategory, setPackCategory] = useState([]);
+
   /* ────────────────────────────────────────────────────────────
      Keep selectedMenu in sync when categories state changes
      (e.g. after adding an item, the filter chip view updates)
@@ -116,7 +128,7 @@ export function usePackageManager() {
 
       setCategories(cats);
       setAddons(MOCK_ADDONS);
-      setPackages(pkgs);
+      // setPackages(pkgs);
       setPathUrl(MOCK_PATH_URL);
 
       if (cats.length > 0) {
@@ -132,6 +144,28 @@ export function usePackageManager() {
   }, []);
 
   /* ════════════════════════════════════════════════════════
+     LOAD API
+  ════════════════════════════════════════════════════════ */ 
+  
+  const loadAPI = async () => {
+    try {
+      const PackageCategory = await package_category();
+      setPackCategory(PackageCategory?.data?.items);
+      setPackages(PackageCategory?.data?.package);
+     // setAddons(PackageCategory?.data?.addon_category);
+    //  setPackCategory(PackageCategory?.data?.items)
+    } catch (err) {
+      console.error("Package load error:", err);
+    }
+  };
+
+  useEffect(() => {
+    loadAPI();
+    setPathUrl(process.env.NEXT_PUBLIC_AWS_BUCKET_URL || "");
+  }, []);
+  
+  
+  /* ════════════════════════════════════════════════════════
      COMPUTED
   ════════════════════════════════════════════════════════ */
   const totalItemCount = useMemo(
@@ -140,9 +174,10 @@ export function usePackageManager() {
   );
 
   const publishedCategories = useMemo(
-    () => categories.filter((c) => c.cat_publish === 1),
-    [categories]
+    () => packCategory.filter((c) => c.cat_publish === 1),
+    [packCategory]
   );
+
 
   const filteredItems = useMemo(() => {
     if (!searchQuery.trim()) return selectedMenu;
@@ -218,6 +253,12 @@ export function usePackageManager() {
     );
     showToast(status === 1 ? "Category published" : "Category unpublished");
   }, [showToast]);
+
+  /* ════════════════════════════════════════════════════════
+     API
+  ════════════════════════════════════════════════════════ */
+
+
 
   /* ════════════════════════════════════════════════════════
      ITEM ACTIONS (localhost — in-memory)
@@ -312,26 +353,43 @@ export function usePackageManager() {
     setDeleteCfmOpen(true);
   }, []);
 
+  // const confirmDeleteItem = useCallback(async () => {
+  //   if (!deleteTargetId) return;
+  //   setDeleting(true);
+  //   await fakeDelay(400);
+
+  //   const catId = selectedCatIdRef.current;
+  //   setCategories((prev) => {
+  //     const updated = prev.map((cat) => ({
+  //       ...cat,
+  //       package_item: cat.package_item.filter((i) => i.id !== deleteTargetId),
+  //     }));
+  //     syncSelectedMenu(updated, catId);
+  //     return updated;
+  //   });
+
+    
+
+  //   showToast("Item deleted");
+  //   setDeleteCfmOpen(false);
+  //   setDeleting(false);
+  //   setDeleteTargetId(null);
+  // }, [deleteTargetId, showToast, syncSelectedMenu]);
+
   const confirmDeleteItem = useCallback(async () => {
-    if (!deleteTargetId) return;
+ 
+    try {
+         if (!deleteTargetId) return;
     setDeleting(true);
     await fakeDelay(400);
+     await delete_items(deleteTargetId)
+      setDeleteCfmOpen(false);
 
-    const catId = selectedCatIdRef.current;
-    setCategories((prev) => {
-      const updated = prev.map((cat) => ({
-        ...cat,
-        package_item: cat.package_item.filter((i) => i.id !== deleteTargetId),
-      }));
-      syncSelectedMenu(updated, catId);
-      return updated;
-    });
-
-    showToast("Item deleted");
-    setDeleteCfmOpen(false);
     setDeleting(false);
-    setDeleteTargetId(null);
-  }, [deleteTargetId, showToast, syncSelectedMenu]);
+    } catch (err) {
+      console.error(err);
+    }
+ });
 
   /* ════════════════════════════════════════════════════════
      CATEGORY SELECTOR
@@ -347,7 +405,7 @@ export function usePackageManager() {
      PACKAGE BUILDER ACTIONS (localhost — in-memory)
   ════════════════════════════════════════════════════════ */
   const resetBuilderSelections = useCallback(() => {
-    setCategories((prev) =>
+    setPackCategory((prev) =>
       prev.map((c) => ({
         ...c,
         count_number: 0,
@@ -363,33 +421,41 @@ export function usePackageManager() {
   }, [resetBuilderSelections]);
 
   const openEditPackage = useCallback((pkg) => {
-    setPkgForm({
-      id:       pkg.id,
-      name:     pkg.name,
-      price:    pkg.price,
-      type:     pkg.package_type,
-      foodType: pkg.package_food_type ?? 0,
-      publish:  pkg.package_status ?? 1,
-    });
+  setPkgForm({
+    id: pkg.id,
+    name: pkg.name,
+    price: pkg.price,
+    type: pkg.package_type,
+    foodType: pkg.package_food_type ?? 0,
+    publish: pkg.package_status ?? 1,
+  });
 
-    let parsedItems  = [];
-    let parsedCounts = [];
-    try { parsedItems  = JSON.parse(pkg.package_items  || "[]"); } catch { /* */ }
-    try { parsedCounts = JSON.parse(pkg.category_items || "[]"); } catch { /* */ }
+  const parsedItems = Array.isArray(pkg.package_items)
+    ? pkg.package_items
+    : [];
 
-    setCategories((prev) =>
-      prev.map((cat, idx) => ({
+  const parsedCounts = Array.isArray(pkg.category_items)
+    ? pkg.category_items
+    : [];
+
+  setPackCategory((prev) =>
+    prev.map((cat) => {
+    const categoryCount = parsedCounts.find(
+  (c) => Number(c.category_id) === Number(cat.id)
+);
+      return {
         ...cat,
-        count_number: parsedCounts[idx] ?? 0,
+        count_number: categoryCount?.count ?? 0,
         package_item: cat.package_item.map((item) => ({
           ...item,
           selected: parsedItems.includes(item.id),
         })),
-      }))
-    );
+      };
+    })
+  );
 
-    setPkgDrawerOpen(true);
-  }, []);
+  setPkgDrawerOpen(true);
+}, []);
 
   const closePackageBuilder = useCallback(() => {
     setPkgDrawerOpen(false);
@@ -398,7 +464,7 @@ export function usePackageManager() {
   }, [resetBuilderSelections]);
 
   const toggleItemInPackage = useCallback((itemId, catId) => {
-    setCategories((prev) =>
+    setPackCategory((prev) =>
       prev.map((c) => {
         if (c.id !== catId) return c;
         return {
@@ -412,7 +478,7 @@ export function usePackageManager() {
   }, []);
 
   const changeCategoryCount = useCallback((catId, val) => {
-    setCategories((prev) =>
+    setPackCategory((prev) =>
       prev.map((c) => {
         if (c.id !== catId) return c;
         const newCount      = Math.max(0, Number(val));
@@ -429,7 +495,56 @@ export function usePackageManager() {
     );
   }, []);
 
-  const submitPackage = useCallback(async () => {
+    const submitPackage = async () => {
+     if (!pkgForm.name.trim() || !pkgForm.price || pkgForm.type === null) {
+      showToast("Please fill all required fields", "error");
+      return false;
+    }
+     const publishedCats  = packCategory.filter((c) => c.cat_publish === 1);
+    const selectedItems  = publishedCats.flatMap((c) => c.package_item).filter((i) => i.selected).map((i) => i.id);
+    const categoryCounts = publishedCats.map((c) => c.count_number);
+
+    const categoryItems = publishedCats
+  .filter((c) => c.count_number > 0)
+  .map((c) => ({
+    category_id: c.id,
+    count: c.count_number,
+  }));
+
+    const incomplete = publishedCats.filter(
+      (c) => c.count_number > 0 && c.package_item.filter((i) => i.selected).length === 0
+    );
+    if (incomplete.length > 0) {
+      showToast("Select items for categories with quantity set", "error");
+      return false;
+    }
+
+    setSaving(true);
+    await fakeDelay(600);
+
+   
+      const payload = {
+        id:               pkgForm.id || 0,
+        name:             pkgForm.name,
+        price:            Number(pkgForm.price),
+        package_type:     pkgForm.type,
+        package_food_type: pkgForm.foodType,
+        package_status:   pkgForm.publish,
+        package_items:    JSON.stringify(selectedItems),
+        category_items:   JSON.stringify(categoryItems),
+      };
+
+      await create_packages(payload);
+
+        loadAPI();
+
+      showToast(pkgForm.id ? "Package updated" : "Package created");
+    closePackageBuilder();
+    setSaving(false);
+     
+    };
+
+  const submitPackages = useCallback(async () => {
     if (!pkgForm.name.trim() || !pkgForm.price || pkgForm.type === null) {
       showToast("Please fill all required fields", "error");
       return false;
@@ -475,7 +590,22 @@ export function usePackageManager() {
     return true;
   }, [pkgForm, categories, closePackageBuilder, showToast]);
 
-  const togglePackagePublish = useCallback((id, status) => {
+  const togglePackagePublish = async (id, status) => {
+    const payLoad  = {
+      id:id,
+      status:status
+    }
+  await publish_packages(payLoad);
+
+        loadAPI();
+         showToast(status === 1 ? "Package published" : "Package unpublished");
+  }
+
+  const togglePackagePublishs = useCallback((id, status) => {
+
+
+   
+
     setPackages((prev) =>
       prev.map((p) => (p.id === id ? { ...p, package_status: status } : p))
     );
@@ -498,25 +628,60 @@ export function usePackageManager() {
   }, [showToast]);
 
   /* ── VIEW PACKAGE ───────────────────────────────────────── */
-  const openViewPackage = useCallback((pkg) => {
-    let parsedItems = [];
-    try { parsedItems = JSON.parse(pkg.package_items || "[]"); } catch { /* */ }
+const openViewPackage = useCallback((pkg) => {
+  console.log("Package:", pkg);
 
-    const grouped = {};
-    categories.forEach((cat) => {
-      const selected = cat.package_item.filter((i) => parsedItems.includes(i.id));
-      if (selected.length > 0) {
-        grouped[cat.item_category] = selected.map((i) => ({
-          id:    i.id,
-          name:  i.item_name,
-          price: i.item_price,
-        }));
-      }
-    });
+  const parsedItems = Array.isArray(pkg.package_items)
+    ? pkg.package_items
+    : [];
 
-    setViewPackageData({ name: pkg.name, price: pkg.price, details: grouped });
-    setViewPkgOpen(true);
-  }, [categories]);
+  const parsedCategoryItems = Array.isArray(pkg.category_items)
+    ? pkg.category_items
+    : [];
+
+  const grouped = {};
+
+  packCategory.forEach((cat) => {
+    console.log("Category:", cat);
+
+    const categoryInfo = parsedCategoryItems.find(
+      (c) =>
+        Number(c.category_id) ===
+        Number(cat.category_id ?? cat.id)
+    );
+
+    if (!categoryInfo) return;
+
+    const selected = (cat.package_item || []).filter((item) =>
+      parsedItems.includes(item.id)
+    );
+
+    if (selected.length) {
+      grouped[cat.item_category] = {
+        count: categoryInfo.count,
+        items: selected.map((item) => ({
+          id: item.id,
+          name: item.item_name,
+          price: item.item_price,
+          food_pre: item.food_pre,
+        })),
+      };
+    }
+  });
+
+  setViewPackageData({
+    id: pkg.id,
+    name: pkg.name,
+    price: pkg.price,
+    package_type: pkg.package_type,
+    package_food_type: pkg.package_food_type,
+    details: grouped,
+  });
+
+  setViewPkgOpen(true);
+}, [packCategory]);
+
+console.log(viewPackageData)
 
   /* ════════════════════════════════════════════════════════
      BULK UPLOAD (localhost — simulated)
@@ -592,5 +757,9 @@ export function usePackageManager() {
 
     // Upload
     submitUploadItems, submitUploadCategories,
+
+    //packCategory
+
+    packCategory,setPackCategory
   };
 }
