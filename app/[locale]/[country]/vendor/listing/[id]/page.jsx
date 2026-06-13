@@ -1283,7 +1283,24 @@ export default function ListingEditor() {
     pincode: "",
     country: "India",
     propety_category: "",
-    pricing: {},
+    pricing: {
+    morning: {
+      enabled: false,
+      price: "",
+    },
+    afternoon: {
+      enabled: false,
+      price: "",
+    },
+    evening: {
+      enabled: false,
+      price: "",
+    },
+    fullDay: {
+      enabled: false,
+      price: "",
+    },
+  },
     termsAccepted: false,
     cancellationPolicy: "",
     houseRules: "",

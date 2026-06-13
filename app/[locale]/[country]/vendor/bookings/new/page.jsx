@@ -50,6 +50,19 @@ function Row({ label, value, highlight = false }) {
 export default function CreateBooking() {
   const [shift,      setShift]      = useState("evening");
   const [selfBook,   setSelfBook]   = useState(false);
+  const [booking,   setBooking]   = useState('');
+
+  const orderDate = booking?.created_at
+  ? new Date(booking.created_at).toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+    })
+  : new Date().toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+    });
 
   return (
     <div className="space-y-5">
@@ -73,10 +86,10 @@ export default function CreateBooking() {
           <Section icon={CalendarCheck} title="Event Details">
 
             {/* Order info strip */}
-            <div className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-xl px-4 py-3 flex flex-wrap justify-between gap-2 text-sm font-medium">
-              <span>📅 Order Date: 28-March-2026</span>
-              <span>Form ID: INV0006</span>
-            </div>
+           <div className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-xl px-4 py-3 flex flex-wrap justify-between gap-2 text-sm font-medium">
+  <span>📅 Order Date e: {orderDate}</span>
+  <span>Form ID: {booking?.invoice_no ?? booking?.id ?? "-"}</span>
+</div>
 
             {/* Input grid */}
             <div className="grid md:grid-cols-2 gap-4">

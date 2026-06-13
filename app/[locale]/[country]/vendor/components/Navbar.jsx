@@ -15,7 +15,7 @@ import KycStatusChip from "./KycStatusChip";
 import KYCModal from "./KYCModal";
 import LogoutConfirmationModal from "@/components/shared/LogoutConfirmationModal";
 
-
+import moment from 'moment';
 /* ═══════════════════════════════════════════════════════════════
    HOOKS
 ═══════════════════════════════════════════════════════════════ */
@@ -404,6 +404,8 @@ export default function PremiumNavbar() {
 
   const userName = user?.name || "Vendor";
   const userEmail = user?.email || "vendor@venuebook.in";
+  const plan_category = user?.plan_category
+
 
   // subscribe_status is now rendered inside KycStatusChip (DEMO_PLAN)
 
@@ -462,6 +464,8 @@ export default function PremiumNavbar() {
     onLogout: () => { setShowProfile(false); setShowLogoutModal(true); },
     onSwitchToCustomer: goCustomer,
   };
+
+
 
   return (
     <>
@@ -568,7 +572,7 @@ export default function PremiumNavbar() {
             </button>
 
             {/* Plan badge — separate from KYC, between Globe and avatar */}
-            <PlanBadge plan={user?.plan || "starter"} base={base} />
+            <PlanBadge plan={plan_category} plans={user} base={base} />
 
             {/* Avatar + profile dropdown + notif panel */}
             <AvatarArea profileRef={profileRefD} {...sharedAreaProps} logout={logout} />
@@ -620,7 +624,7 @@ export default function PremiumNavbar() {
             </button>
 
             {/* Subscription / plan badge — stays beside profile, same as desktop */}
-            <PlanBadge plan={user?.plan || "starter"} base={base} />
+            <PlanBadge plan={plan_category} plans={user} base={base} />
 
             {/* Avatar + profile dropdown (Switch to Customer lives inside here on mobile) */}
             <AvatarArea profileRef={profileRefM} {...sharedAreaProps} logout={logout} />
@@ -698,7 +702,7 @@ const DEMO_SUBSCRIPTION = {
   nextRenewal: "Jul 9, 2026",
 };
 
-function PlanBadge({ plan = "starter", base = "" }) {
+function PlanBadge({ plan = "starter", plans , base = "" }) {
   const t   = useTranslations("header");
   const key = (plan || "starter").toLowerCase();
   const cfg = PLAN_CONFIG[key] ?? PLAN_CONFIG.starter;
@@ -765,7 +769,7 @@ function PlanBadge({ plan = "starter", base = "" }) {
                     {t("vendor_billing_cycle")}
                   </span>
                   <span className="font-medium text-gray-700 dark:text-gray-300">
-                    {DEMO_SUBSCRIPTION.cycle}
+                    {plans.plan_type}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-xs">
@@ -773,7 +777,7 @@ function PlanBadge({ plan = "starter", base = "" }) {
                     {t("vendor_next_renewal")}
                   </span>
                   <span className="font-medium text-gray-700 dark:text-gray-300">
-                    {DEMO_SUBSCRIPTION.nextRenewal}
+                    { moment(plans.next_billing_date).format('DD-MMMM-YYYY') }
                   </span>
                 </div>
               </div>
