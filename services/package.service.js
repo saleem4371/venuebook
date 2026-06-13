@@ -21,7 +21,9 @@ export const delete_items = (id) => {
 export const create_packages = (data) => {
   return api.post(`/packages/create_packages`,data);
 };
-
+export const publish_packages = (data) => {
+  return api.post(`/packages/publish_packages`, data);
+};
 
 /** Load all categories (menu + addons) and package listings. */
 export async function loadPackageData() {
@@ -123,5 +125,4 @@ export const ITEM_TEMPLATE_URL =
 
 export const CATEGORY_TEMPLATE_URL =
   `${process.env.NEXT_PUBLIC_API_URL}/Excel/category.csv`;
-
 
