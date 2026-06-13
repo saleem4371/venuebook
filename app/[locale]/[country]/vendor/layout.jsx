@@ -39,15 +39,18 @@ function VendorAuthGuard({ children }) {
   const locale  = params?.locale  || "en";
   const country = params?.country || "in";
 
+
+
   useEffect(() => {
     if (user === undefined) return; // auth still resolving
-    if (!isLoggedIn) {
-      router.replace(`/${locale}/${country}/home`);
-      return;
-    }
-    if (!isListed) {
-      router.replace(`/${locale}/${country}/list`);
-    }
+    console.log(isLoggedIn)
+    // if (!isLoggedIn) {
+    //   router.replace(`/${locale}/${country}/home`);
+    //   return;
+    // }
+    // if (!isListed) {
+    //   router.replace(`/${locale}/${country}/list`);
+    // }
   }, [user, isLoggedIn, isListed, locale, country, router]);
 
   if (user === undefined || !isLoggedIn || !isListed) return null;
