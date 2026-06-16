@@ -18,7 +18,6 @@
  *   The return shape is identical, so UI components need zero changes.
  * ─────────────────────────────────────────────────────────────────────
  */
-import api from "@/lib/axios";
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -36,50 +35,13 @@ export async function verifyPAN(panNumber) {
 
   await delay(1600);
 
-  try {
-  const payload = {
-    pan: pan,
-  };
-
-  const response = await api.post('/thirdParty/verifyPAN', payload);
-
-  if (!response?.data) {
-    throw new Error('PAN number already exists.');
-  }
-
   return {
-    pan_number: response.data.pan_number || pan,
-    company_name: response.data.company_name || 'ABC Events Private Limited',
-    status: response.data.status || 'Active',
-    business_category: response.data.business_category || 'Event Management',
-    registered_address:
-      response.data.registered_address ||
-      'MG Road, Bengaluru, Karnataka - 560001',
+    pan_number:           pan,
+    company_name:         "ABC Events Private Limited",
+    status:               "Active",
+    business_category:    "Event Management",
+    registered_address:   "MG Road, Bengaluru, Karnataka - 560001",
   };
-} catch (error) {
-  throw new Error(
-    error?.response?.data?.message ||
-    error?.message ||
-    'PAN verification failed'
-  );
-}
-
-
-  // const payload = {
-  //   pan:pan
-  // }
-
-  // const response =  api.post(`/thirdParty/verifyPAN`,payload);
-
-  // if (!response.data) throw new Error("PAN number already Exits.");
-
-  // return {
-  //   pan_number:           response.data,
-  //   company_name:         "ABC Events Private Limited",
-  //   status:               "Active",
-  //   business_category:    "Event Management",
-  //   registered_address:   "MG Road, Bengaluru, Karnataka - 560001",
-  // };
 
   /*
    * ── API INTEGRATION POINT ─────────────────────────────────────────
@@ -106,17 +68,6 @@ export async function sendAadhaarOTP(aadhaarNumber) {
   }
 
   await delay(1000);
-
-  const payload = {
-    aadhaarNumber: aadhaarNumber,
-  };
-
-  const response = await api.post('/thirdParty/verifyAdhar', payload);
-
-  if (!response?.data) {
-    throw new Error('Aadhar number already exists.');
-  }
-
 
   return { client_id: `mock_${Date.now()}` };
 
@@ -182,20 +133,6 @@ export async function verifyBank(accountNumber, ifsc) {
   }
 
   await delay(1600);
-
-  const payload = {
-    acct:acct,
-    cleanIFSC:cleanIFSC
-  }
-
-
-    const response = await api.post('/thirdParty/verifyBank', payload);
-
-  if (!response?.data) {
-    throw new Error('Account number already exists.');
-  }
-
-
 
   return {
     account_holder:  "ABC Events Private Limited",

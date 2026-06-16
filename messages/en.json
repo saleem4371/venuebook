@@ -720,5 +720,28 @@
     "benefit_faster_refunds": "Faster Refunds",
     "benefit_exclusive_offers": "Exclusive Offers",
     "membership_badge_aria": "Membership status: {tier} tier"
+  },
+  "card": {
+    "starting_price": "Starting Price",
+    "per_night": "/ Night",
+    "per_hour": "/ Hour",
+    "per_day": "/ Day",
+    "per_person": "/ Person",
+    "contact": "Contact",
+    "for_price": "for Price",
+    "badge": {
+      "venue": "Venue",
+      "farmstay": "Farmstay",
+      "studio": "Studio",
+      "rental": "Rental",
+      "workspace": "Workspace",
+      "experience": "Experience"
+    },
+    "up_to_guests": "Up to {count} Guests",
+    "guests": "{count} Guests",
+    "bedrooms": "{count} Bedrooms",
+    "bedroom": "{count} Bedroom",
+    "seats": "{count} Seats",
+    "sq_ft": "{size} Sq Ft"
   }
 }

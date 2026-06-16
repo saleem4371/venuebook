@@ -23,3 +23,7 @@ export const loadAllAddons = (data) => {
 export const globalSetting = (data) => {
   return api.post("/booking/globalSetting", data);
 };
+
+export const booking_create = (data) => {
+  return api.post("/booking/booking_create", data);
+};

@@ -34,7 +34,7 @@ const isListed =
   }, []);
 
   const logout = useCallback(async () => {
-    // 1. Clear React state immediately — UI flips to guest on this tick
+    // 1. Clear React state — the LogoutOverlay covers the UI at this point
     setUser(null);
 
     // 2. Best-effort server-side session invalidation
@@ -50,7 +50,9 @@ const isListed =
     // 4. Clear any auth-scoped session storage
     try { sessionStorage.removeItem("auth_user"); } catch (_) {}
     try { sessionStorage.removeItem("user"); } catch (_) {}
-    window.location.href ="/";
+
+    // Navigation is handled by the caller after the overlay has been shown
+    // for the required minimum duration (800ms). Do NOT navigate here.
   }, []);
 
   // ✅ auto check on refresh

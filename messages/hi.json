@@ -552,5 +552,28 @@
     "benefit_faster_refunds": "Faster Refunds",
     "benefit_exclusive_offers": "Exclusive Offers",
     "membership_badge_aria": "Membership status: {tier} tier"
+  },
+  "card": {
+    "starting_price": "शुरुआती मूल्य",
+    "per_night": "/ रात",
+    "per_hour": "/ घंटा",
+    "per_day": "/ दिन",
+    "per_person": "/ व्यक्ति",
+    "contact": "संपर्क करें",
+    "for_price": "कीमत के लिए",
+    "badge": {
+      "venue": "वेन्यू",
+      "farmstay": "फार्मस्टे",
+      "studio": "स्टूडियो",
+      "rental": "किराया",
+      "workspace": "वर्कस्पेस",
+      "experience": "अनुभव"
+    },
+    "up_to_guests": "{count} मेहमान तक",
+    "guests": "{count} मेहमान",
+    "bedrooms": "{count} शयनकक्ष",
+    "bedroom": "{count} शयनकक्ष",
+    "seats": "{count} सीटें",
+    "sq_ft": "{size} वर्ग फुट"
   }
 }

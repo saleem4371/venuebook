@@ -35,10 +35,30 @@ export function VendorCategoryProvider({
   // Set category when API data arrives
   useEffect(() => {
     if (firstValid) {
-      setActiveCategoryRaw(firstValid);
-      setPrevCategory(firstValid);
+      const saved =
+        typeof window !== "undefined"
+          ? localStorage.getItem("activeCategory")
+          : firstValid;
+
+      const categoryToUse =
+        saved && validCategories.includes(saved)
+          ? saved
+          : firstValid;
+
+      setActiveCategoryRaw(categoryToUse);
+      setPrevCategory(categoryToUse);
     }
-  }, [firstValid]);
+  }, [firstValid, validCategories]);
+
+  // Save selected category to localStorage
+  useEffect(() => {
+    if (
+      typeof window !== "undefined" &&
+      activeCategory
+    ) {
+      localStorage.setItem("activeCategory", activeCategory);
+    }
+  }, [activeCategory]);
 
   const setActiveCategory = useCallback(
     (id) => {
@@ -61,6 +81,11 @@ export function VendorCategoryProvider({
 
       timerRef.current.t1 = setTimeout(() => {
         setActiveCategoryRaw(id);
+
+        if (typeof window !== "undefined") {
+          localStorage.setItem("activeCategory", id);
+        }
+
         setPhase("loading");
 
         timerRef.current.t2 = setTimeout(() => {

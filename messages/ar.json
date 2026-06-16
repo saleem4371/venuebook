@@ -720,5 +720,28 @@
     "benefit_faster_refunds": "Faster Refunds",
     "benefit_exclusive_offers": "Exclusive Offers",
     "membership_badge_aria": "Membership status: {tier} tier"
+  },
+  "card": {
+    "starting_price": "سعر البداية",
+    "per_night": "/ ليلة",
+    "per_hour": "/ ساعة",
+    "per_day": "/ يوم",
+    "per_person": "/ شخص",
+    "contact": "تواصل",
+    "for_price": "للسعر",
+    "badge": {
+      "venue": "مكان",
+      "farmstay": "إقامة ريفية",
+      "studio": "استوديو",
+      "rental": "إيجار",
+      "workspace": "مساحة عمل",
+      "experience": "تجربة"
+    },
+    "up_to_guests": "حتى {count} ضيف",
+    "guests": "{count} ضيوف",
+    "bedrooms": "{count} غرف نوم",
+    "bedroom": "{count} غرفة نوم",
+    "seats": "{count} مقعد",
+    "sq_ft": "{size} قدم مربع"
   }
 }
