@@ -28,7 +28,7 @@ export default function FilteredListWorkspace({ workflowState, emptyTabKey }) {
   const tA = useTranslations("vendor.reservations.actions");
 
   const [search, setSearch] = useState("");
-  const [view,   setView]   = useState("grid");
+  const [view,   setView]   = useState("compact");
   const [page,   setPage]   = useState(1);
   const [detail, setDetail] = useState(null);
 
@@ -57,8 +57,8 @@ export default function FilteredListWorkspace({ workflowState, emptyTabKey }) {
   const paginatedItems = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
   const viewOptions = [
-    { key: "grid",    Icon: LayoutGrid,   label: t("views.card")    },
     { key: "compact", Icon: AlignJustify, label: t("views.compact") },
+    { key: "grid",    Icon: LayoutGrid,   label: t("views.card")    },
   ];
 
   return (

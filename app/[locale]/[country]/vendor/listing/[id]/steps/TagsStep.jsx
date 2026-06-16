@@ -152,7 +152,7 @@ function tokens(isDark) {
    MAIN COMPONENT
 ───────────────────────────────────────────────────────────────────────────── */
 export default function TagsStep({ form, setForm, category = "venues" , property, event}) {
-  const [isDark, setIsDark] = useState(true);
+  const [isDark, setIsDark] = useState(() => typeof window !== "undefined" && document.documentElement.classList.contains("dark"));
   const [customInput, setCustomInput] = useState("");
 
   useEffect(() => {

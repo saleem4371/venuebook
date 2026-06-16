@@ -26,34 +26,45 @@ import { vendor_category } from "@/services/home.service";
 const VENDOR_CATEGORIES = ["venues", "farmstays", "studios"];
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   VendorAuthGuard  (Rules 6 & 7)
+   VendorAuthGuard  (Rules 6, 7 & 8)
    Renders inside AuthProvider so useAuth() is available.
-   - Not logged in -> redirect to home
-   - Logged in but is_vendor = 0 -> redirect to list-your-property
+   - Not logged in                        → redirect to home
+   - Logged in, listing created, no sub   → redirect to payment (Scenario 8)
+   - Logged in, is_vendor = 0, no pending → redirect to list-your-property
    All vendor pages are protected by this single guard.
 ───────────────────────────────────────────────────────────────────────────── */
 function VendorAuthGuard({ children }) {
-  const { isLoggedIn, isListed, user } = useAuth();
+  const { isLoggedIn, isListed, loading } = useAuth();
   const router  = useRouter();
   const params  = useParams();
   const locale  = params?.locale  || "en";
   const country = params?.country || "in";
 
-
-
   useEffect(() => {
-    if (user === undefined) return; // auth still resolving
-    console.log(isLoggedIn)
-    // if (!isLoggedIn) {
-    //   router.replace(`/${locale}/${country}/home`);
-    //   return;
-    // }
-    // if (!isListed) {
-    //   router.replace(`/${locale}/${country}/list`);
-    // }
-  }, [user, isLoggedIn, isListed, locale, country, router]);
+    if (loading) return; // auth still resolving
+    if (!isLoggedIn) {
+      router.replace(`/${locale}/${country}/home`);
+      return;
+    }
+    // Check pending subscription FIRST — is_vendor can be set to 1 at listing
+    // creation time on some flows, so we cannot rely on !isListed to gate this.
+    // vb_pending_category is set by WizardShell after listing_create and removed
+    // by subscription-success once payment is confirmed.
+    try {
+      const pendingCat = localStorage.getItem("vb_pending_category");
+      if (pendingCat) {
+        router.replace(`/${locale}/${country}/start-listing/${pendingCat}/payment`);
+        return;
+      }
+    } catch (_) {}
 
-  if (user === undefined || !isLoggedIn || !isListed) return null;
+    if (!isListed) {
+      router.replace(`/${locale}/${country}/list`);
+    }
+  }, [loading, isLoggedIn, isListed, locale, country, router]);
+
+  if (loading) return null;
+  if (!isLoggedIn || !isListed) return null;
 
   return children;
 }

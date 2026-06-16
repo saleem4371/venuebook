@@ -335,7 +335,7 @@ function tokens(isDark) {
    MAIN COMPONENT
 ───────────────────────────────────────────────────────────────────────────── */
 export default function AmenitiesStep({ form, setForm, category = "venues" , amenities}) {
-  const [isDark, setIsDark] = useState(true);
+  const [isDark, setIsDark] = useState(() => typeof window !== "undefined" && document.documentElement.classList.contains("dark"));
   useEffect(() => {
     const check = () => setIsDark(document.documentElement.classList.contains("dark"));
     check();

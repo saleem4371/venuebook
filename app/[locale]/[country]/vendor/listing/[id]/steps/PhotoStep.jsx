@@ -112,7 +112,7 @@ export default function PhotoStep({
   categorys,
    onDeleteImgeFile = async () => {},
 }) {
-  const [isDark, setIsDark] = useState(true);
+  const [isDark, setIsDark] = useState(() => typeof window !== "undefined" && document.documentElement.classList.contains("dark"));
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmData, setConfirmData] = useState(null);

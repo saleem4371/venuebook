@@ -6,12 +6,14 @@ import { Plus, Building2, ArrowRight, Sparkles } from "lucide-react";
 import { useRouter, useParams } from "next/navigation";
 
 import VenueCard from "./components/VenueCard";
+import CategorySelectModal from "./components/CategorySelectModal";
 import { usePropertyTypeModal } from "@/context/PropertyTypeModalContext";
 import { useVendorCategory } from "@/context/VendorCategoryContext";
 
 import { LoadListing } from "@/services/vendor.service";
 
 import { useCategory } from "@/context/CategoryContext";
+
 
 /* ─────────────────────────────────────────────────────────────────────────────
    CATEGORY META
@@ -149,11 +151,12 @@ const MOCK_LISTINGS = {
    PAGE
 ───────────────────────────────────────────────────────────────────────────── */
 export default function ListingPage() {
-  const { activeCategory } = useVendorCategory();
+  const { activeCategory, vendorCategories } = useVendorCategory();
   const [parentLoading, setParentLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
 
   const [loadData, setLoadData] = useState([]);
+  const [catModalOpen, setCatModalOpen] = useState(false);
 
 
   const router = useRouter();
@@ -184,19 +187,46 @@ export default function ListingPage() {
     setTimeout(() => router.push(parentPath), 180);
   };
 
+  // Step 1: open category picker
   const handleCreateListing = () => {
-    openPropertyModal({
-      accentFrom: accent.from,
-      accentTo:   accent.to,
-      category:   activeCategory,
-      onContinue: (type) => {
-        if (type === "single") {
-          router.push(startPath(activeCategory));
-        } else {
-          router.push(`/${locale}/${country}/start-listing/${activeCategory}/parent-setup`);
-        }
-      },
-    });
+    setCatModalOpen(true);
+  };
+
+  // Step 2: category chosen → check if listings exist, then maybe show PropertyTypeModal
+  const handleCategorySelected = async (selectedCat) => {
+    setCatModalOpen(false);
+
+    const catAccent = CATEGORY_ACCENT_HEX[selectedCat] ?? CATEGORY_ACCENT_HEX.venues;
+
+    // Check if this category already has listings
+    let hasExisting = false;
+    if (selectedCat === activeCategory) {
+      hasExisting = loadData.length > 0;
+    } else {
+      try {
+        const res = await LoadListing(selectedCat);
+        hasExisting = (res?.data ?? []).length > 0;
+      } catch (_) {}
+    }
+
+    if (hasExisting) {
+      // Skip property-type modal — structure already established
+      router.push(`/${locale}/${country}/start-listing/${selectedCat}?category=${selectedCat}`);
+    } else {
+      // New category: let vendor pick Standalone vs Multi-space
+      openPropertyModal({
+        accentFrom: catAccent.from,
+        accentTo:   catAccent.to,
+        category:   selectedCat,
+        onContinue: (type) => {
+          if (type === "single") {
+            router.push(`/${locale}/${country}/start-listing/${selectedCat}?category=${selectedCat}`);
+          } else {
+            router.push(`/${locale}/${country}/start-listing/${selectedCat}/parent-setup`);
+          }
+        },
+      });
+    }
   };
   
 useEffect(() => {
@@ -216,6 +246,8 @@ const load = async () => {
     setPageLoading(false);
   }
 };
+
+
 
   return (
     <div className="space-y-6">
@@ -373,6 +405,15 @@ const load = async () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ── CATEGORY SELECT MODAL (Step 1 of New Listing flow) ── */}
+      <CategorySelectModal
+        open={catModalOpen}
+        onClose={() => setCatModalOpen(false)}
+        onSelect={handleCategorySelected}
+        availableCategories={vendorCategories ?? [activeCategory]}
+        defaultCategory={activeCategory}
+      />
 
       {/* ── GLOBAL PARENT LOADER ── */}
       <AnimatePresence>

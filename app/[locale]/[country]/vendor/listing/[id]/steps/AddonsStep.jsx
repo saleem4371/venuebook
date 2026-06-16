@@ -67,7 +67,7 @@ export default function AddonsStep({
   category = "venues",
   addonList = [],
 }) {
-  const [isDark, setIsDark] = useState(true);
+  const [isDark, setIsDark] = useState(() => typeof window !== "undefined" && document.documentElement.classList.contains("dark"));
 
   useEffect(() => {
     const check = () => {

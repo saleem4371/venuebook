@@ -58,7 +58,7 @@ function tokens(isDark) {
    MAIN COMPONENT
 ───────────────────────────────────────────────────────────────────────────── */
 export default function PricingStep({ form, setForm, category = "venues" }) {
-  const [isDark, setIsDark] = useState(true);
+  const [isDark, setIsDark] = useState(() => typeof window !== "undefined" && document.documentElement.classList.contains("dark"));
   useEffect(() => {
     const check = () => setIsDark(document.documentElement.classList.contains("dark"));
     check();
@@ -88,21 +88,8 @@ function ShiftPricing({ form, setForm, copy, tk, theme }) {
   const update = (shift, field, value) =>
     setForm({ ...form, pricing: { ...pricing, [shift]: { ...pricing[shift], [field]: value } } });
 
-  // const toggle = (shift) =>
-  //   setForm({ ...form, pricing: { ...pricing, [shift]: { ...pricing[shift], enabled: !pricing[shift].enabled } } });
-
-  const toggle = (shift) => {
-  setForm((prev) => ({
-    ...prev,
-    pricing: {
-      ...prev.pricing,
-      [shift]: {
-        ...(prev.pricing?.[shift] || {}),
-        enabled: !(prev.pricing?.[shift]?.enabled ?? false),
-      },
-    },
-  }));
-};
+  const toggle = (shift) =>
+    setForm({ ...form, pricing: { ...pricing, [shift]: { ...pricing[shift], enabled: !pricing[shift].enabled } } });
 
   const anyEnabled = SHIFTS.some((s) => pricing[s.key]?.enabled);
 

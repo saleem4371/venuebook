@@ -115,7 +115,7 @@ function tokens(isDark) {
    MAIN COMPONENT
 ───────────────────────────────────────────────────────────────────────────── */
 export default function TermsStep({ form, setForm, category = "venues" }) {
-  const [isDark, setIsDark] = useState(true);
+  const [isDark, setIsDark] = useState(() => typeof window !== "undefined" && document.documentElement.classList.contains("dark"));
   const [expandedPolicy, setExpandedPolicy] = useState(null);
   const [touched, setTouched] = useState(false);
 

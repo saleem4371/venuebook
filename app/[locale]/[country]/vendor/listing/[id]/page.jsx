@@ -1283,24 +1283,7 @@ export default function ListingEditor() {
     pincode: "",
     country: "India",
     propety_category: "",
-    pricing: {
-    morning: {
-      enabled: false,
-      price: "",
-    },
-    afternoon: {
-      enabled: false,
-      price: "",
-    },
-    evening: {
-      enabled: false,
-      price: "",
-    },
-    fullDay: {
-      enabled: false,
-      price: "",
-    },
-  },
+    pricing: {},
     termsAccepted: false,
     cancellationPolicy: "",
     houseRules: "",
@@ -1862,7 +1845,7 @@ export default function ListingEditor() {
                               <p
                                 className="text-[13px] font-semibold truncate leading-snug"
                                 style={{
-                                  color: done ? "#10b981" : isAct ? catTheme.accent : tk.text,
+                                  color: isAct ? catTheme.accent : tk.text,
                                 }}
                               >
                                 {step.title}
@@ -1870,7 +1853,7 @@ export default function ListingEditor() {
                               <p
                                 className="text-[11px] mt-0.5"
                                 style={{
-                                  color: done ? "rgba(16,185,129,0.65)" : tk.muted,
+                                  color: tk.muted,
                                 }}
                               >
                                 {done ? "✓ Complete" : isAct ? "In progress" : "Pending"}

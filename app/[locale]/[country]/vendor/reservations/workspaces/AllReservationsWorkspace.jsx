@@ -143,7 +143,7 @@ export default function AllReservationsWorkspace() {
 
   const [activeTab,   setActiveTab]   = useState("all");
   const [search,      setSearch]      = useState("");
-  const [view,        setView]        = useState("grid");
+  const [view,        setView]        = useState("compact");
   const [page,        setPage]        = useState(1);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [detailItem,  setDetailItem]  = useState(null);
@@ -190,8 +190,8 @@ export default function AllReservationsWorkspace() {
   }, []);
 
   const viewOptions = [
-    { key: "grid",    Icon: LayoutGrid,    label: t("views.card")    },
-    { key: "compact", Icon: List,  label: t("views.compact") },
+    { key: "compact", Icon: List,        label: t("views.compact") },
+    { key: "grid",    Icon: LayoutGrid,  label: t("views.card")    },
   ];
 
   /* Select pill shared class */
