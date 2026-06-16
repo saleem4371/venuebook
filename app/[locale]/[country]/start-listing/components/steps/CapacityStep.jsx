@@ -585,10 +585,6 @@ function FarmstayCapacity({ capacity, updateCap, attempted, touched, touch }) {
         <FsRadio label="Can rooms be combined for larger groups?" value={capacity.roomCombination || ""} onChange={(v) => updateCap("roomCombination", v)} />
       </FsSection>
 
-      <FsSection title="">
-        <FsRadio label="Pets Allowed ?" value={capacity.pet_allowed || ""} onChange={(v) => updateCap("pet_allowed", v)} />
-      </FsSection>
-
       {/* Bed Types */}
       <FsSection title="Bed Types">
         <FsChipGrid options={FS_BED_TYPES} selected={capacity.bedTypes} onToggle={(v) => toggleArr("bedTypes", v)} />
@@ -597,31 +593,6 @@ function FarmstayCapacity({ capacity, updateCap, attempted, touched, touch }) {
       {/* Extra Mattress */}
       <FsRadio label="Can extra mattresses be provided?" value={capacity.extraMattress || ""} onChange={(v) => updateCap("extraMattress", v)} />
 
-      {/* Property Area */}
-      <FsSection title="Property Area">
-        <div className="flex gap-3">
-          <input
-            type="number" min="0"
-            value={capacity.propertyArea || ""}
-            onChange={(e) => updateCap("propertyArea", e.target.value)}
-            placeholder="e.g. 5"
-            className="flex-[4] px-4 py-3 rounded-xl border bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm outline-none transition placeholder:text-gray-400 dark:placeholder:text-gray-500 border-gray-200 dark:border-gray-700 focus:border-violet-500 focus:ring-1 focus:ring-violet-500"
-          />
-          <select
-            value={capacity.propertyAreaUnit || "Acres"}
-            onChange={(e) => updateCap("propertyAreaUnit", e.target.value)}
-            className="flex-[1] px-3 py-3 rounded-xl border bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm outline-none transition cursor-pointer border-gray-200 dark:border-gray-700 focus:border-violet-500 focus:ring-1 focus:ring-violet-500"
-          >
-            <option>Acres</option>
-            <option>Sq Ft</option>
-          </select>
-        </div>
-      </FsSection>
-
-      {/* Guest Accessible Spaces */}
-      <FsSection title="Guest Accessible Spaces">
-        <FsChipGrid options={FS_GUEST_SPACES} selected={capacity.guestSpaces} onToggle={(v) => toggleArr("guestSpaces", v)} />
-      </FsSection>
 
     </div>
   );

@@ -23,9 +23,14 @@ export default function WizardFooter({
   const handleSubmit = async () => {
     if (submitting) return;
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    onSubmit?.();
-   // setSubmitting(false);
+    try {
+      await onSubmit?.();
+      // On success the wizard navigates away — submitting stays true intentionally
+      // to prevent double-clicks while the route transition completes.
+    } catch (_) {
+      // API error — re-enable so user can retry without a page refresh
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -33,21 +38,24 @@ export default function WizardFooter({
       <div className="w-full px-5 sm:px-10 py-4 flex items-center justify-between gap-3">
 
         {/* ── Back ──────────────────────────────────────────────────── */}
-        {/* Back is always visible; on step 1, WizardShell.handleBack navigates to
-            the listing landing page instead of a previous wizard step (Rule 4) */}
-        <button
-          type="button"
-          onClick={onBack}
-          aria-label="Previous step"
-          className={[
-            "min-h-[44px] px-6 rounded-xl text-sm font-semibold border flex-shrink-0",
-            "inline-flex items-center transition-all duration-150",
-            "focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500",
-            "border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 active:scale-[0.97]",
-          ].join(" ")}
-        >
-          Back
-        </button>
+        {/* Hidden on step 1 — there's no previous wizard step to go back to */}
+        {isFirst ? (
+          <div aria-hidden="true" />
+        ) : (
+          <button
+            type="button"
+            onClick={onBack}
+            aria-label="Previous step"
+            className={[
+              "min-h-[44px] px-6 rounded-xl text-sm font-semibold border flex-shrink-0",
+              "inline-flex items-center transition-all duration-150",
+              "focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500",
+              "border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 active:scale-[0.97]",
+            ].join(" ")}
+          >
+            Back
+          </button>
+        )}
 
         {/* ── Right-side actions ─────────────────────────────────────── */}
         <div className="flex items-center gap-3 flex-shrink-0 ml-auto">

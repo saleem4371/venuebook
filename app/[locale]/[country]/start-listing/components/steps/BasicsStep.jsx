@@ -154,14 +154,6 @@ export default function BasicsStep({ form, updateForm, attempted  }) {
         </div>
       )}
 
-      {/* ── Farmstay Style (farmstay only) ── */}
-      {form.category === "farmstay" && (
-        <FarmstayStyleSelector
-          value={form.farmstayStyle || ""}
-          onChange={(v) => { updateForm({ farmstayStyle: v }); touch("farmstayStyle"); }}
-          showError={showErr("farmstayStyle") && !form.farmstayStyle}
-        />
-      )}
 
     </div>
   );

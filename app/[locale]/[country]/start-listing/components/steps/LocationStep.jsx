@@ -302,7 +302,7 @@ export default function LocationStep({ form, updateForm, attempted }) {
   const showErr = (f) => touched[f] || !!attempted?.location;
 
   const v = {
-    address: form.address?.trim().length > 5,
+    address: form.address?.trim().length > 2,
     city:    form.city?.trim().length > 1,
     state:   !cfg.stateRequired || form.state?.trim().length > 1,
     pincode: cfg.postalRegex.test(form.pincode || ""),

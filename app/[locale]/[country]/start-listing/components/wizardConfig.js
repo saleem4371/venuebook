@@ -73,8 +73,7 @@ export const validateStep = (key, form) => {
         return (
           form.title?.trim().length > 3 &&
           !!form.subcategory &&
-          form.description?.trim().length >= 10 &&
-          !!form.farmstayStyle          // required for farmstay only
+          form.description?.trim().length >= 10
         );
       }
       return (
@@ -87,7 +86,7 @@ export const validateStep = (key, form) => {
     case "location": {
       const locCfg = getLocationConfig(form.country);
       return (
-        form.address?.trim().length > 5 &&
+        form.address?.trim().length > 2 &&
         form.city?.trim().length > 1 &&
         (!locCfg.stateRequired || form.state?.trim().length > 1) &&
         locCfg.postalRegex.test(form.pincode || "") &&

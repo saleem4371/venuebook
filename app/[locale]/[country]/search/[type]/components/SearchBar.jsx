@@ -11,12 +11,32 @@ import {
   Search,
   SlidersHorizontal,
 } from "lucide-react";
+import { useParams, useRouter } from "next/navigation";
 import LocaleCountrySwitcher from "@/components/i18n/LocaleCountrySwitcher";
+import { useAuth }    from "@/context/AuthContext";
+import LogoutConfirmationModal from "@/components/shared/LogoutConfirmationModal";
+import LogoutOverlay  from "@/components/shared/LogoutOverlay";
 
 export default function SearchBar({ openFilter }) {
-  const [activeTab, setActiveTab] = useState("venues");
-  const [notifOpen, setNotifOpen] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
+  const [activeTab,    setActiveTab]    = useState("venues");
+  const [notifOpen,    setNotifOpen]    = useState(false);
+  const [profileOpen,  setProfileOpen]  = useState(false);
+  const [confirmLogout, setConfirmLogout] = useState(false);
+  const [loggingOut,   setLoggingOut]   = useState(false);
+
+  const { logout } = useAuth();
+  const params     = useParams();
+  const router     = useRouter();
+  const locale     = params?.locale  || "en";
+  const country    = params?.country || "in";
+
+  const handleLogoutConfirm = async () => {
+    setConfirmLogout(false);
+    setLoggingOut(true);
+    await new Promise((r) => setTimeout(r, 80));
+    await logout();
+    window.location.href = `/${locale}/${country}/home`;
+  };
 
   const tabs = [
     { id: "venues", label: "Venue", icon: Home },
@@ -109,7 +129,10 @@ export default function SearchBar({ openFilter }) {
                   <button className="block w-full px-4 py-2 hover:bg-gray-50 text-left">
                     Profile
                   </button>
-                  <button className="block w-full px-4 py-2 hover:bg-gray-50 text-left">
+                  <button
+                    className="block w-full px-4 py-2 hover:bg-gray-50 text-left text-red-600"
+                    onClick={() => { setProfileOpen(false); setConfirmLogout(true); }}
+                  >
                     Logout
                   </button>
                 </div>
@@ -221,6 +244,15 @@ export default function SearchBar({ openFilter }) {
 
   </div>
 </div>
+
+      {/* Logout confirmation modal + overlay */}
+      <LogoutConfirmationModal
+        open={confirmLogout}
+        onCancel={() => setConfirmLogout(false)}
+        onConfirm={handleLogoutConfirm}
+      />
+      <LogoutOverlay open={loggingOut} />
     </>
   );
 }
+                                                                                                                                          
