@@ -137,7 +137,7 @@ function DesktopNav({
 }
 
 /* ------------------------------------------------------------------ */
-/*  Mobile layout                                                       */
+/*  Mobile layout — circular FAB (matches MessageFAB style)            */
 /* ------------------------------------------------------------------ */
 function MobileNav({
   containerRef, isOpen, setIsOpen,
@@ -148,18 +148,11 @@ function MobileNav({
     <div
       ref={containerRef}
       style={{
-        insetInlineEnd: "20px",
-        top: "calc(75px + env(safe-area-inset-top, 0px))",
+        insetInlineEnd: "12px",
+        bottom: "calc(max(0.75rem, env(safe-area-inset-bottom)) + 156px)",
       }}
       className="fixed z-40 flex flex-col items-end"
     >
-      <Trigger
-        isOpen={isOpen} setIsOpen={setIsOpen}
-        activeCategory={activeCategory}
-        activeColor={activeColor}
-        activeLabel={activeLabel}
-        compact
-      />
       <AnimatePresence>
         {isOpen && (
           <Panel
@@ -170,10 +163,53 @@ function MobileNav({
             onClose={() => setIsOpen(false)}
             t={t}
             mobile
+            openUpward
           />
         )}
       </AnimatePresence>
+      <MobileFAB
+        isOpen={isOpen}
+        setIsOpen={setIsOpen}
+        activeCategory={activeCategory}
+        activeColor={activeColor}
+        activeLabel={activeLabel}
+      />
     </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Mobile FAB trigger — circular, glass, matches MessageFAB           */
+/* ------------------------------------------------------------------ */
+function MobileFAB({ isOpen, setIsOpen, activeCategory, activeColor, activeLabel }) {
+  return (
+    <motion.button
+      type="button"
+      onClick={() => setIsOpen((v) => !v)}
+      aria-expanded={isOpen}
+      aria-haspopup="dialog"
+      aria-label={`${activeLabel} — change category`}
+      className={[
+        "relative flex items-center justify-center rounded-full",
+        "cursor-pointer select-none outline-none",
+        "bg-white/82 dark:bg-[#0b0e1c]/82",
+        "backdrop-blur-2xl",
+        "border border-white/70 dark:border-white/[0.08]",
+        "shadow-[0_8px_24px_rgba(0,0,0,0.09),0_2px_6px_rgba(0,0,0,0.05),inset_0_1px_0_rgba(255,255,255,0.55)]",
+        "dark:shadow-[0_8px_24px_rgba(0,0,0,0.44),0_2px_6px_rgba(0,0,0,0.22),inset_0_1px_0_rgba(255,255,255,0.03)]",
+        "focus-visible:ring-2 focus-visible:ring-violet-400/50 focus-visible:ring-offset-1",
+        isOpen
+          ? `ring-2 ring-offset-2 ring-offset-white dark:ring-offset-gray-950 ${activeColor.ring}`
+          : "",
+      ].join(" ")}
+      style={{ width: 48, height: 48 }}
+      whileTap={{ scale: 0.84, transition: { duration: 0.12 } }}
+      whileHover={{ scale: 1.05, transition: { duration: 0.15 } }}
+    >
+      <IconBadge color={activeColor} size="fab">
+        <CategoryIcon id={activeCategory} className="h-4 w-4 text-white" />
+      </IconBadge>
+    </motion.button>
   );
 }
 
@@ -223,19 +259,21 @@ function Trigger({ isOpen, setIsOpen, activeCategory, activeColor, activeLabel, 
 /* ------------------------------------------------------------------ */
 /*  Animated panel                                                      */
 /* ------------------------------------------------------------------ */
-function Panel({ cols, vendorCategories, activeCategory, onSelect, onClose, t, mobile }) {
+function Panel({ cols, vendorCategories, activeCategory, onSelect, onClose, t, mobile, openUpward }) {
   const gridCols = cols === 3 ? "grid-cols-3" : "grid-cols-2";
+  const yDir = openUpward ? 8 : -8;
   return (
     <motion.div
       role="dialog"
       aria-label={t("selectCategory")}
-      initial={{ opacity: 0, scale: 0.96, y: -8 }}
-      animate={{ opacity: 1, scale: 1,    y: 0  }}
-      exit={{   opacity: 0, scale: 0.96, y: -8  }}
+      initial={{ opacity: 0, scale: 0.96, y: yDir }}
+      animate={{ opacity: 1, scale: 1,    y: 0    }}
+      exit={{   opacity: 0, scale: 0.96, y: yDir  }}
       transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
       style={mobile ? { width: "min(calc(100vw - 32px), 22rem)" } : undefined}
       className={[
-        "mt-2 overflow-hidden rounded-2xl",
+        openUpward ? "mb-2" : "mt-2",
+        "overflow-hidden rounded-2xl",
         !mobile && "w-64",
         "bg-white dark:bg-gray-900",
         "border border-gray-100 dark:border-gray-800",
@@ -303,7 +341,10 @@ function Panel({ cols, vendorCategories, activeCategory, onSelect, onClose, t, m
 /*  Primitives — identical to customer CategoryNavigator               */
 /* ------------------------------------------------------------------ */
 function IconBadge({ color, size = "sm", children }) {
-  const dim = size === "md" ? "h-8 w-8 rounded-lg" : "h-6 w-6 rounded-full";
+  const dim =
+    size === "fab" ? "h-8 w-8 rounded-full" :
+    size === "md"  ? "h-8 w-8 rounded-lg"   :
+                     "h-6 w-6 rounded-full";
   return (
     <span
       className={`inline-flex shrink-0 items-center justify-center ${dim} ${color.bg} shadow-sm`}

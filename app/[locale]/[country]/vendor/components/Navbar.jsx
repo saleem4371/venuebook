@@ -14,8 +14,9 @@ import { useAuth } from "@/context/AuthContext";
 import KycStatusChip from "./KycStatusChip";
 import KYCModal from "./KYCModal";
 import LogoutConfirmationModal from "@/components/shared/LogoutConfirmationModal";
+import LogoutOverlay           from "@/components/shared/LogoutOverlay";
 
-import moment from 'moment';
+
 /* ═══════════════════════════════════════════════════════════════
    HOOKS
 ═══════════════════════════════════════════════════════════════ */
@@ -404,8 +405,6 @@ export default function PremiumNavbar() {
 
   const userName = user?.name || "Vendor";
   const userEmail = user?.email || "vendor@venuebook.in";
-  const plan_category = user?.plan_category
-
 
   // subscribe_status is now rendered inside KycStatusChip (DEMO_PLAN)
 
@@ -413,6 +412,7 @@ export default function PremiumNavbar() {
   const [showProfile,     setShowProfile]     = useState(false);
   const [regionOpen,      setRegionOpen]      = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [logoutLoading,   setLogoutLoading]   = useState(false);
   const [kycStatus,       setKycStatus]       = useState("pending"); // wire to API/session later
   const [kycOpen,         setKycOpen]         = useState(false);
   const [mounted,         setMounted]         = useState(false);
@@ -464,8 +464,6 @@ export default function PremiumNavbar() {
     onLogout: () => { setShowProfile(false); setShowLogoutModal(true); },
     onSwitchToCustomer: goCustomer,
   };
-
-
 
   return (
     <>
@@ -572,7 +570,7 @@ export default function PremiumNavbar() {
             </button>
 
             {/* Plan badge — separate from KYC, between Globe and avatar */}
-            <PlanBadge plan={plan_category} plans={user} base={base} />
+            <PlanBadge plan={user?.plan || "starter"} base={base} />
 
             {/* Avatar + profile dropdown + notif panel */}
             <AvatarArea profileRef={profileRefD} {...sharedAreaProps} logout={logout} />
@@ -624,7 +622,7 @@ export default function PremiumNavbar() {
             </button>
 
             {/* Subscription / plan badge — stays beside profile, same as desktop */}
-            <PlanBadge plan={plan_category} plans={user} base={base} />
+            <PlanBadge plan={user?.plan || "starter"} base={base} />
 
             {/* Avatar + profile dropdown (Switch to Customer lives inside here on mobile) */}
             <AvatarArea profileRef={profileRefM} {...sharedAreaProps} logout={logout} />
@@ -639,20 +637,24 @@ export default function PremiumNavbar() {
 
       <KYCModal open={kycOpen} setOpen={setKycOpen} />
 
-      {/* Shared logout confirmation modal — redirects to home on confirm */}
+      {/* Shared logout confirmation modal */}
       <LogoutConfirmationModal
         open={showLogoutModal}
         onCancel={() => setShowLogoutModal(false)}
         onConfirm={async () => {
           setShowLogoutModal(false);
-          await logout();
-          // replace() removes the vendor page from back-history after logout.
-          // refresh() flushes the Next.js router cache so server components
-          // re-run and the navbar re-renders as guest immediately.
-          router.replace(`/${locale}/${country}/home`);
-          router.refresh();
+          // Auto-save any in-progress listing draft before logging out (item 11)
+          try { window.__vb_save_draft?.(); } catch (_) {}
+          setLogoutLoading(true);                                   // show overlay immediately
+
+          await new Promise((r) => setTimeout(r, 80));               // let overlay render
+          await logout();                                           // clear user + server session
+          window.location.href = `/${locale}/${country}/home`;
         }}
       />
+
+      {/* Full-screen overlay — covers everything while logout processes */}
+      <LogoutOverlay open={logoutLoading} />
     </>
   );
 }
@@ -702,7 +704,7 @@ const DEMO_SUBSCRIPTION = {
   nextRenewal: "Jul 9, 2026",
 };
 
-function PlanBadge({ plan = "starter", plans , base = "" }) {
+function PlanBadge({ plan = "starter", base = "" }) {
   const t   = useTranslations("header");
   const key = (plan || "starter").toLowerCase();
   const cfg = PLAN_CONFIG[key] ?? PLAN_CONFIG.starter;
@@ -769,7 +771,7 @@ function PlanBadge({ plan = "starter", plans , base = "" }) {
                     {t("vendor_billing_cycle")}
                   </span>
                   <span className="font-medium text-gray-700 dark:text-gray-300">
-                    {plans.plan_type}
+                    {DEMO_SUBSCRIPTION.cycle}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-xs">
@@ -777,7 +779,7 @@ function PlanBadge({ plan = "starter", plans , base = "" }) {
                     {t("vendor_next_renewal")}
                   </span>
                   <span className="font-medium text-gray-700 dark:text-gray-300">
-                    { moment(plans.next_billing_date).format('DD-MMMM-YYYY') }
+                    {DEMO_SUBSCRIPTION.nextRenewal}
                   </span>
                 </div>
               </div>

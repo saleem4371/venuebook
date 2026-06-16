@@ -25,6 +25,10 @@ import {
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useUI }                             from "@/context/VendorUIContext";
 
+import {
+  globalSetting,
+} from "@/services/booking.service";
+
 /* ═══════════════════════════════════════════════════════════════
    MAIN COMPONENT
 ═══════════════════════════════════════════════════════════════ */
@@ -35,6 +39,40 @@ export default function BottomDock() {
 
   const [showMore,    setShowMore]    = useState(false);
   const [dockVisible, setDockVisible] = useState(true);
+
+    // Setting consdtion 
+  
+      const [settings, setSettings] = useState({});
+   const [settingsMap, setSettingsMap] = useState({});
+  
+     const load = async () => {
+        const _settings = await globalSetting();
+        setSettings(_settings.data);
+      };
+    
+      useEffect(() => {
+        (async () => {
+          await load();
+        })();
+      }, []);
+  
+        useEffect(() => {
+      if (!settings?.length) return;
+  
+      const map = settings.reduce((acc, item) => {
+        let value = item.setting_value;
+  
+        if (value === "1") value = true;
+        else if (value === "0") value = false;
+        else if (!isNaN(value) && value !== "") value = Number(value);
+  
+        acc[item.setting_key] = value;
+        return acc;
+      }, {});
+  
+      setSettingsMap(map);
+    }, [settings]);
+
 
   /* ── Stable base path ───────────────────────────────── */
   const base = useMemo(
@@ -56,12 +94,28 @@ export default function BottomDock() {
     },
   ], [base]);
 
+  // const moreLinks = useMemo(() => [
+  //   { label: "Add-ons",  href: `${base}/addons`,   icon: Layers    },
+  //   { label: "Packages", href: `${base}/package`,  icon: Package   },
+  //   { label: "Reports",  href: `${base}/reports`,  icon: BarChart3 },
+  //   { label: "Settings", href: `${base}/settings`, icon: Settings  },
+  // ], [base]);
   const moreLinks = useMemo(() => [
-    { label: "Add-ons",  href: `${base}/addons`,   icon: Layers    },
-    { label: "Packages", href: `${base}/package`,  icon: Package   },
-    { label: "Reports",  href: `${base}/reports`,  icon: BarChart3 },
-    { label: "Settings", href: `${base}/settings`, icon: Settings  },
-  ], [base]);
+  { label: "Add-ons", href: `${base}/addons`, icon: Layers },
+
+  ...(settingsMap?.paxPricing
+    ? [
+        {
+          label: "Packages",
+          href: `${base}/package`,
+          icon: Package,
+        },
+      ]
+    : []),
+
+  { label: "Reports", href: `${base}/reports`, icon: BarChart3 },
+  { label: "Settings", href: `${base}/settings`, icon: Settings },
+], [base, settingsMap]);
 
   /* ── Scroll-hide ────────────────────────────────────── */
   const lastScrollY = useRef(0);

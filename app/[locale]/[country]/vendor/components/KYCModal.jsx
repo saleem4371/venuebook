@@ -698,9 +698,7 @@ function Step2Aadhaar({ aadhaarData, setAadhaarData }) {
       const data = await verifyAadhaarOTP(clientId, otp);
       setAadhaarData(data);
       setPhase("verified");
-    } 
-    catch(e) 
-    { setError(e.message); setPhase("otp"); }
+    } catch(e) { setError(e.message); setPhase("otp"); }
   };
 
   const handleResend = async () => {

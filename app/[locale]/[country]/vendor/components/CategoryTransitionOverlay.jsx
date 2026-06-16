@@ -100,9 +100,12 @@ const EASE_PROGRESS  = [0.22, 0.61, 0.36, 1];  /* Fast start, slow finish       
 ───────────────────────────────────────────────────────────────────────────── */
 export default function CategoryTransitionOverlay() {
   const { phase, nextCategory } = useVendorCategory();
+  
   const [mounted, setMounted]   = useState(false);
 
   useEffect(() => setMounted(true), []);
+
+  const category = localStorage.getItem("activeCategory");
 
   /*
    * Read nextCategory (destination), NOT activeCategory (current).
@@ -110,7 +113,7 @@ export default function CategoryTransitionOverlay() {
    * so the overlay always shows the TARGET image from its very first frame —
    * no flicker of the old category image.
    */
-  const theme     = THEMES[nextCategory] ?? THEMES.venues;
+  const theme     = THEMES[category] ?? THEMES.venues;
   const isVisible = phase !== "idle";
 
   if (!mounted) return null;

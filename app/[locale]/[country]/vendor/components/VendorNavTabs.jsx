@@ -11,6 +11,10 @@ import {
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useVendorCategory } from "@/context/VendorCategoryContext";
 
+import {
+  globalSetting,
+} from "@/services/booking.service";
+
 /* ─────────────────────────────────────────────────────────────
    ANIMATION PRESETS
 ───────────────────────────────────────────────────────────── */
@@ -64,29 +68,97 @@ export default function VendorNavTabs() {
 
   const { activeCategory } = useVendorCategory();
 
+  // Setting consdtion 
+
+    const [settings, setSettings] = useState({});
+ const [settingsMap, setSettingsMap] = useState({});
+
+   const load = async () => {
+      const _settings = await globalSetting();
+      setSettings(_settings.data);
+    };
+  
+    useEffect(() => {
+      (async () => {
+        await load();
+      })();
+    }, []);
+
+      useEffect(() => {
+    if (!settings?.length) return;
+
+    const map = settings.reduce((acc, item) => {
+      let value = item.setting_value;
+
+      if (value === "1") value = true;
+      else if (value === "0") value = false;
+      else if (!isNaN(value) && value !== "") value = Number(value);
+
+      acc[item.setting_key] = value;
+      return acc;
+    }, {});
+
+    setSettingsMap(map);
+  }, [settings]);
+
   /* ── Tab list ─────────────────────────────────────────── */
+  // const allTabs = useMemo(() => {
+  //   const TABS = [
+  //     { label: "Dashboard",    href: `${base}/dashboard`,    icon: LayoutDashboard, legacyPaths: [] },
+  //     { label: "Listing",      href: `${base}/listing`,      icon: Building2,       legacyPaths: [] },
+  //     { label: "Calendar",     href: `${base}/calendar`,     icon: CalendarDays,   legacyPaths: [] },
+  //     {
+  //       label: "Reservations",
+  //       href:  `${base}/reservations`,
+  //       icon:  ClipboardList,
+  //       badge: 14, // combined: 12 leads + 2 bookings
+  //       legacyPaths: [`${base}/leads`, `${base}/bookings`],
+  //     },
+  //     { label: "Messages",  href: `${base}/messages`,  icon: MessageSquareText, badge: 11, legacyPaths: [] },
+  //     { label: "Addons",    href: `${base}/addons`,    icon: Layers,    legacyPaths: [] },
+  //     { label: "Packages",  href: `${base}/package`,   icon: Package,       legacyPaths: [] },
+  //     { label: "Settings",  href: `${base}/settings`,  icon: Settings,      legacyPaths: [] },
+  //     { label: "Reports",   href: `${base}/reports`,   icon: BarChart2,     legacyPaths: [] },
+  //   ];
+  //   return activeCategory !== "venues"
+  //     ? TABS.filter((t) => t.label !== "Packages")
+  //     : TABS;
+  // }, [base, activeCategory]);
   const allTabs = useMemo(() => {
-    const TABS = [
-      { label: "Dashboard",    href: `${base}/dashboard`,    icon: LayoutDashboard, legacyPaths: [] },
-      { label: "Listing",      href: `${base}/listing`,      icon: Building2,       legacyPaths: [] },
-      { label: "Calendar",     href: `${base}/calendar`,     icon: CalendarDays,   legacyPaths: [] },
-      {
-        label: "Reservations",
-        href:  `${base}/reservations`,
-        icon:  ClipboardList,
-        badge: 14, // combined: 12 leads + 2 bookings
-        legacyPaths: [`${base}/leads`, `${base}/bookings`],
-      },
-      { label: "Messages",  href: `${base}/messages`,  icon: MessageSquareText, badge: 11, legacyPaths: [] },
-      { label: "Addons",    href: `${base}/addons`,    icon: Layers,    legacyPaths: [] },
-      { label: "Packages",  href: `${base}/package`,   icon: Package,       legacyPaths: [] },
-      { label: "Settings",  href: `${base}/settings`,  icon: Settings,      legacyPaths: [] },
-      { label: "Reports",   href: `${base}/reports`,   icon: BarChart2,     legacyPaths: [] },
-    ];
-    return activeCategory !== "venues"
-      ? TABS.filter((t) => t.label !== "Packages")
-      : TABS;
-  }, [base, activeCategory]);
+  const TABS = [
+    { label: "Dashboard", href: `${base}/dashboard`, icon: LayoutDashboard, legacyPaths: [] },
+    { label: "Listing", href: `${base}/listing`, icon: Building2, legacyPaths: [] },
+    { label: "Calendar", href: `${base}/calendar`, icon: CalendarDays, legacyPaths: [] },
+    {
+      label: "Reservations",
+      href: `${base}/reservations`,
+      icon: ClipboardList,
+      badge: 14,
+      legacyPaths: [`${base}/leads`, `${base}/bookings`],
+    },
+    { label: "Messages", href: `${base}/messages`, icon: MessageSquareText, badge: 11, legacyPaths: [] },
+    { label: "Addons", href: `${base}/addons`, icon: Layers, legacyPaths: [] },
+
+    // Only include Packages if paxPricing exists
+    ...(settingsMap?.paxPricing
+      ? [
+          {
+            label: "Packages",
+            href: `${base}/package`,
+            icon: Package,
+            legacyPaths: [],
+          },
+        ]
+      : []),
+
+    { label: "Settings", href: `${base}/settings`, icon: Settings, legacyPaths: [] },
+    { label: "Reports", href: `${base}/reports`, icon: BarChart2, legacyPaths: [] },
+  ];
+
+  return activeCategory !== "venues"
+    ? TABS.filter((t) => t.label !== "Packages")
+    : TABS;
+}, [base, activeCategory, settingsMap]);
 
   /* ── Overflow state ───────────────────────────────────── */
   const [overflowIndex, setOverflowIndex] = useState(allTabs.length);
@@ -95,6 +167,8 @@ export default function VendorNavTabs() {
   const [showNotif, setShowNotif] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
+
+ 
   const containerRef = useRef(null);
   const measureRefs  = useRef([]);
   const moreBtnRef   = useRef(null);
@@ -158,6 +232,10 @@ export default function VendorNavTabs() {
     { text: "Payment received",   time: "1 hr ago"   },
   ];
   const unread = notifications.length;
+
+
+  
+
 
   return (
     <>
