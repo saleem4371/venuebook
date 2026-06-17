@@ -14,6 +14,7 @@ import { LoadListing } from "@/services/vendor.service";
 
 import { useCategory } from "@/context/CategoryContext";
 
+import { listing_sub_check } from "@/services/listing.service";
 
 /* ─────────────────────────────────────────────────────────────────────────────
    CATEGORY META
@@ -234,12 +235,24 @@ useEffect(() => {
 }, [activeCategory]);
 
 const load = async () => {
+  
   try {
     setPageLoading(true);
 
     const res = await LoadListing(activeCategory);
 
     setLoadData(res?.data || []);
+
+    const bills = await listing_sub_check(activeCategory);
+
+if(bills.data.length ==0)
+{
+  const category = activeCategory?.replace(/s$/, "");
+router.push(`/${locale}/${country}/start-listing/${category}/payment`);
+}
+    
+
+
   } catch (err) {
     console.error(err);
   } finally {

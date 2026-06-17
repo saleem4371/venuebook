@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ArrowRight } from "lucide-react";
 import { country_of_category } from "@/services/global.service";
-import { parent_of_category } from "@/services/listing.service";
+import { parent_of_category,child_of_category } from "@/services/listing.service";
 /* strip trailing 's' so "venues" → "venue" matches the API's cat.name */
 // const toSingular = (s = "") => s.replace(/s$/, "");
 const toSingular = (s) => String(s || "").replace(/s$/, "");
@@ -20,6 +20,8 @@ export default function CategorySelectModal({
   const [selected,   setSelected]   = useState(() => toSingular(defaultCategory));
   const [loading,    setLoading]     = useState(true);
   const [mounted,    setMounted]     = useState(false);
+  const [parentData,    setParentData]     = useState('');
+  const [childData, setChildData] = useState([]);
 
   /* Portal mount guard */
   useEffect(() => { setMounted(true); }, []);
@@ -58,24 +60,48 @@ export default function CategorySelectModal({
 
   const activeCat = categories.find((c) => c.name === selected);
 
-  useEffect(() => {
-     //load();
-    load_parent(activeCat);
-  }, [activeCat]);
+useEffect(() => {
+  if (!activeCat?.name) {
+    // setPageLoading(false);
+    return;
+  }
 
-  const load_parent = async (activeCat) => {
-    try {
-      const resp = await parent_of_category(activeCat);
-      setParentData(Array.isArray(resp?.data) ? resp.data : []);
-      
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setPageLoading(false);
-    }
-  };
+  load_parent(activeCat);
+}, [activeCat]);
+
+const load_parent = async (selected) => {
+  try {
+    // setPageLoading(true);
+
+    const resp = await parent_of_category(selected.name);
+    const resps = await child_of_category(selected.name);
+
+    setParentData(resp?.data?.[0] || []);
+    setChildData(Array.isArray(resps?.data) ? resps.data : []);
+  } catch (err) {
+    console.error(err);
+    setParentData([]);
+    setChildData([]);//childData
+  } finally {
+    // setPageLoading(false);
+  }
+};
 
 
+const maxChildCount = Number(parentData?.child_count ?? 0);
+const currentChildCount = Array.isArray(childData) ? childData.length : 0;
+const isLimitReached =
+  maxChildCount > 0 && currentChildCount >= maxChildCount;
+
+  
+
+
+
+
+const progress =
+  maxChildCount > 0
+    ? Math.min((currentChildCount / maxChildCount) * 100, 100)
+    : 0;
 
   const handleContinue = useCallback(() => onSelect(selected), [selected, onSelect]);
 
@@ -226,6 +252,42 @@ export default function CategorySelectModal({
                     </div>
                   )}
 
+              {maxChildCount > 0 && (
+  <div className="mt-4">
+    <div className="flex items-center justify-between text-sm">
+      <span className="text-gray-500">Categories Added</span>
+
+      <span
+        className={`font-semibold ${
+          isLimitReached ? "text-red-500" : "text-violet-600"
+        }`}
+      >
+        {currentChildCount} / {maxChildCount}
+      </span>
+    </div>
+
+    <div className="mt-2 h-2 w-full rounded-full bg-gray-200 overflow-hidden">
+      <div
+        className={`h-full transition-all duration-300 ${
+          isLimitReached ? "bg-red-500" : "bg-violet-600"
+        }`}
+        style={{
+          width: `${Math.min(
+            (currentChildCount / maxChildCount) * 100,
+            100
+          )}%`,
+        }}
+      />
+    </div>
+
+    {isLimitReached && (
+      <p className="mt-2 text-sm font-medium text-red-500">
+        Maximum child categories reached.
+      </p>
+    )}
+  </div>
+)}
+
                   {/* Description */}
                   {!loading && (
                     <AnimatePresence mode="wait">
@@ -245,7 +307,7 @@ export default function CategorySelectModal({
 
                 {/* CTAs */}
                 <div className="flex items-center gap-3">
-                  <button
+                  {/* <button
                     type="button"
                     onClick={handleContinue}
                     disabled={!selected || loading}
@@ -253,7 +315,31 @@ export default function CategorySelectModal({
                     style={{ background: "linear-gradient(242deg, #a44bf3, #499ce8)" }}
                   >
                     Continue <ArrowRight size={14} strokeWidth={2.5} />
-                  </button>
+                  </button> */}
+                  <button
+  type="button"
+  onClick={handleContinue}
+  disabled={!selected || loading || isLimitReached}
+  className={`inline-flex items-center gap-2 rounded-xl px-6 py-3 text-[13.5px] font-bold text-white transition-all active:scale-[0.98] focus:outline-none disabled:cursor-not-allowed shadow-lg ${
+    isLimitReached
+      ? "bg-gray-400 opacity-60 shadow-none"
+      : "hover:opacity-90 shadow-violet-200/40"
+  }`}
+  style={
+    !isLimitReached
+      ? {
+          background:
+            "linear-gradient(242deg, #a44bf3, #499ce8)",
+        }
+      : {}
+  }
+>
+  {isLimitReached ? "Limit Reached" : "Continue"}
+
+  {!isLimitReached && (
+    <ArrowRight size={14} strokeWidth={2.5} />
+  )}
+</button>
                   <button
                     type="button"
                     onClick={onClose}

@@ -17,6 +17,7 @@ import { PropertyTypeModalProvider, usePropertyTypeModal } from "@/context/Prope
 import PropertyTypeModal from "./listing/components/PropertyTypeModal";
 
 import { vendor_category } from "@/services/home.service";
+import { listing_sub_check } from "@/services/listing.service";
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -34,11 +35,31 @@ const VENDOR_CATEGORIES = ["venues", "farmstays", "studios"];
    All vendor pages are protected by this single guard.
 ───────────────────────────────────────────────────────────────────────────── */
 function VendorAuthGuard({ children }) {
-  const { isLoggedIn, isListed, loading } = useAuth();
+  const { isLoggedIn, isListed, loading ,user } = useAuth();
   const router  = useRouter();
   const params  = useParams();
   const locale  = params?.locale  || "en";
   const country = params?.country || "in";
+
+
+    const [bIllId, setBIllId] = useState('');
+
+    const pendingCat = localStorage.getItem("vb_pending_category");
+  
+      const load = async () => {
+        try {
+          const bills = await listing_sub_check(pendingCat);
+          setBIllId(bills?.data);
+        } catch (err) {
+          console.error("bills load error:", err);
+        }
+      };
+    
+      useEffect(() => {
+        load();
+       
+      }, []);
+
 
   useEffect(() => {
     if (loading) return; // auth still resolving
@@ -51,12 +72,17 @@ function VendorAuthGuard({ children }) {
     // vb_pending_category is set by WizardShell after listing_create and removed
     // by subscription-success once payment is confirmed.
     try {
-      const pendingCat = localStorage.getItem("vb_pending_category");
-      if (pendingCat) {
-        router.replace(`/${locale}/${country}/start-listing/${pendingCat}/payment`);
-        return;
+    //   const pendingCat = localStorage.getItem("vb_pending_category");
+    //   if (pendingCat) {
+    //     router.replace(`/${locale}/${country}/start-listing/${pendingCat}/payment`);
+    //     return;
+    //   }
+    // } catch (_) {}
+
+     if (bIllId && user.subscribe_status==0) {
+        dest = `/${locale}/${country}/start-listing/${pendingCat}/payment`;
       }
-    } catch (_) {}
+      } catch (_) {}
 
     if (!isListed) {
       router.replace(`/${locale}/${country}/list`);
