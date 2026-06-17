@@ -10,6 +10,10 @@ export const verify_subscription = (id) => {
   return api.get(`/cashfree/verify_subscription/${id}`);
 };
 
-export const cashfree_plans = (id) => {
-  return api.get(`/cashfree/cashfree_plans/${id}`);
+export const cashfree_plans = (id, category) => {
+  return api.get(`/cashfree/cashfree_plans/${id}`, {
+    params: {
+      category,
+    },
+  });
 };
