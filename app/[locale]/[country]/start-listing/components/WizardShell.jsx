@@ -93,6 +93,18 @@ export default function WizardShell({ initialCategory }) {
   const locale = params?.locale || "en";
   const country = params?.country || "in";
 
+useEffect(() => {
+  const handlePopState = () => {
+    router.replace(`/${locale}/${country}/home`);
+  };
+
+  window.addEventListener("popstate", handlePopState);
+
+  return () => {
+    window.removeEventListener("popstate", handlePopState);
+  };
+}, [router, locale, country]);
+
   
 
   // ── Derive current step from URL slug ──────────────────────────────────
@@ -360,6 +372,7 @@ const currentStepKey =
   };
 
   const handleSubmit = async () => {
+     const resp_check = await listing_sub_check(form.category);
     try {
       console.log("FORM:", form);
 
@@ -518,9 +531,9 @@ formData.append("pricing", JSON.stringify(form.pricing));
 
       clearDraft();
 
-   const resp_check = await listing_sub_check(form.category);
+  
 
-if (resp_check.data) {
+if (Array.isArray(resp_check.data) && resp_check.data.length > 0) {
   router.push(
     `/${encodeURIComponent(locale)}/${encodeURIComponent(country)}/vendor/listing`
   );
@@ -531,7 +544,6 @@ if (resp_check.data) {
     );
   }, 800);
 }
-
 
 
       /* -------------------------------------------------------------------------- */

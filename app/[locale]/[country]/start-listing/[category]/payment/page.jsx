@@ -22,6 +22,7 @@ import termsData from "@/data/terms_and_conditions.json";
 import { load } from "@cashfreepayments/cashfree-js";
 
 import { useCategory } from "@/context/CategoryContext";
+import { Exo_2 } from "next/font/google";
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Config
@@ -146,6 +147,19 @@ export default function PaymentPage() {
 
   console.log(selectedModes)
 
+
+useEffect(() => {
+  const handlePopState = () => {
+    router.replace(`/${locale}/${country}/home`);
+  };
+
+  window.addEventListener("popstate", handlePopState);
+
+  return () => {
+    window.removeEventListener("popstate", handlePopState);
+  };
+}, [router, locale, country]);
+
    const { activeCategory } = useCategory();
 
  
@@ -202,7 +216,7 @@ useEffect(() => {
   if (!parentId) return;
 
   const fetchPlans = async () => {
-    const plan = await cashfree_plans(parentIdData , category);
+    const plan = await cashfree_plans(parentId , category);
     setPlans(plan.data);
   };
 
@@ -219,6 +233,7 @@ const plan =
   visiblePlans[0];
 
 const basePrice    = Number(plan?.offer_amount || plan?.amount || 0);
+const maxVenue    = Number(plan?.max_venue);
 // For annual plans the API returns the yearly charge; derive per-month for display.
 const perMonth     = billing === "2" && basePrice > 0 ? Math.round(basePrice / 12) : basePrice;
 const subtotal     = Math.max(0, basePrice);
@@ -848,8 +863,11 @@ payment_gateway(0)
         open={showTermsModal}
         onClose={closeTerms}
         onAccept={acceptTerms}
+        basePrice={basePrice}
+        annualTotal={annualTotal} 
+        maxVenue={maxVenue} 
       />
-
+ 
       {/* ════════════════════════════════════════════════════════════
           MOBILE FIXED BOTTOM BAR (hidden on desktop)
       ════════════════════════════════════════════════════════════ */}
@@ -1307,7 +1325,7 @@ function MobilePayBar({
 //  Terms & Conditions Modal
 // ─────────────────────────────────────────────────────────────────────────────
 
-function TermsModal({ open, onClose, onAccept }) {
+function TermsModal({ open, onClose, onAccept , basePrice , annualTotal, maxVenue}) {
   const scrollRef = useRef(null);
   const [scrolled, setScrolled] = useState(false);
   const [atBottom, setAtBottom] = useState(false);
@@ -1329,6 +1347,17 @@ function TermsModal({ open, onClose, onAccept }) {
     setScrolled(el.scrollTop > 8);
     setAtBottom(el.scrollTop + el.clientHeight >= el.scrollHeight - 8);
   }, []);
+  
+const replaceValue = (value) => {
+  const data = {
+    child_count: maxVenue,//parentData?.child_count ?? 0,
+    price: maxVenue==0 ? basePrice : (basePrice/maxVenue),//parentData?.price ?? 0,
+    recurring_payment: basePrice,//parentData?.recurring_payment ?? "",
+    total_price: basePrice,//parentData?.total_price ?? 0,
+  };
+
+  return String(value || "").replace(/\{\{(.*?)\}\}/g, (_, key) => data[key.trim()] ?? "");
+};
 
   return (
     <AnimatePresence>
@@ -1474,7 +1503,7 @@ function TermsModal({ open, onClose, onAccept }) {
                                           className={isTotal ? "font-bold" : "font-medium text-gray-700 dark:text-gray-200"}
                                           style={{ fontSize: "12px", flexShrink: 0, ...(isTotal ? { color: "#5b21b6" } : {}) }}
                                         >
-                                          {row.value}
+                                          {replaceValue(row.value)}
                                         </span>
                                       )}
                                     </div>
