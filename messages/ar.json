@@ -60,7 +60,11 @@
     "language": "اللغة",
     "region": "المنطقة",
     "currency": "العملة",
-    "heading": "التفضيلات"
+    "heading": "التفضيلات",
+    "location": "الموقع",
+    "location_placeholder": "مدينتك أو منطقتك",
+    "location_detected": "تم الكشف تلقائيًا من عنوان IP",
+    "confirm": "تأكيد"
   },
   "auth": {
     "welcomeBack": "مرحباً بعودتك",
@@ -738,10 +742,6 @@
       "experience": "تجربة"
     },
     "up_to_guests": "حتى {count} ضيف",
-    "guests": "{count} ضيوف",
-    "bedrooms": "{count} غرف نوم",
-    "bedroom": "{count} غرفة نوم",
-    "seats": "{count} مقعد",
-    "sq_ft": "{size} قدم مربع"
+    "guests": "{count} ضيف"
   }
 }

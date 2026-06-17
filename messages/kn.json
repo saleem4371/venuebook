@@ -60,7 +60,11 @@
     "language": "ಭಾಷೆ",
     "region": "ಪ್ರದೇಶ",
     "currency": "ಕರೆನ್ಸಿ",
-    "heading": "ಆದ್ಯತೆಗಳು"
+    "heading": "ಆದ್ಯತೆಗಳು",
+    "location": "ಸ್ಥಳ",
+    "location_placeholder": "ನಿಮ್ಮ ನಗರ ಅಥವಾ ಪ್ರದೇಶ",
+    "location_detected": "ನಿಮ್ಮ IP ಯಿಂದ ಸ್ವಯಂಚಾಲಿತವಾಗಿ ಪತ್ತೆ ಆಯಿತು",
+    "confirm": "ದೃಢೀಕರಿಸಿ"
   },
   "auth": {
     "welcomeBack": "ಮತ್ತೆ ಸ್ವಾಗತ",
@@ -570,10 +574,6 @@
       "experience": "ಅನುಭವ"
     },
     "up_to_guests": "{count} ಅತಿಥಿಗಳವರೆಗೆ",
-    "guests": "{count} ಅತಿಥಿಗಳು",
-    "bedrooms": "{count} ಮಲಗುವ ಕೋಣೆಗಳು",
-    "bedroom": "{count} ಮಲಗುವ ಕೋಣೆ",
-    "seats": "{count} ಆಸನಗಳು",
-    "sq_ft": "{size} ಚದರ ಅಡಿ"
+    "guests": "{count} ಅತಿಥಿಗಳು"
   }
 }

@@ -60,7 +60,11 @@
     "language": "भाषा",
     "region": "क्षेत्र",
     "currency": "मुद्रा",
-    "heading": "प्राथमिकताएं"
+    "heading": "प्राथमिकताएं",
+    "location": "स्थान",
+    "location_placeholder": "आपका शहर या क्षेत्र",
+    "location_detected": "आपके IP से स्वचालित रूप से पता चला",
+    "confirm": "पुष्टि करें"
   },
   "auth": {
     "welcomeBack": "वापसी पर स्वागत है",
@@ -569,11 +573,7 @@
       "workspace": "वर्कस्पेस",
       "experience": "अनुभव"
     },
-    "up_to_guests": "{count} मेहमान तक",
-    "guests": "{count} मेहमान",
-    "bedrooms": "{count} शयनकक्ष",
-    "bedroom": "{count} शयनकक्ष",
-    "seats": "{count} सीटें",
-    "sq_ft": "{size} वर्ग फुट"
+    "up_to_guests": "अधिकतम {count} मेहमान",
+    "guests": "{count} मेहमान"
   }
 }

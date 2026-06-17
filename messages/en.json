@@ -60,7 +60,11 @@
     "language": "Language",
     "region": "Region",
     "currency": "Currency",
-    "heading": "Preferences"
+    "heading": "Preferences",
+    "location": "Location",
+    "location_placeholder": "Your city or area",
+    "location_detected": "Auto-detected from your IP",
+    "confirm": "Confirm"
   },
   "auth": {
     "welcomeBack": "Welcome back",
@@ -738,10 +742,6 @@
       "experience": "Experience"
     },
     "up_to_guests": "Up to {count} Guests",
-    "guests": "{count} Guests",
-    "bedrooms": "{count} Bedrooms",
-    "bedroom": "{count} Bedroom",
-    "seats": "{count} Seats",
-    "sq_ft": "{size} Sq Ft"
+    "guests": "{count} Guests"
   }
 }
