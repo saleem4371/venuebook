@@ -10,6 +10,7 @@ import { useDropdown } from "@/context/DropdownContext";
 import { useAuth }     from "@/context/AuthContext";
 import { useUI }       from "@/context/UIContext";
 import LogoutConfirmationModal from "@/components/shared/LogoutConfirmationModal";
+import LogoutOverlay           from "@/components/shared/LogoutOverlay";
 
 /* ─────────────────────────────────────────────────────────────────────
    MEMBERSHIP — Static demo UI  (swap DEMO_MEMBERSHIP for API data later)
@@ -284,6 +285,7 @@ export default function UserDropdown({ onOpenRegionModal }) {
   /* Membership widget open state — independent of profile dropdown */
   const [membershipOpen, setMembershipOpen] = useState(false);
   const [confirmLogout,  setConfirmLogout]  = useState(false);
+  const [loggingOut,     setLoggingOut]     = useState(false);
 
   /* Close on outside click (covers both widget + avatar) */
   useEffect(() => {
@@ -307,6 +309,15 @@ export default function UserDropdown({ onOpenRegionModal }) {
   const handleLogin  = () => { closeAll(); setLoginOpen(true); };
   const handleVendor = () => {
     closeAll();
+    // Check pending subscription FIRST — is_vendor can be set to 1 at listing
+    // creation time, so we cannot rely on isListed to gate this check.
+    try {
+      const pendingCat = localStorage.getItem("vb_pending_category");
+      if (pendingCat) {
+        router.push(`/${locale}/${country}/start-listing/${pendingCat}/payment`);
+        return;
+      }
+    } catch (_) {}
     router.push(
       isLoggedIn && isListed
         ? `/${locale}/${country}/vendor/dashboard`
@@ -317,9 +328,13 @@ export default function UserDropdown({ onOpenRegionModal }) {
   const handleLogoutClick = () => { closeAll(); setConfirmLogout(true); };
   const confirmLogoutAction = async () => {
     setConfirmLogout(false);
-    await logout();
-    router.replace(`/${locale}/${country}/home`);
-    router.refresh();
+    // Auto-save any in-progress listing draft before logging out (item 11)
+    try { window.__vb_save_draft?.(); } catch (_) {}
+    setLoggingOut(true);                                    // show overlay immediately
+
+    await new Promise((r) => setTimeout(r, 80));            // let overlay render
+    await logout();                                         // clear user + server session
+    window.location.href = `/${locale}/${country}/home`;
   };
 
   return (
@@ -420,6 +435,9 @@ export default function UserDropdown({ onOpenRegionModal }) {
         onCancel={() => setConfirmLogout(false)}
         onConfirm={confirmLogoutAction}
       />
+
+      {/* Full-screen overlay — covers everything while logout processes */}
+      <LogoutOverlay open={loggingOut} />
     </div>
   );
 }

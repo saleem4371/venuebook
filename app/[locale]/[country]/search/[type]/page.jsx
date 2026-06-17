@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { X, Scale } from "lucide-react";
 
 import MapView           from "./components/MapView";
@@ -13,9 +13,11 @@ import WishlistPopup     from "./components/WishlistPopup";
 import FilterRow         from "./components/FilterRow";
 import ListingsSearchBar from "./components/ListingsSearchBar";
 
-import { useCategory } from "@/context/CategoryContext";
-import { useUI }       from "@/context/UIContext";
-import { useAuth }     from "@/context/AuthContext";
+import { useCategory }          from "@/context/CategoryContext";
+import { useUI }                from "@/context/UIContext";
+import { useAuth }              from "@/context/AuthContext";
+import { usePreferredLocation } from "@/hooks/usePreferredLocation";
+import { getStaticVenues }      from "./data/staticVenues";
 
 import {
   LoadProperty,
@@ -55,11 +57,14 @@ import { findPropertyname } from "@/services/global.service";
 const MAP_TOP = 72;
 const MAP_H   = `calc(100vh - ${MAP_TOP}px)`;
 
+
 export default function SearchPage() {
+ 
   const mapRef = useRef(null);
   const { user }            = useAuth();
   const t                   = useTranslations();
   const { locale, country } = useParams();
+  const searchParams        = useSearchParams();
 
   const { showMap, setShowMap, filterOpen, setFilterOpen, setLoginOpen } = useUI();
   const { activeCategory } = useCategory();
@@ -78,6 +83,18 @@ export default function SearchPage() {
   const fabLastScroll = useRef(0);
   const [selectedCategory, setSelectedCategory]  = useState(null);
   const [mapBounds,        setMapBounds]         = useState(null);
+  /* Init from URL params (passed by home page search) */
+  const [searchLocLabel,   setSearchLocLabel]    = useState(() => searchParams.get("location") || null);
+
+  /* Sync URL → searchLocLabel on mount (handles Next.js hydration timing) */
+  useEffect(() => {
+    const loc = searchParams.get("location");
+    if (loc) setSearchLocLabel(loc);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /* Preferred location from user preferences */
+  const { location: preferredLocation } = usePreferredLocation();
 
   const [filters, setFilters] = useState({
     category_cards: [],
@@ -94,6 +111,22 @@ export default function SearchPage() {
   };
   const selected_country =
     COUNTRY_MAP[String(country || "in").toLowerCase()] || COUNTRY_MAP.in;
+
+  /* ── Static venues — filtered by country + activeCategory + bounds ── */
+  const staticVenues = getStaticVenues(
+    selected_country.name,
+    activeCategory || null,
+    mapBounds,
+  );
+
+  /* All cards to show: static first, then API data */
+  const allCards = [
+    ...staticVenues,
+    ...loadProperty,
+  ];
+
+  /* Map marker click — map handles its own popup via onVenueClick */
+  const handleVenueClick = (_venue) => { /* intentionally no-op at page level; MapView handles popup */ };
 
   const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -213,7 +246,17 @@ export default function SearchPage() {
           {/* STICKY 1 — Search bar (topmost, z-40)
               mobile top=64  desktop top=72 */}
           <div className="sticky z-40 bg-white dark:bg-gray-950 top-16 md:top-[72px]">
-            <ListingsSearchBar onSearch={() => {}} />
+            <ListingsSearchBar
+              countryCode={String(country || "in").toLowerCase()}
+              defaultValues={{
+                location: searchParams.get("location") || "",
+                date:     searchParams.get("date")     || "",
+                guests:   searchParams.get("guests")   || "",
+              }}
+              onSearch={(data) => {
+                if (data?.location) setSearchLocLabel(data.location);
+              }}
+            />
           </div>
 
           {/* STICKY 2 — Property type + Filters strip (z-30)
@@ -227,11 +270,11 @@ export default function SearchPage() {
             />
           </div>
 
-          {/* Cards — no toolbar, count is on the map overlay */}
+          {/* Cards grid */}
           <div className="flex-1 px-4 pt-3 pb-24 lg:pb-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-              {loadProperty.map((venue) => (
-                <VenueCard key={venue.childVenueId} venue={venue} {...cardProps} />
+              {allCards.map((venue) => (
+                <VenueCard key={venue.childVenueId || venue.id} venue={venue} {...cardProps} />
               ))}
             </div>
           </div>
@@ -252,16 +295,19 @@ export default function SearchPage() {
             style={{ top: MAP_TOP, height: MAP_H }}
           >
             <MapView
-              venues={loadProperty}
+              venues={allCards}
               hoverVenue={hoverVenue}
               country={selected_country.name}
               onBoundsChange={setMapBounds}
+              preferredLocation={preferredLocation}
+              searchLocationLabel={searchLocLabel}
+              onVenueClick={handleVenueClick}
             />
 
             {/* ── Listing count overlay — top-left of map ── */}
             <div className="absolute top-5 left-5 z-10 pointer-events-none">
               <span className="inline-flex items-center gap-1.5 bg-white dark:bg-gray-900 rounded-full px-3 py-1.5 shadow-md text-sm font-semibold text-gray-800 dark:text-gray-100 border border-gray-100 dark:border-gray-800">
-                <span className="font-bold">{loadProperty.length}</span>
+                <span className="font-bold">{allCards.length}</span>
                 {t("venues_in_this_area")}
               </span>
             </div>
@@ -272,7 +318,7 @@ export default function SearchPage() {
       {/* ── Mobile listing count (below filter strip, above cards) ── */}
       <div className="lg:hidden px-4 pt-2 pb-1">
         <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
-          <span className="font-bold text-gray-900 dark:text-white">{loadProperty.length}</span>{" "}
+          <span className="font-bold text-gray-900 dark:text-white">{allCards.length}</span>{" "}
           {t("venues_in_this_area")}
         </p>
       </div>
@@ -421,10 +467,13 @@ export default function SearchPage() {
             className="fixed inset-0 z-50 bg-white dark:bg-gray-950 lg:hidden"
           >
             <MapView
-              venues={loadProperty}
+              venues={allCards}
               hoverVenue={hoverVenue}
               country={selected_country.name}
               onBoundsChange={setMapBounds}
+              preferredLocation={preferredLocation}
+              searchLocationLabel={searchLocLabel}
+              onVenueClick={handleVenueClick}
             />
             <button
               onClick={() => setShowMap(false)}

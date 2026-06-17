@@ -4,8 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MapPinIcon, ClockIcon, MagnifyingGlassIcon, XMarkIcon } from "@heroicons/react/24/solid";
 
-/* ── Category-aware popular destinations ─────────────────────── */
-const POPULAR_BY_CATEGORY = {
+/* ── Category-aware popular destinations — India ─────────────── */
+const POPULAR_BY_CATEGORY_IN = {
   venues: [
     { city: "Bengaluru",  state: "Karnataka",    desc: "Premium banquets & event spaces"  },
     { city: "Mumbai",     state: "Maharashtra",  desc: "Luxury rooftops & banquet halls"  },
@@ -56,38 +56,102 @@ const POPULAR_BY_CATEGORY = {
   ],
 };
 
-const RECENT_STORAGE_KEY = "vb_recent_locations";
+/* ── Category-aware popular destinations — UAE ───────────────── */
+const POPULAR_BY_CATEGORY_AE = {
+  venues: [
+    { city: "Dubai",         state: "Dubai",        desc: "Luxury ballrooms & rooftop venues"  },
+    { city: "Abu Dhabi",     state: "Abu Dhabi",    desc: "Premium halls & convention centres" },
+    { city: "Sharjah",       state: "Sharjah",      desc: "Cultural & heritage event venues"   },
+    { city: "Ras Al Khaimah",state: "RAK",          desc: "Beachside & mountain resort venues" },
+    { city: "Ajman",         state: "Ajman",        desc: "Modern & affordable event spaces"   },
+    { city: "Fujairah",      state: "Fujairah",     desc: "Coastal & nature venues"            },
+  ],
+  farmstays: [
+    { city: "Ras Al Khaimah",state: "RAK",          desc: "Mountain eco-retreats & farm stays" },
+    { city: "Al Ain",        state: "Abu Dhabi",    desc: "Desert oases & garden retreats"     },
+    { city: "Fujairah",      state: "Fujairah",     desc: "Wadi camps & coastal stays"         },
+    { city: "Hatta",         state: "Dubai",        desc: "Highland retreats & dam-side stays" },
+    { city: "Sharjah",       state: "Sharjah",      desc: "Desert safari & heritage farms"     },
+    { city: "Liwa",          state: "Abu Dhabi",    desc: "Grand dunes & oasis escapes"        },
+  ],
+  studios: [
+    { city: "Dubai",         state: "Dubai",        desc: "Photo, film & podcast studios"      },
+    { city: "Abu Dhabi",     state: "Abu Dhabi",    desc: "Media city & production studios"    },
+    { city: "Sharjah",       state: "Sharjah",      desc: "Creative arts & studio spaces"      },
+    { city: "Dubai Marina",  state: "Dubai",        desc: "Content creation & green screen"    },
+    { city: "Business Bay",  state: "Dubai",        desc: "Corporate media & recording"        },
+    { city: "JLT",           state: "Dubai",        desc: "Podcast & commercial studios"       },
+  ],
+  rentals: [
+    { city: "Dubai",         state: "Dubai",        desc: "Luxury villa & holiday rentals"     },
+    { city: "Palm Jumeirah", state: "Dubai",        desc: "Waterfront villa & penthouse stays" },
+    { city: "Abu Dhabi",     state: "Abu Dhabi",    desc: "Premium apartments & villas"        },
+    { city: "Ras Al Khaimah",state: "RAK",          desc: "Resort & nature rental homes"       },
+    { city: "Sharjah",       state: "Sharjah",      desc: "Affordable & family rentals"        },
+    { city: "Fujairah",      state: "Fujairah",     desc: "Beachfront & coastal home rentals"  },
+  ],
+  workspaces: [
+    { city: "Dubai",         state: "Dubai",        desc: "DIFC, Business Bay & co-working"   },
+    { city: "Abu Dhabi",     state: "Abu Dhabi",    desc: "Premium offices & meeting rooms"    },
+    { city: "Dubai Marina",  state: "Dubai",        desc: "Creative & tech co-working hubs"    },
+    { city: "JLT",           state: "Dubai",        desc: "Shared offices & business centres"  },
+    { city: "Sharjah",       state: "Sharjah",      desc: "Affordable business workspaces"     },
+    { city: "Ajman",         state: "Ajman",        desc: "SME-friendly office spaces"         },
+  ],
+  experiences: [
+    { city: "Dubai",         state: "Dubai",        desc: "Desert safaris & city experiences"  },
+    { city: "Abu Dhabi",     state: "Abu Dhabi",    desc: "Heritage tours & cultural activities"},
+    { city: "Ras Al Khaimah",state: "RAK",          desc: "Adventure & zip-line experiences"   },
+    { city: "Hatta",         state: "Dubai",        desc: "Kayaking, hiking & eco-tours"       },
+    { city: "Fujairah",      state: "Fujairah",     desc: "Diving, snorkelling & wadi trips"   },
+    { city: "Al Ain",        state: "Abu Dhabi",    desc: "Wildlife parks & oasis tours"       },
+  ],
+};
 
-function loadRecent() {
-  try { return JSON.parse(localStorage.getItem(RECENT_STORAGE_KEY) ?? "[]"); } catch { return []; }
+/* ── Pick popular destinations based on country code ─────────── */
+function getPopular(category, countryCode) {
+  const map = countryCode === "ae" ? POPULAR_BY_CATEGORY_AE : POPULAR_BY_CATEGORY_IN;
+  return map[category] ?? map.venues;
 }
-function saveRecent(city) {
+
+/* ── Region-keyed recent searches ───────────────────────────── */
+function recentKey(countryCode) {
+  return `vb_recent_locations_${countryCode || "in"}`;
+}
+function loadRecent(countryCode) {
+  try { return JSON.parse(localStorage.getItem(recentKey(countryCode)) ?? "[]"); } catch { return []; }
+}
+function saveRecent(city, countryCode) {
   try {
-    const prev    = loadRecent().filter((c) => c !== city).slice(0, 4);
+    const prev    = loadRecent(countryCode).filter((c) => c !== city).slice(0, 4);
     const updated = [city, ...prev];
-    localStorage.setItem(RECENT_STORAGE_KEY, JSON.stringify(updated));
+    localStorage.setItem(recentKey(countryCode), JSON.stringify(updated));
   } catch {}
 }
-function removeRecent(city) {
+function removeRecent(city, countryCode) {
   try {
-    const updated = loadRecent().filter((c) => c !== city);
-    localStorage.setItem(RECENT_STORAGE_KEY, JSON.stringify(updated));
+    const updated = loadRecent(countryCode).filter((c) => c !== city);
+    localStorage.setItem(recentKey(countryCode), JSON.stringify(updated));
     return updated;
   } catch { return []; }
 }
 
 /* ── Shared suggestion list (popup + inline) ─────────────────── */
-function SuggestionList({ query, google, recents, setRecents, popular, tint, onSelect, light = false }) {
+function SuggestionList({ query, google, recents, setRecents, popular, tint, onSelect, light = false, countryCode = "in" }) {
   const tintHex = tint?.hex ?? "#7c3aed";
 
-  /* theme-aware classes — light=false preserves all existing homepage behaviour */
-  const headCls  = light ? "text-gray-400 dark:text-white/30"           : "text-white/30";
-  const itemCls  = light ? "text-gray-800 dark:text-white"              : "text-white";
-  const subCls   = light ? "text-gray-400 dark:text-white/40"           : "text-white/40";
-  const hoverCls = light ? "hover:bg-gray-50 dark:hover:bg-white/[0.07]" : "hover:bg-white/[0.07]";
-  const iconBg   = light ? "bg-gray-100 dark:bg-white/[0.08]"           : "bg-white/[0.08]";
-  const iconCl   = light ? "text-gray-400 dark:text-white/50"           : "text-white/50";
-  const divCls   = light ? "border-gray-100 dark:border-white/[0.07]"   : "border-white/[0.07]";
+  /* theme-aware classes */
+  const headCls    = light ? "text-gray-400 dark:text-white/30"            : "text-white/30";
+  const itemCls    = light ? "text-gray-800 dark:text-white"               : "text-white";
+  const subCls     = light ? "text-gray-400 dark:text-white/40"            : "text-white/40";
+  const hoverCls   = light ? "hover:bg-gray-50 dark:hover:bg-white/[0.07]" : "hover:bg-white/[0.07]";
+  const iconBg     = light ? "bg-gray-100 dark:bg-white/[0.08]"            : "bg-white/[0.08]";
+  const iconCl     = light ? "text-gray-400 dark:text-white/50"            : "text-white/50";
+  const divCls     = light ? "border-gray-100 dark:border-white/[0.07]"    : "border-white/[0.07]";
+  /* sticky header needs same bg as the scroll container */
+  const stickyBg   = light
+    ? "bg-white dark:bg-[rgba(12,12,18,0.97)]"
+    : "bg-[rgba(12,12,18,0.97)]";
 
   if (query.length >= 2) {
     if (google.length === 0) {
@@ -99,7 +163,7 @@ function SuggestionList({ query, google, recents, setRecents, popular, tint, onS
     }
     return (
       <div className="px-2 pb-2">
-        <p className={`text-[9px] font-bold uppercase tracking-widest ${headCls} px-2 pb-2 pt-3.5`}>
+        <p className={`sticky top-0 z-10 text-[9px] font-bold uppercase tracking-widest ${headCls} ${stickyBg} px-2 pb-2 pt-3.5`}>
           Suggestions
         </p>
         {google.map((place) => (
@@ -129,8 +193,8 @@ function SuggestionList({ query, google, recents, setRecents, popular, tint, onS
   return (
     <>
       {recents.length > 0 && (
-        <div className={`p-2 border-b ${divCls}`}>
-          <p className={`text-[9px] font-bold uppercase tracking-widest ${headCls} px-2 py-1.5`}>
+        <div className={`px-2 pb-2 border-b ${divCls}`}>
+          <p className={`sticky top-0 z-10 text-[9px] font-bold uppercase tracking-widest ${headCls} ${stickyBg} px-2 py-1.5`}>
             Recent searches
           </p>
           <AnimatePresence initial={false}>
@@ -159,7 +223,7 @@ function SuggestionList({ query, google, recents, setRecents, popular, tint, onS
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      const updated = removeRecent(city);
+                      const updated = removeRecent(city, countryCode);
                       setRecents(updated);
                     }}
                     className={`shrink-0 p-1.5 rounded-lg ${subCls} hover:bg-white/10 dark:hover:bg-white/10 transition opacity-0 group-hover:opacity-100 focus:opacity-100`}
@@ -175,7 +239,7 @@ function SuggestionList({ query, google, recents, setRecents, popular, tint, onS
       )}
 
       <div className="px-2 pb-2">
-        <p className={`text-[9px] font-bold uppercase tracking-widest ${headCls} px-2 pb-2 pt-3.5`}>
+        <p className={`sticky top-0 z-10 text-[9px] font-bold uppercase tracking-widest ${headCls} ${stickyBg} px-2 pb-2 pt-3.5`}>
           Popular destinations
         </p>
         {popular.map((loc) => (
@@ -222,25 +286,36 @@ export default function LocationAutoComplete({
   lightDropdown = false,
   /** Called with the selected city string. */
   onSelect: onSelectProp,
+  /** Called after a city is selected — use to advance focus to the next field. */
+  onNext,
+  /**
+   * ISO 3166-1 alpha-2 country code used to restrict Places suggestions.
+   * "in" = India (default), "ae" = UAE, etc.
+   */
+  countryCode = "in",
+  /** Pre-fill value (e.g. from URL params on search page) */
+  defaultValue = "",
 }) {
   const inputRef  = useRef(null);
   const wrapRef   = useRef(null);
   const [show,    setShow]    = useState(false);
-  const [query,   setQuery]   = useState("");
+  const [query,   setQuery]   = useState(defaultValue || "");
   const [google,  setGoogle]  = useState([]);
   const [recents, setRecents] = useState([]);
 
-  const popular = POPULAR_BY_CATEGORY[category] ?? POPULAR_BY_CATEGORY.venues;
+  const popular = getPopular(category, countryCode);
 
-  useEffect(() => { setRecents(loadRecent()); }, []);
+  /* Reload recents when countryCode changes */
+  useEffect(() => { setRecents(loadRecent(countryCode)); }, [countryCode]);
 
   useEffect(() => {
     if (typeof window === "undefined" || !window.google || query.length < 2) { setGoogle([]); return; }
     const svc = new window.google.maps.places.AutocompleteService();
-    svc.getPlacePredictions({ input: query, componentRestrictions: { country: "in" } }, (preds) => {
-      setGoogle(preds ?? []);
-    });
-  }, [query]);
+    svc.getPlacePredictions(
+      { input: query, componentRestrictions: { country: countryCode || "in" } },
+      (preds) => { setGoogle(preds ?? []); }
+    );
+  }, [query, countryCode]);
 
   useEffect(() => {
     if (inline || !show) return;
@@ -253,10 +328,12 @@ export default function LocationAutoComplete({
 
   const handleSelect = (city) => {
     setQuery(city);
-    saveRecent(city);
-    setRecents(loadRecent());
+    saveRecent(city, countryCode);
+    setRecents(loadRecent(countryCode));
     setShow(false);
     onSelectProp?.(city);
+    /* Advance focus to next search field (e.g. date picker) */
+    if (onNext) setTimeout(onNext, 60);
   };
 
   const tintBorder = tint?.border ?? "rgba(255,255,255,0.15)";
@@ -301,6 +378,7 @@ export default function LocationAutoComplete({
           <SuggestionList
             query={query} google={google} recents={recents} setRecents={setRecents}
             popular={popular} tint={tint} onSelect={handleSelect} light={lightDropdown}
+            countryCode={countryCode}
           />
         </div>
       </div>
@@ -326,7 +404,7 @@ export default function LocationAutoComplete({
               insetInlineStart: 0,
             }}
             className={[
-              "absolute top-full mt-1.5 min-w-[320px] max-w-[400px] z-[9999] rounded-2xl overflow-hidden",
+              "absolute top-full mt-1.5 min-w-[320px] max-w-[400px] z-[9999] rounded-2xl overflow-y-auto max-h-[380px]",
               lightDropdown
                 ? "bg-white dark:bg-[rgba(12,12,18,0.97)] border border-gray-200 dark:border-white/15 shadow-xl dark:shadow-[0_24px_64px_rgba(0,0,0,0.6)] backdrop-blur-2xl"
                 : "backdrop-blur-2xl",
@@ -335,6 +413,7 @@ export default function LocationAutoComplete({
             <SuggestionList
               query={query} google={google} recents={recents} setRecents={setRecents}
               popular={popular} tint={tint} onSelect={handleSelect} light={lightDropdown}
+              countryCode={countryCode}
             />
           </motion.div>
         )}

@@ -109,9 +109,12 @@ const country = params?.country || "in";
   const [mounted,     setMounted]     = useState(false);
   const [openSearch,  setOpenSearch]  = useState(false);
   const [wordIdx,     setWordIdx]     = useState(0);
-   const [loadData, setLoadData] = useState([]);
+  const [loadData,    setLoadData]    = useState([]);
   const [dates,       setDates]       = useState({});
-  const [mediaMap, setMediaMap] = useState({});
+  const [mediaMap,    setMediaMap]    = useState({});
+
+  /* Refs to each search field container — used for auto-advance on location select */
+  const fieldRefs = useRef([]);
 
    const [searchData, setSearchData] = useState({
   location: "",
@@ -243,17 +246,27 @@ const country = params?.country || "in";
   }, [loadData]);
 
     const handleSearch = () => {
-  console.log("SEARCH DATA 👉", searchData);
-
   const params = new URLSearchParams();
 
   Object.entries(searchData).forEach(([key, value]) => {
-    if (value !== null && value !== undefined && value !== "") {
+    if (value === null || value === undefined || value === "") return;
+
+    if (value instanceof Date) {
+      // Use LOCAL date components — toISOString() converts to UTC and shifts
+      // the date by -1 day in timezones ahead of UTC (e.g. IST = UTC+5:30)
+      const y = value.getFullYear();
+      const m = String(value.getMonth() + 1).padStart(2, "0");
+      const d = String(value.getDate()).padStart(2, "0");
+      params.set(key, `${y}-${m}-${d}`);
+    } else if (typeof value === "object") {
+      // Guest picker returns { guests: N } or { adults: A, children: C, ... }
+      // Sum all numeric fields into a single total
+      const total = Object.values(value).reduce((sum, n) => sum + Number(n || 0), 0);
+      if (total > 0) params.set(key, String(total));
+    } else {
       params.set(key, String(value));
     }
   });
-
-  console.log("URL 👉", params.toString());
 
   router.push(
     `/${locale}/${country}/search/${activeCategory}?${params.toString()}`
@@ -500,21 +513,28 @@ const country = params?.country || "in";
                     style={glassStyle}
                   >
                     {Array.isArray(fields) &&
-                      fields.map((field, i) => (
-                        <SearchField
-                          key={`${activeCategory}-${field.id}`}
-                          field={field}
-                          tint={tint}
-                          category={activeCategory}
-                          isLast={i === fields.length - 1}
-                          /* date state */
-                          dateValue={dates[field.id] ?? null}
-                          onDateChange={(v) =>
-                            setDates((p) => ({ ...p, [field.id]: v }))
-                          }
-                           setSearchData={setSearchData}
-                        />
-                      ))}
+                      fields.map((field, i) => {
+                        /* create a stable ref for each field slot */
+                        if (!fieldRefs.current[i]) fieldRefs.current[i] = { current: null };
+                        return (
+                          <SearchField
+                            key={`${activeCategory}-${field.id}`}
+                            field={field}
+                            tint={tint}
+                            category={activeCategory}
+                            countryCode={String(country || "in").toLowerCase()}
+                            isLast={i === fields.length - 1}
+                            dateValue={dates[field.id] ?? null}
+                            onDateChange={(v) =>
+                              setDates((p) => ({ ...p, [field.id]: v }))
+                            }
+                            setSearchData={setSearchData}
+                            /* register this field's DOM node so previous field can advance to it */
+                            selfRefCb={(el) => { fieldRefs.current[i] = { current: el }; }}
+                            nextRef={i + 1 < fields.length ? { get current() { return fieldRefs.current[i + 1]?.current ?? null; } } : null}
+                          />
+                        );
+                      })}
 
                     {/* Search button */}
                     <div className="flex items-center px-3 py-2">
@@ -569,9 +589,10 @@ const country = params?.country || "in";
 }
 
 /* ─── Search field renderer ─────────────────────────────────── */
-function SearchField({ field, tint, category, isLast, dateValue , onDateChange, setSearchData}) {
+function SearchField({ field, tint, category, isLast, dateValue, onDateChange, setSearchData, countryCode, nextRef, selfRefCb }) {
   return (
     <div
+      ref={selfRefCb}
       /* overflow-visible so dropdowns escape the flex row */
       className={[
         "relative flex-1 min-w-0 px-5 py-3.5 overflow-visible",
@@ -588,12 +609,15 @@ function SearchField({ field, tint, category, isLast, dateValue , onDateChange, 
           category={category}
           tint={tint}
           placeholder={field.placeholder}
-              onSelect={(value) =>
-    setSearchData((p) => ({
-      ...p,
-      location: value,
-    }))
-  }
+          countryCode={countryCode}
+          onSelect={(value) =>
+            setSearchData((p) => ({ ...p, location: value }))
+          }
+          onNext={() => {
+            /* Click the first button/input in the next field to open the date picker */
+            const trigger = nextRef?.current?.querySelector("button, input");
+            if (trigger) trigger.click();
+          }}
         />
       )}
 

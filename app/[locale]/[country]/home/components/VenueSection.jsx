@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import VenueCard from "./VenueCard";
+import { useCategory } from "@/context/CategoryContext";
 
 /*
  * VenueSection
@@ -12,6 +13,8 @@ import VenueCard from "./VenueCard";
  * "View all" is hidden when there are 5 or fewer venues.
  */
 export default function VenueSection({ title, subtitle, venues, dataSource, tint }) {
+  const { activeCategory } = useCategory();
+
   if (!venues?.length) return null;
 
   const showViewAll = venues.length > 5;
@@ -33,7 +36,7 @@ export default function VenueSection({ title, subtitle, venues, dataSource, tint
             className="text-sm font-medium shrink-0 hover:opacity-70 transition"
             style={{ color: tint?.hex ?? "#7c3aed" }}
           >
-            View all →
+            View all &#8594;
           </button>
         )}
       </div>
@@ -57,7 +60,7 @@ export default function VenueSection({ title, subtitle, venues, dataSource, tint
             /* Mobile: 2 per row; sm+: fixed carousel width */
             className="w-[calc(50%-6px)] shrink-0 sm:w-[220px] md:w-[240px]"
           >
-            <VenueCard venue={venue} dataSource = {dataSource} />
+            <VenueCard venue={venue} dataSource={dataSource} category={activeCategory} />
           </motion.div>
         ))}
       </div>

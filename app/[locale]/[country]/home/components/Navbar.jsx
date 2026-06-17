@@ -188,9 +188,25 @@ export default function Navbar() {
   const handleVendorClick = useCallback(() => {
     if (vendorLoading) return;
     setVendorLoading(true);
-    const dest = isListed
-      ? `/${locale}/${country}/vendor/dashboard`
-      : `/${locale}/${country}/list`;
+
+    // vb_pending_category is set by WizardShell after listing_create() and removed
+    // by subscription-success page on payment confirmation.  Check it FIRST —
+    // before isListed — because is_vendor can be set to 1 at listing creation
+    // time on some backend flows, meaning isListed=true while payment is still due.
+    let dest;
+    try {
+      const pendingCat = localStorage.getItem("vb_pending_category");
+      if (pendingCat) {
+        dest = `/${locale}/${country}/start-listing/${pendingCat}/payment`;
+      }
+    } catch (_) {}
+
+    if (!dest) {
+      dest = isListed
+        ? `/${locale}/${country}/vendor/dashboard`
+        : `/${locale}/${country}/list`;
+    }
+
     setTimeout(() => {
       setVendorLoading(false);
       router.push(dest);

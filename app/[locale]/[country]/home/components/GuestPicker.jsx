@@ -167,16 +167,34 @@ export default function GuestPicker({
   placeholder,
   /** When true, popup uses white bg in light mode / dark bg in dark mode. */
   lightMode   = false,
+  /**
+   * Pre-fill from a total guest count (e.g. from URL params).
+   * Number: seeds the primary counter (guests / attendees / adults).
+   */
+  defaultValue,
 }) {
-  const [open,          setOpen]          = useState(false);
-  const [values,        setValues]        = useState(() => buildDefault(type));
-  const [hasInteracted, setHasInteracted] = useState(false);
-  const ref                               = useRef(null);
-
-  const fields     = GUEST_CONFIGS[type] ?? GUEST_CONFIGS.guests;
+  const [open, setOpen] = useState(false);
+  const [values, setValues] = useState(() => {
+    const base = buildDefault(type);
+    const n = Number(defaultValue);
+    if (n > 0) {
+      if (type === "guests")          return { ...base, guests:    n };
+      if (type === "attendees")       return { ...base, attendees: n };
+      if (type === "guests_detailed") return { ...base, adults:    n };
+    }
+    return base;
+  });
+  const [hasInteracted, setHasInteracted] = useState(Number(defaultValue) > 0);
+  const ref    = useRef(null);
+  const fields = GUEST_CONFIGS[type] ?? GUEST_CONFIGS.guests;
   const allowInput = type === "guests";
 
-  useEffect(() => { setValues(buildDefault(type)); }, [type]);
+  /* No type-reset effect needed — GuestPicker is always keyed by
+     `${activeCategory}-${field.id}` in the parent, so it remounts
+     automatically when the category (and therefore type) changes.
+     A useEffect here would fire on mount and overwrite the
+     defaultValue-seeded state, especially in React 18 Strict Mode
+     where effects run twice. */
 
   useEffect(() => {
     if (!open) return;
@@ -277,15 +295,6 @@ export default function GuestPicker({
                 lightMode={lightMode}
               />
             ))}
-
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              style={{ background: tint?.hex ?? "#7c3aed" }}
-              className="mt-3 w-full py-2.5 rounded-xl text-white text-sm font-semibold hover:opacity-90 active:scale-[0.98] transition-all"
-            >
-              Done
-            </button>
           </motion.div>
         )}
       </AnimatePresence>

@@ -39,9 +39,6 @@ import { useRegion } from "@/hooks/useRegion";
 // can route the user wherever makes sense in their context.
 export default function LoginModal({ open, setOpen, onSuccess }) {
 
-  const currentPath = window.location.pathname + window.location.search;
-  sessionStorage.setItem("redirectAfterLogin", currentPath);
-
   const [mode, setMode] = useState("login"); // login | register | phone
   const t = useTranslations("auth");
   const [user, setUser] = useState("");
@@ -83,9 +80,13 @@ const [googleProfile, setGoogleProfile] = useState(null);
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
-  /* Reset mode when reopened */
+  /* Reset mode when reopened + save redirect path */
   useEffect(() => {
-    if (open) setMode("login");
+    if (open) {
+      setMode("login");
+      const currentPath = window.location.pathname + window.location.search;
+      sessionStorage.setItem("redirectAfterLogin", currentPath);
+    }
   }, [open]);
 
   // Login
@@ -424,6 +425,8 @@ router.push(redirectPath);
     googleProfile?.name || "User"
   )}`;
 
+  /* Avatar with first-letter fallback — shown while image loads or on error */
+
   return (
     <AnimatePresence>
       {open && (
@@ -632,6 +635,7 @@ router.push(redirectPath);
                           label={t("fullName")}
                           type="text"
                           autoComplete="name"
+                          placeholder="Enter your full name"
                           value={form.name}
                           onChange={(e) =>
                             setForm({ ...form, name: e.target.value })
@@ -643,6 +647,7 @@ router.push(redirectPath);
                         label={t("emailAddress")}
                         type="email"
                         autoComplete="email"
+                        placeholder="you@example.com"
                         value={form.email}
                         onChange={(e) =>
                           setForm({ ...form, email: e.target.value })
@@ -655,6 +660,7 @@ router.push(redirectPath);
                         autoComplete={
                           mode === "login" ? "current-password" : "new-password"
                         }
+                        placeholder={mode === "login" ? "Enter your password" : "Create a password"}
                         value={form.password}
                         onChange={(e) =>
                           setForm({ ...form, password: e.target.value })
@@ -666,6 +672,7 @@ router.push(redirectPath);
                           label={t("confirmPassword")}
                           type="password"
                           autoComplete="new-password"
+                          placeholder="Repeat your password"
                           value={form.cpassword}
                           onChange={(e) =>
                             setForm({ ...form, cpassword: e.target.value })
@@ -917,10 +924,9 @@ router.push(redirectPath);
 
       <div className="text-center">
 
-     <img
-  src={avatar}
-  alt="profile"
-  className="w-20 h-20 rounded-full mx-auto mb-4 border-4 border-white shadow-lg"
+     <GoogleAvatar
+  src={googleProfile?.picture}
+  name={googleProfile?.name}
 />
 
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -977,6 +983,60 @@ const PHONE_COUNTRIES = [
   { code: "IN", name: "India", dialCode: "+91",  flag: "/flags/in.svg", maxDigits: 10 },
   { code: "AE", name: "UAE",   dialCode: "+971", flag: "/flags/ae.svg", maxDigits: 9  },
 ];
+
+/* ─────────────────────────────────────────────────────────────────── */
+/*  Google confirm — profile avatar with first-letter fallback          */
+/*  Shows initial while image loads; falls back permanently on error    */
+/* ─────────────────────────────────────────────────────────────────── */
+function GoogleAvatar({ src, name }) {
+  const [imgState, setImgState] = useState("loading"); // "loading" | "loaded" | "error"
+
+  const initial = (name || "U").trim()[0].toUpperCase();
+
+  /* Gradient palette keyed by first letter so it stays consistent */
+  const GRADIENTS = [
+    "from-violet-500 to-purple-600",
+    "from-blue-500 to-indigo-600",
+    "from-emerald-500 to-teal-600",
+    "from-rose-500 to-pink-600",
+    "from-amber-500 to-orange-500",
+    "from-cyan-500 to-sky-600",
+  ];
+  const gradient = GRADIENTS[initial.charCodeAt(0) % GRADIENTS.length];
+
+  const showFallback = imgState !== "loaded";
+
+  return (
+    <div className="relative w-20 h-20 rounded-full mx-auto mb-4 border-4 border-white shadow-lg overflow-hidden">
+      {/* Lettered fallback — visible while loading or on error */}
+      {showFallback && (
+        <div
+          className={`absolute inset-0 flex items-center justify-center bg-gradient-to-br ${gradient}`}
+          aria-hidden="true"
+        >
+          <span className="text-2xl font-bold text-white select-none">
+            {initial}
+          </span>
+        </div>
+      )}
+
+      {/* Actual Google profile image — hidden until fully loaded */}
+      {src && (
+        <img
+          src={src}
+          alt={name || "Profile"}
+          onLoad={() => setImgState("loaded")}
+          onError={() => setImgState("error")}
+          className={[
+            "absolute inset-0 w-full h-full object-cover transition-opacity duration-300",
+            imgState === "loaded" ? "opacity-100" : "opacity-0",
+          ].join(" ")}
+          referrerPolicy="no-referrer"
+        />
+      )}
+    </div>
+  );
+}
 
 /* ─────────────────────────────────────────────────────────────────── */
 /*  Phone OTP flow                                                      */

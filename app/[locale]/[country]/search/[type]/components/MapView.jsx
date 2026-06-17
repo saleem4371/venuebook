@@ -8,7 +8,7 @@ import {
   useJsApiLoader,
 } from "@react-google-maps/api";
 import { useState, useEffect, useRef } from "react";
-import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, Star, MapPin } from "lucide-react";
 
 const containerStyle = {
   width: "100%",
@@ -25,9 +25,11 @@ const countryConfig = {
   },
   dubai: {
     name: "Dubai",
-    center: { lat: 25.2048, lng: 55.2708 },
-    zoom: 11,
-    bounds: { north: 25.5, south: 24.8, west: 54.8, east: 55.6 },
+    center: { lat: 24.4, lng: 54.0 },
+    zoom: 8,
+    /* west 51.5° clips Qatar; strictBounds ensures viewport never shows outside this box */
+    bounds: { north: 26.3, south: 22.3, west: 51.4, east: 56.6 },
+    strictBounds: true,
   },
   saudi: {
     name: "Saudi Arabia",
@@ -62,22 +64,63 @@ const MapSkeleton = () => (
   </div>
 );
 
-// ---------------- MAPVIEW COMPONENT ----------------
-export default function MapView({ venues = [], hoverVenue = null, country = "india", onBoundsChange}) {
-  const [selected, setSelected] = useState(null);
-  const [currentImage, setCurrentImage] = useState(0);
-  const [isMobile, setIsMobile] = useState(false);
-   const mapRef = useRef(null); // ✅ ADD THIS
+// ---------------- GEOCODE HELPER ----------------
+function geocodeLabel(label, callback) {
+  if (typeof window === "undefined") return;
 
-   // ADD THESE
+  const attempt = () => {
+    if (!window.google?.maps?.Geocoder) return false;
+    const geocoder = new window.google.maps.Geocoder();
+    geocoder.geocode({ address: label }, (results, status) => {
+      if (status === "OK" && results[0]) {
+        const pos = results[0].geometry.location;
+        callback({ lat: pos.lat(), lng: pos.lng() });
+      }
+    });
+    return true;
+  };
+
+  // If Maps API not yet available, retry up to 5× at 300ms intervals
+  if (!attempt()) {
+    let tries = 0;
+    const timer = setInterval(() => {
+      if (attempt() || ++tries >= 5) clearInterval(timer);
+    }, 300);
+  }
+}
+
+// ---------------- MAPVIEW COMPONENT ----------------
+export default function MapView({
+  venues = [],
+  hoverVenue = null,
+  country = "india",
+  onBoundsChange,
+  /** { label: string, lat?: number, lng?: number } — from preferences modal */
+  preferredLocation = null,
+  /** string — city/area from the search bar (highest map priority) */
+  searchLocationLabel = null,
+  /** Called when a map marker is clicked — receives the venue object */
+  onVenueClick = null,
+}) {
+  const mapRef = useRef(null);
+
+  /* mapInstance tracks when the Google Map object is ready.
+     The unified center effect depends on this — not on isLoaded —
+     so it only runs after onLoad fires (avoiding the timing bug where
+     isLoaded becomes true before mapRef.current is set). */
+  const [mapInstance, setMapInstance] = useState(null);
+
   const [mapBounds, setMapBounds] = useState(null);
   const [visibleVenues, setVisibleVenues] = useState(venues);
   const [hoveredVenueId, setHoveredVenueId] = useState(null);
-
+  const [selected, setSelected] = useState(null);
+  /* Geocoded coords for searchLocationLabel — resolved as soon as Maps API loads */
+  const [geocodedCenter, setGeocodedCenter] = useState(null);
 
   // ---------------- SAFE COUNTRY KEY ----------------
   const countryKey = String(country || "india").toLowerCase();
-  const selectedCountryConfig = countryConfig[countryKey] || countryConfig["india"];
+  const selectedCountryConfig =
+    countryConfig[countryKey] || countryConfig["india"];
 
   // ---------------- GOOGLE MAPS LOADER ----------------
   const { isLoaded } = useJsApiLoader({
@@ -85,92 +128,129 @@ export default function MapView({ venues = [], hoverVenue = null, country = "ind
     libraries: ["places"],
   });
 
-useEffect(() => {
-  if (!mapBounds) {
-    setVisibleVenues(venues);
-    return;
-  }
-
-  const filtered = venues.filter((venue) => {
-    if (!venue?.lat || !venue?.lng) return false;
-
-    const lat = Number(venue.lat);
-    const lng = Number(venue.lng);
-
-    return (
-      lat <= mapBounds.north &&
-      lat >= mapBounds.south &&
-      lng <= mapBounds.east &&
-      lng >= mapBounds.west
-    );
-  });
-
-  setVisibleVenues(filtered);
-}, [venues, mapBounds]);
-  // ---------------- RESPONSIVE ----------------
+  /* ── EARLY GEOCODE: resolve coords as soon as Maps API is ready ──
+     This runs BEFORE the GoogleMap component mounts, so we get the
+     correct coordinates to pass as the initial `center` prop — removing
+     the jarring country-center → searched-location pan on first load. */
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
+    if (!isLoaded) return;
+    if (!searchLocationLabel) { setGeocodedCenter(null); return; }
+    geocodeLabel(searchLocationLabel, (pos) => setGeocodedCenter(pos));
+  }, [isLoaded, searchLocationLabel]);
 
-  // ---------------- PAN TO COUNTRY ----------------
   useEffect(() => {
-    if (mapRef.current) {
-      mapRef.current.panTo(selectedCountryConfig.center);
-      mapRef.current.setZoom(selectedCountryConfig.zoom);
+    if (!mapBounds) {
+      setVisibleVenues(venues);
+      return;
     }
-  }, [selectedCountryConfig]);
+
+    const filtered = venues.filter((venue) => {
+      if (!venue?.lat || !venue?.lng) return false;
+
+      const lat = Number(venue.lat);
+      const lng = Number(venue.lng);
+
+      return (
+        lat <= mapBounds.north &&
+        lat >= mapBounds.south &&
+        lng <= mapBounds.east &&
+        lng >= mapBounds.west
+      );
+    });
+
+    setVisibleVenues(filtered);
+  }, [venues, mapBounds]);
+  // ---------------- UNIFIED CENTER PRIORITY ----------------
+  // Runs after mapInstance is set. geocodedCenter is already resolved
+  // (from the early-geocode effect above), so no async call needed here.
+  // Priority: geocodedCenter (from searchLocationLabel) > preferredLocation > country default
+  useEffect(() => {
+    if (!mapInstance) return;
+
+    // 1 — Pre-resolved search location (no extra geocode round-trip)
+    if (geocodedCenter) {
+      mapInstance.panTo(geocodedCenter);
+      mapInstance.setZoom(12);
+      return;
+    }
+
+    // 1b — searchLocationLabel exists but geocoding not done yet (fallback)
+    if (searchLocationLabel && !geocodedCenter) {
+      geocodeLabel(searchLocationLabel, (pos) => {
+        setGeocodedCenter(pos);
+        mapInstance.panTo(pos);
+        mapInstance.setZoom(12);
+      });
+      return;
+    }
+
+    // 2 — Preferred location from preferences modal
+    if (preferredLocation) {
+      if (preferredLocation.lat && preferredLocation.lng) {
+        mapInstance.panTo({ lat: preferredLocation.lat, lng: preferredLocation.lng });
+        mapInstance.setZoom(11);
+      } else if (preferredLocation.label) {
+        geocodeLabel(preferredLocation.label, (pos) => {
+          mapInstance.panTo(pos);
+          mapInstance.setZoom(11);
+        });
+      }
+      return;
+    }
+
+    // 3 — Country default (also handles region switch)
+    mapInstance.panTo(selectedCountryConfig.center);
+    mapInstance.setZoom(selectedCountryConfig.zoom);
+  }, [
+    geocodedCenter,
+    searchLocationLabel,
+    preferredLocation,
+    selectedCountryConfig,
+    mapInstance,
+  ]);
 
   useEffect(() => {
-  if (!hoverVenue) {
-    setHoveredVenueId(null);
-    return;
-  }
+    if (!hoverVenue) {
+      setHoveredVenueId(null);
+      return;
+    }
 
- 
+    if (mapRef.current) {
+      mapRef.current.panTo({
+        lat: Number(hoverVenue.lat),
+        lng: Number(hoverVenue.lng),
+      });
+    }
+  }, [hoverVenue]);
 
-  if (mapRef.current) {
-    mapRef.current.panTo({
-      lat: Number(hoverVenue.lat),
-      lng: Number(hoverVenue.lng),
-    });
-  }
-}, [hoverVenue]);
+  useEffect(() => {
+    if (!hoverVenue?.childVenueId) {
+      setHoveredVenueId(null);
+      return;
+    }
 
- useEffect(() => {
-  if (!hoverVenue?.childVenueId) {
-    setHoveredVenueId(null);
-    return;
-  }
+    setHoveredVenueId(hoverVenue.childVenueId);
 
-  setHoveredVenueId(hoverVenue.childVenueId);
-
-  if (mapRef.current && hoverVenue.lat && hoverVenue.lng) {
-    mapRef.current.panTo({
-      lat: Number(hoverVenue.lat),
-      lng: Number(hoverVenue.lng),
-    });
-  }
-}, [hoverVenue]);
+    if (mapRef.current && hoverVenue.lat && hoverVenue.lng) {
+      mapRef.current.panTo({
+        lat: Number(hoverVenue.lat),
+        lng: Number(hoverVenue.lng),
+      });
+    }
+  }, [hoverVenue]);
 
   if (!isLoaded) return <MapSkeleton />;
-
-  // ---------------- IMAGE SLIDER ----------------
-  const prevImage = (images) =>
-    setCurrentImage((prev) => (prev > 0 ? prev - 1 : images.length - 1));
-  const nextImage = (images) =>
-    setCurrentImage((prev) => (prev < images.length - 1 ? prev + 1 : 0));
-
-
 
   return (
     <GoogleMap
       mapContainerStyle={containerStyle}
-      center={selectedCountryConfig.center}
-      zoom={selectedCountryConfig.zoom}
-      onLoad={(map) => (mapRef.current = map)}
+      center={geocodedCenter ?? selectedCountryConfig.center}
+      zoom={geocodedCenter ? 12 : selectedCountryConfig.zoom}
+      onLoad={(map) => {
+        mapRef.current = map;
+        setMapInstance(map);
+      }}
+      onClick={() => setSelected(null)}
       options={{
         mapTypeControl: false,
         streetViewControl: false,
@@ -180,63 +260,62 @@ useEffect(() => {
         zoomControl: true,
         restriction: {
           latLngBounds: selectedCountryConfig.bounds,
-          strictBounds: true,
+          strictBounds: selectedCountryConfig.strictBounds ?? false,
         },
       }}
-     onIdle={() => {
-  if (!mapRef.current) return;
+      onIdle={() => {
+        if (!mapRef.current) return;
 
-  const bounds = mapRef.current.getBounds();
-  if (!bounds) return;
+        const bounds = mapRef.current.getBounds();
+        if (!bounds) return;
 
-  const ne = bounds.getNorthEast();
-  const sw = bounds.getSouthWest();
+        const ne = bounds.getNorthEast();
+        const sw = bounds.getSouthWest();
 
-  const mapData = {
-    north: ne.lat(),
-    east: ne.lng(),
-    south: sw.lat(),
-    west: sw.lng(),
-  };
+        const mapData = {
+          north: ne.lat(),
+          east: ne.lng(),
+          south: sw.lat(),
+          west: sw.lng(),
+        };
 
-  // 🔥 send to parent
-  onBoundsChange?.(mapData);
+        // 🔥 send to parent
+        onBoundsChange?.(mapData);
 
-  const filtered = venues.filter((venue) => {
-    if (!venue?.lat || !venue?.lng) return false;
+        const filtered = venues.filter((venue) => {
+          if (!venue?.lat || !venue?.lng) return false;
 
-    const lat = Number(venue.lat);
-    const lng = Number(venue.lng);
+          const lat = Number(venue.lat);
+          const lng = Number(venue.lng);
 
-    return (
-      lat <= mapData.north &&
-      lat >= mapData.south &&
-      lng <= mapData.east &&
-      lng >= mapData.west
-    );
-  });
+          return (
+            lat <= mapData.north &&
+            lat >= mapData.south &&
+            lng <= mapData.east &&
+            lng >= mapData.west
+          );
+        });
 
-  setVisibleVenues(filtered);
-}}
+        setVisibleVenues(filtered);
+      }}
     >
       {/* MARKERS */}
       <MarkerClusterer>
         {(clusterer) =>
-          visibleVenues.filter(
-  (venue) => venue?.lat && venue?.lng
-)
-  .map((venue) => (
-            <Marker
-              key={venue.childVenueId}
-              position={{
-  lat: Number(venue.lat),
-  lng: Number(venue.lng),
-}}
-              clusterer={clusterer}
-              icon={{
-  url:
-    "data:image/svg+xml;charset=UTF-8," +
-    encodeURIComponent(`
+          visibleVenues
+            .filter((venue) => venue?.lat && venue?.lng)
+            .map((venue) => (
+              <Marker
+                key={venue.childVenueId}
+                position={{
+                  lat: Number(venue.lat),
+                  lng: Number(venue.lng),
+                }}
+                clusterer={clusterer}
+                icon={{
+                  url:
+                    "data:image/svg+xml;charset=UTF-8," +
+                    encodeURIComponent(`
       <svg xmlns="http://www.w3.org/2000/svg" width="78" height="34">
         <rect
           rx="18"
@@ -244,7 +323,7 @@ useEffect(() => {
           width="78"
           height="34"
           fill="${
-            hoveredVenueId === venue.childVenueId
+            hoveredVenueId === venue.childVenueId || selected?.childVenueId === venue.childVenueId
               ? "#111827"
               : "#8368ef"
           }"
@@ -263,164 +342,114 @@ useEffect(() => {
         </text>
       </svg>
     `),
-  scaledSize:
-    window.google?.maps &&
-    new window.google.maps.Size(
-      hoveredVenueId === venue.childVenueId ? 72 : 64,
-      hoveredVenueId === venue.childVenueId ? 36 : 32
-    ),
-}}
-              onClick={() => {
-                setSelected(venue);
-                setCurrentImage(0);
-              }}
-            />
-          ))
+                  scaledSize:
+                    window.google?.maps &&
+                    new window.google.maps.Size(
+                      hoveredVenueId === venue.childVenueId || selected?.childVenueId === venue.childVenueId ? 72 : 64,
+                      hoveredVenueId === venue.childVenueId || selected?.childVenueId === venue.childVenueId ? 36 : 32,
+                    ),
+                }}
+                onClick={() => {
+                  if (mapRef.current) {
+                    mapRef.current.panTo({
+                      lat: Number(venue.lat),
+                      lng: Number(venue.lng),
+                    });
+                    mapRef.current.setZoom(14);
+                  }
+                  setSelected(venue);
+                  onVenueClick?.(venue);
+                }}
+              />
+            ))
         }
       </MarkerClusterer>
 
-      {/* DESKTOP OVERLAY */}
-      {selected && !isMobile && (
+      {/* POPUP — floats above the selected marker */}
+      {selected && selected.lat && selected.lng && (
         <OverlayView
-          position={{ lat: selected.lat, lng: selected.lng }}
+          position={{ lat: Number(selected.lat), lng: Number(selected.lng) }}
           mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
+          getPixelPositionOffset={(w, h) => ({ x: -(w / 2), y: -(h + 18) })}
         >
-          <DesktopOverlay
-            venue={selected}
-            currentImage={currentImage}
-            prevImage={prevImage}
-            nextImage={nextImage}
-            onClose={() => setSelected(null)}
-          />
+          <div
+            style={{
+              background: "#fff",
+              borderRadius: 16,
+              boxShadow: "0 8px 32px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.10)",
+              overflow: "hidden",
+              width: 220,
+              userSelect: "none",
+            }}
+          >
+            {/* Image */}
+            {selected.images?.[0] && (
+              <div style={{ position: "relative", height: 120, overflow: "hidden" }}>
+                <img
+                  src={selected.images[0]}
+                  alt={selected.venueName}
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                />
+                {/* close button */}
+                <button
+                  onClick={(e) => { e.stopPropagation(); setSelected(null); }}
+                  style={{
+                    position: "absolute", top: 8, right: 8,
+                    background: "rgba(255,255,255,0.92)",
+                    border: "none", borderRadius: "50%",
+                    width: 26, height: 26,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    cursor: "pointer", boxShadow: "0 1px 4px rgba(0,0,0,0.18)",
+                  }}
+                >
+                  <X size={13} color="#374151" />
+                </button>
+              </div>
+            )}
+            {/* Content */}
+            <div style={{ padding: "10px 12px 12px" }}>
+              <p style={{ fontWeight: 700, fontSize: 13, color: "#111827", marginBottom: 2, lineHeight: 1.3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {selected.venueName}
+              </p>
+              {/* location */}
+              <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 6 }}>
+                <MapPin size={10} color="#9ca3af" />
+                <p style={{ fontSize: 11, color: "#6b7280", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {[selected.city, selected.state].filter(Boolean).join(" · ")}
+                </p>
+              </div>
+              {/* price + rating row */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <p style={{ fontWeight: 800, fontSize: 14, color: "#111827" }}>
+                  {selected.minPrice
+                    ? new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(selected.minPrice)
+                    : "Contact"}
+                </p>
+                {selected.rating && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                    <Star size={11} fill="#fbbf24" color="#fbbf24" />
+                    <span style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>{Number(selected.rating).toFixed(1)}</span>
+                    {selected.reviewCount && (
+                      <span style={{ fontSize: 11, color: "#9ca3af" }}>({selected.reviewCount})</span>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+            {/* Arrow tip */}
+            <div style={{
+              position: "absolute", bottom: -10, left: "50%", transform: "translateX(-50%)",
+              width: 0, height: 0,
+              borderLeft: "10px solid transparent",
+              borderRight: "10px solid transparent",
+              borderTop: "10px solid #fff",
+              filter: "drop-shadow(0 3px 4px rgba(0,0,0,0.10))",
+            }} />
+          </div>
         </OverlayView>
       )}
 
-      {/* MOBILE OVERLAY */}
-      {selected && isMobile && (
-        <MobileOverlay
-          venue={selected}
-          currentImage={currentImage}
-          prevImage={prevImage}
-          nextImage={nextImage}
-          onClose={() => setSelected(null)}
-        />
-      )}
     </GoogleMap>
   );
 }
 
-// ---------------- OVERLAY COMPONENTS ----------------
-const DesktopOverlay = ({ venue, currentImage, prevImage, nextImage, onClose }) => (
-  <div className="relative transform -translate-x-1/2 -translate-y-[120%] z-50">
-    <OverlayContent
-      venue={venue}
-      currentImage={currentImage}
-      prevImage={prevImage}
-      nextImage={nextImage}
-      onClose={onClose}
-    />
-  </div>
-);
-
-const MobileOverlay = ({ venue, currentImage, prevImage, nextImage, onClose }) => (
-  <div className="fixed bottom-0 left-0 w-full z-50">
-    <OverlayContent
-      venue={venue}
-      currentImage={currentImage}
-      prevImage={prevImage}
-      nextImage={nextImage}
-      onClose={onClose}
-    />
-  </div>
-);
-
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
-
-const formatImage = (img) => {
-  if (!img) return "/placeholder.jpg";
-
-  // already full url
-  if (typeof img === "string" && img.startsWith("http")) {
-    return img;
-  }
-
-  // object image path
-  if (typeof img === "object" && img.image) {
-    return `${BASE_URL}/${img.image}`;
-  }
-
-  // string image path
-  return `${BASE_URL}/${img}`;
-};
-const OverlayContent = ({ venue, currentImage, prevImage, nextImage, onClose }) => (
-
-  
-  <div className="w-full md:w-[300px] bg-white rounded-t-2xl shadow-2xl overflow-hidden">
-    {/* IMAGE SLIDER */}
-    <div className="relative h-44 w-full">
-     <img
-  src={formatImage(
-    venue.galleryImages?.[currentImage]?.image ||
-    venue.galleryImages?.[currentImage] ||
-    venue.image
-  )}
-  alt={venue.venueName || "Venue"}
-  className="h-44 w-full object-cover"
-/>
-
-      {venue.galleryImages?.length > 1 && (
-        <>
-          <button
-            onClick={() => prevImage(venue.galleryImages)}
-            className="absolute top-1/2 left-2 -translate-y-1/2 bg-white bg-opacity-70 p-1 rounded-full shadow hover:bg-white"
-          >
-            <ChevronLeft size={16} />
-          </button>
-          <button
-            onClick={() => nextImage(venue.galleryImages)}
-            className="absolute top-1/2 right-2 -translate-y-1/2 bg-white bg-opacity-70 p-1 rounded-full shadow hover:bg-white"
-          >
-            <ChevronRight size={16} />
-          </button>
-        </>
-      )}
-
-      {/* TAGS */}
-      <div className="absolute top-3 left-3 flex flex-col gap-1 z-10">
-        {venue.offer && (
-          <span className="bg-pink-500 text-white text-xs px-2 py-1 rounded-full font-semibold">
-            Offer
-          </span>
-        )}
-        {venue.suggested && (
-          <span className="bg-blue-500 text-white text-xs px-2 py-1 rounded-full font-semibold">
-            Suggested
-          </span>
-        )}
-        {venue.featured && (
-          <span className="bg-yellow-400 text-white text-xs px-2 py-1 rounded-full font-semibold">
-            Featured 
-          </span>
-        )}
-      </div>
-
-      {/* CLOSE BUTTON */}
-      <button
-        onClick={onClose}
-        className="absolute top-3 right-3 bg-white rounded-full p-1 shadow"
-      >
-        <X size={14} />
-      </button>
-    </div>
-
-    {/* DETAILS */}
-    <div className="p-3">
-      <div className="flex justify-between items-center">
-        <h3 className="text-sm font-semibold">{venue.venueName}</h3>
-        <span className="text-xs">⭐ {venue.rating}</span>
-      </div>
-      <p className="text-xs text-gray-500 mt-1">15–20 Mar</p>
-      <p className="text-xs text-gray-500">Free cancellation</p>
-    </div>
-  </div>
-);

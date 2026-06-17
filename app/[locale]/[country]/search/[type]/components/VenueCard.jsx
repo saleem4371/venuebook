@@ -12,6 +12,8 @@ import {
   Briefcase,
   Clock,
   Ruler,
+  Star,
+  ExternalLink,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
@@ -407,15 +409,25 @@ const VenueCard = ({
   );
   const isCompared = compareIds.has(venue.childVenueId);
 
-  /* ── PARENT NAME — only for venues & farmstays ───────────────────────── */
+  /* ── PARENT NAME ─────────────────────────────────────────────────────── */
   const parentName =
     venue.parentVenueName ||
     venue.parent_venue_name ||
     venue.parentName ||
     venue.parent_name;
 
+  const parentId =
+    venue.parentVenueId ||
+    venue.parent_venue_id ||
+    venue.parentId ||
+    venue.parent_id;
+
   const showParentSlot =
     activeCategory === "venues" || activeCategory === "farmstays";
+
+  /* ── RATING ──────────────────────────────────────────────────────────── */
+  const rating      = venue.rating || venue.avgRating || venue.averageRating;
+  const reviewCount = venue.reviewCount || venue.review_count || venue.totalReviews;
 
   /* ═══════════════════════════════════════════════════════════════════════
      RENDER
@@ -443,7 +455,7 @@ const VenueCard = ({
         "
       >
         {/* IMAGE SLIDER */}
-        <div className="relative h-60 overflow-hidden">
+        <div className="relative h-48 overflow-hidden">
           <AnimatePresence mode="wait">
             <motion.img
               key={currentImage}
@@ -558,42 +570,61 @@ const VenueCard = ({
             5. Two metadata rows (category-specific, hidden when field missing)
             6. Divider + price (always last)
         */}
-        <div className="p-4 flex flex-col gap-1.5">
+        <div className="p-3 flex flex-col gap-1">
 
-          {/* 1 - CATEGORY BADGE */}
-          <CategoryBadge category={activeCategory} />
-
-          {/* 2 - PRIMARY NAME */}
-          <h3 className="text-[15px] font-semibold truncate leading-snug text-gray-900 dark:text-gray-50 mt-0.5">
+          {/* PRIMARY NAME */}
+          <h3 className="text-sm font-semibold truncate leading-snug text-gray-900 dark:text-gray-50 mt-0.5">
             {venue.venueName}
           </h3>
 
-          {/* 3 - PARENT NAME SLOT
-              Always reserves the same vertical space so grid rows stay aligned.
-              Venues/farmstays show parentName; all others get an invisible spacer. */}
+          {/* 3 - PARENT NAME SLOT — clickable link for venues/farmstays */}
           {showParentSlot && parentName ? (
-            <p className="text-xs text-gray-400 dark:text-gray-500 truncate -mt-0.5 font-medium">
-              {parentName}
-            </p>
+            parentId ? (
+              <Link
+                href={`/${locale || "en"}/${country || "in"}/venue/${parentId}`}
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex items-center gap-1 text-xs text-violet-500 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 hover:underline truncate -mt-0.5 font-medium w-fit max-w-full"
+              >
+                <span className="truncate">{parentName}</span>
+                <ExternalLink size={9} className="flex-shrink-0 opacity-70" />
+              </Link>
+            ) : (
+              <p className="text-xs text-gray-400 dark:text-gray-500 truncate -mt-0.5 font-medium">
+                {parentName}
+              </p>
+            )
           ) : (
             <div className="h-[14px] flex-shrink-0" aria-hidden="true" />
           )}
 
-          {/* 4 - LOCATION */}
-          <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
-            <MapPin size={11} className="flex-shrink-0 opacity-70" />
-            <span className="truncate">
-              {[venue.city, venue.state].filter(Boolean).join(" · ")}
-            </span>
+          {/* 4 - LOCATION + RATING (same row) */}
+          <div className="flex items-center justify-between gap-2 mt-0.5">
+            <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 min-w-0">
+              <MapPin size={11} className="flex-shrink-0 opacity-70" />
+              <span className="truncate">
+                {[venue.city, venue.state].filter(Boolean).join(" · ")}
+              </span>
+            </div>
+            {rating && (
+              <div className="flex items-center gap-0.5 shrink-0 text-xs text-gray-700 dark:text-gray-300">
+                <Star size={10} className="fill-amber-400 text-amber-400 flex-shrink-0" />
+                <span className="font-semibold">{Number(rating).toFixed(1)}</span>
+                {reviewCount && (
+                  <span className="text-gray-400 dark:text-gray-500 ml-0.5">
+                    ({reviewCount})
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           {/* 5 - CATEGORY METADATA */}
-          <div className="flex flex-col gap-1 mt-0.5">
+          <div className="flex flex-col gap-0.5 mt-0.5">
             <CategoryMeta venue={venue} category={activeCategory} />
           </div>
 
           {/* 6 - PRICE — always the final information block */}
-          <div className="mt-2 pt-2.5 border-t border-gray-100 dark:border-gray-800/60">
+          <div className="mt-1.5 pt-2 border-t border-gray-100 dark:border-gray-800/60">
             <PriceBlock venue={venue} category={activeCategory} />
           </div>
 

@@ -13,7 +13,7 @@ import VendorAlreadyModal from "./components/VendorAlreadyModal";
 
 import { useGlobal } from "@/context/GlobalProvider";
 import { country_of_category } from "@/services/global.service";
-import { last_parent_id,parent_of_category } from "@/services/listing.service";
+import { last_parent_id } from "@/services/listing.service";
 import {
   getDraftsForCategory,
   restoreArchivedDraft,
@@ -33,9 +33,6 @@ const STAT_KEYS = ["earning", "hosts", "time", "guests"];
 export default function ListYourPropertyPage() {
   const { categorys } = useGlobal();
   const [loadData, setLoadData] = useState([]);
-
-
-const [parentData, setParentData] = useState([]);
 
   const t = useTranslations("listing");
 
@@ -135,7 +132,6 @@ const [parentData, setParentData] = useState([]);
     // Parent created but listing not done → check if parent exists for this category
     if (resolveIsParentOnly(user)) {
       routeParentOnlyUser();
-      
       return;
     }
 
@@ -184,8 +180,7 @@ const [parentData, setParentData] = useState([]);
     }
 
     // Parent done but listing not completed → verify parent exists for this category
-    //if (resolveIsParentOnly(freshUser)) {
-    if (parentData) {
+    if (resolveIsParentOnly(freshUser)) {
       console.log("[Login] → Parent-only user → checking category parent");
       routeParentOnlyUser();
       return;
@@ -253,8 +248,6 @@ const [parentData, setParentData] = useState([]);
 
   const [pageLoading, setPageLoading] = useState(true);
 
-  
-  
   useEffect(() => {
     load();
   }, []);
@@ -269,40 +262,6 @@ const [parentData, setParentData] = useState([]);
       setPageLoading(false);
     }
   };
-
- // ── Parent ID Loading  ─────────────────────────────────────────────────────────
-
-  useEffect(() => {
-     //load();
-    load_parent(selected);
-  }, [selected]);
-
-  const load_parent = async (selected) => {
-    try {
-      const resp = await parent_of_category(selected);
-      setParentData(Array.isArray(resp?.data) ? resp.data : []);
-      
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setPageLoading(false);
-    }
-  };
-  
- useEffect(() => {
-  localStorage.removeItem("vb_pending_category");
-
-  if (parentData.length > 0) {
-    localStorage.setItem(
-      "vb_parent_venue_name",
-      parentData[0].venue_name
-    );
-  } else {
-    localStorage.removeItem("vb_parent_venue_name");
-  }
-}, [parentData]);
-
-
 
   // ── Render ─────────────────────────────────────────────────────────
   return (

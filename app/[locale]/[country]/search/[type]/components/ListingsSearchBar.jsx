@@ -79,13 +79,30 @@ const CLEAR_CLS       = "text-gray-400 hover:text-gray-600 dark:text-white/40 da
 /* ════════════════════════════════════════════════════════════════
    Main component
    ════════════════════════════════════════════════════════════════ */
-export default function ListingsSearchBar({ onSearch }) {
+/* Parse a YYYY-MM-DD string as a local-timezone Date (avoids UTC midnight shift) */
+function parseDateParam(str) {
+  if (!str) return null;
+  const parts = str.split("-").map(Number);
+  if (parts.length !== 3 || parts.some(isNaN)) return null;
+  const [y, m, d] = parts;
+  return new Date(y, m - 1, d);
+}
+
+export default function ListingsSearchBar({ onSearch, countryCode = "in", defaultValues = {} }) {
   const { activeCategory } = useCategory();
   const tint   = CATEGORY_TINTS[activeCategory] ?? CATEGORY_TINTS.venues;
   const fields = SEARCH_CONFIG[activeCategory] ?? SEARCH_CONFIG.venues;
 
-  const [dates,       setDates]       = useState({});
-  const [searchData,  setSearchData]  = useState({});
+  /* Initialise dates from URL params (YYYY-MM-DD strings) */
+  const [dates, setDates] = useState(() => ({
+    date:      parseDateParam(defaultValues.date),
+    checkin:   parseDateParam(defaultValues.checkin),
+    checkout:  parseDateParam(defaultValues.checkout),
+    startdate: parseDateParam(defaultValues.startdate),
+    enddate:   parseDateParam(defaultValues.enddate),
+  }));
+
+  const [searchData,  setSearchData]  = useState({ location: defaultValues.location || "" });
   const [sheetOpen,   setSheetOpen]   = useState(false);
 
   const handleSearch = () => onSearch?.({ ...searchData, dates });
@@ -105,6 +122,9 @@ export default function ListingsSearchBar({ onSearch }) {
             dateValue={dates[field.id] ?? null}
             onDateChange={(v) => setDates((p) => ({ ...p, [field.id]: v }))}
             setSearchData={setSearchData}
+            countryCode={countryCode}
+            defaultLocation={field.type === "location" ? (defaultValues.location || "") : ""}
+            defaultGuests={field.type === "guests"   ? (defaultValues.guests   || "")  : ""}
           />
         ))}
 
@@ -149,7 +169,7 @@ export default function ListingsSearchBar({ onSearch }) {
    Mirrors HeroSection's SearchField exactly.
    Container colors adapted for white page; picker components unchanged.
    ────────────────────────────────────────────────────────────────── */
-function SearchField({ field, tint, category, isLast, dateValue, onDateChange, setSearchData }) {
+function SearchField({ field, tint, category, isLast, dateValue, onDateChange, setSearchData, countryCode, defaultLocation = "", defaultGuests = "" }) {
   return (
     <div
       className={[
@@ -171,6 +191,8 @@ function SearchField({ field, tint, category, isLast, dateValue, onDateChange, s
           placeholderClass={PLACEHOLDER_CLS}
           clearClass={CLEAR_CLS}
           lightDropdown={true}
+          countryCode={countryCode}
+          defaultValue={defaultLocation}
           onSelect={(value) => setSearchData((p) => ({ ...p, location: value }))}
         />
       )}
@@ -215,6 +237,7 @@ function SearchField({ field, tint, category, isLast, dateValue, onDateChange, s
           textClass={TEXT_CLS}
           chevronClass="text-gray-400 hover:text-gray-600 dark:text-white/50"
           placeholder="How many guests?"
+          defaultValue={defaultGuests}
           onChange={(val) => setSearchData((p) => ({ ...p, guests: val }))}
         />
       )}
