@@ -13,7 +13,7 @@ export const getAvailableVenues = (data) => {
 };
 
 export const Load_all_packages = (data) => {
-  return api.post("/booking/Load_all_packages", data);
+  return api.get("/booking/Load_all_packages", data);
 };
 
 export const loadAllAddons = (data) => {
