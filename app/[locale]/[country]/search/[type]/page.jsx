@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { useParams, useSearchParams } from "next/navigation";
@@ -58,6 +58,25 @@ const MAP_TOP = 72;
 const MAP_H   = `calc(100vh - ${MAP_TOP}px)`;
 
 
+// ── Skeleton card placeholder ──────────────────────────────────────────────
+function SkeletonCard() {
+  return (
+    <div className="rounded-2xl overflow-hidden bg-white dark:bg-gray-900 shadow-sm animate-pulse">
+      {/* Image */}
+      <div className="h-48 bg-gray-200 dark:bg-gray-700" />
+      {/* Body */}
+      <div className="p-3 space-y-2">
+        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded-full w-3/4" />
+        <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-full w-1/2" />
+        <div className="flex items-center justify-between pt-1">
+          <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-full w-1/3" />
+          <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-full w-1/4" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function SearchPage() {
  
   const mapRef = useRef(null);
@@ -74,6 +93,7 @@ export default function SearchPage() {
   const [wishlistVenue,    setWishlistVenue]     = useState(null);
   const [loadData,         setLoadData]          = useState([]);
   const [loadProperty,     setLoadProperty]      = useState([]);
+  const [isLoadingVenues,  setIsLoadingVenues]   = useState(true);
   const [wishlistCategory, setWishlistCategory]  = useState([]);
   const [wishlist,         setWishlist]          = useState([]);
   const [compares,         setCompares]          = useState([]);
@@ -83,6 +103,8 @@ export default function SearchPage() {
   const fabLastScroll = useRef(0);
   const [selectedCategory, setSelectedCategory]  = useState(null);
   const [mapBounds,        setMapBounds]         = useState(null);
+  /* Venues reported as visible by MapView — drives the card grid */
+  const [cardVenues,       setCardVenues]        = useState(null);
   /* Init from URL params (passed by home page search) */
   const [searchLocLabel,   setSearchLocLabel]    = useState(() => searchParams.get("location") || null);
 
@@ -112,18 +134,39 @@ export default function SearchPage() {
   const selected_country =
     COUNTRY_MAP[String(country || "in").toLowerCase()] || COUNTRY_MAP.in;
 
-  /* ── Static venues — filtered by country + activeCategory + bounds ── */
-  const staticVenues = getStaticVenues(
-    selected_country.name,
-    activeCategory || null,
-    mapBounds,
+  /* ── Static venues — filtered by country + activeCategory + bounds ──
+     Memoized so the array reference only changes when deps genuinely change,
+     preventing MapView's useEffect([venues]) from re-firing on every render. */
+  const staticVenues = useMemo(
+    () => getStaticVenues(selected_country.name, activeCategory || null, mapBounds),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [selected_country.name, activeCategory, mapBounds],
   );
 
-  /* All cards to show: static first, then API data */
-  const allCards = [
-    ...staticVenues,
-    ...loadProperty,
-  ];
+  /* All venues sent to the map — static + API, unfiltered.
+     Stable reference prevents the onVisibleVenuesChange → re-render → new venues → loop. */
+  const allCards = useMemo(
+    () => [...staticVenues, ...loadProperty],
+    [staticVenues, loadProperty],
+  );
+
+  /*
+   * cardVenues = what the map is currently showing as markers.
+   * Set by MapView's onVisibleVenuesChange callback: only venues with valid
+   * coords that fall inside the current viewport.
+   * Before the first map idle fires, fall back to allCards so something renders.
+   */
+  const displayCards = cardVenues ?? allCards;
+
+  /* ── Pagination ───────────────────────────────────────────────── */
+  const PAGE_SIZE = 12;
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Reset to page 1 whenever the visible set changes (map pan, category switch, etc.)
+  useEffect(() => { setCurrentPage(1); }, [displayCards.length, activeCategory]);
+
+  const totalPages    = Math.max(1, Math.ceil(displayCards.length / PAGE_SIZE));
+  const paginatedCards = displayCards.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   /* Map marker click — map handles its own popup via onVenueClick */
   const handleVenueClick = (_venue) => { /* intentionally no-op at page level; MapView handles popup */ };
@@ -134,6 +177,7 @@ export default function SearchPage() {
   const load = async () => {
     try {
       if (!activeCategory) return;
+      setIsLoadingVenues(true);
       const payload = { type: activeCategory, category: selectedCategory, filters, mapBounds };
       const [res, resProperty] = await Promise.all([
         findPropertyname(activeCategory),
@@ -141,7 +185,9 @@ export default function SearchPage() {
       ]);
       setLoadData(res?.data?.data ?? []);
       setLoadProperty(resProperty?.data?.data ?? []);
-    } catch (err) { console.error(err); }
+    } catch (err) { console.error(err); } finally {
+      setIsLoadingVenues(false);
+    }
   };
 
   useEffect(() => { load(); }, [activeCategory, selectedCategory, filters, mapBounds]);
@@ -162,11 +208,7 @@ export default function SearchPage() {
     loadUser();
   }, [user]);
 
-  /* ── hover → pan map ───────────────────────────────────────── */
-  useEffect(() => {
-    if (!hoverVenue || !mapRef.current) return;
-    mapRef.current.panTo({ lat: Number(hoverVenue.lat), lng: Number(hoverVenue.lng) });
-  }, [hoverVenue]);
+  /* Card hover highlights the marker via hoverVenue prop — no map pan (avoids onIdle lag) */
 
   /* ── FAB scroll tracking: hide on scroll-down, show on scroll-up (mobile only) ── */
   useEffect(() => {
@@ -271,12 +313,70 @@ export default function SearchPage() {
           </div>
 
           {/* Cards grid */}
-          <div className="flex-1 px-4 pt-3 pb-24 lg:pb-6">
+          <div className="flex-1 px-4 pt-3 pb-4 lg:pb-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-              {allCards.map((venue) => (
-                <VenueCard key={venue.childVenueId || venue.id} venue={venue} {...cardProps} />
-              ))}
+              {isLoadingVenues
+                ? Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)
+                : paginatedCards.map((venue) => (
+                    <VenueCard key={venue.childVenueId || venue.id} venue={venue} {...cardProps} />
+                  ))
+              }
             </div>
+
+            {/* ── Pagination ── */}
+            {!isLoadingVenues && totalPages > 1 && (
+              <div className="flex items-center justify-center gap-1.5 pt-8 pb-24 lg:pb-8">
+                {/* Prev */}
+                <button
+                  onClick={() => { setCurrentPage((p) => Math.max(1, p - 1)); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                  disabled={currentPage === 1}
+                  className="flex items-center justify-center w-9 h-9 rounded-full border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-violet-500 hover:text-violet-600 dark:hover:border-violet-400 dark:hover:text-violet-400 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  aria-label="Previous page"
+                >
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 12L6 8l4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                </button>
+
+                {/* Page numbers */}
+                {(() => {
+                  const pages = [];
+                  const delta = 1; // pages to show either side of current
+                  for (let i = 1; i <= totalPages; i++) {
+                    if (i === 1 || i === totalPages || (i >= currentPage - delta && i <= currentPage + delta)) {
+                      pages.push(i);
+                    } else if (pages[pages.length - 1] !== "…") {
+                      pages.push("…");
+                    }
+                  }
+                  return pages.map((p, idx) =>
+                    p === "…" ? (
+                      <span key={`ellipsis-${idx}`} className="w-9 h-9 flex items-center justify-center text-gray-400 dark:text-gray-500 text-sm select-none">…</span>
+                    ) : (
+                      <button
+                        key={p}
+                        onClick={() => { setCurrentPage(p); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                        className={`w-9 h-9 rounded-full text-sm font-semibold transition-colors ${
+                          p === currentPage
+                            ? "bg-violet-600 text-white shadow-sm shadow-violet-200 dark:shadow-violet-900"
+                            : "border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-violet-500 hover:text-violet-600 dark:hover:border-violet-400 dark:hover:text-violet-400"
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    )
+                  );
+                })()}
+
+                {/* Next */}
+                <button
+                  onClick={() => { setCurrentPage((p) => Math.min(totalPages, p + 1)); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                  disabled={currentPage === totalPages}
+                  className="flex items-center justify-center w-9 h-9 rounded-full border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-violet-500 hover:text-violet-600 dark:hover:border-violet-400 dark:hover:text-violet-400 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  aria-label="Next page"
+                >
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 12l4-4-4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                </button>
+              </div>
+            )}
           </div>
 
           <WishlistPopup
@@ -298,16 +398,18 @@ export default function SearchPage() {
               venues={allCards}
               hoverVenue={hoverVenue}
               country={selected_country.name}
+              isLoading={isLoadingVenues}
               onBoundsChange={setMapBounds}
               preferredLocation={preferredLocation}
               searchLocationLabel={searchLocLabel}
               onVenueClick={handleVenueClick}
+              onVisibleVenuesChange={setCardVenues}
             />
 
             {/* ── Listing count overlay — top-left of map ── */}
             <div className="absolute top-5 left-5 z-10 pointer-events-none">
               <span className="inline-flex items-center gap-1.5 bg-white dark:bg-gray-900 rounded-full px-3 py-1.5 shadow-md text-sm font-semibold text-gray-800 dark:text-gray-100 border border-gray-100 dark:border-gray-800">
-                <span className="font-bold">{allCards.length}</span>
+                <span className="font-bold">{displayCards.length}</span>
                 {t("venues_in_this_area")}
               </span>
             </div>
@@ -318,7 +420,7 @@ export default function SearchPage() {
       {/* ── Mobile listing count (below filter strip, above cards) ── */}
       <div className="lg:hidden px-4 pt-2 pb-1">
         <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
-          <span className="font-bold text-gray-900 dark:text-white">{allCards.length}</span>{" "}
+          <span className="font-bold text-gray-900 dark:text-white">{displayCards.length}</span>{" "}
           {t("venues_in_this_area")}
         </p>
       </div>
@@ -470,10 +572,12 @@ export default function SearchPage() {
               venues={allCards}
               hoverVenue={hoverVenue}
               country={selected_country.name}
+              isLoading={isLoadingVenues}
               onBoundsChange={setMapBounds}
               preferredLocation={preferredLocation}
               searchLocationLabel={searchLocLabel}
               onVenueClick={handleVenueClick}
+              onVisibleVenuesChange={setCardVenues}
             />
             <button
               onClick={() => setShowMap(false)}

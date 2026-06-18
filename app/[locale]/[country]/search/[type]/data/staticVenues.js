@@ -1,13 +1,13 @@
 /**
  * staticVenues.js
  *
- * 36 static listings — 3 per category per country (India + UAE).
+ * 126 static listings — ~15 per category for India, ~6 per category for UAE.
  * All prices stored in INR (project rule). UAE prices converted at 1 AED ≈ 22.5 INR.
  * childVenueId format: sv-{country}-{category}-{n}
  * parentVenueId format: pv-{country}-{category}-{n}
  */
 
-// ─── Shared Unsplash images per category ───────────────────────────────────
+// ─── Shared images per category (10 each) ──────────────────────────────────
 const IMGS = {
   venues: [
     "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=800&q=80",
@@ -16,6 +16,10 @@ const IMGS = {
     "https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=800&q=80",
     "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&q=80",
     "https://images.unsplash.com/photo-1478146059778-26028b07395a?w=800&q=80",
+    "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&q=80",
+    "https://images.unsplash.com/photo-1591115765373-5207764f72e7?w=800&q=80",
+    "https://images.unsplash.com/photo-1561489396-888724a1543d?w=800&q=80",
+    "https://images.unsplash.com/photo-1527529482837-4698179dc6ce?w=800&q=80",
   ],
   farmstays: [
     "https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?w=800&q=80",
@@ -24,6 +28,10 @@ const IMGS = {
     "https://images.unsplash.com/photo-1510798831971-661eb04b3739?w=800&q=80",
     "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=800&q=80",
     "https://images.unsplash.com/photo-1416331108676-a22ccb276e35?w=800&q=80",
+    "https://images.unsplash.com/photo-1445019980597-93fa8acb246c?w=800&q=80",
+    "https://images.unsplash.com/photo-1510672981848-a1c4f1cb5ccf?w=800&q=80",
+    "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&q=80",
+    "https://images.unsplash.com/photo-1586348943529-beaae6c28db9?w=800&q=80",
   ],
   studios: [
     "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=800&q=80",
@@ -32,6 +40,10 @@ const IMGS = {
     "https://images.unsplash.com/photo-1516826957135-700dedea698c?w=800&q=80",
     "https://images.unsplash.com/photo-1581281863883-2469417a1668?w=800&q=80",
     "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80",
+    "https://images.unsplash.com/photo-1520208422220-d12a3c588574?w=800&q=80",
+    "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=800&q=80",
+    "https://images.unsplash.com/photo-1453738773917-9c3eff1db985?w=800&q=80",
+    "https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=800&q=80",
   ],
   rentals: [
     "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800&q=80",
@@ -40,6 +52,10 @@ const IMGS = {
     "https://images.unsplash.com/photo-1484154218962-a197022b5858?w=800&q=80",
     "https://images.unsplash.com/photo-1616594039964-ae9021a400a0?w=800&q=80",
     "https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=800&q=80",
+    "https://images.unsplash.com/photo-1554995207-c18c203602cb?w=800&q=80",
+    "https://images.unsplash.com/photo-1558618047-3c8c76ca7d13?w=800&q=80",
+    "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=80",
+    "https://images.unsplash.com/photo-1513694203232-719a280e022f?w=800&q=80",
   ],
   workspaces: [
     "https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80",
@@ -48,6 +64,10 @@ const IMGS = {
     "https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=800&q=80",
     "https://images.unsplash.com/photo-1556761175-4b46a572b786?w=800&q=80",
     "https://images.unsplash.com/photo-1568992687947-868a62a9f521?w=800&q=80",
+    "https://images.unsplash.com/photo-1541746972996-4e0b0f43e02a?w=800&q=80",
+    "https://images.unsplash.com/photo-1497215842964-222b430dc094?w=800&q=80",
+    "https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?w=800&q=80",
+    "https://images.unsplash.com/photo-1600508773759-a0b37c3db636?w=800&q=80",
   ],
   experiences: [
     "https://images.unsplash.com/photo-1539635278303-d4002c07eae3?w=800&q=80",
@@ -56,656 +76,197 @@ const IMGS = {
     "https://images.unsplash.com/photo-1551632811-561732d1e306?w=800&q=80",
     "https://images.unsplash.com/photo-1516939884455-1445c8652f83?w=800&q=80",
     "https://images.unsplash.com/photo-1533587851505-d119e13fa0d7?w=800&q=80",
+    "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=800&q=80",
+    "https://images.unsplash.com/photo-1504609813442-a8924e83f76e?w=800&q=80",
+    "https://images.unsplash.com/photo-1488085061387-422e29b40080?w=800&q=80",
+    "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800&q=80",
   ],
 };
 
-// ─── Helper to pick 2 images per entry ─────────────────────────────────────
-const img = (cat, idx) => [IMGS[cat][idx * 2], IMGS[cat][idx * 2 + 1]];
+// Cycles through the pool so any idx works without out-of-bounds
+const img = (cat, idx) => {
+  const pool = IMGS[cat];
+  return [pool[(idx * 2) % pool.length], pool[(idx * 2 + 1) % pool.length]];
+};
 
 // ═══════════════════════════════════════════════════════════════════════════
-// INDIA — VENUES
+// INDIA — VENUES (15)
 // ═══════════════════════════════════════════════════════════════════════════
 const INDIA_VENUES = [
-  {
-    childVenueId: "sv-in-v-1",
-    parentVenueId: "pv-in-v-1",
-    venueName: "Grand Ballroom",
-    parentVenueName: "The Leela Palace Bengaluru",
-    category: "venues",
-    country: "india",
-    lat: 12.9716, lng: 77.5946,
-    city: "Bengaluru", state: "Karnataka",
-    minPrice: 75000,
-    maxGuests: 500,
-    venueType: "Banquet Hall",
-    rating: 4.8, reviewCount: 124,
-    featured: true,
-    images: img("venues", 0),
-  },
-  {
-    childVenueId: "sv-in-v-2",
-    parentVenueId: "pv-in-v-2",
-    venueName: "Terrace Garden Hall",
-    parentVenueName: "ITC Maratha Mumbai",
-    category: "venues",
-    country: "india",
-    lat: 19.0990, lng: 72.8668,
-    city: "Mumbai", state: "Maharashtra",
-    minPrice: 95000,
-    maxGuests: 800,
-    venueType: "Rooftop Venue",
-    rating: 4.9, reviewCount: 211,
-    featured: true,
-    images: img("venues", 1),
-  },
-  {
-    childVenueId: "sv-in-v-3",
-    parentVenueId: "pv-in-v-3",
-    venueName: "Amber Durbar Hall",
-    parentVenueName: "Rambagh Palace Jaipur",
-    category: "venues",
-    country: "india",
-    lat: 26.8935, lng: 75.8120,
-    city: "Jaipur", state: "Rajasthan",
-    minPrice: 1200000,
-    maxGuests: 1000,
-    venueType: "Heritage Palace",
-    rating: 5.0, reviewCount: 89,
-    suggested: true,
-    images: img("venues", 2),
-  },
+  { childVenueId: "sv-in-v-1",  parentVenueId: "pv-in-v-1",  venueName: "Grand Ballroom",        parentVenueName: "The Leela Palace Bengaluru",    category: "venues", country: "india", lat: 12.9716, lng: 77.5946, city: "Bengaluru",    state: "Karnataka",    minPrice: 75000,   maxGuests: 500,  venueType: "Banquet Hall",        rating: 4.8, reviewCount: 124, featured: true,    images: img("venues", 0) },
+  { childVenueId: "sv-in-v-2",  parentVenueId: "pv-in-v-2",  venueName: "Terrace Garden Hall",   parentVenueName: "ITC Maratha Mumbai",            category: "venues", country: "india", lat: 19.0990, lng: 72.8668, city: "Mumbai",       state: "Maharashtra",  minPrice: 95000,   maxGuests: 800,  venueType: "Rooftop Venue",       rating: 4.9, reviewCount: 211, featured: true,    images: img("venues", 1) },
+  { childVenueId: "sv-in-v-3",  parentVenueId: "pv-in-v-3",  venueName: "Amber Durbar Hall",     parentVenueName: "Rambagh Palace Jaipur",         category: "venues", country: "india", lat: 26.8935, lng: 75.8120, city: "Jaipur",       state: "Rajasthan",    minPrice: 1200000, maxGuests: 1000, venueType: "Heritage Palace",     rating: 5.0, reviewCount: 89,  suggested: true,   images: img("venues", 2) },
+  { childVenueId: "sv-in-v-4",  parentVenueId: "pv-in-v-4",  venueName: "Crystal Hall",          parentVenueName: "Taj Falaknuma Palace",          category: "venues", country: "india", lat: 17.3616, lng: 78.4747, city: "Hyderabad",    state: "Telangana",    minPrice: 250000,  maxGuests: 700,  venueType: "Heritage Ballroom",   rating: 4.9, reviewCount: 156, featured: true,    images: img("venues", 3) },
+  { childVenueId: "sv-in-v-5",  parentVenueId: "pv-in-v-5",  venueName: "Imperial Banquet",      parentVenueName: "The Oberoi New Delhi",          category: "venues", country: "india", lat: 28.6562, lng: 77.2410, city: "New Delhi",    state: "Delhi",        minPrice: 180000,  maxGuests: 600,  venueType: "Grand Ballroom",      rating: 4.8, reviewCount: 203, images: img("venues", 4) },
+  { childVenueId: "sv-in-v-6",  parentVenueId: "pv-in-v-6",  venueName: "Bay View Pavilion",     parentVenueName: "ITC Grand Chola Chennai",      category: "venues", country: "india", lat: 13.0827, lng: 80.2707, city: "Chennai",      state: "Tamil Nadu",   minPrice: 120000,  maxGuests: 500,  venueType: "Convention Centre",   rating: 4.7, reviewCount: 98,  images: img("venues", 5) },
+  { childVenueId: "sv-in-v-7",  parentVenueId: "pv-in-v-7",  venueName: "Royal Bengal Hall",     parentVenueName: "ITC Sonar Kolkata",            category: "venues", country: "india", lat: 22.5726, lng: 88.3639, city: "Kolkata",      state: "West Bengal",  minPrice: 140000,  maxGuests: 550,  venueType: "Banquet Hall",        rating: 4.6, reviewCount: 77,  images: img("venues", 6) },
+  { childVenueId: "sv-in-v-8",  parentVenueId: "pv-in-v-8",  venueName: "Lake Palace Durbar",    parentVenueName: "Taj Lake Palace Udaipur",      category: "venues", country: "india", lat: 24.5784, lng: 73.6837, city: "Udaipur",      state: "Rajasthan",    minPrice: 800000,  maxGuests: 400,  venueType: "Heritage Palace",     rating: 5.0, reviewCount: 64,  featured: true,    images: img("venues", 7) },
+  { childVenueId: "sv-in-v-9",  parentVenueId: "pv-in-v-9",  venueName: "Garden Terrace",        parentVenueName: "Park Hyatt Goa Resort",        category: "venues", country: "india", lat: 15.2993, lng: 73.9169, city: "Panaji",       state: "Goa",          minPrice: 95000,   maxGuests: 350,  venueType: "Beachfront Terrace",  rating: 4.7, reviewCount: 82,  images: img("venues", 8) },
+  { childVenueId: "sv-in-v-10", parentVenueId: "pv-in-v-10", venueName: "Mughal Banquet",        parentVenueName: "ITC Mughal Agra",              category: "venues", country: "india", lat: 27.1767, lng: 78.0081, city: "Agra",         state: "Uttar Pradesh",minPrice: 160000,  maxGuests: 600,  venueType: "Mughal Courtyard",    rating: 4.8, reviewCount: 115, suggested: true,   images: img("venues", 9) },
+  { childVenueId: "sv-in-v-11", parentVenueId: "pv-in-v-11", venueName: "Convention Suite",      parentVenueName: "Westin Pune",                  category: "venues", country: "india", lat: 18.5204, lng: 73.8567, city: "Pune",         state: "Maharashtra",  minPrice: 110000,  maxGuests: 450,  venueType: "Convention Centre",   rating: 4.5, reviewCount: 59,  images: img("venues", 0) },
+  { childVenueId: "sv-in-v-12", parentVenueId: "pv-in-v-12", venueName: "Sunset Rooftop Hall",   parentVenueName: "Taj Fort Aguada",              category: "venues", country: "india", lat: 15.4803, lng: 73.7713, city: "Goa",          state: "Goa",          minPrice: 130000,  maxGuests: 300,  venueType: "Rooftop Venue",       rating: 4.9, reviewCount: 91,  images: img("venues", 1) },
+  { childVenueId: "sv-in-v-13", parentVenueId: "pv-in-v-13", venueName: "Spice Garden Hall",     parentVenueName: "Leela Kovalam",                category: "venues", country: "india", lat: 8.3988,  lng: 76.9829, city: "Kovalam",      state: "Kerala",       minPrice: 85000,   maxGuests: 250,  venueType: "Garden Venue",        rating: 4.6, reviewCount: 44,  images: img("venues", 2) },
+  { childVenueId: "sv-in-v-14", parentVenueId: "pv-in-v-14", venueName: "Maharaja Banquet",      parentVenueName: "Umaid Bhawan Palace",          category: "venues", country: "india", lat: 26.2889, lng: 73.0243, city: "Jodhpur",      state: "Rajasthan",    minPrice: 500000,  maxGuests: 800,  venueType: "Heritage Palace",     rating: 4.9, reviewCount: 38,  featured: true,    images: img("venues", 3) },
+  { childVenueId: "sv-in-v-15", parentVenueId: "pv-in-v-15", venueName: "Valley View Banquet",   parentVenueName: "Wildflower Hall Shimla",       category: "venues", country: "india", lat: 31.1048, lng: 77.1734, city: "Shimla",       state: "Himachal Pradesh", minPrice: 200000, maxGuests: 200, venueType: "Mountain Venue",    rating: 4.8, reviewCount: 53,  images: img("venues", 4) },
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════
-// INDIA — FARMSTAYS
+// INDIA — FARMSTAYS (14)
 // ═══════════════════════════════════════════════════════════════════════════
 const INDIA_FARMSTAYS = [
-  {
-    childVenueId: "sv-in-f-1",
-    parentVenueId: "pv-in-f-1",
-    venueName: "Misty Coffee Cottage",
-    parentVenueName: "Coorg Wilderness Estate",
-    category: "farmstays",
-    country: "india",
-    lat: 12.3375, lng: 75.8069,
-    city: "Coorg", state: "Karnataka",
-    minPrice: 8500,
-    maxGuests: 6,
-    bedrooms: 3,
-    rating: 4.7, reviewCount: 56,
-    featured: true,
-    images: img("farmstays", 0),
-  },
-  {
-    childVenueId: "sv-in-f-2",
-    parentVenueId: "pv-in-f-2",
-    venueName: "Spice Valley Bungalow",
-    parentVenueName: "Wayanad Retreat Farm",
-    category: "farmstays",
-    country: "india",
-    lat: 11.6854, lng: 76.1320,
-    city: "Wayanad", state: "Kerala",
-    minPrice: 7200,
-    maxGuests: 8,
-    bedrooms: 4,
-    rating: 4.6, reviewCount: 72,
-    images: img("farmstays", 1),
-  },
-  {
-    childVenueId: "sv-in-f-3",
-    parentVenueId: "pv-in-f-3",
-    venueName: "Tea Garden Villa",
-    parentVenueName: "Munnar Hills Farmhouse",
-    category: "farmstays",
-    country: "india",
-    lat: 10.0889, lng: 77.0595,
-    city: "Munnar", state: "Kerala",
-    minPrice: 9800,
-    maxGuests: 10,
-    bedrooms: 5,
-    rating: 4.9, reviewCount: 43,
-    suggested: true,
-    images: img("farmstays", 2),
-  },
+  { childVenueId: "sv-in-f-1",  parentVenueId: "pv-in-f-1",  venueName: "Misty Coffee Cottage",    parentVenueName: "Coorg Wilderness Estate",     category: "farmstays", country: "india", lat: 12.3375, lng: 75.8069, city: "Coorg",       state: "Karnataka",    minPrice: 8500,  maxGuests: 6,  bedrooms: 3, rating: 4.7, reviewCount: 56, featured: true,  images: img("farmstays", 0) },
+  { childVenueId: "sv-in-f-2",  parentVenueId: "pv-in-f-2",  venueName: "Spice Valley Bungalow",   parentVenueName: "Wayanad Retreat Farm",         category: "farmstays", country: "india", lat: 11.6854, lng: 76.1320, city: "Wayanad",     state: "Kerala",       minPrice: 7200,  maxGuests: 8,  bedrooms: 4, rating: 4.6, reviewCount: 72, images: img("farmstays", 1) },
+  { childVenueId: "sv-in-f-3",  parentVenueId: "pv-in-f-3",  venueName: "Tea Garden Villa",        parentVenueName: "Munnar Hills Farmhouse",       category: "farmstays", country: "india", lat: 10.0889, lng: 77.0595, city: "Munnar",      state: "Kerala",       minPrice: 9800,  maxGuests: 10, bedrooms: 5, rating: 4.9, reviewCount: 43, suggested: true, images: img("farmstays", 2) },
+  { childVenueId: "sv-in-f-4",  parentVenueId: "pv-in-f-4",  venueName: "Nilgiri Hilltop Cottage", parentVenueName: "Ooty Green Retreats",          category: "farmstays", country: "india", lat: 11.4064, lng: 76.6932, city: "Ooty",        state: "Tamil Nadu",   minPrice: 6500,  maxGuests: 6,  bedrooms: 3, rating: 4.5, reviewCount: 61, images: img("farmstays", 3) },
+  { childVenueId: "sv-in-f-5",  parentVenueId: "pv-in-f-5",  venueName: "Sea Breeze Farm Stay",    parentVenueName: "Gokarna Coastal Farm",         category: "farmstays", country: "india", lat: 14.5479, lng: 74.3188, city: "Gokarna",     state: "Karnataka",    minPrice: 7800,  maxGuests: 8,  bedrooms: 4, rating: 4.7, reviewCount: 35, images: img("farmstays", 4) },
+  { childVenueId: "sv-in-f-6",  parentVenueId: "pv-in-f-6",  venueName: "Himalayan River Camp",    parentVenueName: "Rishikesh Valley Farms",       category: "farmstays", country: "india", lat: 30.0869, lng: 78.2676, city: "Rishikesh",   state: "Uttarakhand",  minPrice: 8200,  maxGuests: 10, bedrooms: 4, rating: 4.8, reviewCount: 49, featured: true,  images: img("farmstays", 5) },
+  { childVenueId: "sv-in-f-7",  parentVenueId: "pv-in-f-7",  venueName: "Kodai Valley Cottage",    parentVenueName: "Kodaikanal Organic Farm",      category: "farmstays", country: "india", lat: 10.2381, lng: 77.4892, city: "Kodaikanal",  state: "Tamil Nadu",   minPrice: 5800,  maxGuests: 6,  bedrooms: 3, rating: 4.4, reviewCount: 28, images: img("farmstays", 6) },
+  { childVenueId: "sv-in-f-8",  parentVenueId: "pv-in-f-8",  venueName: "Mahabaleshwar Villa",     parentVenueName: "Sahyadri Farm Retreats",       category: "farmstays", country: "india", lat: 17.9237, lng: 73.6576, city: "Mahabaleshwar",state: "Maharashtra",  minPrice: 6200,  maxGuests: 8,  bedrooms: 4, rating: 4.6, reviewCount: 54, images: img("farmstays", 7) },
+  { childVenueId: "sv-in-f-9",  parentVenueId: "pv-in-f-9",  venueName: "Jungle View Cottage",     parentVenueName: "Jim Corbett Forest Farms",     category: "farmstays", country: "india", lat: 29.5300, lng: 78.7747, city: "Corbett",     state: "Uttarakhand",  minPrice: 11000, maxGuests: 8,  bedrooms: 4, rating: 4.9, reviewCount: 37, suggested: true, images: img("farmstays", 8) },
+  { childVenueId: "sv-in-f-10", parentVenueId: "pv-in-f-10", venueName: "Coffee Estate Bungalow",  parentVenueName: "Chikmagalur Estates",          category: "farmstays", country: "india", lat: 13.3161, lng: 75.7720, city: "Chikmagalur", state: "Karnataka",    minPrice: 7000,  maxGuests: 6,  bedrooms: 3, rating: 4.7, reviewCount: 41, images: img("farmstays", 9) },
+  { childVenueId: "sv-in-f-11", parentVenueId: "pv-in-f-11", venueName: "Bamboo Grove Retreat",    parentVenueName: "Coorg Bamboo Farms",           category: "farmstays", country: "india", lat: 12.5266, lng: 75.7356, city: "Coorg",       state: "Karnataka",    minPrice: 5500,  maxGuests: 4,  bedrooms: 2, rating: 4.5, reviewCount: 22, images: img("farmstays", 0) },
+  { childVenueId: "sv-in-f-12", parentVenueId: "pv-in-f-12", venueName: "Paddy Field Homestay",    parentVenueName: "Alleppey Backwater Farms",     category: "farmstays", country: "india", lat: 9.4981,  lng: 76.3388, city: "Alleppey",    state: "Kerala",       minPrice: 6800,  maxGuests: 6,  bedrooms: 3, rating: 4.8, reviewCount: 66, images: img("farmstays", 1) },
+  { childVenueId: "sv-in-f-13", parentVenueId: "pv-in-f-13", venueName: "Mango Orchard Stay",      parentVenueName: "Konkan Coastal Farms",         category: "farmstays", country: "india", lat: 16.9902, lng: 73.3120, city: "Ratnagiri",   state: "Maharashtra",  minPrice: 4800,  maxGuests: 6,  bedrooms: 3, rating: 4.4, reviewCount: 19, images: img("farmstays", 2) },
+  { childVenueId: "sv-in-f-14", parentVenueId: "pv-in-f-14", venueName: "Apple Farm Cottage",      parentVenueName: "Manali Mountain Farms",        category: "farmstays", country: "india", lat: 32.2396, lng: 77.1887, city: "Manali",      state: "Himachal Pradesh", minPrice: 9000, maxGuests: 8, bedrooms: 4, rating: 4.8, reviewCount: 33, featured: true, images: img("farmstays", 3) },
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════
-// INDIA — STUDIOS
+// INDIA — STUDIOS (12)
 // ═══════════════════════════════════════════════════════════════════════════
 const INDIA_STUDIOS = [
-  {
-    childVenueId: "sv-in-s-1",
-    parentVenueId: "pv-in-s-1",
-    venueName: "Studio Alpha",
-    parentVenueName: "Lightbox Creative Hub",
-    category: "studios",
-    country: "india",
-    lat: 12.9352, lng: 77.6245,
-    city: "Bengaluru", state: "Karnataka",
-    minPrice: 1800,
-    studioType: "Photography Studio",
-    sizeSqft: 1200,
-    rating: 4.6, reviewCount: 38,
-    images: img("studios", 0),
-  },
-  {
-    childVenueId: "sv-in-s-2",
-    parentVenueId: "pv-in-s-2",
-    venueName: "Film Studio B",
-    parentVenueName: "Dharavi Film Studios",
-    category: "studios",
-    country: "india",
-    lat: 19.0422, lng: 72.8561,
-    city: "Mumbai", state: "Maharashtra",
-    minPrice: 3500,
-    studioType: "Film & Video Studio",
-    sizeSqft: 3500,
-    rating: 4.8, reviewCount: 91,
-    featured: true,
-    images: img("studios", 1),
-  },
-  {
-    childVenueId: "sv-in-s-3",
-    parentVenueId: "pv-in-s-3",
-    venueName: "Podcast Suite 1",
-    parentVenueName: "SoundBox Hyderabad",
-    category: "studios",
-    country: "india",
-    lat: 17.4324, lng: 78.4072,
-    city: "Hyderabad", state: "Telangana",
-    minPrice: 950,
-    studioType: "Podcast / Recording",
-    sizeSqft: 450,
-    rating: 4.5, reviewCount: 29,
-    images: img("studios", 2),
-  },
+  { childVenueId: "sv-in-s-1",  parentVenueId: "pv-in-s-1",  venueName: "Studio Alpha",         parentVenueName: "Lightbox Creative Hub",         category: "studios", country: "india", lat: 12.9352, lng: 77.6245, city: "Bengaluru",  state: "Karnataka",   minPrice: 1800, studioType: "Photography Studio",   sizeSqft: 1200, rating: 4.6, reviewCount: 38, images: img("studios", 0) },
+  { childVenueId: "sv-in-s-2",  parentVenueId: "pv-in-s-2",  venueName: "Film Studio B",        parentVenueName: "Dharavi Film Studios",           category: "studios", country: "india", lat: 19.0422, lng: 72.8561, city: "Mumbai",     state: "Maharashtra", minPrice: 3500, studioType: "Film & Video Studio",  sizeSqft: 3500, rating: 4.8, reviewCount: 91, featured: true,  images: img("studios", 1) },
+  { childVenueId: "sv-in-s-3",  parentVenueId: "pv-in-s-3",  venueName: "Podcast Suite 1",      parentVenueName: "SoundBox Hyderabad",             category: "studios", country: "india", lat: 17.4324, lng: 78.4072, city: "Hyderabad",  state: "Telangana",   minPrice: 950,  studioType: "Podcast / Recording",  sizeSqft: 450,  rating: 4.5, reviewCount: 29, images: img("studios", 2) },
+  { childVenueId: "sv-in-s-4",  parentVenueId: "pv-in-s-4",  venueName: "Visual Lab Delhi",     parentVenueName: "Hauz Khas Creative Studios",    category: "studios", country: "india", lat: 28.5495, lng: 77.2001, city: "New Delhi",  state: "Delhi",       minPrice: 2200, studioType: "Photography Studio",   sizeSqft: 1500, rating: 4.7, reviewCount: 53, images: img("studios", 3) },
+  { childVenueId: "sv-in-s-5",  parentVenueId: "pv-in-s-5",  venueName: "Frame Perfect Studio", parentVenueName: "Koregaon Park Studios Pune",    category: "studios", country: "india", lat: 18.5362, lng: 73.8940, city: "Pune",       state: "Maharashtra", minPrice: 1600, studioType: "Photography Studio",   sizeSqft: 1100, rating: 4.5, reviewCount: 27, images: img("studios", 4) },
+  { childVenueId: "sv-in-s-6",  parentVenueId: "pv-in-s-6",  venueName: "Creative Hub Chennai", parentVenueName: "T Nagar Studios",               category: "studios", country: "india", lat: 13.0418, lng: 80.2341, city: "Chennai",    state: "Tamil Nadu",  minPrice: 1400, studioType: "Content & Video",      sizeSqft: 900,  rating: 4.4, reviewCount: 21, images: img("studios", 5) },
+  { childVenueId: "sv-in-s-7",  parentVenueId: "pv-in-s-7",  venueName: "Capture Zone",         parentVenueName: "Park Street Studios Kolkata",   category: "studios", country: "india", lat: 22.5536, lng: 88.3518, city: "Kolkata",    state: "West Bengal", minPrice: 1200, studioType: "Photography Studio",   sizeSqft: 800,  rating: 4.3, reviewCount: 18, images: img("studios", 6) },
+  { childVenueId: "sv-in-s-8",  parentVenueId: "pv-in-s-8",  venueName: "The Lens Room",        parentVenueName: "SG Highway Studios Ahmedabad",  category: "studios", country: "india", lat: 23.0225, lng: 72.5714, city: "Ahmedabad",  state: "Gujarat",     minPrice: 1100, studioType: "Photography Studio",   sizeSqft: 700,  rating: 4.4, reviewCount: 14, images: img("studios", 7) },
+  { childVenueId: "sv-in-s-9",  parentVenueId: "pv-in-s-9",  venueName: "Cinematic Stage",      parentVenueName: "RSM Studios Jaipur",            category: "studios", country: "india", lat: 26.8944, lng: 75.8022, city: "Jaipur",     state: "Rajasthan",   minPrice: 2800, studioType: "Film & Video Studio",  sizeSqft: 2800, rating: 4.6, reviewCount: 32, images: img("studios", 8) },
+  { childVenueId: "sv-in-s-10", parentVenueId: "pv-in-s-10", venueName: "Music Studio A",       parentVenueName: "Andheri Sound Labs Mumbai",     category: "studios", country: "india", lat: 19.1136, lng: 72.8697, city: "Mumbai",     state: "Maharashtra", minPrice: 2500, studioType: "Music Recording",      sizeSqft: 600,  rating: 4.9, reviewCount: 77, featured: true,  images: img("studios", 9) },
+  { childVenueId: "sv-in-s-11", parentVenueId: "pv-in-s-11", venueName: "Podcast Hub",          parentVenueName: "Indiranagar Studio Collective", category: "studios", country: "india", lat: 12.9783, lng: 77.6408, city: "Bengaluru",  state: "Karnataka",   minPrice: 1100, studioType: "Podcast / Recording",  sizeSqft: 350,  rating: 4.5, reviewCount: 24, images: img("studios", 0) },
+  { childVenueId: "sv-in-s-12", parentVenueId: "pv-in-s-12", venueName: "Reel & Frame",         parentVenueName: "Banjara Hills Studios",          category: "studios", country: "india", lat: 17.4156, lng: 78.4347, city: "Hyderabad",  state: "Telangana",   minPrice: 2000, studioType: "Film & Video Studio",  sizeSqft: 2000, rating: 4.7, reviewCount: 41, images: img("studios", 1) },
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════
-// INDIA — RENTALS
+// INDIA — RENTALS (12)
 // ═══════════════════════════════════════════════════════════════════════════
 const INDIA_RENTALS = [
-  {
-    childVenueId: "sv-in-r-1",
-    parentVenueId: "pv-in-r-1",
-    venueName: "Sea-View Penthouse",
-    parentVenueName: "Goa Luxury Stays",
-    category: "rentals",
-    country: "india",
-    lat: 15.2993, lng: 73.9169,
-    city: "Panaji", state: "Goa",
-    minPrice: 18000,
-    rentalType: "Entire Apartment",
-    pricingType: "Per Night",
-    maxGuests: 6,
-    bedrooms: 3,
-    rating: 4.7, reviewCount: 63,
-    featured: true,
-    images: img("rentals", 0),
-  },
-  {
-    childVenueId: "sv-in-r-2",
-    parentVenueId: "pv-in-r-2",
-    venueName: "Heritage Haveli Suite",
-    parentVenueName: "Pink City Home Stays",
-    category: "rentals",
-    country: "india",
-    lat: 26.9124, lng: 75.7873,
-    city: "Jaipur", state: "Rajasthan",
-    minPrice: 12500,
-    rentalType: "Heritage Suite",
-    pricingType: "Per Night",
-    maxGuests: 4,
-    bedrooms: 2,
-    rating: 4.9, reviewCount: 112,
-    suggested: true,
-    images: img("rentals", 1),
-  },
-  {
-    childVenueId: "sv-in-r-3",
-    parentVenueId: "pv-in-r-3",
-    venueName: "Studio Loft",
-    parentVenueName: "Delhi Urban Rentals",
-    category: "rentals",
-    country: "india",
-    lat: 28.6352, lng: 77.2245,
-    city: "New Delhi", state: "Delhi",
-    minPrice: 7500,
-    rentalType: "Studio Loft",
-    pricingType: "Per Night",
-    maxGuests: 2,
-    bedrooms: 1,
-    rating: 4.4, reviewCount: 48,
-    images: img("rentals", 2),
-  },
+  { childVenueId: "sv-in-r-1",  parentVenueId: "pv-in-r-1",  venueName: "Sea-View Penthouse",     parentVenueName: "Goa Luxury Stays",           category: "rentals", country: "india", lat: 15.2993, lng: 73.9169, city: "Panaji",       state: "Goa",              minPrice: 18000, rentalType: "Entire Apartment", pricingType: "Per Night", maxGuests: 6, bedrooms: 3, rating: 4.7, reviewCount: 63,  featured: true,  images: img("rentals", 0) },
+  { childVenueId: "sv-in-r-2",  parentVenueId: "pv-in-r-2",  venueName: "Heritage Haveli Suite",  parentVenueName: "Pink City Home Stays",       category: "rentals", country: "india", lat: 26.9124, lng: 75.7873, city: "Jaipur",       state: "Rajasthan",        minPrice: 12500, rentalType: "Heritage Suite",   pricingType: "Per Night", maxGuests: 4, bedrooms: 2, rating: 4.9, reviewCount: 112, suggested: true, images: img("rentals", 1) },
+  { childVenueId: "sv-in-r-3",  parentVenueId: "pv-in-r-3",  venueName: "Studio Loft",            parentVenueName: "Delhi Urban Rentals",        category: "rentals", country: "india", lat: 28.6352, lng: 77.2245, city: "New Delhi",    state: "Delhi",            minPrice: 7500,  rentalType: "Studio Loft",      pricingType: "Per Night", maxGuests: 2, bedrooms: 1, rating: 4.4, reviewCount: 48,  images: img("rentals", 2) },
+  { childVenueId: "sv-in-r-4",  parentVenueId: "pv-in-r-4",  venueName: "Lake View Bungalow",     parentVenueName: "Udaipur Lake Stays",         category: "rentals", country: "india", lat: 24.5784, lng: 73.6837, city: "Udaipur",      state: "Rajasthan",        minPrice: 15000, rentalType: "Villa",            pricingType: "Per Night", maxGuests: 8, bedrooms: 4, rating: 4.8, reviewCount: 76,  featured: true,  images: img("rentals", 3) },
+  { childVenueId: "sv-in-r-5",  parentVenueId: "pv-in-r-5",  venueName: "Himalayan Chalet",       parentVenueName: "Manali Snow Retreats",       category: "rentals", country: "india", lat: 32.2396, lng: 77.1887, city: "Manali",       state: "Himachal Pradesh", minPrice: 9500,  rentalType: "Chalet",           pricingType: "Per Night", maxGuests: 6, bedrooms: 3, rating: 4.7, reviewCount: 55,  images: img("rentals", 4) },
+  { childVenueId: "sv-in-r-6",  parentVenueId: "pv-in-r-6",  venueName: "Beachfront Cottage",     parentVenueName: "Calangute Beach Stays",      category: "rentals", country: "india", lat: 15.4803, lng: 73.7713, city: "Goa",          state: "Goa",              minPrice: 14000, rentalType: "Beachfront Cottage", pricingType: "Per Night", maxGuests: 6, bedrooms: 3, rating: 4.6, reviewCount: 89,  images: img("rentals", 5) },
+  { childVenueId: "sv-in-r-7",  parentVenueId: "pv-in-r-7",  venueName: "Hill Station Retreat",   parentVenueName: "Ooty Mountain Homes",        category: "rentals", country: "india", lat: 11.4064, lng: 76.6932, city: "Ooty",         state: "Tamil Nadu",       minPrice: 8000,  rentalType: "Mountain Home",    pricingType: "Per Night", maxGuests: 6, bedrooms: 3, rating: 4.5, reviewCount: 37,  images: img("rentals", 6) },
+  { childVenueId: "sv-in-r-8",  parentVenueId: "pv-in-r-8",  venueName: "Luxury City Suite",      parentVenueName: "BKC Premium Stays Mumbai",   category: "rentals", country: "india", lat: 19.0659, lng: 72.8683, city: "Mumbai",       state: "Maharashtra",      minPrice: 22000, rentalType: "Luxury Apartment", pricingType: "Per Night", maxGuests: 4, bedrooms: 2, rating: 4.8, reviewCount: 94,  featured: true,  images: img("rentals", 7) },
+  { childVenueId: "sv-in-r-9",  parentVenueId: "pv-in-r-9",  venueName: "River View Cottage",     parentVenueName: "Rishikesh Riverfront Homes", category: "rentals", country: "india", lat: 30.0869, lng: 78.2676, city: "Rishikesh",    state: "Uttarakhand",      minPrice: 6500,  rentalType: "Riverside Cottage",pricingType: "Per Night", maxGuests: 4, bedrooms: 2, rating: 4.6, reviewCount: 42,  images: img("rentals", 8) },
+  { childVenueId: "sv-in-r-10", parentVenueId: "pv-in-r-10", venueName: "Koramangala Studio",     parentVenueName: "Bengaluru Urban Stays",      category: "rentals", country: "india", lat: 12.9340, lng: 77.6101, city: "Bengaluru",    state: "Karnataka",        minPrice: 5000,  rentalType: "Studio Apartment", pricingType: "Per Night", maxGuests: 2, bedrooms: 1, rating: 4.3, reviewCount: 31,  images: img("rentals", 9) },
+  { childVenueId: "sv-in-r-11", parentVenueId: "pv-in-r-11", venueName: "Kashmiri Houseboat",     parentVenueName: "Dal Lake Houseboats",        category: "rentals", country: "india", lat: 34.0837, lng: 74.7973, city: "Srinagar",     state: "J&K",              minPrice: 11000, rentalType: "Houseboat",        pricingType: "Per Night", maxGuests: 6, bedrooms: 3, rating: 4.9, reviewCount: 107, suggested: true, images: img("rentals", 0) },
+  { childVenueId: "sv-in-r-12", parentVenueId: "pv-in-r-12", venueName: "Coorg Coffee Bungalow",  parentVenueName: "Madikeri Luxury Homes",      category: "rentals", country: "india", lat: 12.4244, lng: 75.7382, city: "Madikeri",     state: "Karnataka",        minPrice: 10500, rentalType: "Colonial Bungalow",pricingType: "Per Night", maxGuests: 8, bedrooms: 4, rating: 4.7, reviewCount: 58,  images: img("rentals", 1) },
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════
-// INDIA — WORKSPACES
+// INDIA — WORKSPACES (12)
 // ═══════════════════════════════════════════════════════════════════════════
 const INDIA_WORKSPACES = [
-  {
-    childVenueId: "sv-in-w-1",
-    parentVenueId: "pv-in-w-1",
-    venueName: "Focus Pod A",
-    parentVenueName: "WeWork Bengaluru Embassy",
-    category: "workspaces",
-    country: "india",
-    lat: 12.9698, lng: 77.7499,
-    city: "Bengaluru", state: "Karnataka",
-    minPrice: 800,
-    workspaceType: "Private Cabin",
-    seatingCapacity: 4,
-    rating: 4.5, reviewCount: 87,
-    images: img("workspaces", 0),
-  },
-  {
-    childVenueId: "sv-in-w-2",
-    parentVenueId: "pv-in-w-2",
-    venueName: "Conference Suite",
-    parentVenueName: "91Springboard Hyderabad",
-    category: "workspaces",
-    country: "india",
-    lat: 17.4481, lng: 78.3915,
-    city: "Hyderabad", state: "Telangana",
-    minPrice: 2200,
-    workspaceType: "Conference Room",
-    seatingCapacity: 20,
-    rating: 4.7, reviewCount: 54,
-    featured: true,
-    images: img("workspaces", 1),
-  },
-  {
-    childVenueId: "sv-in-w-3",
-    parentVenueId: "pv-in-w-3",
-    venueName: "Innovation Hub",
-    parentVenueName: "CoWrks Pune",
-    category: "workspaces",
-    country: "india",
-    lat: 18.5532, lng: 73.9143,
-    city: "Pune", state: "Maharashtra",
-    minPrice: 1200,
-    workspaceType: "Open Coworking",
-    seatingCapacity: 50,
-    rating: 4.6, reviewCount: 101,
-    images: img("workspaces", 2),
-  },
+  { childVenueId: "sv-in-w-1",  parentVenueId: "pv-in-w-1",  venueName: "Focus Pod A",          parentVenueName: "WeWork Bengaluru Embassy",          category: "workspaces", country: "india", lat: 12.9698, lng: 77.7499, city: "Bengaluru",  state: "Karnataka",   minPrice: 800,  workspaceType: "Private Cabin",    seatingCapacity: 4,  rating: 4.5, reviewCount: 87,  images: img("workspaces", 0) },
+  { childVenueId: "sv-in-w-2",  parentVenueId: "pv-in-w-2",  venueName: "Conference Suite",     parentVenueName: "91Springboard Hyderabad",           category: "workspaces", country: "india", lat: 17.4481, lng: 78.3915, city: "Hyderabad",  state: "Telangana",   minPrice: 2200, workspaceType: "Conference Room",  seatingCapacity: 20, rating: 4.7, reviewCount: 54,  featured: true,  images: img("workspaces", 1) },
+  { childVenueId: "sv-in-w-3",  parentVenueId: "pv-in-w-3",  venueName: "Innovation Hub",       parentVenueName: "CoWrks Pune",                       category: "workspaces", country: "india", lat: 18.5532, lng: 73.9143, city: "Pune",       state: "Maharashtra", minPrice: 1200, workspaceType: "Open Coworking",   seatingCapacity: 50, rating: 4.6, reviewCount: 101, images: img("workspaces", 2) },
+  { childVenueId: "sv-in-w-4",  parentVenueId: "pv-in-w-4",  venueName: "The Capital Office",   parentVenueName: "Awfis New Delhi CP",                category: "workspaces", country: "india", lat: 28.6315, lng: 77.2167, city: "New Delhi",  state: "Delhi",       minPrice: 1500, workspaceType: "Private Office",   seatingCapacity: 8,  rating: 4.6, reviewCount: 73,  images: img("workspaces", 3) },
+  { childVenueId: "sv-in-w-5",  parentVenueId: "pv-in-w-5",  venueName: "BKC Boardroom",        parentVenueName: "WeWork BKC Mumbai",                 category: "workspaces", country: "india", lat: 19.0659, lng: 72.8683, city: "Mumbai",     state: "Maharashtra", minPrice: 3500, workspaceType: "Boardroom",        seatingCapacity: 16, rating: 4.8, reviewCount: 62,  featured: true,  images: img("workspaces", 4) },
+  { childVenueId: "sv-in-w-6",  parentVenueId: "pv-in-w-6",  venueName: "Chennai Works",        parentVenueName: "BHIVE Workspace Chennai",           category: "workspaces", country: "india", lat: 13.0602, lng: 80.2496, city: "Chennai",    state: "Tamil Nadu",  minPrice: 900,  workspaceType: "Open Coworking",   seatingCapacity: 40, rating: 4.4, reviewCount: 38,  images: img("workspaces", 5) },
+  { childVenueId: "sv-in-w-7",  parentVenueId: "pv-in-w-7",  venueName: "Kolkata Co-Work",      parentVenueName: "GoHive Kolkata",                    category: "workspaces", country: "india", lat: 22.5355, lng: 88.3642, city: "Kolkata",    state: "West Bengal", minPrice: 750,  workspaceType: "Open Coworking",   seatingCapacity: 35, rating: 4.3, reviewCount: 29,  images: img("workspaces", 6) },
+  { childVenueId: "sv-in-w-8",  parentVenueId: "pv-in-w-8",  venueName: "Ahmedabad Hub",        parentVenueName: "iSprout Ahmedabad",                 category: "workspaces", country: "india", lat: 23.0225, lng: 72.5714, city: "Ahmedabad",  state: "Gujarat",     minPrice: 650,  workspaceType: "Shared Desk",      seatingCapacity: 30, rating: 4.3, reviewCount: 22,  images: img("workspaces", 7) },
+  { childVenueId: "sv-in-w-9",  parentVenueId: "pv-in-w-9",  venueName: "Pink City Workspace",  parentVenueName: "Jaipur Co-Working Hub",             category: "workspaces", country: "india", lat: 26.9124, lng: 75.7873, city: "Jaipur",     state: "Rajasthan",   minPrice: 700,  workspaceType: "Private Cabin",    seatingCapacity: 4,  rating: 4.4, reviewCount: 17,  images: img("workspaces", 8) },
+  { childVenueId: "sv-in-w-10", parentVenueId: "pv-in-w-10", venueName: "HSR Layout Cabin",     parentVenueName: "Innov8 Bengaluru HSR",              category: "workspaces", country: "india", lat: 12.9116, lng: 77.6473, city: "Bengaluru",  state: "Karnataka",   minPrice: 1000, workspaceType: "Private Cabin",    seatingCapacity: 6,  rating: 4.7, reviewCount: 45,  images: img("workspaces", 9) },
+  { childVenueId: "sv-in-w-11", parentVenueId: "pv-in-w-11", venueName: "Training Room",        parentVenueName: "Regus Cyber City Gurugram",         category: "workspaces", country: "india", lat: 28.4947, lng: 77.0885, city: "Gurugram",   state: "Haryana",     minPrice: 4000, workspaceType: "Training Room",    seatingCapacity: 30, rating: 4.6, reviewCount: 58,  images: img("workspaces", 0) },
+  { childVenueId: "sv-in-w-12", parentVenueId: "pv-in-w-12", venueName: "Tech Park Suite",      parentVenueName: "HITEC City Hub Hyderabad",          category: "workspaces", country: "india", lat: 17.4435, lng: 78.3772, city: "Hyderabad",  state: "Telangana",   minPrice: 1800, workspaceType: "Private Office",   seatingCapacity: 10, rating: 4.5, reviewCount: 43,  images: img("workspaces", 1) },
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════
-// INDIA — EXPERIENCES
+// INDIA — EXPERIENCES (12)
 // ═══════════════════════════════════════════════════════════════════════════
 const INDIA_EXPERIENCES = [
-  {
-    childVenueId: "sv-in-e-1",
-    parentVenueId: "pv-in-e-1",
-    venueName: "Desert Camping Night",
-    parentVenueName: "Rajasthan Desert Adventures",
-    category: "experiences",
-    country: "india",
-    lat: 27.0238, lng: 74.2179,
-    city: "Jaisalmer", state: "Rajasthan",
-    minPrice: 3500,
-    duration: "1 Night",
-    maxParticipants: 20,
-    rating: 4.9, reviewCount: 176,
-    featured: true,
-    images: img("experiences", 0),
-  },
-  {
-    childVenueId: "sv-in-e-2",
-    parentVenueId: "pv-in-e-2",
-    venueName: "Backwater Houseboat Cruise",
-    parentVenueName: "Kerala Waterways Tours",
-    category: "experiences",
-    country: "india",
-    lat: 9.4981, lng: 76.3388,
-    city: "Alleppey", state: "Kerala",
-    minPrice: 4800,
-    duration: "Full Day",
-    maxParticipants: 12,
-    rating: 4.8, reviewCount: 203,
-    suggested: true,
-    images: img("experiences", 1),
-  },
-  {
-    childVenueId: "sv-in-e-3",
-    parentVenueId: "pv-in-e-3",
-    venueName: "Hampi Ruins Cycling",
-    parentVenueName: "Deccan Explorers",
-    category: "experiences",
-    country: "india",
-    lat: 15.3350, lng: 76.4600,
-    city: "Hampi", state: "Karnataka",
-    minPrice: 1800,
-    duration: "Half Day",
-    maxParticipants: 15,
-    rating: 4.7, reviewCount: 88,
-    images: img("experiences", 2),
-  },
+  { childVenueId: "sv-in-e-1",  parentVenueId: "pv-in-e-1",  venueName: "Desert Camping Night",     parentVenueName: "Rajasthan Desert Adventures", category: "experiences", country: "india", lat: 27.0238, lng: 74.2179, city: "Jaisalmer",  state: "Rajasthan",        minPrice: 3500, duration: "1 Night",    maxParticipants: 20, rating: 4.9, reviewCount: 176, featured: true,  images: img("experiences", 0) },
+  { childVenueId: "sv-in-e-2",  parentVenueId: "pv-in-e-2",  venueName: "Backwater Houseboat Cruise",parentVenueName: "Kerala Waterways Tours",      category: "experiences", country: "india", lat: 9.4981,  lng: 76.3388, city: "Alleppey",   state: "Kerala",           minPrice: 4800, duration: "Full Day",   maxParticipants: 12, rating: 4.8, reviewCount: 203, suggested: true, images: img("experiences", 1) },
+  { childVenueId: "sv-in-e-3",  parentVenueId: "pv-in-e-3",  venueName: "Hampi Ruins Cycling",       parentVenueName: "Deccan Explorers",            category: "experiences", country: "india", lat: 15.3350, lng: 76.4600, city: "Hampi",      state: "Karnataka",        minPrice: 1800, duration: "Half Day",   maxParticipants: 15, rating: 4.7, reviewCount: 88,  images: img("experiences", 2) },
+  { childVenueId: "sv-in-e-4",  parentVenueId: "pv-in-e-4",  venueName: "Goa Sunset Cruise",         parentVenueName: "Mandovi River Cruises",       category: "experiences", country: "india", lat: 15.4909, lng: 73.8278, city: "Panaji",     state: "Goa",              minPrice: 2500, duration: "3 Hours",    maxParticipants: 30, rating: 4.6, reviewCount: 142, images: img("experiences", 3) },
+  { childVenueId: "sv-in-e-5",  parentVenueId: "pv-in-e-5",  venueName: "River Rafting Adventure",   parentVenueName: "Rishikesh Rapids",            category: "experiences", country: "india", lat: 30.0869, lng: 78.2676, city: "Rishikesh",  state: "Uttarakhand",      minPrice: 2200, duration: "3 Hours",    maxParticipants: 16, rating: 4.8, reviewCount: 231, featured: true,  images: img("experiences", 4) },
+  { childVenueId: "sv-in-e-6",  parentVenueId: "pv-in-e-6",  venueName: "Sunrise Taj Tour",          parentVenueName: "Agra Heritage Walks",         category: "experiences", country: "india", lat: 27.1751, lng: 78.0421, city: "Agra",       state: "Uttar Pradesh",    minPrice: 1500, duration: "Half Day",   maxParticipants: 10, rating: 4.9, reviewCount: 119, images: img("experiences", 5) },
+  { childVenueId: "sv-in-e-7",  parentVenueId: "pv-in-e-7",  venueName: "Floating Palace Boat Tour", parentVenueName: "Udaipur Royal Cruises",       category: "experiences", country: "india", lat: 24.5784, lng: 73.6837, city: "Udaipur",    state: "Rajasthan",        minPrice: 2000, duration: "2 Hours",    maxParticipants: 20, rating: 4.7, reviewCount: 97,  images: img("experiences", 6) },
+  { childVenueId: "sv-in-e-8",  parentVenueId: "pv-in-e-8",  venueName: "Himalayan Snow Trek",       parentVenueName: "Manali Adventure Club",       category: "experiences", country: "india", lat: 32.2396, lng: 77.1887, city: "Manali",     state: "Himachal Pradesh", minPrice: 3200, duration: "Full Day",   maxParticipants: 12, rating: 4.8, reviewCount: 74,  images: img("experiences", 7) },
+  { childVenueId: "sv-in-e-9",  parentVenueId: "pv-in-e-9",  venueName: "Tiger Safari",              parentVenueName: "Jim Corbett Wilderness",      category: "experiences", country: "india", lat: 29.5300, lng: 78.7747, city: "Corbett",    state: "Uttarakhand",      minPrice: 4500, duration: "Half Day",   maxParticipants: 6,  rating: 4.9, reviewCount: 163, suggested: true, images: img("experiences", 8) },
+  { childVenueId: "sv-in-e-10", parentVenueId: "pv-in-e-10", venueName: "Paragliding Bir Billing",   parentVenueName: "Himalayan Paragliding Co",    category: "experiences", country: "india", lat: 32.0425, lng: 76.7187, city: "Bir",        state: "Himachal Pradesh", minPrice: 3800, duration: "1 Hour",     maxParticipants: 1,  rating: 4.9, reviewCount: 289, featured: true,  images: img("experiences", 9) },
+  { childVenueId: "sv-in-e-11", parentVenueId: "pv-in-e-11", venueName: "Old Delhi Heritage Walk",   parentVenueName: "Delhi Heritage Walks",        category: "experiences", country: "india", lat: 28.6562, lng: 77.2410, city: "New Delhi",  state: "Delhi",            minPrice: 1200, duration: "3 Hours",    maxParticipants: 15, rating: 4.6, reviewCount: 88,  images: img("experiences", 0) },
+  { childVenueId: "sv-in-e-12", parentVenueId: "pv-in-e-12", venueName: "Scuba Diving Andaman",      parentVenueName: "Andaman Ocean Adventures",    category: "experiences", country: "india", lat: 11.7401, lng: 92.6586, city: "Port Blair", state: "Andaman",          minPrice: 5500, duration: "Half Day",   maxParticipants: 8,  rating: 4.8, reviewCount: 134, images: img("experiences", 1) },
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════
-// UAE — VENUES
+// UAE — VENUES (6)
 // ═══════════════════════════════════════════════════════════════════════════
 const UAE_VENUES = [
-  {
-    childVenueId: "sv-ae-v-1",
-    parentVenueId: "pv-ae-v-1",
-    venueName: "Marina Ballroom",
-    parentVenueName: "Address Dubai Marina",
-    category: "venues",
-    country: "dubai",
-    lat: 25.0778, lng: 55.1336,
-    city: "Dubai Marina", state: "Dubai",
-    minPrice: 337500,   // AED 15,000 × 22.5
-    maxGuests: 600,
-    venueType: "Luxury Ballroom",
-    rating: 4.9, reviewCount: 94,
-    featured: true,
-    images: img("venues", 0),
-  },
-  {
-    childVenueId: "sv-ae-v-2",
-    parentVenueId: "pv-ae-v-2",
-    venueName: "Falcon Hall",
-    parentVenueName: "Emirates Palace Abu Dhabi",
-    category: "venues",
-    country: "dubai",
-    lat: 24.4613, lng: 54.3179,
-    city: "Abu Dhabi", state: "Abu Dhabi",
-    minPrice: 562500,   // AED 25,000 × 22.5
-    maxGuests: 1200,
-    venueType: "Grand Ballroom",
-    rating: 5.0, reviewCount: 67,
-    suggested: true,
-    images: img("venues", 1),
-  },
-  {
-    childVenueId: "sv-ae-v-3",
-    parentVenueId: "pv-ae-v-3",
-    venueName: "Skyline Terrace",
-    parentVenueName: "Sheraton Sharjah Beach",
-    category: "venues",
-    country: "dubai",
-    lat: 25.3508, lng: 55.3896,
-    city: "Sharjah", state: "Sharjah",
-    minPrice: 135000,   // AED 6,000 × 22.5
-    maxGuests: 300,
-    venueType: "Beachfront Terrace",
-    rating: 4.7, reviewCount: 51,
-    images: img("venues", 2),
-  },
+  { childVenueId: "sv-ae-v-1", parentVenueId: "pv-ae-v-1", venueName: "Marina Ballroom",      parentVenueName: "Address Dubai Marina",       category: "venues", country: "dubai", lat: 25.0778, lng: 55.1336, city: "Dubai Marina",   state: "Dubai",     minPrice: 337500, maxGuests: 600,  venueType: "Luxury Ballroom",    rating: 4.9, reviewCount: 94,  featured: true,  images: img("venues", 0) },
+  { childVenueId: "sv-ae-v-2", parentVenueId: "pv-ae-v-2", venueName: "Falcon Hall",          parentVenueName: "Emirates Palace Abu Dhabi",  category: "venues", country: "dubai", lat: 24.4613, lng: 54.3179, city: "Abu Dhabi",      state: "Abu Dhabi", minPrice: 562500, maxGuests: 1200, venueType: "Grand Ballroom",     rating: 5.0, reviewCount: 67,  suggested: true, images: img("venues", 1) },
+  { childVenueId: "sv-ae-v-3", parentVenueId: "pv-ae-v-3", venueName: "Skyline Terrace",      parentVenueName: "Sheraton Sharjah Beach",     category: "venues", country: "dubai", lat: 25.3508, lng: 55.3896, city: "Sharjah",        state: "Sharjah",   minPrice: 135000, maxGuests: 300,  venueType: "Beachfront Terrace", rating: 4.7, reviewCount: 51,  images: img("venues", 2) },
+  { childVenueId: "sv-ae-v-4", parentVenueId: "pv-ae-v-4", venueName: "Burj View Banquet",    parentVenueName: "Armani Hotel Downtown",      category: "venues", country: "dubai", lat: 25.1972, lng: 55.2744, city: "Downtown Dubai", state: "Dubai",     minPrice: 450000, maxGuests: 400,  venueType: "Luxury Banquet",     rating: 5.0, reviewCount: 88,  featured: true,  images: img("venues", 3) },
+  { childVenueId: "sv-ae-v-5", parentVenueId: "pv-ae-v-5", venueName: "Yas Island Event Hall",parentVenueName: "Yas Viceroy Abu Dhabi",      category: "venues", country: "dubai", lat: 24.4887, lng: 54.6090, city: "Yas Island",     state: "Abu Dhabi", minPrice: 270000, maxGuests: 800,  venueType: "Convention Centre",  rating: 4.8, reviewCount: 59,  images: img("venues", 4) },
+  { childVenueId: "sv-ae-v-6", parentVenueId: "pv-ae-v-6", venueName: "Creek View Ballroom",  parentVenueName: "Grand Hyatt Dubai Creek",    category: "venues", country: "dubai", lat: 25.2707, lng: 55.3047, city: "Deira",          state: "Dubai",     minPrice: 180000, maxGuests: 500,  venueType: "Waterfront Ballroom",rating: 4.6, reviewCount: 43,  images: img("venues", 5) },
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════
-// UAE — FARMSTAYS
+// UAE — FARMSTAYS (5)
 // ═══════════════════════════════════════════════════════════════════════════
 const UAE_FARMSTAYS = [
-  {
-    childVenueId: "sv-ae-f-1",
-    parentVenueId: "pv-ae-f-1",
-    venueName: "Desert Rose Villa",
-    parentVenueName: "Anantara Qasr Al Sarab",
-    category: "farmstays",
-    country: "dubai",
-    lat: 25.7895, lng: 55.9432,
-    city: "Ras Al Khaimah", state: "Ras Al Khaimah",
-    minPrice: 27000,    // AED 1,200 × 22.5
-    maxGuests: 8,
-    bedrooms: 4,
-    rating: 4.8, reviewCount: 45,
-    featured: true,
-    images: img("farmstays", 0),
-  },
-  {
-    childVenueId: "sv-ae-f-2",
-    parentVenueId: "pv-ae-f-2",
-    venueName: "Oasis Garden Chalet",
-    parentVenueName: "Al Ain Green Farm Retreats",
-    category: "farmstays",
-    country: "dubai",
-    lat: 24.2075, lng: 55.7447,
-    city: "Al Ain", state: "Abu Dhabi",
-    minPrice: 18000,    // AED 800 × 22.5
-    maxGuests: 6,
-    bedrooms: 3,
-    rating: 4.6, reviewCount: 32,
-    images: img("farmstays", 1),
-  },
-  {
-    childVenueId: "sv-ae-f-3",
-    parentVenueId: "pv-ae-f-3",
-    venueName: "Mountain Spring Cabin",
-    parentVenueName: "Hatta Hill Farm",
-    category: "farmstays",
-    country: "dubai",
-    lat: 24.7984, lng: 56.1078,
-    city: "Hatta", state: "Dubai",
-    minPrice: 22500,    // AED 1,000 × 22.5
-    maxGuests: 5,
-    bedrooms: 2,
-    rating: 4.9, reviewCount: 58,
-    suggested: true,
-    images: img("farmstays", 2),
-  },
+  { childVenueId: "sv-ae-f-1", parentVenueId: "pv-ae-f-1", venueName: "Desert Rose Villa",     parentVenueName: "Anantara Qasr Al Sarab",  category: "farmstays", country: "dubai", lat: 25.7895, lng: 55.9432, city: "Ras Al Khaimah",state: "Ras Al Khaimah", minPrice: 27000, maxGuests: 8, bedrooms: 4, rating: 4.8, reviewCount: 45, featured: true,  images: img("farmstays", 0) },
+  { childVenueId: "sv-ae-f-2", parentVenueId: "pv-ae-f-2", venueName: "Oasis Garden Chalet",   parentVenueName: "Al Ain Green Farm",       category: "farmstays", country: "dubai", lat: 24.2075, lng: 55.7447, city: "Al Ain",        state: "Abu Dhabi",      minPrice: 18000, maxGuests: 6, bedrooms: 3, rating: 4.6, reviewCount: 32, images: img("farmstays", 1) },
+  { childVenueId: "sv-ae-f-3", parentVenueId: "pv-ae-f-3", venueName: "Mountain Spring Cabin",  parentVenueName: "Hatta Hill Farm",         category: "farmstays", country: "dubai", lat: 24.7984, lng: 56.1078, city: "Hatta",         state: "Dubai",          minPrice: 22500, maxGuests: 5, bedrooms: 2, rating: 4.9, reviewCount: 58, suggested: true, images: img("farmstays", 2) },
+  { childVenueId: "sv-ae-f-4", parentVenueId: "pv-ae-f-4", venueName: "Palm Garden Villa",     parentVenueName: "Ajman Farm Retreats",     category: "farmstays", country: "dubai", lat: 25.4052, lng: 55.5136, city: "Ajman",         state: "Ajman",          minPrice: 15750, maxGuests: 6, bedrooms: 3, rating: 4.5, reviewCount: 21, images: img("farmstays", 3) },
+  { childVenueId: "sv-ae-f-5", parentVenueId: "pv-ae-f-5", venueName: "Wadi Valley Farmhouse", parentVenueName: "Fujairah Wadi Retreats",  category: "farmstays", country: "dubai", lat: 25.1288, lng: 56.3265, city: "Fujairah",      state: "Fujairah",       minPrice: 20250, maxGuests: 8, bedrooms: 4, rating: 4.7, reviewCount: 34, images: img("farmstays", 4) },
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════
-// UAE — STUDIOS
+// UAE — STUDIOS (5)
 // ═══════════════════════════════════════════════════════════════════════════
 const UAE_STUDIOS = [
-  {
-    childVenueId: "sv-ae-s-1",
-    parentVenueId: "pv-ae-s-1",
-    venueName: "Studio One",
-    parentVenueName: "Dubai Media Hub",
-    category: "studios",
-    country: "dubai",
-    lat: 25.0804, lng: 55.1403,
-    city: "Dubai Marina", state: "Dubai",
-    minPrice: 6750,     // AED 300/hr × 22.5
-    studioType: "Photography Studio",
-    sizeSqft: 1800,
-    rating: 4.7, reviewCount: 62,
-    images: img("studios", 0),
-  },
-  {
-    childVenueId: "sv-ae-s-2",
-    parentVenueId: "pv-ae-s-2",
-    venueName: "Content Creator Suite",
-    parentVenueName: "JLT Creative Studios",
-    category: "studios",
-    country: "dubai",
-    lat: 25.0705, lng: 55.1489,
-    city: "Jumeirah Lake Towers", state: "Dubai",
-    minPrice: 4500,     // AED 200/hr × 22.5
-    studioType: "Content & Video",
-    sizeSqft: 1100,
-    rating: 4.5, reviewCount: 38,
-    images: img("studios", 1),
-  },
-  {
-    childVenueId: "sv-ae-s-3",
-    parentVenueId: "pv-ae-s-3",
-    venueName: "Podcast Room A",
-    parentVenueName: "Business Bay Studio Complex",
-    category: "studios",
-    country: "dubai",
-    lat: 25.1868, lng: 55.2742,
-    city: "Business Bay", state: "Dubai",
-    minPrice: 3375,     // AED 150/hr × 22.5
-    studioType: "Podcast / Recording",
-    sizeSqft: 600,
-    rating: 4.6, reviewCount: 27,
-    featured: true,
-    images: img("studios", 2),
-  },
+  { childVenueId: "sv-ae-s-1", parentVenueId: "pv-ae-s-1", venueName: "Studio One",              parentVenueName: "Dubai Media Hub",            category: "studios", country: "dubai", lat: 25.0804, lng: 55.1403, city: "Dubai Marina",  state: "Dubai",     minPrice: 6750, studioType: "Photography Studio", sizeSqft: 1800, rating: 4.7, reviewCount: 62, images: img("studios", 0) },
+  { childVenueId: "sv-ae-s-2", parentVenueId: "pv-ae-s-2", venueName: "Content Creator Suite",   parentVenueName: "JLT Creative Studios",       category: "studios", country: "dubai", lat: 25.0705, lng: 55.1489, city: "JLT",           state: "Dubai",     minPrice: 4500, studioType: "Content & Video",    sizeSqft: 1100, rating: 4.5, reviewCount: 38, images: img("studios", 1) },
+  { childVenueId: "sv-ae-s-3", parentVenueId: "pv-ae-s-3", venueName: "Podcast Room A",          parentVenueName: "Business Bay Studio Complex",category: "studios", country: "dubai", lat: 25.1868, lng: 55.2742, city: "Business Bay",  state: "Dubai",     minPrice: 3375, studioType: "Podcast / Recording",sizeSqft: 600,  rating: 4.6, reviewCount: 27, featured: true,  images: img("studios", 2) },
+  { childVenueId: "sv-ae-s-4", parentVenueId: "pv-ae-s-4", venueName: "Film Production Suite",   parentVenueName: "Dubai Production City",      category: "studios", country: "dubai", lat: 25.0416, lng: 55.1994, city: "Production City",state: "Dubai",     minPrice: 9000, studioType: "Film & Video Studio",sizeSqft: 3000, rating: 4.8, reviewCount: 49, featured: true,  images: img("studios", 3) },
+  { childVenueId: "sv-ae-s-5", parentVenueId: "pv-ae-s-5", venueName: "Photography Studio 3",    parentVenueName: "Abu Dhabi Media Zone",       category: "studios", country: "dubai", lat: 24.4539, lng: 54.3773, city: "Abu Dhabi",     state: "Abu Dhabi", minPrice: 5625, studioType: "Photography Studio", sizeSqft: 1400, rating: 4.6, reviewCount: 33, images: img("studios", 4) },
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════
-// UAE — RENTALS
+// UAE — RENTALS (5)
 // ═══════════════════════════════════════════════════════════════════════════
 const UAE_RENTALS = [
-  {
-    childVenueId: "sv-ae-r-1",
-    parentVenueId: "pv-ae-r-1",
-    venueName: "Palm View Apartment",
-    parentVenueName: "Palm Jumeirah Residences",
-    category: "rentals",
-    country: "dubai",
-    lat: 25.1124, lng: 55.1390,
-    city: "Palm Jumeirah", state: "Dubai",
-    minPrice: 45000,    // AED 2,000/night × 22.5
-    rentalType: "Luxury Apartment",
-    pricingType: "Per Night",
-    maxGuests: 4,
-    bedrooms: 2,
-    rating: 4.9, reviewCount: 134,
-    featured: true,
-    images: img("rentals", 0),
-  },
-  {
-    childVenueId: "sv-ae-r-2",
-    parentVenueId: "pv-ae-r-2",
-    venueName: "Burj View Studio",
-    parentVenueName: "Downtown Dubai Stays",
-    category: "rentals",
-    country: "dubai",
-    lat: 25.1972, lng: 55.2744,
-    city: "Downtown Dubai", state: "Dubai",
-    minPrice: 27000,    // AED 1,200/night × 22.5
-    rentalType: "Studio Apartment",
-    pricingType: "Per Night",
-    maxGuests: 2,
-    bedrooms: 1,
-    rating: 4.7, reviewCount: 89,
-    suggested: true,
-    images: img("rentals", 1),
-  },
-  {
-    childVenueId: "sv-ae-r-3",
-    parentVenueId: "pv-ae-r-3",
-    venueName: "Beach Walk Penthouse",
-    parentVenueName: "JBR Premium Rentals",
-    category: "rentals",
-    country: "dubai",
-    lat: 25.0761, lng: 55.1296,
-    city: "JBR", state: "Dubai",
-    minPrice: 56250,    // AED 2,500/night × 22.5
-    rentalType: "Penthouse",
-    pricingType: "Per Night",
-    maxGuests: 6,
-    bedrooms: 3,
-    rating: 5.0, reviewCount: 72,
-    images: img("rentals", 2),
-  },
+  { childVenueId: "sv-ae-r-1", parentVenueId: "pv-ae-r-1", venueName: "Palm View Apartment",  parentVenueName: "Palm Jumeirah Residences",  category: "rentals", country: "dubai", lat: 25.1124, lng: 55.1390, city: "Palm Jumeirah",  state: "Dubai",     minPrice: 45000, rentalType: "Luxury Apartment", pricingType: "Per Night", maxGuests: 4, bedrooms: 2, rating: 4.9, reviewCount: 134, featured: true,  images: img("rentals", 0) },
+  { childVenueId: "sv-ae-r-2", parentVenueId: "pv-ae-r-2", venueName: "Burj View Studio",     parentVenueName: "Downtown Dubai Stays",      category: "rentals", country: "dubai", lat: 25.1972, lng: 55.2744, city: "Downtown Dubai", state: "Dubai",     minPrice: 27000, rentalType: "Studio Apartment", pricingType: "Per Night", maxGuests: 2, bedrooms: 1, rating: 4.7, reviewCount: 89,  suggested: true, images: img("rentals", 1) },
+  { childVenueId: "sv-ae-r-3", parentVenueId: "pv-ae-r-3", venueName: "Beach Walk Penthouse", parentVenueName: "JBR Premium Rentals",       category: "rentals", country: "dubai", lat: 25.0761, lng: 55.1296, city: "JBR",            state: "Dubai",     minPrice: 56250, rentalType: "Penthouse",        pricingType: "Per Night", maxGuests: 6, bedrooms: 3, rating: 5.0, reviewCount: 72,  images: img("rentals", 2) },
+  { childVenueId: "sv-ae-r-4", parentVenueId: "pv-ae-r-4", venueName: "Marina Gate Flat",     parentVenueName: "Dubai Marina Gate Stays",   category: "rentals", country: "dubai", lat: 25.0820, lng: 55.1395, city: "Dubai Marina",   state: "Dubai",     minPrice: 36000, rentalType: "Luxury Apartment", pricingType: "Per Night", maxGuests: 4, bedrooms: 2, rating: 4.8, reviewCount: 56,  images: img("rentals", 3) },
+  { childVenueId: "sv-ae-r-5", parentVenueId: "pv-ae-r-5", venueName: "Corniche Apartment",   parentVenueName: "Abu Dhabi Corniche Stays",  category: "rentals", country: "dubai", lat: 24.4652, lng: 54.3341, city: "Abu Dhabi",      state: "Abu Dhabi", minPrice: 22500, rentalType: "Waterfront Flat",  pricingType: "Per Night", maxGuests: 4, bedrooms: 2, rating: 4.6, reviewCount: 41,  images: img("rentals", 4) },
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════
-// UAE — WORKSPACES
+// UAE — WORKSPACES (5)
 // ═══════════════════════════════════════════════════════════════════════════
 const UAE_WORKSPACES = [
-  {
-    childVenueId: "sv-ae-w-1",
-    parentVenueId: "pv-ae-w-1",
-    venueName: "Executive Boardroom",
-    parentVenueName: "DIFC Innovation Hub",
-    category: "workspaces",
-    country: "dubai",
-    lat: 25.2131, lng: 55.2796,
-    city: "DIFC", state: "Dubai",
-    minPrice: 6750,     // AED 300/day × 22.5
-    workspaceType: "Boardroom",
-    seatingCapacity: 12,
-    rating: 4.8, reviewCount: 74,
-    featured: true,
-    images: img("workspaces", 0),
-  },
-  {
-    childVenueId: "sv-ae-w-2",
-    parentVenueId: "pv-ae-w-2",
-    venueName: "Co-Work Open Floor",
-    parentVenueName: "Regus Abu Dhabi HQ",
-    category: "workspaces",
-    country: "dubai",
-    lat: 24.4539, lng: 54.3773,
-    city: "Abu Dhabi", state: "Abu Dhabi",
-    minPrice: 2250,     // AED 100/day × 22.5
-    workspaceType: "Open Coworking",
-    seatingCapacity: 80,
-    rating: 4.5, reviewCount: 112,
-    images: img("workspaces", 1),
-  },
-  {
-    childVenueId: "sv-ae-w-3",
-    parentVenueId: "pv-ae-w-3",
-    venueName: "Private Office Suite",
-    parentVenueName: "WeWork Dubai Marina",
-    category: "workspaces",
-    country: "dubai",
-    lat: 25.0820, lng: 55.1380,
-    city: "Dubai Marina", state: "Dubai",
-    minPrice: 4500,     // AED 200/day × 22.5
-    workspaceType: "Private Office",
-    seatingCapacity: 6,
-    rating: 4.6, reviewCount: 59,
-    suggested: true,
-    images: img("workspaces", 2),
-  },
+  { childVenueId: "sv-ae-w-1", parentVenueId: "pv-ae-w-1", venueName: "Executive Boardroom",  parentVenueName: "DIFC Innovation Hub",      category: "workspaces", country: "dubai", lat: 25.2131, lng: 55.2796, city: "DIFC",          state: "Dubai",     minPrice: 6750, workspaceType: "Boardroom",        seatingCapacity: 12, rating: 4.8, reviewCount: 74,  featured: true,  images: img("workspaces", 0) },
+  { childVenueId: "sv-ae-w-2", parentVenueId: "pv-ae-w-2", venueName: "Co-Work Open Floor",   parentVenueName: "Regus Abu Dhabi HQ",       category: "workspaces", country: "dubai", lat: 24.4539, lng: 54.3773, city: "Abu Dhabi",     state: "Abu Dhabi", minPrice: 2250, workspaceType: "Open Coworking",   seatingCapacity: 80, rating: 4.5, reviewCount: 112, images: img("workspaces", 1) },
+  { childVenueId: "sv-ae-w-3", parentVenueId: "pv-ae-w-3", venueName: "Private Office Suite", parentVenueName: "WeWork Dubai Marina",      category: "workspaces", country: "dubai", lat: 25.0820, lng: 55.1380, city: "Dubai Marina",  state: "Dubai",     minPrice: 4500, workspaceType: "Private Office",   seatingCapacity: 6,  rating: 4.6, reviewCount: 59,  suggested: true, images: img("workspaces", 2) },
+  { childVenueId: "sv-ae-w-4", parentVenueId: "pv-ae-w-4", venueName: "Business Bay Hub",     parentVenueName: "Servcorp Business Bay",    category: "workspaces", country: "dubai", lat: 25.1868, lng: 55.2742, city: "Business Bay",  state: "Dubai",     minPrice: 3375, workspaceType: "Conference Room",  seatingCapacity: 20, rating: 4.7, reviewCount: 38,  images: img("workspaces", 3) },
+  { childVenueId: "sv-ae-w-5", parentVenueId: "pv-ae-w-5", venueName: "Sharjah Media Office", parentVenueName: "Sharjah Media City Hub",   category: "workspaces", country: "dubai", lat: 25.3463, lng: 55.4209, city: "Sharjah",       state: "Sharjah",   minPrice: 1800, workspaceType: "Shared Desk",      seatingCapacity: 25, rating: 4.4, reviewCount: 27,  images: img("workspaces", 4) },
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════
-// UAE — EXPERIENCES
+// UAE — EXPERIENCES (5)
 // ═══════════════════════════════════════════════════════════════════════════
 const UAE_EXPERIENCES = [
-  {
-    childVenueId: "sv-ae-e-1",
-    parentVenueId: "pv-ae-e-1",
-    venueName: "Desert Safari & Dune Bash",
-    parentVenueName: "Arabian Adventures Dubai",
-    category: "experiences",
-    country: "dubai",
-    lat: 25.0659, lng: 55.4209,
-    city: "Dubai Desert", state: "Dubai",
-    minPrice: 3375,     // AED 150/person × 22.5
-    duration: "Half Day",
-    maxParticipants: 20,
-    rating: 4.9, reviewCount: 318,
-    featured: true,
-    images: img("experiences", 0),
-  },
-  {
-    childVenueId: "sv-ae-e-2",
-    parentVenueId: "pv-ae-e-2",
-    venueName: "Hatta Mountain Kayaking",
-    parentVenueName: "Hatta Wadi Hub",
-    category: "experiences",
-    country: "dubai",
-    lat: 24.8020, lng: 56.1060,
-    city: "Hatta", state: "Dubai",
-    minPrice: 2250,     // AED 100/person × 22.5
-    duration: "3 Hours",
-    maxParticipants: 12,
-    rating: 4.8, reviewCount: 145,
-    suggested: true,
-    images: img("experiences", 1),
-  },
-  {
-    childVenueId: "sv-ae-e-3",
-    parentVenueId: "pv-ae-e-3",
-    venueName: "Fujairah Snorkeling Tour",
-    parentVenueName: "East Coast Divers UAE",
-    category: "experiences",
-    country: "dubai",
-    lat: 25.1288, lng: 56.3265,
-    city: "Fujairah", state: "Fujairah",
-    minPrice: 2925,     // AED 130/person × 22.5
-    duration: "Full Day",
-    maxParticipants: 10,
-    rating: 4.7, reviewCount: 93,
-    images: img("experiences", 2),
-  },
+  { childVenueId: "sv-ae-e-1", parentVenueId: "pv-ae-e-1", venueName: "Desert Safari & Dune Bash",parentVenueName: "Arabian Adventures Dubai",  category: "experiences", country: "dubai", lat: 25.0659, lng: 55.4209, city: "Dubai Desert",  state: "Dubai",     minPrice: 3375, duration: "Half Day", maxParticipants: 20, rating: 4.9, reviewCount: 318, featured: true,  images: img("experiences", 0) },
+  { childVenueId: "sv-ae-e-2", parentVenueId: "pv-ae-e-2", venueName: "Hatta Mountain Kayaking",  parentVenueName: "Hatta Wadi Hub",            category: "experiences", country: "dubai", lat: 24.8020, lng: 56.1060, city: "Hatta",         state: "Dubai",     minPrice: 2250, duration: "3 Hours",  maxParticipants: 12, rating: 4.8, reviewCount: 145, suggested: true, images: img("experiences", 1) },
+  { childVenueId: "sv-ae-e-3", parentVenueId: "pv-ae-e-3", venueName: "Fujairah Snorkeling Tour", parentVenueName: "East Coast Divers UAE",     category: "experiences", country: "dubai", lat: 25.1288, lng: 56.3265, city: "Fujairah",      state: "Fujairah",  minPrice: 2925, duration: "Full Day", maxParticipants: 10, rating: 4.7, reviewCount: 93,  images: img("experiences", 2) },
+  { childVenueId: "sv-ae-e-4", parentVenueId: "pv-ae-e-4", venueName: "Burj Khalifa At the Top", parentVenueName: "Emaar Experiences",         category: "experiences", country: "dubai", lat: 25.1972, lng: 55.2744, city: "Downtown Dubai",state: "Dubai",     minPrice: 1575, duration: "2 Hours",  maxParticipants: 20, rating: 4.8, reviewCount: 521, featured: true,  images: img("experiences", 3) },
+  { childVenueId: "sv-ae-e-5", parentVenueId: "pv-ae-e-5", venueName: "Dhow Dinner Cruise",      parentVenueName: "Dubai Creek Cruises",       category: "experiences", country: "dubai", lat: 25.2631, lng: 55.2972, city: "Dubai Creek",   state: "Dubai",     minPrice: 2025, duration: "3 Hours",  maxParticipants: 40, rating: 4.6, reviewCount: 274, images: img("experiences", 4) },
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════

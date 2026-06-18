@@ -439,11 +439,13 @@ const VenueCard = ({
       target="_blank"
       onClickCapture={() => onRecentViews?.(venue)}
     >
-      <motion.div
+      <div
         onMouseEnter={() => { setHovered(true); onHover?.(venue); }}
         onMouseLeave={() => { setHovered(false); onLeave?.(); }}
-        animate={{ y: isActive ? -6 : 0, scale: isActive ? 1.03 : 1 }}
-        transition={{ duration: 0.25 }}
+        style={{
+          transform: isActive ? "translateY(-6px) scale(1.03)" : "translateY(0) scale(1)",
+          transition: "transform 0.25s ease",
+        }}
         className="
           relative overflow-hidden rounded-2xl
           bg-white dark:bg-gray-900
@@ -451,7 +453,7 @@ const VenueCard = ({
           shadow-[0_2px_8px_rgba(0,0,0,0.06),0_0_1px_rgba(0,0,0,0.04)]
           hover:shadow-[0_8px_24px_rgba(0,0,0,0.10),0_2px_8px_rgba(0,0,0,0.06)]
           hover:border-gray-200 dark:hover:border-gray-700
-          transition-all duration-200 z-[1]
+          z-[1]
         "
       >
         {/* IMAGE SLIDER */}
@@ -629,7 +631,7 @@ const VenueCard = ({
           </div>
 
         </div>
-      </motion.div>
+      </div>
     </Link>
   );
 };

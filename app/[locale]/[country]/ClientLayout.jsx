@@ -20,6 +20,7 @@ export default function ClientLayout({ children }) {
 
   const isVendorRoute       = pathname.includes("/vendor");
   const isStartListingRoute = pathname.includes("/start-listing");
+  const isSearchRoute       = pathname.includes("/search/");
   const hideChrome          = isVendorRoute || isStartListingRoute;
 
   /*
@@ -67,7 +68,7 @@ export default function ClientLayout({ children }) {
             {children}
 
             {!hideChrome && <BottomMenu />}
-            {!hideChrome && <Footer />}
+            {!hideChrome && !isSearchRoute && <Footer />}
 
           </CategoryProvider>
         </DropdownProvider>
