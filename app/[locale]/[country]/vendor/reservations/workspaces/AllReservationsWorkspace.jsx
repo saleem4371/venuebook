@@ -6,7 +6,7 @@
    filter panel / view toggle) · 4-col grid · compact list
 ══════════════════════════════════════════════════════════════════ */
 
-import { useState, useMemo, useCallback, useRef } from "react";
+import { useState, useMemo, useCallback, useRef , useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
 import {
@@ -23,6 +23,8 @@ import {
   EmptyState, Pagination,
   DetailModal, defaultActionHandler,
 } from "../_components";
+
+import { all_reservations } from "@/services/booking.service";
 
 /* ═══════════════════════════════════════════════════════════════
    DATE FILTER PILL — custom-styled, no browser chrome
@@ -115,14 +117,15 @@ function applyFilters(items, { tab, search, payment, eventType, venue, source, s
   if (tab === "reserved")  r = r.filter((i) => i.workflowState === "RESERVED");
   if (tab === "cancelled") r = r.filter((i) => i.workflowState === "CANCELLED");
   if (search.trim()) {
-    const q = search.trim().toLowerCase();
-    r = r.filter((i) =>
-      i.name.toLowerCase().includes(q) ||
-      i.email.toLowerCase().includes(q) ||
-      i.venue.toLowerCase().includes(q) ||
-      i.refNo.toLowerCase().includes(q) ||
-      i.phone.includes(q)
-    );
+   const q = search.trim().toLowerCase();
+
+r = r.filter((i) =>
+  (i.name ?? "").toLowerCase().includes(q) ||
+  (i.email ?? "").toLowerCase().includes(q) ||
+  (i.venue ?? "").toLowerCase().includes(q) ||
+  (i.refNo ?? "").toLowerCase().includes(q) ||
+  (i.phone ?? "").includes(q)
+);
   }
   if (payment)    r = r.filter((i) => i.paymentStatus === payment);
   if (eventType)  r = r.filter((i) => i.eventType === eventType);
@@ -148,6 +151,7 @@ export default function AllReservationsWorkspace() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [detailItem,  setDetailItem]  = useState(null);
   const [filters,     setFilters]     = useState(EMPTY_FILTERS);
+  const [reserve,     setReserve]     = useState([]);
 
   /* Reactive filter setter — auto-resets page on change */
   const setFilter = useCallback((k, v) => {
@@ -166,28 +170,30 @@ export default function AllReservationsWorkspace() {
 
   const hasActiveFilters = Object.values(filters).some(Boolean);
 
-  const tabs  = useMemo(() => buildTabs(t, MOCK), [t]);
+  const tabs = useMemo(() => buildTabs(t, reserve), [t, reserve]);
   const items = useMemo(
-    () => applyFilters(MOCK, { tab: activeTab, search, ...filters }),
-    [activeTab, search, filters],
-  );
-
+  () => applyFilters(reserve, { tab: activeTab, search, ...filters }),
+  [reserve, activeTab, search, filters],
+);
+  console.log(items) 
   const totalPages     = Math.ceil(items.length / ITEMS_PER_PAGE);
   const paginatedItems = items.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
+
+
   const stats = useMemo(() => {
-    const confirmed = MOCK.filter((i) => i.workflowState === "CONFIRMED");
+    const confirmed = reserve.filter((i) => i.workflowState === "CONFIRMED");
     const revenue   = confirmed.reduce((s, i) => s + i.amountNum, 0);
     const revStr    = revenue >= 10000000 ? `${(revenue / 10000000).toFixed(2)} Cr` : `${(revenue / 100000).toFixed(1)} L`;
     return {
-      total:     MOCK.length,
-      leads:     MOCK.filter((i) => i.type === "lead").length,
-      pending:   MOCK.filter((i) => ["PENDING", "IN_PROGRESS"].includes(i.workflowState)).length,
+      total:     reserve.length,
+      leads:     reserve.filter((i) => i.type === "lead").length,
+      pending:   reserve.filter((i) => ["PENDING", "IN_PROGRESS"].includes(i.workflowState)).length,
       confirmed: confirmed.length,
-      reserved:  MOCK.filter((i) => i.workflowState === "RESERVED").length,
+      reserved:  reserve.filter((i) => i.workflowState === "RESERVED").length,
       revenue:   `₹${revStr}`,
     };
-  }, []);
+  }, [reserve]);
 
   const viewOptions = [
     { key: "compact", Icon: List,        label: t("views.compact") },
@@ -196,6 +202,32 @@ export default function AllReservationsWorkspace() {
 
   /* Select pill shared class */
   const selectCls = "px-3 py-1.5 text-xs rounded-xl bg-white dark:bg-gray-900/80 border border-gray-100 dark:border-white/[0.06] text-gray-700 dark:text-gray-300 focus:outline-none shadow-sm focus:ring-2 focus:ring-violet-500/20 transition-all";
+
+
+    const load = async () => {
+  try {
+    const res = await all_reservations();
+
+    console.log("API Response:", res);
+
+    const bookings = Array.isArray(res?.data)
+      ? res.data
+      : Array.isArray(res?.data?.data)
+      ? res.data.data
+      : [];
+
+    setReserve(bookings);
+  } catch (err) {
+    console.error("Load reservations failed:", err);
+    setReserve([]);
+  }
+};
+  
+    useEffect(() => {
+      (async () => {
+        await load();
+      })();
+    }, []);
 
   return (
     <div className="space-y-5">

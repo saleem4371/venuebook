@@ -44,6 +44,7 @@ import {
   booking_create,
 } from "@/services/booking.service";
 
+
 import { useVendorCategory }    from "@/context/VendorCategoryContext";
 
 /* ── Shared input style ────────────────────────────────────── */
@@ -230,6 +231,7 @@ export default function CreateBookingWorkspace() {
   const [qtyselectedAddons, setQtySelectedAddons] = useState([]);
 
   const [bookingType, setBookingType] = useState("book");
+  const [reserveType, setReserveType] = useState(1);
 
   /* ══════════════════════════════════════════════════════════════
    PAX
@@ -651,7 +653,9 @@ const updateField = (key, value) => {
     return errs;
   };
 
-  const handlePreview = () => {
+  const handlePreview = (id) => {
+
+    setReserveType(id)
     const errs = validate();
     if (Object.keys(errs).length > 0) {
       toast.error("Please fix the highlighted fields");
@@ -742,6 +746,9 @@ const updateField = (key, value) => {
     grand_total: summary.grand_total,
     security_deposit: summary.securityDeposit,
   },
+  category:activeCategory,
+  reserveType:reserveType,
+
 };
 
 const param  = JSON.stringify(payload);
@@ -2144,7 +2151,7 @@ await booking_create(payload)
             {/* Action buttons */}
             <div className="space-y-2.5 pt-1">
               <button
-                onClick={handlePreview}
+                onClick={() => handlePreview(1)}
                 className="w-full py-2.5 rounded-xl text-sm font-semibold bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-sm shadow-violet-600/20 hover:opacity-90 hover:shadow-md transition-all"
               >
                 Preview Booking
@@ -2152,7 +2159,7 @@ await booking_create(payload)
 
               <div className="grid grid-cols-2 gap-2">
                 <button
-                  onClick={() => toast("Opening quotation…")}
+                  onClick={() => handlePreview(2)}
                   className="py-2.5 rounded-xl text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
                 >
                   Quotation

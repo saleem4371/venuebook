@@ -221,8 +221,14 @@ function PayBadge({ status }) {
    RESERVATION CARD  (Grid view — premium, consistent height)
 ═══════════════════════════════════════════════════════════════ */
 export function ReservationCard({ item, t, tA, onView, onAction }) {
-  const initials = item.name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
-
+  // const initials = item.name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
+const initials = (item.name ?? "")
+  .split(" ")
+  .filter(Boolean)
+  .map((w) => w[0])
+  .join("")
+  .toUpperCase()
+  .slice(0, 2);
   return (
     <motion.div
       layout
@@ -234,6 +240,7 @@ export function ReservationCard({ item, t, tA, onView, onAction }) {
     >
       {/* Accent strip */}
       <div className={`h-0.5 w-full ${item.avatarColor}`} />
+      {/* <div className={`h-0.5 w-full bg-violet-500`} /> */}
 
       <div className="p-4 flex flex-col gap-3 flex-1">
         {/* Header: avatar + name + ref + actions */}
@@ -259,11 +266,11 @@ export function ReservationCard({ item, t, tA, onView, onAction }) {
         <div className="space-y-1.5 text-[12px] text-gray-500 dark:text-gray-400">
           <p className="flex items-center gap-2 truncate">
             <Mail size={10} className="shrink-0 text-gray-300 dark:text-gray-600" aria-hidden="true" />
-            <span className="truncate">{item.email}</span>
+            <span className="truncate">{item.email ?? "-"}</span>
           </p>
           <p className="flex items-center gap-2">
             <Phone size={10} className="shrink-0 text-gray-300 dark:text-gray-600" aria-hidden="true" />
-            <span>{item.phone}</span>
+            <span>{item.phone ?? "-"}</span>
           </p>
           <p className="flex items-center gap-2 truncate">
             <MapPin size={10} className="shrink-0 text-gray-300 dark:text-gray-600" aria-hidden="true" />
@@ -279,13 +286,13 @@ export function ReservationCard({ item, t, tA, onView, onAction }) {
           </div>
           <div className="text-end">
             <p className="text-[10px] text-gray-400 dark:text-gray-500 leading-none mb-0.5">Amount</p>
-            <p className="text-[13px] font-bold text-gray-900 dark:text-gray-100">₹{item.amount}</p>
+            <p className="text-[13px] font-bold text-gray-900 dark:text-gray-100">₹{item.amount ?? 0}</p>
           </div>
           <div>
             <p className="text-[10px] text-gray-400 dark:text-gray-500 leading-none mb-0.5">Guests</p>
             <p className="text-[12px] font-semibold text-gray-700 dark:text-gray-200 flex items-center gap-1">
               <Users size={10} className="text-gray-400" aria-hidden="true" />
-              {item.guests.toLocaleString()}
+              {Number(item.guests ?? 0).toLocaleString()}
             </p>
           </div>
           <div className="text-end">
@@ -313,8 +320,14 @@ export function ReservationCard({ item, t, tA, onView, onAction }) {
    RESERVATION ROW  (List view)
 ═══════════════════════════════════════════════════════════════ */
 export function ReservationRow({ item, t, tA, onView, onAction }) {
-  const initials = item.name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
-
+  // const initials = item.name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
+const initials = (item.name ?? "")
+  .split(" ")
+  .filter(Boolean)
+  .map((w) => w[0])
+  .join("")
+  .toUpperCase()
+  .slice(0, 2);
   return (
     <motion.div
       layout
@@ -325,6 +338,7 @@ export function ReservationRow({ item, t, tA, onView, onAction }) {
     >
       <div className="flex items-center gap-3 sm:w-52 shrink-0 min-w-0">
         <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white ${item.avatarColor}`}>{initials}</span>
+        
         <div className="min-w-0">
           <p className="text-[13px] font-semibold text-gray-900 dark:text-gray-100 truncate">{item.name}</p>
           <p className="text-[10px] text-gray-400 dark:text-gray-500 font-mono">{item.refNo}</p>
@@ -334,9 +348,9 @@ export function ReservationRow({ item, t, tA, onView, onAction }) {
       <p className="flex-1 text-[12px] text-gray-500 dark:text-gray-400 truncate hidden sm:block">{item.venue}</p>
       <p className="text-[12px] text-gray-500 dark:text-gray-400 shrink-0 hidden md:block">{item.eventDate}</p>
       <div className="flex items-center gap-1 text-[12px] text-gray-500 dark:text-gray-400 shrink-0 hidden lg:flex">
-        <Users size={11} aria-hidden="true" />{item.guests.toLocaleString()}
+        <Users size={11} aria-hidden="true" />{Number(item.guests ?? 0).toLocaleString()}
       </div>
-      <p className="text-[13px] font-semibold text-gray-800 dark:text-gray-200 shrink-0 hidden md:block">₹{item.amount}</p>
+      <p className="text-[13px] font-semibold text-gray-800 dark:text-gray-200 shrink-0 hidden md:block">₹{item.amount ?? 0}</p>
 
       <div className="shrink-0"><StatusBadge workflowState={item.workflowState} /></div>
 
@@ -384,7 +398,14 @@ export function CompactTable({ items, t, tA, onView, onAction }) {
           {/* ── Rows ───────────────────────────────────── */}
           <tbody>
             {items.map((item, idx) => {
-              const initials = item.name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
+              // const initials = item.name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
+              const initials = (item.name ?? "")
+  .split(" ")
+  .filter(Boolean)
+  .map((w) => w[0])
+  .join("")
+  .toUpperCase()
+  .slice(0, 2);
               const isLast   = idx === items.length - 1;
               return (
                 <tr
@@ -397,6 +418,7 @@ export function CompactTable({ items, t, tA, onView, onAction }) {
                   {/* Guest */}
                   <td className="px-4 py-3 whitespace-nowrap">
                     <div className="flex items-center gap-2.5">
+                      {/* <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white bg-violet-500`}> */}
                       <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white ${item.avatarColor}`}>
                         {initials}
                       </span>
@@ -431,13 +453,13 @@ export function CompactTable({ items, t, tA, onView, onAction }) {
                   <td className="px-4 py-3 text-center whitespace-nowrap">
                     <span className="inline-flex items-center gap-1 text-[12px] text-gray-500 dark:text-gray-400">
                       <Users size={11} aria-hidden="true" />
-                      {item.guests.toLocaleString()}
+                      {Number(item.guests ?? 0).toLocaleString()}
                     </span>
                   </td>
 
                   {/* Amount */}
                   <td className="px-4 py-3 whitespace-nowrap">
-                    <p className="text-[13px] font-semibold text-gray-800 dark:text-gray-200">₹{item.amount}</p>
+                    <p className="text-[13px] font-semibold text-gray-800 dark:text-gray-200">₹{item.amount ?? 0}</p>
                   </td>
 
                   {/* Status */}
@@ -476,12 +498,20 @@ export function CompactTable({ items, t, tA, onView, onAction }) {
                 staff xl+ · actions hover-fade
 ═══════════════════════════════════════════════════════════════ */
 function CompactRow({ item, t, tA, onView, onAction }) {
-  const initials = item.name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
+  // const initials = item.name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
+  const initials = (item.name ?? "")
+  .split(" ")
+  .filter(Boolean)
+  .map((w) => w[0])
+  .join("")
+  .toUpperCase()
+  .slice(0, 2);
 
   return (
     <div className="group flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50/60 dark:hover:bg-white/[0.025] transition-colors min-w-0">
 
       {/* ① Avatar */}
+      {/* <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white bg-violet-500`}> */}
       <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white ${item.avatarColor}`}>
         {initials}
       </span>
@@ -496,11 +526,11 @@ function CompactRow({ item, t, tA, onView, onAction }) {
       <div className="hidden sm:flex flex-[1.1] min-w-0 flex-col gap-0.5">
         <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate leading-snug flex items-center gap-1">
           <Mail size={9} className="shrink-0 text-gray-300 dark:text-gray-600" aria-hidden="true" />
-          <span className="truncate">{item.email}</span>
+          <span className="truncate">{item.email ?? "-"}</span>
         </p>
         <p className="text-[10px] text-gray-400 dark:text-gray-500 leading-tight flex items-center gap-1">
           <Phone size={9} className="shrink-0 text-gray-300 dark:text-gray-600" aria-hidden="true" />
-          {item.phone}
+          {item.phone ?? "-"}
         </p>
       </div>
 
@@ -519,12 +549,12 @@ function CompactRow({ item, t, tA, onView, onAction }) {
       {/* ⑥ Pax (hidden below lg) */}
       <div className="hidden lg:flex items-center gap-1 shrink-0 w-[46px]">
         <Users size={10} className="text-gray-400 dark:text-gray-500 shrink-0" aria-hidden="true" />
-        <span className="text-[12px] font-semibold text-gray-600 dark:text-gray-300">{item.guests.toLocaleString()}</span>
+        <span className="text-[12px] font-semibold text-gray-600 dark:text-gray-300">{Number(item.guests ?? 0).toLocaleString()}</span>
       </div>
 
       {/* ⑦ Amount (hidden below md) */}
       <p className="hidden md:block text-[13px] font-semibold text-gray-700 dark:text-gray-200 shrink-0 w-[80px] text-end tabular-nums">
-        ₹{item.amount}
+        ₹{item.amount ?? 0}
       </p>
 
       {/* ⑧ Payment status (hidden below xl) */}
@@ -635,7 +665,15 @@ export function Pagination({ page, totalPages, onPage }) {
 ═══════════════════════════════════════════════════════════════ */
 export function DetailModal({ item, t, onClose }) {
   if (!item) return null;
-  const initials = item.name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
+  
+  //const initials = item.name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
+const initials = (item.name ?? "")
+  .split(" ")
+  .filter(Boolean)
+  .map((w) => w[0])
+  .join("")
+  .toUpperCase()
+  .slice(0, 2);
 
   const fields = [
     { label: t("detail.ref"),       value: item.refNo },
@@ -655,6 +693,7 @@ export function DetailModal({ item, t, onClose }) {
     <>
       <div className="flex items-center gap-4 mb-5">
         <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white ${item.avatarColor}`}>{initials}</span>
+        {/* <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white bg-violet-500`}>{initials}</span> */}
         <div className="min-w-0">
           <h2 className="text-base font-bold text-gray-900 dark:text-gray-100 truncate">{item.name}</h2>
           <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -674,11 +713,11 @@ export function DetailModal({ item, t, onClose }) {
       </div>
 
       <div className="flex gap-2 pt-3 border-t border-gray-50 dark:border-gray-800">
-        <a href={`mailto:${item.email}`} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-[12px] font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors truncate">
-          <Mail size={12} aria-hidden="true" /><span className="truncate">{item.email}</span>
+        <a href={`mailto:${item.email ?? "-"}`} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-[12px] font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors truncate">
+          <Mail size={12} aria-hidden="true" /><span className="truncate">{item.email ?? "-"}</span>
         </a>
-        <a href={`tel:${item.phone}`} className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-[12px] font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors shrink-0">
-          <Phone size={12} aria-hidden="true" />{item.phone}
+        <a href={`tel:${item.phone ?? "-"}`} className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-[12px] font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors shrink-0">
+          <Phone size={12} aria-hidden="true" />{item.phone ?? "-"}
         </a>
       </div>
 

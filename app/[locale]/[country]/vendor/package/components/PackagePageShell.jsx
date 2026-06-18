@@ -166,19 +166,38 @@ export default function PackagePageShell() {
     await create_category(catForm);
 
     pkg.setCatModalOpen(false);
-    loadPackage();
+    await loadPackage();
   };
-  const loadPackage = async () => {
-    try {
-      const PackageCategory = await package_category();
-     // setPackCategory(PackageCategory?.data?.category);
-      setAddons(PackageCategory?.data?.addon_category);
-      setPackCategory(PackageCategory?.data?.items)
-      setPackages(PackageCategory?.data?.package);
-    } catch (err) {
-      console.error("Package load error:", err);
+const loadPackage = async () => {
+  try {
+    setLoading(true);
+
+    const PackageCategory = await package_category();
+
+    const items = PackageCategory?.data?.items || [];
+    const addons = PackageCategory?.data?.addon_category || [];
+    const packages = PackageCategory?.data?.package || [];
+
+    setPackCategory(items);
+    setAddons(addons);
+    setPackages(packages);
+
+    // Auto select first category
+    if (items.length > 0) {
+      setSelectedCatId(items[0].id);
+      setSelectedCatName(items[0].item_category);
+      setSelectedMenu(items[0].package_item || []);
+    } else {
+      setSelectedCatId(null);
+      setSelectedCatName("");
+      setSelectedMenu([]);
     }
-  };
+  } catch (err) {
+    console.error("Package load error:", err);
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     loadPackage();
@@ -284,6 +303,9 @@ const filteredItems = useMemo(() => {
     }
 
     await create_items(formData);
+
+    pkg.setItemModalOpen(false);
+      loadPackage();
   };
   const selectedCatIdRef = useRef(selectedCatId);
   useEffect(() => {
@@ -338,10 +360,23 @@ const removeImage = () => {
 };
 
  const totalItemCount = useMemo(
-    () => packCategory.reduce((s, c) => s + c.package_item.length, 0),
-    [packCategory]
-  );
+  () =>
+    packCategory.reduce(
+      (s, c) => s + (c.package_item?.length || 0),
+      0
+    ),
+  [packCategory]
+);
 
+//   if (!selectedCatId) return;
+
+//   const cat = packCategory.find(c => c.id === selectedCatId);
+
+//   if (cat) {
+//     setSelectedMenu(cat.package_item || []);
+//     setSelectedCatName(cat.item_category);
+//   }
+// }, [packCategory, selectedCatId]);
 
 
   const tabBadges = useMemo(
@@ -357,7 +392,7 @@ const removeImage = () => {
 
 
 
-  if (pkg.loading) return <LoadingSkeleton />;
+  if (loading) return <LoadingSkeleton />;
 
   const publishedPkgCount = pkg.packages.filter(
     (p) => Number(p.package_status) === 1,
