@@ -24,6 +24,9 @@ export const create_packages = (data) => {
 export const publish_packages = (data) => {
   return api.post(`/packages/publish_packages`, data);
 };
+export const packages_uploads = (data) => {
+  return api.post(`/packages/packages_uploads`, data);
+};
 
 /** Load all categories (menu + addons) and package listings. */
 export async function loadPackageData() {

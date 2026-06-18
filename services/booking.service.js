@@ -27,3 +27,7 @@ export const globalSetting = (data) => {
 export const booking_create = (data) => {
   return api.post("/booking/booking_create", data);
 };
+
+export const all_reservations = (data) => {
+  return api.post("/booking/all_reservations", data);
+};
