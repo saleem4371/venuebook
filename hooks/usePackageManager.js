@@ -10,7 +10,7 @@
  * from mockData.js. No real API calls are made.
  * Replace mock operations with PackageService.* calls for production.
  * ─────────────────────────────────────────────────────────────────
- */
+ */ 
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
@@ -28,7 +28,8 @@ import {
   // updateCategoryPublish,
   delete_items,
   create_packages,
-  publish_packages
+  publish_packages,
+  packages_uploads
 } from "@/services/package.service";
 
 /* ─── Form defaults ──────────────────────────────────────────── */
@@ -695,14 +696,27 @@ console.log(viewPackageData)
     setUploading(false);
   }, [showToast]);
 
-  const submitUploadCategories = useCallback(async (file) => {
-    if (!file) return;
-    setUploading(true);
-    await fakeDelay(1200);
-    showToast("Categories uploaded successfully (demo)");
-    setUploadCatOpen(false);
-    setUploading(false);
-  }, [showToast]);
+  // const submitUploadCategories = useCallback(async (file) => {
+  //   if (!file) return;
+  //   setUploading(true);
+  //   await fakeDelay(1200);
+  //   showToast("Categories uploaded successfully (demo)");
+  //   setUploadCatOpen(false);
+  //   setUploading(false);
+  // }, [showToast]);
+
+    const submitUploadCategories = async (file) => {
+      setUploading(true);
+    const payLoad  = {
+      file:file,
+    }
+  await packages_uploads(file);
+setUploadCatOpen(false);
+     setUploading(false);
+        loadAPI();
+  }
+
+
 
   /* ════════════════════════════════════════════════════════
      RETURN
