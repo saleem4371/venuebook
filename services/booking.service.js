@@ -29,5 +29,5 @@ export const booking_create = (data) => {
 };
 
 export const all_reservations = (data) => {
-  return api.post("/booking/all_reservations", data);
+  return api.get("/booking/all_reservations", data);
 };
