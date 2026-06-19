@@ -49,11 +49,11 @@ export async function verifyPAN(panNumber) {
 
   return {
     pan_number: response.data.pan_number || pan,
-    company_name: response.data.full_name || 'ABC Events Private Limited',
+    company_name: response.data.company_name || '',
     status: response.data.status || 'Active',
-    business_category: response.data.category || 'Event Management',
+    business_category: response.data.business_category || 'Event Management',
     registered_address:
-      response.data.address ||
+      response.data.registered_addressW ||
       '-',
   };
 } catch (error) {
@@ -99,6 +99,12 @@ export async function verifyPAN(panNumber) {
    2a. AADHAAR — SEND OTP
    Returns: { client_id }
 ═══════════════════════════════════════════════════════════════════ */
+
+
+export async function initializeDigilocker() {
+  return  await api.get('/thirdParty/initializeDigilocker');
+
+}
 export async function sendAadhaarOTP(aadhaarNumber) {
   const clean = aadhaarNumber?.replace(/\s/g, "") ?? "";
   if (!/^\d{12}$/.test(clean)) {
@@ -234,8 +240,13 @@ export async function validateDocument(file, expectedPan) {
   if (file.size > 5 * 1024 * 1024) {
     throw new Error("File size must be under 5 MB.");
   }
+  const formData = new FormData();
+   formData.append("file", file);
+   if (expectedPan) formData.append("expected_pan", expectedPan);
+   await api.post('/thirdParty/UploadDocument', formData);
 
   await delay(1400);
+
 
   return {
     match:         true,
@@ -256,4 +267,12 @@ export async function validateDocument(file, expectedPan) {
    * return data;
    * ─────────────────────────────────────────────────────────────────
    */
+}
+export async function verifyGST(data) {
+
+  const param = {
+    gst_number:data
+  }
+   return await api.post('/thirdParty/verifyGST', param);
+
 }

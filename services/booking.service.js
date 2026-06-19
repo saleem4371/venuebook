@@ -6,14 +6,14 @@ export const InvoiceNOAPI = () => {
 
 export const load_shift_event = () => {
   return api.get(`/booking/load_shift_event`);
-}; 
+};
 
 export const getAvailableVenues = (data) => {
   return api.post("/booking/available-venues", data);
 };
 
 export const Load_all_packages = (data) => {
-  return api.get("/booking/Load_all_packages", data);
+  return api.post("/booking/Load_all_packages", data);
 };
 
 export const loadAllAddons = (data) => {
@@ -21,7 +21,7 @@ export const loadAllAddons = (data) => {
 };
 
 export const globalSetting = (data) => {
-  return api.get("/booking/globalSetting", data);
+  return api.post("/booking/globalSetting", data);
 };
 
 export const booking_create = (data) => {
@@ -30,4 +30,19 @@ export const booking_create = (data) => {
 
 export const all_reservations = (data) => {
   return api.get("/booking/all_reservations", data);
+};
+export const reservation_invoice = (data) => {
+  return api.put(`/booking/reservation_invoice/${data}`);
+};
+
+export const reservation_manage = (data) => {
+  return api.put(`/booking/reservation_manage/${data}`);
+};
+
+export const Load_all_venues = (data) => {
+  return api.get(`/booking/Load_all_venues`);
+};
+
+export const leads_create = (data) => {
+  return api.post(`/booking/leads_create`,data);
 };
