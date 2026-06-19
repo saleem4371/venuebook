@@ -8,7 +8,7 @@
    Mobile   : single column, fixed bottom CTA bar
 ══════════════════════════════════════════════════════════════════ */
 
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo,useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
 import {
@@ -18,6 +18,13 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { MOCK, STATE_CFG } from "../_data";
+
+import {
+  load_shift_event,
+  Load_all_venues,
+  globalSetting,
+  leads_create
+} from "@/services/booking.service";
 
 /* ── Derived options ────────────────────────────────────────── */
 const VENUE_OPTIONS  = [...new Set(MOCK.map((i) => i.venue))].sort();
@@ -328,6 +335,9 @@ export default function CreateLeadWorkspace() {
   const [duplicate,  setDuplicate]  = useState(null);   // matched MOCK item
   const [panelOpen,  setPanelOpen]  = useState(false);  // mobile summary toggle
 
+  const [event, setEvent] = useState([]);
+  const [venues, setVenues] = useState([]);
+
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
 
   /* ── Duplicate detection ─────────────────────────────── */
@@ -352,8 +362,12 @@ export default function CreateLeadWorkspace() {
   };
 
   /* ── Submit ──────────────────────────────────────────── */
-  const handleSubmit = (e) => {
+  const handleSubmit = async(e) => {
     e.preventDefault();
+
+    await leads_create(form)
+    
+    console.log(form)
     toast.success(t("addLeadModal.success"));
     setForm(EMPTY);
     setDuplicate(null);
@@ -368,6 +382,28 @@ export default function CreateLeadWorkspace() {
     setForm(EMPTY);
     setDuplicate(null);
   };
+
+    const load = async () => {
+  
+      const resp = await load_shift_event();
+  
+      const events = resp?.data ?? 0;
+      setEvent(events);
+  
+      const all_venues = await Load_all_venues();
+      setVenues(all_venues.data);  
+      
+      const _settings = await globalSetting();
+      setSettings(_settings.data);
+    };
+  
+    useEffect(() => {
+      (async () => {
+        await load();
+        setPageLoading(false);
+      })();
+    }, []);
+  
 
   return (
     <motion.div
@@ -468,8 +504,10 @@ export default function CreateLeadWorkspace() {
                     className={inputCls}
                   >
                     <option value="">{t("addLeadModal.venue")}</option>
-                    {VENUE_OPTIONS.map((v) => (
-                      <option key={v} value={v}>{v}</option>
+                    {venues.map((item) => (
+                      <option key={item.child_venue_id} value={item.child_venue_id}>
+                        {item.child_venue_name}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -672,8 +710,10 @@ export default function CreateLeadWorkspace() {
                     className={inputCls}
                   >
                     <option value="">{t("addLeadModal.eventTypeAll")}</option>
-                    {EVENT_TYPES.map((et) => (
-                      <option key={et} value={et}>{et}</option>
+                     {event.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.event_name}
+                      </option>
                     ))}
                   </select>
                 </div>

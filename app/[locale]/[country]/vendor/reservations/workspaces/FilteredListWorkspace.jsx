@@ -21,6 +21,8 @@ import {
   defaultActionHandler,
 } from "../_components";
 
+import HistoricalUploadModal from "../HistoricalUploadModal";
+
 const ITEMS_PER_PAGE = 9;
 
 export default function FilteredListWorkspace({ workflowState, emptyTabKey }) {
@@ -31,6 +33,9 @@ export default function FilteredListWorkspace({ workflowState, emptyTabKey }) {
   const [view,   setView]   = useState("compact");
   const [page,   setPage]   = useState(1);
   const [detail, setDetail] = useState(null);
+
+
+  const [uploadOpen, setUploadOpen] = useState(false);
 
   const handleView   = useCallback((item) => setDetail(item), []);
   const handleAction = useCallback((item, key) => defaultActionHandler(item, key), []);
@@ -60,6 +65,18 @@ export default function FilteredListWorkspace({ workflowState, emptyTabKey }) {
     { key: "compact", Icon: AlignJustify, label: t("views.compact") },
     { key: "grid",    Icon: LayoutGrid,   label: t("views.card")    },
   ];
+
+  const handleUpload = async(data)=>{
+     const res = await fetch("/api/historical/upload", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ data }),
+  });
+
+  return res.json();
+  }
 
   return (
     <motion.div
@@ -161,7 +178,31 @@ export default function FilteredListWorkspace({ workflowState, emptyTabKey }) {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
           >
+            {workflowState === "HISTORICAL" && (
+  <div className="flex items-center justify-between mb-5">
+    <div>
+      <h2 className="text-lg font-semibold">
+        Historical Reservations
+      </h2>
+      <p className="text-sm text-gray-500">
+        Import historical bookings from Excel.
+      </p>
+    </div>
+
+    <button
+      onClick={() => setUploadOpen(true)}
+      className="rounded-xl bg-violet-600 text-white px-4 py-2"
+    >
+      Upload Excel
+    </button>
+  </div>
+)}
+
+
+
             <CompactTable items={paginatedItems} t={t} tA={tA} onView={handleView} onAction={handleAction} />
+          
+          
           </motion.div>
         )}
       </AnimatePresence>
@@ -172,6 +213,12 @@ export default function FilteredListWorkspace({ workflowState, emptyTabKey }) {
       <GlobalModal open={!!detail} onClose={() => setDetail(null)}>
         <DetailModal item={detail} t={t} onClose={() => setDetail(null)} />
       </GlobalModal>
+
+      <HistoricalUploadModal
+    open={uploadOpen}
+    onClose={() => setUploadOpen(false)}
+    onUpload={handleUpload}
+/>
     </motion.div>
   );
 }

@@ -1,0 +1,1 @@
+<td className="text-red-500">₹9</td>

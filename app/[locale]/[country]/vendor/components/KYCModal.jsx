@@ -29,6 +29,8 @@ import {
 import {
   verifyPAN, sendAadhaarOTP, verifyAadhaarOTP,
   verifyBank, validateDocument,
+  initializeDigilocker,
+  verifyGST
 } from "@/services/kycVerification";
 
 import { SubmitKYC, each_kyc_status } from "@/services/kyc.service";
@@ -39,11 +41,12 @@ const GRAD      = "linear-gradient(242deg,#a44bf3,#499ce8)";
 const GRAD_SOFT = "linear-gradient(242deg,rgba(164,75,243,0.08),rgba(73,156,232,0.08))";
 
 const STEPS = [
-  { id: 1, label: "Company PAN",  icon: CreditCard  },
-  { id: 2, label: "Aadhaar",      icon: Fingerprint },
-  { id: 3, label: "Bank Account", icon: Landmark    },
-  { id: 4, label: "Company PAN",  icon: Upload      },
-  { id: 5, label: "Review",       icon: ShieldCheck },
+  { id: 0, label: "Category", icon: Shield },
+  { id: 1, label: "PAN", icon: CreditCard },
+  { id: 2, label: "Aadhaar / GST", icon: Fingerprint },
+  { id: 3, label: "Bank Account", icon: Landmark },
+  { id: 4, label: "Document Upload", icon: Upload },
+  { id: 5, label: "Review", icon: ShieldCheck },
 ];
 
 /* ─── Motion presets ─────────────────────────────────────────────── */
@@ -74,8 +77,8 @@ const certAnim = {
    ROOT MODAL COMPONENT
 ════════════════════════════════════════════════════════════════════ */
 export default function KYCModal({ open, setOpen }) {
-  const [step,      setStep]      = useState(1);
-  const [dir,       setDir]       = useState(1);
+  const [step,      setStep]      = useState(0);
+  const [dir,       setDir]       = useState(0);
   const [submitted, setSubmitted] = useState(false);
   const [loading,   setLoading]   = useState(false);
 
@@ -83,6 +86,8 @@ export default function KYCModal({ open, setOpen }) {
   const [aadhaarData, setAadhaarData] = useState(null);
   const [bankData,    setBankData]    = useState(null);
   const [docData,     setDocData]     = useState(null);
+
+  const [category, setCategory] = useState(null); 
 
   /* ── Restore from localStorage ─────────────────────────────────── */
   useEffect(() => {
@@ -134,23 +139,49 @@ export default function KYCModal({ open, setOpen }) {
   }, [open]);
 
   const progress = {
-    1: !!panData,
-    2: !!aadhaarData,
-    3: !!bankData,
-    4: !!(docData?.file || docData?.fileName),
-  };
+  0: !!category,
+  1: !!panData,
+  // 2: category === "personal" ? !!aadhaarData : !!docData?.gst,
+  2: category === "personal"
+   ? !!aadhaarData
+   : !!docData?.gstVerified,
+  3: !!bankData,
+  4: !!(docData?.file || docData?.fileName),
+};
 
-  const canAdvance = useCallback(() => {
-    if (step === 1) return !!panData;
-    if (step === 2) return !!aadhaarData;
-    if (step === 3) return !!bankData;
-    if (step === 4) return !!(docData?.file || docData?.fileName);
-    return true;
-  }, [step, panData, aadhaarData, bankData, docData]);
+const canAdvance = useCallback(() => {
+  if (step === 0) return !!category;
+  if (step === 1) return !!panData;
+  if (step === 2)
+    // return category === "personal" ? !!aadhaarData : !!docData?.gst;
+  return category === "personal"
+  ? !!aadhaarData
+  : !!docData?.gstVerified;
+  if (step === 3) return !!bankData;
+  if (step === 4) return !!(docData?.file || docData?.fileName);
+  return true;
+}, [step, category, panData, aadhaarData, bankData, docData]);
 
-  const goNext = () => { if (!canAdvance()) return; setDir(1);  setStep(s => Math.min(s + 1, 5)); };
-  const goBack = () => {                             setDir(-1); setStep(s => Math.max(s - 1, 1)); };
+  // const goNext = () => { if (!canAdvance()) return; setDir(1);  setStep(s => Math.min(s + 1, 5)); };
+  // const goBack = () => {                             setDir(-1); setStep(s => Math.max(s - 1, 1)); };
+const goNext = () => {
+  if (!canAdvance()) return;
+  setDir(1);
 
+  setStep((s) => {
+    const next = s + 1;
+    return next > 5 ? 5 : next;
+  });
+};
+
+const goBack = () => {
+  setDir(-1);
+
+  setStep((s) => {
+    const prev = s - 1;
+    return prev < 0 ? 0 : prev;
+  });
+};
   const handleSubmit = async () => {
     try {
       setLoading(true);
@@ -231,11 +262,26 @@ export default function KYCModal({ open, setOpen }) {
                       </motion.div>
                     ) : (
                       <motion.div key={step} {...slide(dir)}>
-                        {step === 1 && <Step1PAN     panData={panData}         setPanData={setPanData} />}
+                        {/* {step === 1 && <Step1PAN     panData={panData}         setPanData={setPanData} />}
                         {step === 2 && <Step2Aadhaar aadhaarData={aadhaarData} setAadhaarData={setAadhaarData} />}
                         {step === 3 && <Step3Bank    bankData={bankData}       setBankData={setBankData} />}
                         {step === 4 && <Step4Doc     docData={docData}         setDocData={setDocData} panData={panData} />}
-                        {step === 5 && <Step5Review  panData={panData}         aadhaarData={aadhaarData} bankData={bankData} docData={docData} />}
+                        {step === 5 && <Step5Review  panData={panData}         aadhaarData={aadhaarData} bankData={bankData} docData={docData} />} */}
+                        {step === 0 && (
+  <Step0Category category={category} setCategory={setCategory} />
+)}
+
+{step === 1 && <Step1PAN panData={panData} setPanData={setPanData} />}
+
+{step === 2 && (
+  category === "personal"
+    ? <Step2Aadhaar aadhaarData={aadhaarData} setAadhaarData={setAadhaarData} />
+    : <Step2GST docData={docData} setDocData={setDocData} />
+)}
+
+{step === 3 && <Step3Bank bankData={bankData} setBankData={setBankData} />}
+{step === 4 && <Step4Doc docData={docData} setDocData={setDocData} panData={panData} />}
+{step === 5 && <Step5Review panData={panData} aadhaarData={aadhaarData} bankData={bankData} docData={docData} />}
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -664,6 +710,32 @@ function Step2Aadhaar({ aadhaarData, setAadhaarData }) {
     );
   };
 
+  const handleDigilockerVerify = async () => {
+  try {
+    const res = await initializeDigilocker(); // Your backend API
+ const url = res?.data?.data?.url;
+//     if (res?.data?.data?.url) {
+//       // window.location.href = res?.data?.data?.url;
+//       const url = res?.data?.data?.url;
+
+// if (url) {
+//   window.open(url, "_blank", "noopener,noreferrer");
+// }
+//     } 
+if (url) {
+  window.open(url, "_blank", "noopener,noreferrer");
+
+    setPhase("verified");
+    setAadhaarData("verified");
+}
+else {
+      setError("Unable to initialize DigiLocker verification.");
+    }
+  } catch (err) {
+    setError(err.message || "Something went wrong.");
+  }
+};
+
   if (phase === "verified" && aadhaarData) {
     return (
       <StepShell title="Aadhaar Verification" icon={Fingerprint}
@@ -676,6 +748,7 @@ function Step2Aadhaar({ aadhaarData, setAadhaarData }) {
             <RefreshCw size={11} /> Verify with a different Aadhaar
           </button>
         </div>
+       
       </StepShell>
     );
   }
@@ -720,64 +793,119 @@ function Step2Aadhaar({ aadhaarData, setAadhaarData }) {
       desc={phase === "otp"
         ? `OTP sent to mobile linked with Aadhaar ending ••••${aadhaar.replace(/\s/g,"").slice(-4)}`
         : "Enter your 12-digit Aadhaar number to receive an OTP on your registered mobile."}>
-      <AnimatePresence mode="wait">
-        {isLoading ? (
-          <motion.div key="vfy" {...fadeUp}>
-            <VerifyingCert
-              title={phase === "sending" ? "Sending OTP via UIDAI" : "Verifying OTP"}
-              messages={
-                phase === "sending"
-                  ? ["Connecting to UIDAI…","Sending OTP to registered mobile…"]
-                  : ["Validating OTP…","Fetching Aadhaar details…","Masking sensitive data…"]}
-              accentColor="#3B82F6" />
-          </motion.div>
-        ) : phase === "input" ? (
-          <motion.div key="input" {...fadeUp} className="max-w-md space-y-5">
-            <Field label="Aadhaar Number" required error={error}>
-              <input type="text" placeholder="XXXX XXXX XXXX" maxLength={14}
-                value={aadhaar}
-                onChange={e => {
-                  const raw = e.target.value.replace(/\D/g, "").slice(0, 12);
-                  setAadhaar(raw.replace(/(\d{4})(\d{0,4})(\d{0,4})/, (_, a, b, c) =>
-                    [a, b, c].filter(Boolean).join(" ")));
-                  setError("");
-                }}
-                className={`${iCls(!!error)} font-mono tracking-[0.2em] text-[15px]`} />
-            </Field>
-            <GradBtn onClick={handleSend} icon={Phone} full>Send OTP to Registered Mobile</GradBtn>
-            <InfoNote>OTP is sent to mobile registered with UIDAI. Aadhaar data is always masked.</InfoNote>
-          </motion.div>
-        ) : (
-          <motion.div key="otp" {...fadeUp} className="max-w-md space-y-5">
-            {/* OTP sent banner */}
-            <div className="flex items-center gap-3 rounded-xl bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30 px-4 py-3">
-              <CheckCircle2 size={16} className="text-blue-500 shrink-0" />
-              <p className="text-sm text-blue-700 dark:text-blue-400 font-medium">
-                OTP sent to your registered mobile number.
-              </p>
-            </div>
+      <motion.div key="input" {...fadeUp} className="max-w-md space-y-5">
 
-            {/* 6-box OTP input */}
-            <Field label="Enter 6-digit OTP" required error={error}>
-              <OTPInput value={otp} onChange={setOtp} />
-            </Field>
+  {/* Premium DigiLocker */}
+  <div className="relative overflow-hidden rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50 via-white to-violet-50 p-5">
 
-            <div className="flex items-center justify-between text-xs">
-              <button type="button" onClick={() => { setPhase("input"); setOtp(""); setError(""); }}
-                className="text-gray-400 hover:text-violet-500 transition cursor-pointer">
-                ← Change Aadhaar
-              </button>
-              <button type="button" onClick={handleResend} disabled={resend > 0}
-                className="text-violet-500 disabled:text-gray-400 font-medium cursor-pointer">
-                {resend > 0 ? `Resend in ${resend}s` : "Resend OTP"}
-              </button>
-            </div>
-            <GradBtn onClick={handleVerify} disabled={otp.length !== 6} icon={ShieldCheck} full>
-              Verify OTP
-            </GradBtn>
-          </motion.div>
-        )}
-      </AnimatePresence>
+    <div className="absolute right-0 top-0 h-24 w-24 rounded-full bg-blue-100 blur-3xl opacity-50" />
+
+    <div className="relative flex items-start gap-4">
+
+      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-100">
+        <ShieldCheck className="h-7 w-7 text-blue-600" />
+      </div>
+
+      <div className="flex-1">
+
+        <div className="inline-flex items-center gap-2 rounded-full bg-blue-100 px-3 py-1 text-[11px] font-semibold text-blue-700">
+          <BadgeCheck size={12} />
+          Recommended
+        </div>
+
+        <h3 className="mt-3 text-lg font-bold text-gray-900">
+          Verify using DigiLocker
+        </h3>
+
+        <p className="mt-1 text-sm text-gray-500 leading-relaxed">
+          Securely fetch your Aadhaar directly from DigiLocker.
+          No OTP required.
+        </p>
+
+      </div>
+
+    </div>
+
+    <div className="mt-5 grid grid-cols-2 gap-3">
+
+      {/* <div className="rounded-xl border bg-white p-3">
+        <CheckCircle2 className="mb-2 text-green-600" size={18}/>
+        <p className="text-xs font-semibold">
+          Instant Verification
+        </p>
+      </div>
+
+      <div className="rounded-xl border bg-white p-3">
+        <Shield className="mb-2 text-blue-600" size={18}/>
+        <p className="text-xs font-semibold">
+          Government Approved
+        </p>
+      </div> */}
+
+    </div>
+
+    <GradBtn
+      onClick={handleDigilockerVerify}
+      icon={ShieldCheck}
+      full
+    >
+      Continue with DigiLocker
+    </GradBtn>
+
+  </div>
+
+  {/* Divider */}
+
+  {/* <div className="relative">
+    <div className="border-t border-gray-200" />
+
+    <span className="absolute left-1/2 -translate-x-1/2 -top-3 bg-white px-4 text-xs font-medium text-gray-400">
+      OR
+    </span>
+  </div>
+
+
+  <Field
+    label="Aadhaar Number"
+    required
+    error={error}
+  >
+    <input
+      type="text"
+      placeholder="XXXX XXXX XXXX"
+      maxLength={14}
+      value={aadhaar}
+      onChange={(e) => {
+        const raw = e.target.value.replace(/\D/g, "").slice(0, 12);
+
+        setAadhaar(
+          raw.replace(
+            /(\d{4})(\d{0,4})(\d{0,4})/,
+            (_, a, b, c) => [a, b, c].filter(Boolean).join(" ")
+          )
+        );
+
+        setError("");
+      }}
+      className={`${iCls(!!error)} font-mono tracking-[0.2em] text-[15px]`}
+    />
+  </Field> */}
+
+  {/* <GradBtn
+    onClick={handleSend}
+    disabled={aadhaar.replace(/\s/g, "").length !== 12}
+    icon={Phone}
+    full
+  >
+    Send OTP to Registered Mobile
+  </GradBtn> */}
+
+  <InfoNote>
+    OTP will be sent to the mobile number linked with your Aadhaar.
+    Your Aadhaar number is securely encrypted and never stored in plain text.
+  </InfoNote>
+
+</motion.div>
     </StepShell>
   );
 }
@@ -1553,6 +1681,273 @@ function Spinner({ accentColor }) {
       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
     </svg>
+  );
+}
+
+function Step0Category({ category, setCategory }) {
+  return (
+    <StepShell
+      icon={Shield}
+      title="Select Verification Type"
+      desc="Choose how you want to complete your KYC"
+    >
+      <div className="max-w-md space-y-3">
+
+        <button
+          onClick={() => setCategory("personal")}
+          className={`w-full p-4 rounded-xl border text-left transition ${
+            category === "personal"
+              ? "border-violet-500 bg-violet-50"
+              : "border-gray-200 dark:border-gray-700"
+          }`}
+        >
+          <p className="font-semibold">Personal Account</p>
+          <p className="text-xs text-gray-500">
+            PAN + Aadhaar + Bank Account
+          </p>
+        </button>
+
+        <button
+          onClick={() => setCategory("individual")}
+          className={`w-full p-4 rounded-xl border text-left transition ${
+            category === "individual"
+              ? "border-violet-500 bg-violet-50"
+              : "border-gray-200 dark:border-gray-700"
+          }`}
+        >
+          <p className="font-semibold">Business / Individual</p>
+          <p className="text-xs text-gray-500">
+            PAN + GST + Bank Account
+          </p>
+        </button>
+
+        <InfoNote>
+          You can change this later only via support verification.
+        </InfoNote>
+      </div>
+    </StepShell>
+  );
+}
+
+function Step2GST({ docData, setDocData }) {
+  const [gst, setGst] = useState(docData?.gst || "");
+  const [error, setError] = useState("");
+  const [phase, setPhase] = useState(
+    docData?.gstVerified ? "verified" : "idle"
+  );
+
+  const GST_REGEX =
+    /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[A-Z0-9]{1}Z[A-Z0-9]{1}$/;
+
+  const validateGST = (gstin) => GST_REGEX.test(gstin);
+
+  const handleVerify = async () => {
+    const value = gst.trim().toUpperCase();
+
+    if (!validateGST(value)) {
+      setError("Please enter a valid GSTIN");
+      return;
+    }
+
+    try {
+      setError("");
+      setPhase("verifying");
+
+      // API call here
+       const res = await verifyGST(value);
+
+      await new Promise((r) => setTimeout(r, 1800));
+
+      const gstData = {
+        gst: value,
+        gstVerified: true,
+        legalName: "ABC PRIVATE LIMITED",
+        tradeName: "ABC ENTERPRISES",
+        status: "Active",
+        state: "Karnataka",
+        registrationDate: "01 Apr 2021",
+      };
+
+      setDocData({
+        ...docData,
+        ...gstData,
+      });
+
+      setPhase("verified");
+    } catch (e) {
+      setError(
+        e?.message || "GST verification failed"
+      );
+      setPhase("idle");
+    }
+  };
+
+  if (phase === "verified" && docData?.gstVerified) {
+    return (
+      <StepShell
+        icon={Fingerprint}
+        title="GST Verification"
+        desc="GSTIN verified successfully."
+      >
+        <GSTCertificate data={docData} />
+
+        <button
+          type="button"
+          onClick={() => {
+            setDocData((p) => ({
+              ...p,
+              gst: "",
+              gstVerified: false,
+            }));
+            setPhase("idle");
+          }}
+          className="mt-4 flex items-center gap-2 text-xs text-gray-500 hover:text-violet-600"
+        >
+          <RefreshCw size={12} />
+          Verify Different GST
+        </button>
+      </StepShell>
+    );
+  }
+
+  return (
+    <StepShell
+      icon={Fingerprint}
+      title="GST Verification"
+      desc="Verify your GST registration details."
+    >
+      <div className="max-w-lg space-y-5">
+
+        <Field
+          label="GST Number"
+          required
+          error={error}
+        >
+          <input
+            value={gst}
+            maxLength={15}
+            onChange={(e) => {
+              setGst(
+                e.target.value
+                  .toUpperCase()
+                  .replace(/[^A-Z0-9]/g, "")
+              );
+              setError("");
+            }}
+            placeholder="29ABCDE1234F1Z5"
+            className={`${iCls(!!error)} font-mono tracking-wider`}
+          />
+        </Field>
+
+        {phase === "verifying" ? (
+          <VerifyingCert
+            title="Verifying GST Registration"
+            messages={[
+              "Validating GSTIN format...",
+              "Checking GST database...",
+              "Fetching registration details...",
+            ]}
+            accentColor="#0EA5E9"
+          />
+        ) : (
+          <GradBtn
+            onClick={handleVerify}
+            icon={BadgeCheck}
+            full
+          >
+            Verify GST
+          </GradBtn>
+        )}
+
+        <InfoNote>
+          GST details are securely verified before onboarding.
+        </InfoNote>
+      </div>
+    </StepShell>
+  );
+}
+
+function GSTCertificate({ data }) {
+  return (
+    <motion.div
+      {...certAnim}
+      className="overflow-hidden rounded-2xl border border-blue-200 bg-white shadow-xl"
+    >
+      <div className="bg-gradient-to-r from-sky-50 via-blue-50 to-indigo-50 p-6 border-b">
+
+        <div className="flex items-center justify-between">
+
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-blue-600">
+              Government of India
+            </p>
+
+            <h3 className="text-lg font-bold text-slate-900 mt-1">
+              GST Verification Certificate
+            </h3>
+
+            <p className="text-xs text-slate-500">
+              Goods & Services Tax Network
+            </p>
+          </div>
+
+          <div className="flex flex-col items-center">
+            <CheckCircle2
+              className="text-emerald-600"
+              size={34}
+            />
+            <span className="text-xs font-bold text-emerald-700">
+              VERIFIED
+            </span>
+          </div>
+
+        </div>
+      </div>
+
+      <div className="divide-y">
+
+        <DocRow
+          label="GSTIN"
+          value={data.gst}
+          mono
+          primary
+        />
+
+        <DocRow
+          label="Legal Name"
+          value={data.legalName}
+        />
+
+        <DocRow
+          label="Trade Name"
+          value={data.tradeName}
+        />
+
+        <DocRow
+          label="Status"
+        >
+          <span className="inline-flex items-center gap-2 text-emerald-600 font-semibold">
+            <span className="h-2 w-2 rounded-full bg-emerald-500" />
+            Active
+          </span>
+        </DocRow>
+
+        <DocRow
+          label="State"
+          value={data.state}
+        />
+
+        <DocRow
+          label="Registration"
+          value={data.registrationDate}
+        />
+
+      </div>
+
+      <div className="bg-slate-50 px-6 py-3 text-[11px] text-slate-500">
+        GST registration verified successfully.
+      </div>
+    </motion.div>
   );
 }
 

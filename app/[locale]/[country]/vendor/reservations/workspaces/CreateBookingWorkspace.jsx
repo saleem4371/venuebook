@@ -34,6 +34,8 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 
+import { usePathname, useRouter, useParams } from "next/navigation";
+
 import {
   InvoiceNOAPI,
   getAvailableVenues,
@@ -184,6 +186,14 @@ export default function CreateBookingWorkspace() {
   const [submitting, setSubmitting] = useState(false);
   const [submitStage, setSubmitStage] = useState(""); // validating | processing | done
   const [pageLoading, setPageLoading] = useState(true);
+
+  const pathname = usePathname();
+  const router   = useRouter();
+  const params   = useParams();
+
+  const locale  = params?.locale  || "en";
+  const country = params?.country || "in";
+
 
   useEffect(() => {
     if (!settings?.length) return;
@@ -764,6 +774,9 @@ await booking_create(payload)
     setSubmitting(false);
     setSubmitStage("");
     setShowPreview(false);
+    const id =1234567890;
+
+    router.push(`/${locale}/${country}/vendor/reservations/invoice/${id}`)
 
     toast.success(
       bookingType === "book"

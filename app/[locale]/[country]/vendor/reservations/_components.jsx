@@ -12,15 +12,19 @@ import {
   Mail, Phone, MapPin, Eye, Edit, Trash2,
   Users, CheckCircle2, Bookmark, Save, FileText,
   History, MoreHorizontal, CalendarCheck,
-  Inbox, Sparkles, Clock, XCircle,
+  Inbox, Sparkles, Clock, XCircle,Sheet
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { STATE_CFG } from "./_data";
 
+import { useRouter , useParams } from "next/navigation";
+
+
+
 /* ═══════════════════════════════════════════════════════════════
    CONTEXTUAL ACTIONS — per workflow state
 ═══════════════════════════════════════════════════════════════ */
-export function getActions(state, tA) {
+export function getActions(state, tA, item, router, locale , country) {
   switch (state) {
     case "NEW":
     case "IN_PROGRESS": return [
@@ -29,8 +33,14 @@ export function getActions(state, tA) {
       { key: "delete",    label: tA("delete"),    icon: Trash2,        danger: true  },
     ];
     case "PENDING": return [
-      { key: "confirm",   label: tA("confirm"),   icon: CheckCircle2,  danger: false },
-      { key: "reserve",   label: tA("reserve"),   icon: Bookmark,      danger: false },
+      { key: "edit",     label: tA("edit"),     icon: Edit,      danger: false ,   onClick: () =>
+            router.push(
+              `/${locale}/${country}/vendor/reservations/invoice/${item.id}`
+            ) }, 
+      { key: "reserve",   label: tA("reserve"),   icon: Bookmark,      danger: false , onClick: () =>
+            router.push(
+              `/${locale}/${country}/vendor/reservations/manage_reserve/${item.id}`
+            ) },
       { key: "quotation", label: tA("quotation"), icon: FileText,      danger: false },
       { key: "saveDraft", label: tA("saveDraft"), icon: Save,          danger: false },
       { key: "delete",    label: tA("delete"),    icon: Trash2,        danger: true  },
@@ -59,6 +69,7 @@ export function getActions(state, tA) {
       { key: "delete",   label: tA("delete"),   icon: Trash2,        danger: true  },
     ];
     case "HISTORICAL": return [
+      
       { key: "rebook",   label: tA("rebook"),   icon: History,  danger: false },
       { key: "download", label: tA("download"), icon: FileText, danger: false },
       { key: "delete",   label: tA("delete"),   icon: Trash2,   danger: true  },
@@ -69,12 +80,15 @@ export function getActions(state, tA) {
     ];
     default: return [];
   }
+
+  
 }
 
 /* ═══════════════════════════════════════════════════════════════
    DEFAULT ACTION HANDLER  (shared toast feedback)
 ═══════════════════════════════════════════════════════════════ */
 export function defaultActionHandler(item, key) {
+  
   const msg = {
     convert:   `Converting ${item.name} to Booking`,
     quotation: `Opening Quotation for ${item.name}`,
@@ -108,7 +122,13 @@ export function StatusBadge({ workflowState }) {
 export function ActionMenu({ item, tA, onAction }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
-  const actions = getActions(item.workflowState, tA);
+  const router = useRouter();
+  const params   = useParams();
+
+  
+    const locale  = params?.locale  || "en";
+    const country = params?.country || "in";
+  const actions = getActions(item.workflowState, tA, item, router, locale , country);
 
   useEffect(() => {
     if (!open) return;
@@ -136,10 +156,10 @@ export function ActionMenu({ item, tA, onAction }) {
             transition={{ duration: 0.14, ease: "easeOut" }}
             className="absolute end-0 z-30 mt-1.5 w-48 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl shadow-xl overflow-hidden"
           >
-            {actions.map(({ key, label, icon: Icon, danger }) => (
+            {actions.map(({ key, label, icon: Icon, danger ,onClick}) => (
               <button
                 key={key}
-                onClick={() => { onAction(item, key); setOpen(false); }}
+                onClick={onClick}
                 className={[
                   "w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] font-medium text-start transition-colors",
                   danger
@@ -154,6 +174,8 @@ export function ActionMenu({ item, tA, onAction }) {
           </motion.div>
         )}
       </AnimatePresence>
+
+     
     </div>
   );
 }
@@ -229,6 +251,9 @@ const initials = (item.name ?? "")
   .join("")
   .toUpperCase()
   .slice(0, 2);
+
+ 
+
   return (
     <motion.div
       layout
