@@ -203,13 +203,14 @@ export async function verifyBank(accountNumber, ifsc) {
 
 
 
+  
   return {
-    account_holder:  "ABC Events Private Limited",
-    bank_name:       "HDFC Bank",
-    branch:          "Koramangala",
-    account_masked:  "xxxx xxxx " + acct.slice(-4),
-    ifsc:            cleanIFSC,
-    status:          "Verified",
+    account_holder:  response.data.business_name,
+    bank_name:       response.data.bank_name,
+    branch:          response.data.branch_name,
+    account_masked:  response.data.account_number,
+    ifsc:            response.data.ifsc,
+    status:           response.data.verification_status,
   };
 
   /*
