@@ -9,42 +9,59 @@
      emptyTabKey   — key into t("tabs.*") and t("empty.*")
 ══════════════════════════════════════════════════════════════════ */
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { Search, X, LayoutGrid, AlignJustify } from "lucide-react";
 import GlobalModal from "../../components/GlobalModal";
 import { MOCK } from "../_data";
 import {
-  ReservationCard, CompactTable,
-  EmptyState, Pagination, DetailModal,
+  ReservationCard,
+  CompactTable,
+  EmptyState,
+  Pagination,
+  DetailModal,
   defaultActionHandler,
 } from "../_components";
 
 import HistoricalUploadModal from "../HistoricalUploadModal";
+import {
+  all_other_reserve,
+  historical_reserve,
+  historical_upload,
+ 
+} from "@/services/booking.service";
 
 const ITEMS_PER_PAGE = 9;
 
 export default function FilteredListWorkspace({ workflowState, emptyTabKey }) {
-  const t  = useTranslations("vendor.reservations");
+  const t = useTranslations("vendor.reservations");
   const tA = useTranslations("vendor.reservations.actions");
 
   const [search, setSearch] = useState("");
-  const [view,   setView]   = useState("compact");
-  const [page,   setPage]   = useState(1);
+  const [view, setView] = useState("compact");
+  const [page, setPage] = useState(1);
   const [detail, setDetail] = useState(null);
+  const [reserve, setReserve] = useState([]);
 
+  const [otherreserve, setOtherReserve] = useState([]);
 
   const [uploadOpen, setUploadOpen] = useState(false);
 
-  const handleView   = useCallback((item) => setDetail(item), []);
-  const handleAction = useCallback((item, key) => defaultActionHandler(item, key), []);
+  const handleView = useCallback((item) => setDetail(item), []);
+  const handleAction = useCallback(
+    (item, key) => defaultActionHandler(item, key),
+    [],
+  );
 
   /* Filter by workflowState first, then apply search */
-  const allItems = useMemo(
-    () => MOCK.filter((i) => i.workflowState === workflowState),
-    [workflowState],
-  );
+  const allItems = useMemo(() => {
+    if (workflowState === "HISTORICAL") {
+      return otherreserve;
+    }
+
+    return otherreserve.filter((item) => item.workflowState === workflowState);
+  }, [otherreserve, workflowState]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return allItems;
@@ -58,25 +75,64 @@ export default function FilteredListWorkspace({ workflowState, emptyTabKey }) {
     );
   }, [allItems, search]);
 
-  const totalPages     = Math.ceil(filtered.length / ITEMS_PER_PAGE);
-  const paginatedItems = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+  const paginatedItems = filtered.slice(
+    (page - 1) * ITEMS_PER_PAGE,
+    page * ITEMS_PER_PAGE,
+  );
 
   const viewOptions = [
     { key: "compact", Icon: AlignJustify, label: t("views.compact") },
-    { key: "grid",    Icon: LayoutGrid,   label: t("views.card")    },
+    { key: "grid", Icon: LayoutGrid, label: t("views.card") },
   ];
 
-  const handleUpload = async(data)=>{
-     const res = await fetch("/api/historical/upload", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ data }),
-  });
+  const handleUpload = async (data) => {
+const d = JSON.stringify({ data })
+   const res =  await historical_upload(d);
+    // const res = await fetch("/api/historical/upload", {
+    //   method: "POST",
+    //   headers: {
+    //     "Content-Type": "application/json",
+    //   },
+    //   body: JSON.stringify({ data }),
+    // });
 
-  return res.json();
-  }
+    return res.json();
+  };
+
+  const load = async () => {
+    try {
+      let res;
+
+      switch (workflowState) {
+        case "HISTORICAL":
+          res = await historical_reserve();
+          break;
+
+        default:
+          res = await all_other_reserve();
+          break;
+      }
+
+      console.log("API Response:", res);
+
+      const bookings = Array.isArray(res?.data)
+        ? res.data
+        : Array.isArray(res?.data?.data)
+          ? res.data.data
+          : [];
+
+      setOtherReserve(bookings);
+
+     
+    } catch (err) {
+      console.error("Load reservations failed:", err);
+      setOtherReserve([]);
+    }
+  };
+  useEffect(() => {
+    load();
+  }, [workflowState]);
 
   return (
     <motion.div
@@ -105,31 +161,44 @@ export default function FilteredListWorkspace({ workflowState, emptyTabKey }) {
 
       {/* ── Toolbar — matches Team Management style ────────── */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-
         {/* Search */}
         <div className="relative flex-1">
-          <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden="true" />
+          <Search
+            size={14}
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"
+            aria-hidden="true"
+          />
           <input
             type="search"
             placeholder={t("searchPlaceholder")}
             value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
             className="w-full pl-9 pr-4 py-2.5 text-sm rounded-xl bg-white dark:bg-gray-900/80 border border-gray-100 dark:border-white/[0.06] text-gray-900 dark:text-gray-100 placeholder-gray-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-300 dark:focus:border-violet-700 transition-all"
           />
           {search && (
             <button
-              onClick={() => { setSearch(""); setPage(1); }}
+              onClick={() => {
+                setSearch("");
+                setPage(1);
+              }}
               className="absolute right-3 top-1/2 -translate-y-1/2"
               aria-label="Clear search"
             >
-              <X size={13} className="text-gray-300 hover:text-gray-500 dark:text-gray-600 dark:hover:text-gray-400 transition-colors" />
+              <X
+                size={13}
+                className="text-gray-300 hover:text-gray-500 dark:text-gray-600 dark:hover:text-gray-400 transition-colors"
+              />
             </button>
           )}
         </div>
 
         {/* Result count */}
         <p className="text-[12px] text-gray-400 dark:text-gray-500 hidden sm:block shrink-0">
-          {t("showing")} {paginatedItems.length} {t("of")} {filtered.length} {t("results")}
+          {t("showing")} {paginatedItems.length} {t("of")} {filtered.length}{" "}
+          {t("results")}
         </p>
 
         {/* View toggle */}
@@ -153,6 +222,24 @@ export default function FilteredListWorkspace({ workflowState, emptyTabKey }) {
         </div>
       </div>
 
+      {workflowState === "HISTORICAL" && (
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h2 className="text-lg font-semibold">Historical Reservations</h2>
+            <p className="text-sm text-gray-500">
+              Import historical bookings from Excel.
+            </p>
+          </div>
+
+          <button
+            onClick={() => setUploadOpen(true)}
+            className="inline-flex items-center rounded-md bg-violet-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-violet-700 transition-colors"
+          >
+            Upload Excel
+          </button>
+        </div>
+      )}
+
       {/* ── Content ───────────────────────────────────────── */}
       <AnimatePresence mode="wait">
         {paginatedItems.length === 0 ? (
@@ -167,7 +254,14 @@ export default function FilteredListWorkspace({ workflowState, emptyTabKey }) {
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
           >
             {paginatedItems.map((item) => (
-              <ReservationCard key={item.id} item={item} t={t} tA={tA} onView={handleView} onAction={handleAction} />
+              <ReservationCard
+                key={item.id}
+                item={item}
+                t={t}
+                tA={tA}
+                onView={handleView}
+                onAction={handleAction}
+              />
             ))}
           </motion.div>
         ) : (
@@ -178,31 +272,13 @@ export default function FilteredListWorkspace({ workflowState, emptyTabKey }) {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
           >
-            {workflowState === "HISTORICAL" && (
-  <div className="flex items-center justify-between mb-5">
-    <div>
-      <h2 className="text-lg font-semibold">
-        Historical Reservations
-      </h2>
-      <p className="text-sm text-gray-500">
-        Import historical bookings from Excel.
-      </p>
-    </div>
-
-    <button
-      onClick={() => setUploadOpen(true)}
-      className="rounded-xl bg-violet-600 text-white px-4 py-2"
-    >
-      Upload Excel
-    </button>
-  </div>
-)}
-
-
-
-            <CompactTable items={paginatedItems} t={t} tA={tA} onView={handleView} onAction={handleAction} />
-          
-          
+            <CompactTable
+              items={paginatedItems}
+              t={t}
+              tA={tA}
+              onView={handleView}
+              onAction={handleAction}
+            />
           </motion.div>
         )}
       </AnimatePresence>
@@ -215,10 +291,10 @@ export default function FilteredListWorkspace({ workflowState, emptyTabKey }) {
       </GlobalModal>
 
       <HistoricalUploadModal
-    open={uploadOpen}
-    onClose={() => setUploadOpen(false)}
-    onUpload={handleUpload}
-/>
+        open={uploadOpen}
+        onClose={() => setUploadOpen(false)}
+        onUpload={handleUpload}
+      />
     </motion.div>
   );
 }

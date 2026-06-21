@@ -100,7 +100,7 @@ function buildTabs(t, items) {
   const c = (fn) => items.filter(fn).length;
   return [
     { key: "all",       label: t("tabs.all"),       icon: Inbox,        count: items.length },
-    { key: "leads",     label: t("tabs.leads"),     icon: Sparkles,     count: c((i) => i.type === "lead") },
+    { key: "leads",     label: t("tabs.leads"),     icon: Sparkles,     count: c((i) => i.workflowState === "lead") },
     { key: "pending",   label: t("tabs.pending"),   icon: Clock,        count: c((i) => i.workflowState === "PENDING" || i.workflowState === "IN_PROGRESS") },
     { key: "confirmed", label: t("tabs.confirmed"), icon: CheckCircle2, count: c((i) => i.workflowState === "CONFIRMED") },
     { key: "reserved",  label: t("tabs.reserved"),  icon: Bookmark,     count: c((i) => i.workflowState === "RESERVED") },
@@ -111,7 +111,7 @@ function buildTabs(t, items) {
 /* ── Filter logic ───────────────────────────────────────────── */
 function applyFilters(items, { tab, search, payment, eventType, venue, source, staff, bookedDate, eventDate }) {
   let r = items;
-  if (tab === "leads")     r = r.filter((i) => i.type === "lead");
+  if (tab === "leads")     r = r.filter((i) => i.workflowState === "lead");
   if (tab === "pending")   r = r.filter((i) => i.workflowState === "PENDING" || i.workflowState === "IN_PROGRESS");
   if (tab === "confirmed") r = r.filter((i) => i.workflowState === "CONFIRMED");
   if (tab === "reserved")  r = r.filter((i) => i.workflowState === "RESERVED");
@@ -187,7 +187,7 @@ export default function AllReservationsWorkspace() {
     const revStr    = revenue >= 10000000 ? `${(revenue / 10000000).toFixed(2)} Cr` : `${(revenue / 100000).toFixed(1)} L`;
     return {
       total:     reserve.length,
-      leads:     reserve.filter((i) => i.type === "lead").length,
+      leads:     reserve.filter((i) => i.workflowState === "lead").length,
       pending:   reserve.filter((i) => ["PENDING", "IN_PROGRESS"].includes(i.workflowState)).length,
       confirmed: confirmed.length,
       reserved:  reserve.filter((i) => i.workflowState === "RESERVED").length,

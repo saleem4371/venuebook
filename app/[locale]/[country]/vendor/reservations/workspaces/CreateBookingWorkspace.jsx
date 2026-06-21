@@ -786,6 +786,82 @@ await booking_create(payload)
   };
 
  const saveDraft = async () => {
+   setReserveType(0)
+     const payload = {
+  invoice_no: invoice,
+  booking_type: bookingType,
+  event: {
+    event_type: eventType,
+    selection_mode: selectionMode,
+    selection_type: selectionType,
+    shift,
+    ...(selectionMode === "single"
+      ? { event_date: eventDate }
+      : { date_range: { start_date: dateRange.startDate, end_date: dateRange.endDate } }),
+    guest_capacity: Number(guestCapacity) || 0,
+  },
+  venues: selectedVenues.map((v) => ({
+    child_venue_id: v.child_venue_id,
+    child_venue_name: v.child_venue_name,
+    shift_name: v.shift_name,
+    shift_timing: v.shift_timing,
+    price: selectionMode === "single" ? v.per_day_price : (v.total_price || v.per_day_price),
+    security_amount: v.securityAmount || 0,
+  })),
+  pax_packages: packages
+    .filter((p) => Object.values(selectedItems[p.id] || {}).some((a) => a.length > 0))
+    .map((p) => ({
+      package_id: p.id,
+      package_name: p.name,
+      price_per_pax: p.price,
+      selections: (p.categories || [])
+        .filter((c) => (selectedItems[p.id]?.[c.id] || []).length > 0)
+        .map((c) => ({
+          category_id: c.id,
+          category_name: c.name,
+          item_ids: selectedItems[p.id][c.id],
+        })),
+    })),
+  addons: Object.values(selectedAddons).map((item) => ({
+    addon_id: item.addon.id,
+    name: item.addon.add_on_name,
+    qty: item.qty,
+    unit_price: Number(item.addon?.amount ?? item.addon?.price ?? 0),
+    amount: item.qty * Number(item.addon?.amount ?? item.addon?.price ?? 0),
+  })),
+  service_providers: {
+    caterer: providers.caterer,
+    decorator: providers.decorator,
+    sound_system: providers.sound,
+    music_troupe: providers.music,
+  },
+  special_request: specialRequest,
+  customer: {
+    is_self: selfBook,
+    name: customer.name,
+    phone: customer.phone,
+    email: customer.email,
+  },
+  pricing: {
+    base_amount: summary.totalAmount,
+    total_guests: summary.totalGuests,
+    addon_amount: summary.totalAddonAmount,
+    addon_qty: summary.totalAddonQty,
+    subtotal: summary.subtotal,
+    venue_gst: summary.venueGST,
+    pax_gst: summary.paxGST,
+    addon_gst: summary.addonGST,
+    gst_total: summary.gst_amt,
+    grand_total: summary.grand_total,
+    security_deposit: summary.securityDeposit,
+  },
+  category:activeCategory,
+  reserveType:reserveType,
+
+};
+
+await booking_create(payload)
+console.log(payload)
    const id = toast.loading("Saving draft...");
    await new Promise((r) => setTimeout(r, 800));
    toast.success("Draft saved", { id });
