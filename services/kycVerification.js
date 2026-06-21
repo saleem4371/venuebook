@@ -203,7 +203,6 @@ export async function verifyBank(accountNumber, ifsc) {
 
 
 
-  
   return {
     account_holder:  response.data.business_name,
     bank_name:       response.data.bank_name,

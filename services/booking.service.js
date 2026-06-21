@@ -46,3 +46,14 @@ export const Load_all_venues = (data) => {
 export const leads_create = (data) => {
   return api.post(`/booking/leads_create`,data);
 };
+
+export const all_other_reserve = (data) => {
+  return api.post(`/booking/all_other_reserve`,data);
+};
+export const historical_reserve = (data) => {
+  return api.post(`/booking/historical_reserve`,data);
+};
+
+export const historical_upload = (data) => {
+  return api.post(`/booking/historical_upload`,data);
+};
