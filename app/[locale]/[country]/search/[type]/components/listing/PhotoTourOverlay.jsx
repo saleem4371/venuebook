@@ -1,140 +1,302 @@
 "use client";
 
-import { motion, AnimatePresence } from "framer-motion";
-import { X } from "lucide-react";
-import { useState, useEffect } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { ArrowLeft, Expand } from "lucide-react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import ImageSlider from "./ImageSlider";
 
-export default function PhotoTourOverlay({ images = [], onClose }) {
-  const [active, setActive] = useState(0);
+// ─── Section config ───────────────────────────────────────────────────────────
+const SECTION_CONFIG = [
+  { label: "01", title: "Spaces",   count: 4 },
+  { label: "02", title: "Bedroom",  count: 4 },
+  { label: "03", title: "Kitchen",  count: 4 },
+  { label: "04", title: "Living",   count: 4 },
+  { label: "05", title: "Exterior", count: 4 },
+];
 
-   const [index, setIndex] = useState(null);
+function buildSections(images) {
+  const out = [];
+  let cursor = 0;
+  for (const cfg of SECTION_CONFIG) {
+    if (cursor >= images.length) break;
+    const slice = images.slice(cursor, cursor + cfg.count);
+    if (!slice.length) break;
+    out.push({ ...cfg, images: slice, offset: cursor });
+    cursor += slice.length;
+  }
+  if (cursor < images.length) {
+    out.push({
+      label: String(out.length + 1).padStart(2, "0"),
+      title: "More",
+      images: images.slice(cursor),
+      offset: cursor,
+    });
+  }
+  return out;
+}
 
-  // ✅ Disable background scroll
-  useEffect(() => {
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = "auto";
-    };
-  }, []);
+// ─── Section header ───────────────────────────────────────────────────────────
+function SectionHeader({ label, title }) {
+  return (
+    <div className="flex items-center gap-3 mb-4">
+      <span className="text-gray-300 dark:text-gray-600 text-[10px] font-mono tracking-widest">
+        {label}
+      </span>
+      <div className="flex-1 h-px bg-gray-100 dark:bg-gray-800" />
+      <span className="text-gray-400 dark:text-gray-500 text-[11px] font-semibold tracking-[0.15em] uppercase">
+        {title}
+      </span>
+    </div>
+  );
+}
 
-  // demo grouping (replace with real API later)
-  const sections = [
-    {
-      title: "Full kitchen",
-      subtitle: "Kettle · Wine glasses",
-      images: images.slice(0, 3),
-    },
-    {
-      title: "Bedroom",
-      subtitle: "King bed · Extra pillows",
-      images: images.slice(2, 4),
-    },
-    {
-      title: "Exterior",
-      subtitle: "Garden · Outside view",
-      images: images.slice(4, 6),
-    },
-  ];
+// ─── Static placeholder grid (ZERO CSS animation) ────────────────────────────
+// Used ONLY during the 280ms open animation so no competing compositor layers
+// steal GPU budget from the slide-up. Each cell is the exact same size as a
+// real image cell — layout is fully reserved, zero CLS on swap.
+function StaticGrid({ count }) {
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+      {Array.from({ length: count }).map((_, i) => (
+        <div
+          key={i}
+          className="aspect-video rounded-xl bg-gray-100 dark:bg-gray-800"
+        />
+      ))}
+    </div>
+  );
+}
+
+// ─── Real image cell with shimmer skeleton ────────────────────────────────────
+// The shimmer animation only runs AFTER the modal is fully open so it never
+// competes with the slide-up transition on the GPU.
+function PhotoCell({ src, alt, onClick, priority }) {
+  const [loaded, setLoaded] = useState(false);
 
   return (
-    <AnimatePresence>
-      <motion.div
-        className="fixed inset-0 bg-white z-50 overflow-y-auto"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
+    <div className="relative w-full h-full">
+      {/* Shimmer skeleton — fades out when image is ready */}
+      <div
+        aria-hidden
+        className={`absolute inset-0 rounded-xl overflow-hidden bg-gray-200 dark:bg-gray-800 transition-opacity duration-200 ${
+          loaded ? "opacity-0 pointer-events-none" : "opacity-100"
+        }`}
       >
-        {/* HEADER */}
-        <div className="sticky top-0 bg-white z-50 flex items-center justify-between px-4 md:px-8 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold">Photo tour</h2>
+        <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.6s_ease-in-out_infinite] bg-gradient-to-r from-transparent via-white/50 dark:via-white/10 to-transparent" />
+      </div>
 
+      <img
+        src={src}
+        alt={alt}
+        loading={priority ? "eager" : "lazy"}
+        decoding="async"
+        onLoad={() => setLoaded(true)}
+        onClick={onClick}
+        className={`absolute inset-0 w-full h-full object-cover cursor-pointer transition-opacity duration-200 ${
+          loaded ? "opacity-100" : "opacity-0"
+        }`}
+      />
+    </div>
+  );
+}
+
+// ─── Main overlay ─────────────────────────────────────────────────────────────
+export default function PhotoTourOverlay({ images = [], onClose }) {
+  const [sliderIndex, setSliderIndex] = useState(null);
+  const [activeIdx,   setActiveIdx]   = useState(0);
+
+  // "open"   → slide animation is running (static gray placeholders only)
+  // "loaded" → animation done, real PhotoCells with shimmer + images mount
+  const [phase, setPhase] = useState("open");
+
+  const bodyRef     = useRef(null);
+  const tabBtnRefs  = useRef([]);
+  const sectionRefs = useRef([]);
+
+  const sections = useMemo(() => buildSections(images), [images]);
+
+  // ── Body scroll lock ──────────────────────────────────────────────────────
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
+  // ── Active tab tracking ───────────────────────────────────────────────────
+  const updateActive = useCallback(() => {
+    const container = bodyRef.current;
+    if (!container) return;
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    if (scrollHeight - scrollTop - clientHeight < 80) {
+      setActiveIdx(sections.length - 1);
+      return;
+    }
+    const containerTop = container.getBoundingClientRect().top;
+    const triggerLine  = containerTop + clientHeight * 0.4;
+    let winner = 0;
+    sectionRefs.current.forEach((el, i) => {
+      if (!el) return;
+      if (el.getBoundingClientRect().top <= triggerLine) winner = i;
+    });
+    setActiveIdx(winner);
+  }, [sections.length]);
+
+  useEffect(() => {
+    const container = bodyRef.current;
+    if (!container) return;
+    container.addEventListener("scroll", updateActive, { passive: true });
+    return () => container.removeEventListener("scroll", updateActive);
+  }, [updateActive]);
+
+  // ── Auto-scroll active tab chip into view ────────────────────────────────
+  useEffect(() => {
+    tabBtnRefs.current[activeIdx]?.scrollIntoView({
+      behavior: "smooth", block: "nearest", inline: "center",
+    });
+  }, [activeIdx]);
+
+  // ── Jump to section ───────────────────────────────────────────────────────
+  const jumpTo = useCallback((i) => {
+    const el        = sectionRefs.current[i];
+    const container = bodyRef.current;
+    if (!el || !container) return;
+    const top =
+      el.getBoundingClientRect().top -
+      container.getBoundingClientRect().top +
+      container.scrollTop - 72;
+    container.scrollTo({ top, behavior: "smooth" });
+    setActiveIdx(i);
+  }, []);
+
+  // ── Called when the slide-up animation fully completes ───────────────────
+  // Only NOW do we mount PhotoCells + shimmer animations. The GPU is free.
+  const handleAnimationComplete = useCallback(() => {
+    setPhase("loaded");
+  }, []);
+
+  return (
+    <>
+      <motion.div
+        className="fixed inset-0 z-50 flex flex-col bg-white dark:bg-gray-950"
+        style={{ willChange: "transform" }}
+        initial={{ y: "100%" }}
+        animate={{ y: 0 }}
+        exit={{ y: "100%" }}
+        transition={{ duration: 0.28, ease: [0.32, 0.72, 0, 1] }}
+        onAnimationComplete={handleAnimationComplete}
+      >
+        {/* ── HEADER ── */}
+        <div className="flex-none flex items-center justify-between px-4 md:px-8 py-4 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950">
           <button
             onClick={onClose}
-            className="p-2 rounded-full hover:bg-gray-100 transition"
+            className="flex items-center gap-1.5 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors group"
           >
-            <X size={20} />
+            <ArrowLeft size={16} className="group-hover:-translate-x-0.5 transition-transform duration-150" />
+            Back
           </button>
+          <span className="text-xs text-gray-400 dark:text-gray-500">{images.length} photos</span>
         </div>
 
-        {/* CATEGORY (RIGHT ALIGNED) */}
-        <div className="px-4 md:px-8 py-3 flex justify-start">
-          <div className="flex gap-3 overflow-x-auto">
-            {sections.map((sec, i) => (
-              <div
-                key={i}
-                onClick={() => {
-                  setActive(i);
-                  document
-                    .getElementById(`section-${i}`)
-                    ?.scrollIntoView({ behavior: "smooth" });
-                }}
-                className="min-w-[90px] cursor-pointer"
-              >
-                <img
-                  src={sec.images[0]}
-                  className={`w-full h-16 object-cover rounded-lg transition ${
-                    active === i ? "ring-2 ring-black" : ""
-                  }`}
-                />
-                <p className="text-xs mt-1 text-center">{sec.title}</p>
+        {/* ── TAB STRIP ── */}
+        <div
+          className="flex-none flex gap-2 px-4 md:px-8 py-3 border-b border-gray-100 dark:border-gray-800 overflow-x-auto bg-white dark:bg-gray-950"
+          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+        >
+          {sections.map((sec, i) => (
+            <button
+              key={i}
+              ref={(el) => (tabBtnRefs.current[i] = el)}
+              onClick={() => jumpTo(i)}
+              className={`flex-none px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap border transition-all duration-200 ${
+                activeIdx === i
+                  ? "bg-gray-900 dark:bg-white text-white dark:text-gray-900 border-gray-900 dark:border-white shadow-sm"
+                  : "text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500 hover:text-gray-800 dark:hover:text-gray-200 bg-white dark:bg-transparent"
+              }`}
+            >
+              {sec.title}
+            </button>
+          ))}
+        </div>
+
+        {/* ── SCROLLABLE BODY ── */}
+        <div
+          ref={bodyRef}
+          className="flex-1 overflow-y-auto overscroll-contain bg-white dark:bg-gray-950"
+          style={{
+            scrollbarWidth: "thin",
+            WebkitOverflowScrolling: "touch",
+            transform: "translateZ(0)",
+          }}
+        >
+          <div className="px-4 md:px-8 py-6 space-y-10">
+            {sections.map((section, sIdx) => (
+              <div key={sIdx} ref={(el) => (sectionRefs.current[sIdx] = el)}>
+
+                <SectionHeader label={section.label} title={section.title} />
+
+                {phase === "open" ? (
+                  /*
+                   * PHASE 1 — slide animation is running.
+                   * Static gray boxes: no CSS animation, no compositor layers,
+                   * zero GPU competition with the slide-up.
+                   */
+                  <StaticGrid count={section.images.length} />
+                ) : (
+                  /*
+                   * PHASE 2 — animation complete, GPU is free.
+                   * Real PhotoCells mount: shimmer plays while each image loads,
+                   * then fades to the real photo.
+                   */
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                    {section.images.map((img, imgIdx) => {
+                      const globalIdx = section.offset + imgIdx;
+                      return (
+                        <div
+                          key={imgIdx}
+                          className="relative aspect-video overflow-hidden rounded-xl cursor-pointer group hover:scale-[1.015] transition-transform duration-300"
+                          onClick={() => setSliderIndex(globalIdx)}
+                        >
+                          <PhotoCell
+                            src={img}
+                            alt={`${section.title} ${imgIdx + 1}`}
+                            priority={sIdx === 0}
+                            onClick={() => setSliderIndex(globalIdx)}
+                          />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/15 transition-colors duration-300 pointer-events-none rounded-xl" />
+                          <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+                            <div className="bg-white/90 dark:bg-black/70 backdrop-blur-sm rounded-lg px-2 py-1 flex items-center gap-1 shadow-sm">
+                              <Expand size={11} className="text-gray-600 dark:text-gray-300" />
+                              <span className="text-gray-600 dark:text-gray-300 text-[10px] font-medium">View</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             ))}
+            <div className="h-4" />
           </div>
         </div>
-
-        {/* BODY */}
-        <div className="px-4 md:px-8 py-6 space-y-12">
-          {sections.map((section, idx) => (
-            <div
-              key={idx}
-              id={`section-${idx}`}
-              className="grid grid-cols-1 md:grid-cols-[500px_1fr] gap-6 items-start"
-            >
-              
-              {/* LEFT TEXT (STICKY) */}
-              <div className="md:sticky md:top-24">
-                <h3 className="text-lg font-semibold">
-                  {section.title}
-                </h3>
-                <p className="text-sm text-gray-500 mt-1">
-                  {section.subtitle}
-                </p>
-              </div>
-
-              {/* RIGHT IMAGES */}
-              <div className="grid grid-cols-2 gap-3">
-                {section.images.map((img, i) => (
-                  <motion.div
-                    key={i}
-                    className="w-full h-[180px] md:h-[320px]"
-                    whileHover={{ scale: 1.03 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <img
-                      src={img}
-                      className="w-full h-full object-cover rounded-xl"
-                       onClick={() => setIndex(i)}
-                    />
-                  </motion.div>
-                ))}
-              </div>
-
-            </div>
-          ))}
-
-                {/* SLIDER */}
-      {index !== null && (
-        <ImageSlider
-          images={images}
-          index={index}
-          setIndex={setIndex}
-          onClose={() => setIndex(null)}
-        />
-      )}
-
-        </div>
       </motion.div>
-    </AnimatePresence>
+
+      <AnimatePresence>
+        {sliderIndex !== null && (
+          <ImageSlider
+            images={images}
+            index={sliderIndex}
+            setIndex={setSliderIndex}
+            onClose={() => setSliderIndex(null)}
+          />
+        )}
+      </AnimatePresence>
+    </>
   );
 }

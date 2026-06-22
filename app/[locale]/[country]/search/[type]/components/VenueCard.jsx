@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useRef, useEffect } from "react";
 import {
   Heart,
   ChevronLeft,
@@ -321,12 +321,21 @@ const VenueCard = ({
   compareList,
   setCompareList,
   hoverVenue,
+  isMapHighlighted = false,
 }) => {
   const { activeCategory } = useCategory();
 
   /* ── STATE ──────────────────────────────────────────────────────────── */
   const [currentImage, setCurrentImage] = useState(0);
   const [hovered, setHovered] = useState(false);
+
+  /* ── MAP HIGHLIGHT SCROLL ───────────────────────────────────────────── */
+  const cardRef = useRef(null);
+  useEffect(() => {
+    if (isMapHighlighted && cardRef.current) {
+      cardRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }, [isMapHighlighted]);
   const [heartPop, setHeartPop] = useState(false);
   const [compareAnim, setCompareAnim] = useState(false);
   const [showWishlistModal, setShowWishlistModal] = useState(false);
@@ -440,11 +449,21 @@ const VenueCard = ({
       onClickCapture={() => onRecentViews?.(venue)}
     >
       <div
+        ref={cardRef}
         onMouseEnter={() => { setHovered(true); onHover?.(venue); }}
         onMouseLeave={() => { setHovered(false); onLeave?.(); }}
         style={{
-          transform: isActive ? "translateY(-6px) scale(1.03)" : "translateY(0) scale(1)",
-          transition: "transform 0.25s ease",
+          transform: isActive
+            ? "translateY(-6px) scale(1.03)"
+            : isMapHighlighted
+              ? "translateY(-4px)"
+              : "translateY(0) scale(1)",
+          transition: "transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease",
+          boxShadow: isMapHighlighted
+            ? "0 8px 24px rgba(124,58,237,0.20), 0 2px 8px rgba(0,0,0,0.06)"
+            : undefined,
+          borderColor: isMapHighlighted ? "#7c3aed" : undefined,
+          borderWidth: isMapHighlighted ? "1.5px" : undefined,
         }}
         className="
           relative overflow-hidden rounded-2xl

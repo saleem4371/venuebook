@@ -90,6 +90,8 @@ export default function SearchPage() {
 
   /* ── data ──────────────────────────────────────────────────── */
   const [hoverVenue,       setHoverVenue]       = useState(null);
+  // venueIds highlighted via map hover (cluster or individual marker) → drives card highlight
+  const [mapHighlightedIds, setMapHighlightedIds] = useState([]);
   const [wishlistVenue,    setWishlistVenue]     = useState(null);
   const [loadData,         setLoadData]          = useState([]);
   const [loadProperty,     setLoadProperty]      = useState([]);
@@ -208,6 +210,10 @@ export default function SearchPage() {
     loadUser();
   }, [user]);
 
+  /* Map cluster/marker hover → highlight matching cards */
+  const handleMapClusterHover = (ids) => setMapHighlightedIds(ids || []);
+  const handleMapMarkerHover  = (id)  => setMapHighlightedIds(id ? [id] : []);
+
   /* Card hover highlights the marker via hoverVenue prop — no map pan (avoids onIdle lag) */
 
   /* ── FAB scroll tracking: hide on scroll-down, show on scroll-up (mobile only) ── */
@@ -317,9 +323,17 @@ export default function SearchPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
               {isLoadingVenues
                 ? Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)
-                : paginatedCards.map((venue) => (
-                    <VenueCard key={venue.childVenueId || venue.id} venue={venue} {...cardProps} />
-                  ))
+                : paginatedCards.map((venue) => {
+                    const vid = venue.childVenueId || venue.id;
+                    return (
+                      <VenueCard
+                        key={vid}
+                        venue={venue}
+                        {...cardProps}
+                        isMapHighlighted={mapHighlightedIds.includes(vid)}
+                      />
+                    );
+                  })
               }
             </div>
 
@@ -398,12 +412,15 @@ export default function SearchPage() {
               venues={allCards}
               hoverVenue={hoverVenue}
               country={selected_country.name}
+              category={activeCategory}
               isLoading={isLoadingVenues}
               onBoundsChange={setMapBounds}
               preferredLocation={preferredLocation}
               searchLocationLabel={searchLocLabel}
               onVenueClick={handleVenueClick}
               onVisibleVenuesChange={setCardVenues}
+              onMapClusterHover={handleMapClusterHover}
+              onMapMarkerHover={handleMapMarkerHover}
             />
 
             {/* ── Listing count overlay — top-left of map ── */}
@@ -572,12 +589,15 @@ export default function SearchPage() {
               venues={allCards}
               hoverVenue={hoverVenue}
               country={selected_country.name}
+              category={activeCategory}
               isLoading={isLoadingVenues}
               onBoundsChange={setMapBounds}
               preferredLocation={preferredLocation}
               searchLocationLabel={searchLocLabel}
               onVenueClick={handleVenueClick}
               onVisibleVenuesChange={setCardVenues}
+              onMapClusterHover={handleMapClusterHover}
+              onMapMarkerHover={handleMapMarkerHover}
             />
             <button
               onClick={() => setShowMap(false)}

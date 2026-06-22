@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useParams } from "next/navigation";
+import { AnimatePresence } from "framer-motion";
 import Gallery from "../components/listing/Gallery";
 import ImageModal from "../components/listing/ImageModal";
 import BookingCard from "../components/listing/BookingCard";
@@ -12,19 +14,40 @@ import SearchBar from "../components/SearchBar";
 import PhotoTourOverlay from "../components/listing/PhotoTourOverlay";
 
 export default function ListingPage() {
-  const [openIndex, setOpenIndex] = useState(null);
+  const params = useParams();
+  // params.type is the route segment e.g. "venues", "farmstays", "rentals" etc.
+  const category = params?.type ?? "venues";
   const [openTour, setOpenTour] = useState(false);
   const [active, setActive] = useState("photos");
   const [showTabs, setShowTabs] = useState(false);
-  const [openBooking, setOpenBooking] = useState(false);
-  const [filterOpen, setFilterOpen] = useState(false); // ✅ FIX
+  const [filterOpen, setFilterOpen] = useState(false);
 
   const images = [
+    // Spaces
     "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85",
+    "https://images.unsplash.com/photo-1496417263034-38ec4f0b665a",
+    "https://images.unsplash.com/photo-1613545325278-f24b0cae1224",
+    "https://images.unsplash.com/photo-1600210492493-0946911123ea",
+    // Bedroom
     "https://images.unsplash.com/photo-1493809842364-78817add7ffb",
     "https://images.unsplash.com/photo-1505691723518-36a5ac3be353",
+    "https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af",
+    "https://images.unsplash.com/photo-1540518614846-7eded433c457",
+    // Kitchen
     "https://images.unsplash.com/photo-1484154218962-a197022b5858",
     "https://images.unsplash.com/photo-1507089947368-19c1da9775ae",
+    "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136",
+    "https://images.unsplash.com/photo-1565538810643-b5bdb714032a",
+    // Living
+    "https://images.unsplash.com/photo-1555041469-a586c61ea9bc",
+    "https://images.unsplash.com/photo-1567016432779-094069958ea5",
+    "https://images.unsplash.com/photo-1506439773649-6e0eb8cfb237",
+    "https://images.unsplash.com/photo-1586023492125-27b2c045efd7",
+    // Exterior
+    "https://images.unsplash.com/photo-1512917774080-9991f1c4c750",
+    "https://images.unsplash.com/photo-1570129477492-45c003edd2be",
+    "https://images.unsplash.com/photo-1558618666-fcd25c85cd64",
+    "https://images.unsplash.com/photo-1564013799919-ab600027ffc6",
   ];
 
   // ✅ Sections updated
@@ -171,7 +194,7 @@ export default function ListingPage() {
           {/* RIGHT */}
           <div className="hidden lg:block">
             <div className="sticky top-28">
-              <BookingCard />
+              <BookingCard category={category} />
             </div>
           </div>
         </div>
@@ -284,60 +307,15 @@ export default function ListingPage() {
         </div>
       </div>
 
-      {/* 🔥 MOBILE BOOKING BAR */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t  border-t-gray-200  p-4 flex justify-between items-center lg:hidden z-40 shadow">
-        <div>
-          <p className="text-sm font-semibold">₹93</p>
-          <p className="text-xs text-gray-500">5 nights</p>
-        </div>
+      {/* BookingCard renders its own mobile bar + sheet — no duplicate needed */}
+      <BookingCard category={category} />
 
-        <button
-          onClick={() => setOpenBooking(true)}
-          className="bg-purple-500 text-white px-6 py-2 rounded-xl"
-        >
-          Reserve
-        </button>
-      </div>
-
-      {/* 🔥 BOTTOM SHEET */}
-      <div
-        className={`fixed inset-0 z-50 ${
-          openBooking ? "pointer-events-auto" : "pointer-events-none"
-        }`}
-      >
-        <div
-          onClick={() => setOpenBooking(false)}
-          className={`absolute inset-0 bg-black transition-opacity ${
-            openBooking ? "opacity-40" : "opacity-0"
-          }`}
-        />
-
-        <div
-          className={`absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl p-4 transition-transform ${
-            openBooking ? "translate-y-0" : "translate-y-full"
-          }`}
-        >
-          <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-4" />
-
-          <h2 className="text-lg font-semibold mb-2">Confirm your stay</h2>
-
-          <div className="text-sm text-gray-600 mb-4">₹93 × 5 nights</div>
-
-          <div className="border-t  border-t-gray-200  pt-3 flex justify-between font-semibold">
-            <span>Total</span>
-            <span>₹465</span>
-          </div>
-
-          <button className="mt-4 w-full bg-purple-500 text-white py-3 rounded-xl">
-            Reserve Now
-          </button>
-        </div>
-      </div>
-
-      {/* TOUR OVERLAY */}
-      {openTour && (
-        <PhotoTourOverlay images={images} onClose={() => setOpenTour(false)} />
-      )}
+      {/* TOUR OVERLAY — AnimatePresence here so exit animation plays on unmount */}
+      <AnimatePresence>
+        {openTour && (
+          <PhotoTourOverlay key="photo-tour" images={images} onClose={() => setOpenTour(false)} />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -79,23 +79,103 @@ function formatMarkerPrice(n) {
   return "₹" + new Intl.NumberFormat("en-IN").format(Math.round(num));
 }
 
+// ---------------- CATEGORY THEME ----------------
+const CATEGORY_THEME = {
+  venue:      "#7c3aed",  // purple
+  farmstay:   "#16a34a",  // green
+  studio:     "#2563eb",  // blue
+  rental:     "#ea580c",  // orange
+  workspace:  "#0d9488",  // teal
+  experience: "#db2777",  // pink
+};
+
+// Maps every possible incoming slug (plural API values like "venues"/"farmstays",
+// hyphenated, or cased) → canonical singular key used in CATEGORY_THEME.
+const _CAT_KEY_MAP = {
+  venues: "venue",       venue:      "venue",
+  farmstays: "farmstay", farmstay:   "farmstay",
+  studios: "studio",     studio:     "studio",
+  rentals: "rental",     rental:     "rental",
+  workspaces: "workspace", workspace: "workspace",
+  experiences: "experience", experience: "experience",
+};
+function normalizeCatKey(cat) {
+  if (!cat) return "venue";
+  const k = String(cat).toLowerCase().replace(/[-_\s]/g, "");
+  return _CAT_KEY_MAP[k] ?? "venue";
+}
+
+function getCategoryColor(cat) {
+  return CATEGORY_THEME[normalizeCatKey(cat)] ?? CATEGORY_THEME.venue;
+}
+
+/**
+ * Returns SVG path/shape strings for each category icon.
+ * All icons are drawn inside an 11px-radius white circle centered at (cx, cy).
+ * Icon draw area: ±8px from center for good visual padding.
+ */
+function getCategoryIcon(cat, color, cx, cy) {
+  const c = color;
+  switch (normalizeCatKey(cat)) {
+    case "farmstay":
+      // Tabler-style leaf: organic asymmetric shape with diagonal center vein
+      return (
+        `<path d="M${cx},${cy+8} C${cx-7},${cy+5} ${cx-8},${cy-1} ${cx-4},${cy-6} C${cx-1},${cy-9} ${cx+4},${cy-9} ${cx+7},${cy-5} C${cx+9},${cy-1} ${cx+6},${cy+5} ${cx},${cy+8}Z" fill="${c}"/>` +
+        `<line x1="${cx-1}" y1="${cy+6}" x2="${cx+2}" y2="${cy-7}" stroke="white" stroke-width="1.3" stroke-linecap="round" opacity="0.6"/>`
+      );
+    case "studio":
+      // Tabler-style camera: body + viewfinder notch + outer/inner lens circles
+      return (
+        `<rect x="${cx-6.5}" y="${cy-3.5}" width="13" height="9.5" rx="2" fill="${c}"/>` +
+        `<path d="M${cx-3},${cy-3.5} L${cx-2},${cy-6.5} L${cx+2},${cy-6.5} L${cx+3},${cy-3.5}" fill="${c}"/>` +
+        `<circle cx="${cx}" cy="${cy+0.5}" r="3.2" fill="white"/>` +
+        `<circle cx="${cx}" cy="${cy+0.5}" r="1.8" fill="${c}"/>`
+      );
+    case "workspace":
+      // Tabler-style briefcase: rectangular body + arched handle + horizontal seam
+      return (
+        `<rect x="${cx-6.5}" y="${cy-2}" width="13" height="9" rx="1.8" fill="${c}"/>` +
+        `<path d="M${cx-3},${cy-2} L${cx-3},${cy-4.5} Q${cx-3},${cy-5.5} ${cx-1.5},${cy-5.5} L${cx+1.5},${cy-5.5} Q${cx+3},${cy-5.5} ${cx+3},${cy-4.5} L${cx+3},${cy-2}" fill="none" stroke="${c}" stroke-width="1.6" stroke-linejoin="round"/>` +
+        `<rect x="${cx-6.5}" y="${cy+1.5}" width="13" height="1.2" fill="white" opacity="0.4"/>`
+      );
+    case "experience":
+      // Tabler-style star: well-proportioned 5-point star
+      return `<path d="M${cx},${cy-7.5} L${cx+2.1},${cy-2.3} L${cx+7.5},${cy-2.3} L${cx+3.2},${cy+1.4} L${cx+4.6},${cy+6.8} L${cx},${cy+3.8} L${cx-4.6},${cy+6.8} L${cx-3.2},${cy+1.4} L${cx-7.5},${cy-2.3} L${cx-2.1},${cy-2.3}Z" fill="${c}"/>`;
+    case "rental":
+      // Tabler-style house: triangle roof + rectangular walls + centered door
+      return (
+        `<polygon points="${cx},${cy-8} ${cx-7},${cy-1.5} ${cx+7},${cy-1.5}" fill="${c}"/>` +
+        `<rect x="${cx-5.5}" y="${cy-1.5}" width="11" height="8.5" rx="0.5" fill="${c}"/>` +
+        `<rect x="${cx-2.2}" y="${cy+1.5}" width="4.4" height="5.5" rx="0.8" fill="white"/>`
+      );
+    default: // venue — classical building: pediment + entablature + 3 columns + base
+      return (
+        `<polygon points="${cx},${cy-8} ${cx-7.5},${cy-2.5} ${cx+7.5},${cy-2.5}" fill="${c}"/>` +
+        `<rect x="${cx-7.5}" y="${cy-2.5}" width="15" height="2" rx="0" fill="${c}"/>` +
+        `<rect x="${cx-6.5}" y="${cy-0.5}" width="3.5" height="7.5" rx="0.4" fill="${c}"/>` +
+        `<rect x="${cx-1.75}" y="${cy-0.5}" width="3.5" height="7.5" rx="0.4" fill="${c}"/>` +
+        `<rect x="${cx+3}" y="${cy-0.5}" width="3.5" height="7.5" rx="0.4" fill="${c}"/>` +
+        `<rect x="${cx-7.5}" y="${cy+7}" width="15" height="2" rx="0" fill="${c}"/>`
+      );
+  }
+}
+
 // ---------------- CUSTOM CLUSTER STYLES ----------------
 // @react-google-maps/api MarkerClusterer uses the legacy `styles` array API.
 // Each entry controls one tier of cluster sizes (1-9, 10-99, 100-999 …).
 // The SVG provides the circle background; `textColor`/`textSize` control the overlaid count.
 const _mkClusterStyle = (size) => {
   const half = size / 2;
-  const svg  = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}"><circle cx="${half}" cy="${half}" r="${half - 2}" fill="#111827" stroke="#fff" stroke-width="2.5"/></svg>`;
+  // Clean dark circle with crisp white ring — no shadow
+  const svg  = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}"><circle cx="${half}" cy="${half}" r="${half - 1}" fill="#111827" stroke="#fff" stroke-width="2.5"/></svg>`;
   return {
     url:        "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg),
     width:      size,
     height:     size,
-    // anchorIcon NOT set → library defaults to [0,0] = top-left corner at the lat/lng pixel.
-    // The OverlayView hover overlay uses offset {x:0,y:0} to match this exactly.
     textColor:  "#ffffff",
-    textSize:   14,
+    textSize:   13,
     fontWeight: "700",
-    fontFamily: "Arial,sans-serif",
+    fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif",
   };
 };
 // Five tiers matching the default MarkerClusterer breakpoints
@@ -111,48 +191,73 @@ function getClusterPx(count) {
 }
 
 // ---------------- MARKER ICON BUILDER ----------------
-// Size NEVER changes — fill color and ring change on selected/mapHover states.
-// isSelected  → dark fill (#111827)
-// isMapHovered → deeper purple + inner white ring (mouse is over the pin itself)
-function buildMarkerIcon(venue, isSelected, isMapHovered) {
-  const price = getVenuePrice(venue);
-  const label = formatMarkerPrice(price);
-  const color = isSelected ? "#111827" : isMapHovered ? "#5b21b6" : "#7c3aed";
+// Markers:
+//   No-price  → colored teardrop pin (category color) + white inner circle + category icon
+//   Has-price → clean white capsule pill, no caret (Airbnb ₹15,406 style)
+//
+// Hover (non-selected only): 1.12× scaledSize — anchor stays at tip/bottom so the
+// geographic position never shifts. SVG content is identical; only rendered size changes.
+function buildMarkerIcon(venue, isSelected, isMapHovered, category) {
+  const price    = getVenuePrice(venue);
+  const label    = formatMarkerPrice(price);
+  // normalizeCatKey handles both plural API slugs ("venues","farmstays") and singular/mixed forms
+  const catKey   = normalizeCatKey(category || venue?.category || venue?.type);
+  const catColor = getCategoryColor(catKey);
+  // Only scale non-selected markers on hover — selected marker anchor must stay
+  // fixed so the popup OverlayView position doesn't shift.
+  const isHov = isMapHovered && !isSelected;
 
   if (!label) {
-    // No-price venue → 30 px circle with a mini location-pin icon inside
-    const s = 30, cx = 15, cy = 15, r = 13;
-    // Teardrop map-pin: head centered at (15,12.5), tip at (15,21.5)
-    const pin  = `M15,21.5 C12.5,18.5 9,16.2 9,12.5 C9,9.0 11.7,6.5 15,6.5 C18.3,6.5 21,9.0 21,12.5 C21,16.2 17.5,18.5 15,21.5 Z`;
-    // Inner hole → same fill as circle so it looks like a cutout
-    const hole = `<circle cx="15" cy="12.5" r="3" fill="${color}" opacity="0.85"/>`;
-    const hoverRing = isMapHovered
-      ? `<circle cx="${cx}" cy="${cy}" r="${r - 1}" fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="1.5"/>`
-      : "";
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s}"><defs><filter id="sh" x="-40%" y="-40%" width="180%" height="180%"><feDropShadow dx="0" dy="1.5" stdDeviation="2" flood-color="rgba(0,0,0,0.3)"/></filter></defs><circle cx="${cx}" cy="${cy}" r="${r}" fill="${color}" stroke="#fff" stroke-width="2.5" filter="url(#sh)"/><path d="${pin}" fill="#fff" opacity="0.92"/>${hole}${hoverRing}</svg>`;
+    // ── Teardrop map-pin: colored body + white circle + category icon ──
+    // SVG canvas: 36 × 50. Circle center: (18, 16) r=14. Tip: (18, 49).
+    const pinColor  = isSelected ? "#111827" : catColor;
+    const iconColor = isSelected ? "#7c3aed" : catColor;
+    const pinPath   = `M18,2 C10,2 4,8 4,16 C4,24 10,34 18,49 C26,34 32,24 32,16 C32,8 26,2 18,2 Z`;
+    const shadow    = `<filter id="sh" x="-45%" y="-20%" width="190%" height="160%"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="rgba(0,0,0,0.25)"/></filter>`;
+    const icon      = getCategoryIcon(catKey, iconColor, 18, 16);
+    const svg       = (
+      `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="50">` +
+      `<defs>${shadow}</defs>` +
+      `<path d="${pinPath}" fill="${pinColor}" filter="url(#sh)"/>` +
+      `<circle cx="18" cy="16" r="11" fill="white" stroke="rgba(0,0,0,0.06)" stroke-width="1"/>` +
+      `${icon}` +
+      `</svg>`
+    );
+    // Hover: 36×50 → 40×56 (1.12×). Anchor ratio preserved: tip at 98% of height.
+    const sw = isHov ? 40 : 36;
+    const sh = isHov ? 56 : 50;
     return {
       url:        "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg),
-      scaledSize: new window.google.maps.Size(s, s),
-      anchor:     new window.google.maps.Point(cx, cy),
+      scaledSize: new window.google.maps.Size(sw, sh),
+      anchor:     new window.google.maps.Point(sw / 2, Math.round(sh * 0.98)),
     };
   }
 
-  // Price pill — fixed height (32 px body + 8 px arrow), width auto-scales to text
-  const w      = Math.max(76, label.length * 7.5 + 24);
-  const bodyH  = 32;   // constant — no size jump on hover/select
-  const arrowH = 8;
-  const h      = bodyH + arrowH;
-  const cx     = w / 2;
-  const fs     = label.length > 9 ? 11 : 12;
-  // On map-hover: white inner stroke gives a "lit up" border effect without resizing
-  const innerRing = isMapHovered
-    ? `<rect rx="14" ry="14" x="2" y="2" width="${w - 4}" height="${bodyH - 4}" fill="none" stroke="rgba(255,255,255,0.45)" stroke-width="1.5"/>`
-    : "";
-  const svg    = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><rect rx="16" ry="16" x="0" y="0" width="${w}" height="${bodyH}" fill="${color}"/>${innerRing}<polygon points="${cx - 7},${bodyH} ${cx + 7},${bodyH} ${cx},${h}" fill="${color}"/><text x="${cx}" y="${bodyH / 2}" dominant-baseline="middle" text-anchor="middle" font-family="Arial,sans-serif" font-size="${fs}" fill="#fff" font-weight="700">${label}</text></svg>`;
+  // ── Price pill: clean capsule, no caret ──
+  const bg    = isSelected ? "#111827" : "#ffffff";
+  const textC = isSelected ? "#ffffff" : "#111827";
+  const fs    = label.length > 10 ? 10 : label.length > 8 ? 11 : 12;
+  const w     = Math.max(56, label.length * 7 + 14);
+  const h     = 30;
+  const gap   = 3;
+  const totalH = h + gap;
+  const cx    = w / 2;
+  const shadow = `<filter id="sh" x="-40%" y="-60%" width="180%" height="220%"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="rgba(0,0,0,0.15)"/><feDropShadow dx="0" dy="1" stdDeviation="1" flood-color="rgba(0,0,0,0.07)"/></filter>`;
+  const svg   = (
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${totalH}">` +
+    `<defs>${shadow}</defs>` +
+    `<rect x="1" y="1" width="${w - 2}" height="${h - 2}" rx="${(h - 2) / 2}" fill="${bg}" stroke="rgba(0,0,0,0.07)" stroke-width="1" filter="url(#sh)"/>` +
+    `<text x="${cx}" y="${h / 2 + 0.5}" dominant-baseline="middle" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif" font-size="${fs}" fill="${textC}" font-weight="700" letter-spacing="-0.3">${label}</text>` +
+    `</svg>`
+  );
+  // Hover: scale rendered size 1.12×; anchor stays at bottom-center so pill
+  // grows upward/outward from its geographic point — no position jump.
+  const sw = isHov ? Math.round(w * 1.12) : w;
+  const sh = isHov ? Math.round(totalH * 1.12) : totalH;
   return {
     url:        "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg),
-    scaledSize: new window.google.maps.Size(w, h),
-    anchor:     new window.google.maps.Point(cx, h),
+    scaledSize: new window.google.maps.Size(sw, sh),
+    anchor:     new window.google.maps.Point(Math.round(sw / 2), sh),
   };
 }
 
@@ -193,6 +298,8 @@ export default function MapView({
   venues = [],
   hoverVenue = null,
   country = "india",
+  /** Active category slug ("venue", "farmstay", "studio", etc.) — drives pin color + icon */
+  category = "venue",
   /** Show skeleton price-pill markers while API data is loading */
   isLoading = false,
   onBoundsChange,
@@ -208,12 +315,16 @@ export default function MapView({
    * fall inside the current map viewport. Use this to sync the card list.
    */
   onVisibleVenuesChange = null,
+  /** Called when hovering a cluster icon on the map — receives array of venueIds in that cluster */
+  onMapClusterHover = null,
+  /** Called when hovering/leaving an individual marker on the map — receives venueId or null */
+  onMapMarkerHover = null,
 }) {
   const mapRef = useRef(null);
-  // Imperative Google Maps marker used for cluster hover highlight.
-  // Cannot use a React <Marker> because MarkerClusterer icons render at
-  // MAX_ZINDEX+1, making any React Marker with lower zIndex invisible under the cluster.
-  const hoverMarkerRef = useRef(null);
+  // HTML OverlayView used for cluster hover gradient highlight (replaces imperative Marker approach).
+  const clusterOvRef = useRef(null);
+  // Maps google.maps.Marker instance → venueId for reliable cluster membership lookup.
+  const markerVenueMapRef = useRef(new Map());
   // Suppresses onIdle processing while a cluster-click fitBounds animation is running.
   // Without this, onIdle fires mid-animation → setVisibleVenues → re-render → re-cluster,
   // which interrupts the animation and lands on a wrong location.
@@ -233,6 +344,8 @@ export default function MapView({
   // Cluster positions + member marker coords — populated by onClusteringEnd
   const [clusterData, setClusterData] = useState([]);
   const [selected, setSelected] = useState(null);
+  // Stable reference — prevents OverlayView from recalculating position on unrelated re-renders
+  const popupCoords = useMemo(() => selected ? getVenueCoords(selected) : null, [selected]);
   /* Geocoded coords for searchLocationLabel — resolved as soon as Maps API loads */
   const [geocodedCenter, setGeocodedCenter] = useState(null);
   /* Mobile breakpoint — drives bottom-sheet vs inline popup */
@@ -354,56 +467,92 @@ export default function MapView({
   // already set and clusterData freshens up after onClusteringEnd fires.
   const hoveredCluster = useMemo(() => {
     if (!hoveredVenueId || !clusterData.length) return null;
-    const hv = visibleVenues.find((v) => (v.childVenueId || v.id || v._id) === hoveredVenueId);
-    if (!hv) return null;
-    const hc = getVenueCoords(hv);
-    if (!hc) return null;
-    const EPS = 0.00015;
-    return clusterData.find((cl) =>
-      cl.markerPositions.some(
-        (m) => Math.abs(m.lat - hc.lat) < EPS && Math.abs(m.lng - hc.lng) < EPS
-      )
-    ) ?? null;
-  }, [hoveredVenueId, clusterData, visibleVenues]);
+    return clusterData.find((cl) => cl.venueIds.includes(hoveredVenueId)) ?? null;
+  }, [hoveredVenueId, clusterData]);
 
-  // Drive the imperative hover marker from hoveredCluster.
-  // useEffect must be above the early return to keep hook order stable.
+  // Drive the CSS-animated gradient OverlayView from hoveredCluster.
+  // HTML overlay gives us linear-gradient, box-shadow glow, and CSS scale transition —
+  // none of which are possible with an SVG data-URI Marker icon.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (!window.google?.maps || !mapRef.current) return;
-
-    if (!hoveredCluster) {
-      hoverMarkerRef.current?.setMap(null);
-      return;
+    // Tear down any existing overlay first
+    if (clusterOvRef.current) {
+      clusterOvRef.current.setMap(null);
+      clusterOvRef.current = null;
     }
+
+    if (!hoveredCluster || !window.google?.maps || !mapRef.current) return;
 
     const { position, size } = hoveredCluster;
-    const px   = getClusterPx(size);
-    const half = px / 2;
-    const fs   = px >= 50 ? 15 : 14;
-    const svg  = `<svg xmlns="http://www.w3.org/2000/svg" width="${px}" height="${px}"><circle cx="${half}" cy="${half}" r="${half - 2}" fill="#7c3aed" stroke="#fff" stroke-width="2.5"/><text x="${half}" y="${half}" dominant-baseline="middle" text-anchor="middle" font-family="Arial,sans-serif" font-size="${fs}" fill="#fff" font-weight="700">${size}</text></svg>`;
-    const icon = {
-      url:        "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg),
-      scaledSize: new window.google.maps.Size(px, px),
-      anchor:     new window.google.maps.Point(half, half),
+    const px = getClusterPx(size);
+    const fs = px >= 50 ? 14 : 13;
+
+    let div = null;
+    const ov = new window.google.maps.OverlayView();
+
+    ov.onAdd = function () {
+      div = document.createElement("div");
+      Object.assign(div.style, {
+        position:        "absolute",
+        width:           `${px}px`,
+        height:          `${px}px`,
+        background:      "linear-gradient(242deg, #a44bf3 0%, #499ce8 100%)",
+        borderRadius:    "50%",
+        display:         "flex",
+        alignItems:      "center",
+        justifyContent:  "center",
+        color:           "#fff",
+        fontWeight:      "700",
+        fontSize:        `${fs}px`,
+        fontFamily:      "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif",
+        boxShadow:       "0 0 0 4px rgba(164,75,243,0.22), 0 4px 20px rgba(73,156,232,0.32)",
+        border:          "2.5px solid rgba(255,255,255,0.4)",
+        pointerEvents:   "none",
+        userSelect:      "none",
+        // Start hidden+small — CSS transition animates to final state
+        transform:       "translate(-50%, -50%) scale(0.8)",
+        opacity:         "0",
+        transition:      "transform 260ms cubic-bezier(0.34,1.56,0.64,1), opacity 200ms ease",
+        willChange:      "transform, opacity",
+      });
+      div.textContent = String(size);
+      this.getPanes().floatPane.appendChild(div);
+      // Double rAF ensures the transition fires (single rAF can batch with initial paint)
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          if (!div) return;
+          div.style.transform = "translate(-50%, -50%) scale(1.18)";
+          div.style.opacity   = "1";
+        })
+      );
     };
 
-    if (hoverMarkerRef.current) {
-      hoverMarkerRef.current.setPosition(position);
-      hoverMarkerRef.current.setIcon(icon);
-      hoverMarkerRef.current.setMap(mapRef.current);
-    } else {
-      hoverMarkerRef.current = new window.google.maps.Marker({
-        map:       mapRef.current,
-        position,
-        icon,
-        // Must exceed MarkerClusterer's MAX_ZINDEX+1 so the purple circle renders on top
-        zIndex:    (window.google.maps.Marker.MAX_ZINDEX ?? 1_000_000) + 100,
-        clickable: false,
-      });
-    }
+    ov.draw = function () {
+      const proj = this.getProjection();
+      if (!proj || !div) return;
+      const pt = proj.fromLatLngToDivPixel(
+        new window.google.maps.LatLng(position.lat, position.lng)
+      );
+      if (pt) {
+        div.style.left = `${pt.x}px`;
+        div.style.top  = `${pt.y}px`;
+      }
+    };
 
-    return () => { hoverMarkerRef.current?.setMap(null); };
+    ov.onRemove = function () {
+      if (div?.parentNode) div.parentNode.removeChild(div);
+      div = null;
+    };
+
+    ov.setMap(mapRef.current);
+    clusterOvRef.current = ov;
+
+    return () => {
+      if (clusterOvRef.current) {
+        clusterOvRef.current.setMap(null);
+        clusterOvRef.current = null;
+      }
+    };
   }, [hoveredCluster]);
 
   if (!isLoaded) return <MapSkeleton />;
@@ -472,66 +621,111 @@ export default function MapView({
       <MarkerClusterer
         styles={CLUSTER_STYLES}
         zoomOnClick={false}
+        onMouseOver={(cluster) => {
+          if (!cluster?.getMarkers) return;
+          const ids = cluster.getMarkers()
+            .map((m) => markerVenueMapRef.current.get(m))
+            .filter(Boolean);
+          if (ids.length) onMapClusterHover?.(ids);
+        }}
+        onMouseOut={() => onMapClusterHover?.([])}
         onClusteringEnd={(mc) => {
-          // Track cluster positions + their member marker coords for hover highlighting
+          // Use venueId stored on each marker instance (via markerVenueMapRef) instead of
+          // coordinate matching — avoids float precision issues and is O(1) per marker.
           const data = mc.getClusters()
             .filter((c) => c.getSize() > 1)
-            .map((c) => ({
-              position: { lat: c.getCenter().lat(), lng: c.getCenter().lng() },
-              size: c.getSize(),
-              markerPositions: c.getMarkers().map((m) => ({
-                lat: m.getPosition().lat(),
-                lng: m.getPosition().lng(),
-              })),
-            }));
+            .map((c) => {
+              const center = c.getCenter();
+              if (!center) return null;
+              return {
+                position: { lat: center.lat(), lng: center.lng() },
+                size: c.getSize(),
+                venueIds: c.getMarkers()
+                  .map((m) => markerVenueMapRef.current.get(m))
+                  .filter(Boolean),
+              };
+            })
+            .filter(Boolean);
           setClusterData(data);
         }}
         onClick={(cluster) => {
           if (!mapRef.current) return;
-          const center = cluster?.getCenter?.();
-          if (!center) return;
-          const markers = cluster?.getMarkers?.();
-          if (!markers?.length) return;
+          const clusterMarkers = cluster?.getMarkers?.();
+          if (!clusterMarkers?.length) return;
 
           const currentZoom = mapRef.current.getZoom() ?? 0;
 
-          // Build tight bounds from the cluster's marker positions
+          // Build bounds by looking up coordinates from the venues prop via
+          // markerVenueMapRef (marker → venueId → venue → coords).
+          // This is more reliable than m.getPosition() which can drift in legacy
+          // MarkerClusterer, and avoids the stale-closure issue with cluster.getCenter().
           const bounds = new window.google.maps.LatLngBounds();
-          markers.forEach((m) => { const p = m.getPosition(); if (p) bounds.extend(p); });
+          let validCount = 0;
+          clusterMarkers.forEach((m) => {
+            const vid    = markerVenueMapRef.current.get(m);
+            const vn     = vid ? venues.find((v) => (v.childVenueId || v.id || v._id) === vid) : null;
+            const coords = vn ? getVenueCoords(vn) : null;
+            if (coords) {
+              bounds.extend(new window.google.maps.LatLng(coords.lat, coords.lng));
+              validCount++;
+            } else {
+              // Fallback: use marker's own position if venue lookup misses
+              const p = m.getPosition();
+              if (p) { bounds.extend(p); validCount++; }
+            }
+          });
+          if (!validCount) return;
 
-          // Suppress onIdle during the fitBounds animation so the re-render cascade
-          // doesn't interrupt the smooth pan+zoom. We fire the update manually after.
+          const boundsCenter = bounds.getCenter();
+
+          // Same-point: all venues share one lat/lng → fitBounds produces zero-size
+          // bounds which causes extreme over-zoom. Step-zoom instead.
+          const ne = bounds.getNorthEast();
+          const sw = bounds.getSouthWest();
+          const isSamePoint =
+            Math.abs(ne.lat() - sw.lat()) < 0.0001 &&
+            Math.abs(ne.lng() - sw.lng()) < 0.0001;
+
+          // Fire onBoundsChange + visible-venues sync after map settles.
+          const fireBoundsUpdate = () => {
+            const b = mapRef.current?.getBounds();
+            if (!b) return;
+            const bne = b.getNorthEast(), bsw = b.getSouthWest();
+            const mapData = { north: bne.lat(), east: bne.lng(), south: bsw.lat(), west: bsw.lng() };
+            onBoundsChange?.(mapData);
+            const filtered = venues.filter((v) => {
+              const c = getVenueCoords(v);
+              if (!c) return false;
+              return c.lat <= mapData.north && c.lat >= mapData.south &&
+                     c.lng <= mapData.east  && c.lng >= mapData.west;
+            });
+            setVisibleVenues(filtered);
+            onVisibleVenuesChange?.(filtered);
+          };
+
+          // Suppress main onIdle handler during animation to prevent re-clustering.
           clusterZoomingRef.current = true;
+
+          if (isSamePoint) {
+            mapRef.current.setCenter(boundsCenter);
+            mapRef.current.setZoom(Math.min(currentZoom + 4, 17));
+            window.google.maps.event.addListenerOnce(mapRef.current, "idle", () => {
+              clusterZoomingRef.current = false;
+              fireBoundsUpdate();
+            });
+            return;
+          }
+
+          // Numeric padding (80px) — universally supported across all Maps API versions.
+          // If fitBounds results in a lower zoom (cluster spans a wide area) we trust it:
+          // it correctly shows all listings. We only cap the upper bound at zoom 16.
           mapRef.current.fitBounds(bounds, 80);
 
           window.google.maps.event.addListenerOnce(mapRef.current, "idle", () => {
             clusterZoomingRef.current = false;
-
             const newZoom = mapRef.current?.getZoom() ?? 0;
-            // Cap over-zoom (all markers at the same point)
             if (newZoom > 16) mapRef.current.setZoom(16);
-            // fitBounds didn't zoom in (cluster spans a huge area at low zoom) →
-            // fall back to center + step zoom so the animation still lands correctly
-            else if (newZoom <= currentZoom) {
-              mapRef.current.panTo({ lat: center.lat(), lng: center.lng() });
-              mapRef.current.setZoom(Math.min(currentZoom + 3, 15));
-            }
-
-            // Manually fire the bounds/venues update now that animation has settled
-            const b = mapRef.current?.getBounds();
-            if (b) {
-              const ne = b.getNorthEast(), sw = b.getSouthWest();
-              const mapData = { north: ne.lat(), east: ne.lng(), south: sw.lat(), west: sw.lng() };
-              onBoundsChange?.(mapData);
-              const filtered = venues.filter((v) => {
-                const c = getVenueCoords(v);
-                if (!c) return false;
-                return c.lat <= mapData.north && c.lat >= mapData.south &&
-                       c.lng <= mapData.east  && c.lng >= mapData.west;
-              });
-              setVisibleVenues(filtered);
-              onVisibleVenuesChange?.(filtered);
-            }
+            fireBoundsUpdate();
           });
         }}
       >
@@ -552,31 +746,39 @@ export default function MapView({
                   key={venueId}
                   position={coords}
                   clusterer={clusterer}
-                  icon={window.google?.maps ? buildMarkerIcon(venue, isActive, isMapHov) : undefined}
+                  icon={window.google?.maps ? buildMarkerIcon(venue, isActive, isMapHov, category) : undefined}
+                  zIndex={isMapHov || isActive ? 9999 : undefined}
+                  onLoad={(m) => markerVenueMapRef.current.set(m, venueId)}
+                  onUnmount={(m) => markerVenueMapRef.current.delete(m)}
                   onClick={() => {
-                    // No pan/zoom on click — map stays where it is, card opens only
                     setSelected(venue);
                     onVenueClick?.(venue);
                   }}
-                  onMouseOver={() => setMapHoveredId(venueId)}
-                  onMouseOut={() => setMapHoveredId(null)}
+                  onMouseOver={() => {
+                    setMapHoveredId(venueId);
+                    onMapMarkerHover?.(venueId);
+                  }}
+                  onMouseOut={() => {
+                    setMapHoveredId(null);
+                    onMapMarkerHover?.(null);
+                  }}
                 />
               );
             })
         }
       </MarkerClusterer>
 
-      {/* Cluster hover highlight is driven by an imperative google.maps.Marker in the
-           useEffect above — NOT a React Marker — so it can exceed MAX_ZINDEX+1 */}
+      {/* Cluster hover highlight is driven by an HTML OverlayView in the useEffect above —
+           renders a CSS-animated gradient div that exceeds MAX_ZINDEX+1 */}
 
       {/* Skeleton OverlayViews removed — loading state is shown outside the map */}
 
-      {/* ── DESKTOP POPUP: anchored below the marker via OverlayView ── */}
-      {selected && getVenueCoords(selected) && !isMobile && (
+      {/* ── DESKTOP POPUP: anchored just below the marker via OverlayView ── */}
+      {selected && popupCoords && !isMobile && (
         <OverlayView
-          position={getVenueCoords(selected)}
+          position={popupCoords}
           mapPaneName={OverlayView.FLOAT_PANE}
-          getPixelPositionOffset={(w) => ({ x: -(w / 2), y: 14 })}
+          getPixelPositionOffset={(w) => ({ x: -(w / 2), y: 6 })}
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -590,16 +792,7 @@ export default function MapView({
               position: "relative",
             }}
           >
-            {/* Arrow pointing UP toward the marker */}
-            <div style={{
-              position: "absolute", top: -9, left: "50%", transform: "translateX(-50%)",
-              width: 0, height: 0,
-              borderLeft: "9px solid transparent",
-              borderRight: "9px solid transparent",
-              borderBottom: "9px solid #fff",
-              filter: "drop-shadow(0 -2px 3px rgba(0,0,0,0.08))",
-            }} />
-
+            <div>
             {/* Image */}
             {selected.images?.[0] && (
               <div style={{ position: "relative", height: 110, overflow: "hidden" }}>
@@ -655,6 +848,7 @@ export default function MapView({
                   </div>
                 )}
               </div>
+            </div>
             </div>
           </div>
         </OverlayView>
