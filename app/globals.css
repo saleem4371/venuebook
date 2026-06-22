@@ -32,6 +32,11 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+@keyframes shimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}
+
 /* Global cursor: pointer for all interactive elements */
 button,
 a,
@@ -111,18 +116,10 @@ html {
   -webkit-overflow-scrolling: touch;
 }
 
-@keyframes shimmer {
-  0% {
-    transform: translateX(-100%);
-  }
-
-  100% {
-    transform: translateX(100%);
-  }
-}
+/* duplicate @keyframes shimmer removed — canonical definition is above at line 35 */
 
 .animate-shimmer {
-  animation: shimmer 1.5s infinite;
+  animation: shimmer 1.6s ease-in-out infinite;
 }
 
 /* ==========================================================================
