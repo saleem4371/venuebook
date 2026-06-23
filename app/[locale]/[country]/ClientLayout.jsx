@@ -23,6 +23,13 @@ export default function ClientLayout({ children }) {
   const isSearchRoute       = pathname.includes("/search/");
   const hideChrome          = isVendorRoute || isStartListingRoute;
 
+  // Hide footer on the search LIST page (/search/[type]) but show it on
+  // listing DETAIL pages (/search/[type]/[id]) which have an extra segment.
+  const isSearchListPage = /\/search\/[^/]+\/?$/.test(pathname);
+
+  // Listing detail page: /search/[type]/[id] — has two segments after /search/
+  const isListingDetailPage = /\/search\/[^/]+\/[^/]+/.test(pathname);
+
   /*
    * fabBreakpoint controls when CategoryNavigator switches from the
    * desktop pill to the floating circular FAB + bottom-sheet:
@@ -58,7 +65,7 @@ export default function ClientLayout({ children }) {
           <CategoryProvider>
 
             {!hideChrome && <Navbar />}
-            {!hideChrome && (
+            {!hideChrome && !isListingDetailPage && (
               <CategoryNavigator
                 loadData={loadData}
                 fabBreakpoint={fabBreakpoint}
@@ -68,7 +75,7 @@ export default function ClientLayout({ children }) {
             {children}
 
             {!hideChrome && <BottomMenu />}
-            {!hideChrome && !isSearchRoute && <Footer />}
+            {!hideChrome && !isSearchListPage && <Footer />}
 
           </CategoryProvider>
         </DropdownProvider>
