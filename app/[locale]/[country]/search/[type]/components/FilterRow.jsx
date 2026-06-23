@@ -14,6 +14,8 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { SlidersHorizontal, ChevronLeft, ChevronRight } from "lucide-react";
+import { useCategory } from "@/context/CategoryContext";
+import { CATEGORY_TINTS } from "@/config/categoryConfig";
 
 const AWS = (process.env.NEXT_PUBLIC_AWS_BUCKET_URL ?? "").replace(/\/+$/, "");
 
@@ -57,19 +59,17 @@ function CatImage({ src, alt }) {
 }
 
 /* ── Category / utility strip item ─────────────────────────────────────── */
-function Strip({ active, onClick, icon, label, minW = ITEM_MINW }) {
+function Strip({ active, onClick, icon, label, minW = ITEM_MINW, accentColor }) {
   return (
     <button
       onClick={onClick}
-      /* position:relative for the absolute underline indicator */
-      style={{ position: "relative", minWidth: minW, paddingLeft: ITEM_PX, paddingRight: ITEM_PX }}
+      style={{ position: "relative", minWidth: minW, paddingLeft: ITEM_PX, paddingRight: ITEM_PX, color: active && accentColor ? accentColor : undefined }}
       className={[
         "flex flex-col items-center flex-shrink-0 cursor-pointer select-none",
-        /* IDENTICAL vertical padding for active and inactive — no jumping */
         "pt-2 pb-3",
         "transition-colors duration-200",
         active
-          ? "text-purple-600 dark:text-purple-400"
+          ? ""
           : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white",
       ].join(" ")}
     >
@@ -82,7 +82,7 @@ function Strip({ active, onClick, icon, label, minW = ITEM_MINW }) {
           width: "100%",
           height: 60,
           /* Subtle tint bg — does NOT shift layout */
-          background: active ? "rgba(124,58,237,0.07)" : "transparent",
+          background: active && accentColor ? `${accentColor}12` : active ? "rgba(124,58,237,0.07)" : "transparent",
           borderRadius: 10,
           transition: "background 0.2s",
           padding: 0,
@@ -108,7 +108,7 @@ function Strip({ active, onClick, icon, label, minW = ITEM_MINW }) {
           left: "18%", right: "18%",
           height: 3,
           borderRadius: "3px 3px 0 0",
-          background: active ? "#7c3aed" : "transparent",
+          background: active && accentColor ? accentColor : active ? "#7c3aed" : "transparent",
           transition: "background 0.2s",
         }}
       />
@@ -193,6 +193,9 @@ function DefaultCatIcon() {
 
 /* ── FilterRow ──────────────────────────────────────────────────────────── */
 export default function FilterRow({ selectedCategory, setSelectedCategory, loadData = [], onFilterOpen }) {
+  const { activeCategory } = useCategory();
+  const tint = CATEGORY_TINTS[activeCategory] ?? CATEGORY_TINTS.venues;
+  const accent = tint.hex;
   const toggle = (id) => setSelectedCategory(selectedCategory === id ? null : id);
 
   const scrollRef  = useRef(null);
@@ -298,6 +301,7 @@ export default function FilterRow({ selectedCategory, setSelectedCategory, loadD
             icon={<AllIcon />}
             label="All"
             minW={ALL_MINW}
+            accentColor={accent}
           />
 
           {loadData.map((cat) => (
@@ -308,6 +312,7 @@ export default function FilterRow({ selectedCategory, setSelectedCategory, loadD
               icon={<CatImage src={buildIconSrc(cat.icon)} alt={cat.name ?? ""} />}
               label={cat.name}
               minW={ITEM_MINW}
+              accentColor={accent}
             />
           ))}
         </div>
@@ -324,8 +329,8 @@ export default function FilterRow({ selectedCategory, setSelectedCategory, loadD
             className="flex items-center justify-center flex-shrink-0"
             style={{
               marginBottom: 4,
-              background: "rgba(124,58,237,0.06)",
-              border: "1px solid rgba(124,58,237,0.15)",
+              background: `${accent}0f`,
+              border: `1px solid ${accent}26`,
               borderRadius: 10,
               padding: "6px 8px",
               backdropFilter: "blur(8px)",
@@ -336,12 +341,12 @@ export default function FilterRow({ selectedCategory, setSelectedCategory, loadD
             <SlidersHorizontal
               size={22}
               strokeWidth={1.75}
-              className="text-purple-600 dark:text-purple-400 group-hover:text-purple-700 dark:group-hover:text-purple-300 transition-colors"
+              style={{ color: accent }}
             />
           </span>
           <span
-            style={{ fontSize: LABEL_SIZE }}
-            className="font-semibold whitespace-nowrap leading-none tracking-wide text-purple-600 dark:text-purple-400"
+            style={{ fontSize: LABEL_SIZE, color: accent }}
+            className="font-semibold whitespace-nowrap leading-none tracking-wide"
           >
             Filters
           </span>

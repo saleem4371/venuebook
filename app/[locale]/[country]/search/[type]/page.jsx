@@ -4,13 +4,14 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { useParams, useSearchParams } from "next/navigation";
-import { X, Scale } from "lucide-react";
+import { X, Scale, SearchX, MapPin, SlidersHorizontal } from "lucide-react";
 
 import MapView           from "./components/MapView";
 import VenueCard         from "./components/VenueCard";
 import FilterDrawer      from "./components/FilterDrawer";
 import WishlistPopup     from "./components/WishlistPopup";
 import FilterRow         from "./components/FilterRow";
+import { DEFAULT_FILTERS } from "./components/FilterDrawer";
 import ListingsSearchBar from "./components/ListingsSearchBar";
 
 import { useCategory }          from "@/context/CategoryContext";
@@ -105,6 +106,7 @@ export default function SearchPage() {
   const fabLastScroll = useRef(0);
   const [selectedCategory, setSelectedCategory]  = useState(null);
   const [mapBounds,        setMapBounds]         = useState(null);
+  const [mapResetKey,      setMapResetKey]       = useState(0);
   /* Venues reported as visible by MapView — drives the card grid */
   const [cardVenues,       setCardVenues]        = useState(null);
   /* Init from URL params (passed by home page search) */
@@ -120,12 +122,7 @@ export default function SearchPage() {
   /* Preferred location from user preferences */
   const { location: preferredLocation } = usePreferredLocation();
 
-  const [filters, setFilters] = useState({
-    category_cards: [],
-    shift:   [],
-    booking: [],
-    budget:  { min: 200, max: 100000 },
-  });
+  const [filters, setFilters] = useState(() => ({ ...DEFAULT_FILTERS }));
 
   /* ── country ───────────────────────────────────────────────── */
   const COUNTRY_MAP = {
@@ -235,16 +232,7 @@ export default function SearchPage() {
     return () => window.removeEventListener("resize", check);
   }, []);
 
-  /* ── body scroll lock when filter open ────────────────────── */
-  useEffect(() => {
-    const w = window.innerWidth - document.documentElement.clientWidth;
-    document.body.style.overflow     = filterOpen ? "hidden" : "auto";
-    document.body.style.paddingRight = filterOpen ? `${w}px`  : "0px";
-    return () => {
-      document.body.style.overflow     = "auto";
-      document.body.style.paddingRight = "0px";
-    };
-  }, [filterOpen]);
+  /* body scroll lock is handled inside FilterDrawer modal */
 
   /* ── compare ───────────────────────────────────────────────── */
   const handleCompare = async (venue, action) => {
@@ -319,23 +307,59 @@ export default function SearchPage() {
           </div>
 
           {/* Cards grid */}
-          <div className="flex-1 px-4 pt-3 pb-4 lg:pb-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-              {isLoadingVenues
-                ? Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)
-                : paginatedCards.map((venue) => {
-                    const vid = venue.childVenueId || venue.id;
-                    return (
-                      <VenueCard
-                        key={vid}
-                        venue={venue}
-                        {...cardProps}
-                        isMapHighlighted={mapHighlightedIds.includes(vid)}
-                      />
-                    );
-                  })
-              }
-            </div>
+          <div className="flex-1 flex flex-col min-h-0 px-4 pt-3 pb-4 lg:pb-4">
+            {isLoadingVenues ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
+              </div>
+            ) : paginatedCards.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center px-6 text-center select-none">
+                <div className="relative mb-6">
+                  <div className="w-20 h-20 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                    <MapPin size={32} className="text-gray-300 dark:text-gray-600" strokeWidth={1.5} />
+                  </div>
+                  <div className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center border-2 border-white dark:border-gray-950">
+                    <SearchX size={14} className="text-gray-400 dark:text-gray-500" strokeWidth={2} />
+                  </div>
+                </div>
+                <h3 className="text-[15px] font-semibold text-gray-800 dark:text-gray-100 mb-1">
+                  No results in this area
+                </h3>
+                <p className="text-[13px] text-gray-500 dark:text-gray-400 max-w-[220px] leading-relaxed mb-6">
+                  Try moving the map, zooming out, or adjusting your filters.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <button
+                    onClick={() => { setMapBounds(null); setMapResetKey((k) => k + 1); }}
+                    className="inline-flex items-center gap-1.5 h-9 px-4 rounded-full border border-gray-300 dark:border-gray-600 text-[12px] font-medium text-gray-700 dark:text-gray-300 hover:border-gray-700 dark:hover:border-gray-200 transition-colors"
+                  >
+                    <MapPin size={13} strokeWidth={2} />
+                    Reset map area
+                  </button>
+                  <button
+                    onClick={() => setFilterOpen(true)}
+                    className="inline-flex items-center gap-1.5 h-9 px-4 rounded-full border border-gray-300 dark:border-gray-600 text-[12px] font-medium text-gray-700 dark:text-gray-300 hover:border-gray-700 dark:hover:border-gray-200 transition-colors"
+                  >
+                    <SlidersHorizontal size={13} strokeWidth={2} />
+                    Adjust filters
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                {paginatedCards.map((venue) => {
+                  const vid = venue.childVenueId || venue.id;
+                  return (
+                    <VenueCard
+                      key={vid}
+                      venue={venue}
+                      {...cardProps}
+                      isMapHighlighted={mapHighlightedIds.includes(vid)}
+                    />
+                  );
+                })}
+              </div>
+            )}
 
             {/* ── Pagination ── */}
             {!isLoadingVenues && totalPages > 1 && (
@@ -415,6 +439,7 @@ export default function SearchPage() {
               category={activeCategory}
               isLoading={isLoadingVenues}
               onBoundsChange={setMapBounds}
+              resetKey={mapResetKey}
               preferredLocation={preferredLocation}
               searchLocationLabel={searchLocLabel}
               onVenueClick={handleVenueClick}
@@ -434,13 +459,7 @@ export default function SearchPage() {
         </div>
       </div>
 
-      {/* ── Mobile listing count (below filter strip, above cards) ── */}
-      <div className="lg:hidden px-4 pt-2 pb-1">
-        <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
-          <span className="font-bold text-gray-900 dark:text-white">{displayCards.length}</span>{" "}
-          {t("venues_in_this_area")}
-        </p>
-      </div>
+
 
       {/* ── Floating Compare FAB — bottom-left, glassmorphism ─────── */}
       <style>{`
@@ -592,6 +611,7 @@ export default function SearchPage() {
               category={activeCategory}
               isLoading={isLoadingVenues}
               onBoundsChange={setMapBounds}
+              resetKey={mapResetKey}
               preferredLocation={preferredLocation}
               searchLocationLabel={searchLocLabel}
               onVenueClick={handleVenueClick}
@@ -599,6 +619,13 @@ export default function SearchPage() {
               onMapClusterHover={handleMapClusterHover}
               onMapMarkerHover={handleMapMarkerHover}
             />
+            {/* ── Listing count overlay — top-left of mobile map ── */}
+            <div className="absolute top-5 left-4 z-10 pointer-events-none">
+              <span className="inline-flex items-center gap-1.5 bg-white dark:bg-gray-900 rounded-full px-3 py-1.5 shadow-md text-sm font-semibold text-gray-800 dark:text-gray-100 border border-gray-100 dark:border-gray-800">
+                <span className="font-bold">{displayCards.length}</span>
+                {t("venues_in_this_area")}
+              </span>
+            </div>
             <button
               onClick={() => setShowMap(false)}
               className="absolute top-5 right-4 bg-white dark:bg-gray-900 text-gray-800 dark:text-white flex items-center gap-2 px-4 py-2.5 rounded-full shadow-lg border border-gray-200 dark:border-gray-700 text-sm font-medium"

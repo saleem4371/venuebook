@@ -319,6 +319,8 @@ export default function MapView({
   onMapClusterHover = null,
   /** Called when hovering/leaving an individual marker on the map — receives venueId or null */
   onMapMarkerHover = null,
+  /** Increment to programmatically reset map to country default center/zoom */
+  resetKey = 0,
 }) {
   const mapRef = useRef(null);
   // HTML OverlayView used for cluster hover gradient highlight (replaces imperative Marker approach).
@@ -399,6 +401,34 @@ export default function MapView({
     setVisibleVenues(filtered);
     onVisibleVenuesChange?.(filtered);
   }, [venues, mapBounds]);
+
+  // Reset map when resetKey changes — mirrors the same priority as UNIFIED CENTER PRIORITY:
+  // searched location → preferred/regional location → country default
+  useEffect(() => {
+    if (!mapInstance || resetKey === 0) return;
+
+    if (geocodedCenter) {
+      mapInstance.panTo(geocodedCenter);
+      mapInstance.setZoom(12);
+    } else if (searchLocationLabel) {
+      geocodeLabel(searchLocationLabel, (pos) => {
+        mapInstance.panTo(pos);
+        mapInstance.setZoom(12);
+      });
+    } else if (preferredLocation?.lat && preferredLocation?.lng) {
+      mapInstance.panTo({ lat: preferredLocation.lat, lng: preferredLocation.lng });
+      mapInstance.setZoom(11);
+    } else if (preferredLocation?.label) {
+      geocodeLabel(preferredLocation.label, (pos) => {
+        mapInstance.panTo(pos);
+        mapInstance.setZoom(11);
+      });
+    } else {
+      mapInstance.panTo(selectedCountryConfig.center);
+      mapInstance.setZoom(selectedCountryConfig.zoom);
+    }
+  }, [resetKey, mapInstance]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ---------------- UNIFIED CENTER PRIORITY ----------------
   // Runs after mapInstance is set. geocodedCenter is already resolved
   // (from the early-geocode effect above), so no async call needed here.
@@ -560,7 +590,13 @@ export default function MapView({
   return (
     <>
     {/* Spinner keyframe */}
-    <style>{`@keyframes vcSpin { to { transform: rotate(360deg); } }`}</style>
+    <style>{`
+      @keyframes vcDot {
+        0%, 80%, 100% { transform: scale(0.6); opacity: 0.3; }
+        40%            { transform: scale(1.1); opacity: 1;   }
+      }
+      .vc-loading-chip { top: 64px; }
+    `}</style>
     <GoogleMap
       mapContainerStyle={containerStyle}
       center={geocodedCenter ?? selectedCountryConfig.center}
@@ -858,36 +894,30 @@ export default function MapView({
 
     {/* ── LOADING CHIP: top-center badge while venue data fetches ── */}
     {isLoading && (
-      <div style={{
+      <div className="vc-loading-chip" style={{
         position: "absolute",
-        top: 12,
         left: "50%",
         transform: "translateX(-50%)",
         zIndex: 10,
         display: "flex",
         alignItems: "center",
-        gap: 8,
+        gap: 7,
         background: "rgba(255,255,255,0.96)",
-        backdropFilter: "blur(10px)",
-        WebkitBackdropFilter: "blur(10px)",
-        borderRadius: 24,
-        padding: "8px 18px",
-        boxShadow: "0 4px 16px rgba(0,0,0,0.14), 0 1px 4px rgba(0,0,0,0.08)",
-        fontSize: 13,
-        fontWeight: 600,
-        color: "#374151",
-        whiteSpace: "nowrap",
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
+        borderRadius: 99,
+        padding: "11px 20px",
+        boxShadow: "0 4px 16px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.06)",
         pointerEvents: "none",
       }}>
-        <div style={{
-          width: 14, height: 14,
-          border: "2px solid #e5e7eb",
-          borderTopColor: "#7c3aed",
-          borderRadius: "50%",
-          animation: "vcSpin 0.75s linear infinite",
-          flexShrink: 0,
-        }}/>
-        Loading venues…
+        {[0, 1, 2].map((i) => (
+          <div key={i} style={{
+            width: 10, height: 10,
+            borderRadius: "50%",
+            background: "#9ca3af",
+            animation: `vcDot 1.2s ease-in-out ${i * 0.2}s infinite`,
+          }} />
+        ))}
       </div>
     )}
 

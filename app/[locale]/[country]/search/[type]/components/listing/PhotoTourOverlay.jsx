@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeft, Expand } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Expand } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -115,7 +115,12 @@ export default function PhotoTourOverlay({ images = [], onClose }) {
   // "loaded" → animation done, real PhotoCells with shimmer + images mount
   const [phase, setPhase] = useState("open");
 
+  // Tab strip overflow arrows
+  const [canScrollLeft,  setCanScrollLeft]  = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
   const bodyRef     = useRef(null);
+  const tabsRef     = useRef(null);
   const tabBtnRefs  = useRef([]);
   const sectionRefs = useRef([]);
 
@@ -128,15 +133,48 @@ export default function PhotoTourOverlay({ images = [], onClose }) {
     return () => { document.body.style.overflow = prev; };
   }, []);
 
+  // ── Tab strip overflow arrows ─────────────────────────────────────────────
+  const checkTabOverflow = useCallback(() => {
+    const el = tabsRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 4);
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+  }, []);
+
+  useEffect(() => {
+    const el = tabsRef.current;
+    if (!el) return;
+    checkTabOverflow();
+    el.addEventListener("scroll", checkTabOverflow, { passive: true });
+    const ro = new ResizeObserver(checkTabOverflow);
+    ro.observe(el);
+    return () => { el.removeEventListener("scroll", checkTabOverflow); ro.disconnect(); };
+  }, [checkTabOverflow]);
+
+  const scrollTabs = useCallback((dir) => {
+    const el = tabsRef.current;
+    if (!el) return;
+    el.scrollBy({ left: dir * 120, behavior: "smooth" });
+  }, []);
+
   // ── Active tab tracking ───────────────────────────────────────────────────
   const updateActive = useCallback(() => {
     const container = bodyRef.current;
     if (!container) return;
     const { scrollTop, scrollHeight, clientHeight } = container;
+
+    // Scrolled to very top → always reset to first tab
+    if (scrollTop < 10) {
+      setActiveIdx(0);
+      return;
+    }
+
+    // At bottom → last tab
     if (scrollHeight - scrollTop - clientHeight < 80) {
       setActiveIdx(sections.length - 1);
       return;
     }
+
     const containerTop = container.getBoundingClientRect().top;
     const triggerLine  = containerTop + clientHeight * 0.4;
     let winner = 0;
@@ -204,24 +242,55 @@ export default function PhotoTourOverlay({ images = [], onClose }) {
         </div>
 
         {/* ── TAB STRIP ── */}
-        <div
-          className="flex-none flex gap-2 px-4 md:px-8 py-3 border-b border-gray-100 dark:border-gray-800 overflow-x-auto bg-white dark:bg-gray-950"
-          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-        >
-          {sections.map((sec, i) => (
+        <div className="flex-none relative border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-950">
+
+          {/* Left arrow — only when scrolled right */}
+          {canScrollLeft && (
             <button
-              key={i}
-              ref={(el) => (tabBtnRefs.current[i] = el)}
-              onClick={() => jumpTo(i)}
-              className={`flex-none px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap border transition-all duration-200 ${
-                activeIdx === i
-                  ? "bg-gray-900 dark:bg-white text-white dark:text-gray-900 border-gray-900 dark:border-white shadow-sm"
-                  : "text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500 hover:text-gray-800 dark:hover:text-gray-200 bg-white dark:bg-transparent"
-              }`}
+              onClick={() => scrollTabs(-1)}
+              aria-label="Scroll tabs left"
+              className="absolute left-0 top-0 bottom-0 z-10 flex items-center px-1.5 bg-gradient-to-r from-white dark:from-gray-950 to-transparent pr-4"
             >
-              {sec.title}
+              <span className="w-6 h-6 rounded-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm flex items-center justify-center">
+                <ChevronLeft size={13} className="text-gray-600 dark:text-gray-400" />
+              </span>
             </button>
-          ))}
+          )}
+
+          {/* Scrollable tab row */}
+          <div
+            ref={tabsRef}
+            className="flex gap-2 px-4 md:px-8 py-3 overflow-x-auto"
+            style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+          >
+            {sections.map((sec, i) => (
+              <button
+                key={i}
+                ref={(el) => (tabBtnRefs.current[i] = el)}
+                onClick={() => jumpTo(i)}
+                className={`flex-none px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap border transition-all duration-200 ${
+                  activeIdx === i
+                    ? "bg-gray-900 dark:bg-white text-white dark:text-gray-900 border-gray-900 dark:border-white shadow-sm"
+                    : "text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500 hover:text-gray-800 dark:hover:text-gray-200 bg-white dark:bg-transparent"
+                }`}
+              >
+                {sec.title}
+              </button>
+            ))}
+          </div>
+
+          {/* Right arrow — only when more content exists to the right */}
+          {canScrollRight && (
+            <button
+              onClick={() => scrollTabs(1)}
+              aria-label="Scroll tabs right"
+              className="absolute right-0 top-0 bottom-0 z-10 flex items-center px-1.5 bg-gradient-to-l from-white dark:from-gray-950 to-transparent pl-4"
+            >
+              <span className="w-6 h-6 rounded-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm flex items-center justify-center">
+                <ChevronRight size={13} className="text-gray-600 dark:text-gray-400" />
+              </span>
+            </button>
+          )}
         </div>
 
         {/* ── SCROLLABLE BODY ── */}

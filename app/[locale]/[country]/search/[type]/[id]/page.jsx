@@ -113,10 +113,6 @@ export default function ListingPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
-        <h1 className="text-lg sm:text-2xl font-semibold mb-3">
-          Cozy Stay in Bangkok
-        </h1>
-
         {/* Gallery */}
         <div id="photos">
           <Gallery images={images} openTour={() => setOpenTour(true)} />
@@ -191,8 +187,8 @@ export default function ListingPage() {
             </div> */}
           </div>
 
-          {/* RIGHT */}
-          <div className="hidden lg:block">
+          {/* RIGHT — desktop sticky card only, hidden on mobile */}
+          <div className="hidden md:block lg:col-span-1">
             <div className="sticky top-28">
               <BookingCard category={category} />
             </div>
@@ -307,8 +303,8 @@ export default function ListingPage() {
         </div>
       </div>
 
-      {/* BookingCard renders its own mobile bar + sheet — no duplicate needed */}
-      <BookingCard category={category} />
+      {/* Mobile bottom bar only — desktop card is rendered in the right column above */}
+      <BookingCard category={category} mobileOnly />
 
       {/* TOUR OVERLAY — AnimatePresence here so exit animation plays on unmount */}
       <AnimatePresence>

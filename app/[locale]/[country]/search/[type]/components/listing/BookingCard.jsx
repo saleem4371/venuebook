@@ -247,7 +247,7 @@ function ReserveCard({ meta, guests, setGuests, onAction }) {
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export default function BookingCard({ category = "venues" }) {
+export default function BookingCard({ category = "venues", mobileOnly = false }) {
   const meta = getMeta(category);
   const [guests, setGuests] = useState(1);
   const [openSheet, setOpenSheet] = useState(false);
@@ -264,8 +264,8 @@ export default function BookingCard({ category = "venues" }) {
 
   return (
     <>
-      {/* ── DESKTOP CARD ── */}
-      <div className="hidden md:block">
+      {/* ── DESKTOP CARD — suppressed when mobileOnly=true ── */}
+      {!mobileOnly && <div className="hidden md:block">
         <div className="bg-white rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.10)] p-5 border border-gray-100">
           {/* Header row with icon */}
           <div className="flex items-center gap-2 mb-4">
@@ -288,7 +288,7 @@ export default function BookingCard({ category = "venues" }) {
             />
           )}
         </div>
-      </div>
+      </div>}
 
       {/* ── MOBILE CTA ── */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 py-3 flex items-center justify-between z-40 shadow-lg">
