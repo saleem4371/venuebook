@@ -22,6 +22,7 @@ import { cookies, headers } from "next/headers";
 import { HtmlDirSync } from "./HtmlDirSync";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { GlobalProvider } from "@/context/GlobalProvider";
+import { RealtimeProvider } from "@/context/RealtimeContext";
 import { AuthProvider } from "@/context/AuthContext";
 // import { GeoProvider } from "@/context/GeoContext";
 export default async function LocaleLayout({ children, params }) {
@@ -62,9 +63,11 @@ export default async function LocaleLayout({ children, params }) {
       <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID}>
         <AuthProvider>
           <GlobalProvider>
+          <RealtimeProvider>
             {/* <GeoProvider initialCountry={country}> */}
   {children}
 {/* </GeoProvider> */}
+           </RealtimeProvider>
            </GlobalProvider>
         </AuthProvider>
       </GoogleOAuthProvider>
