@@ -251,7 +251,7 @@ if(bills.data.length ==0)
 router.push(`/${locale}/${country}/start-listing/${category}/payment`);
 }
     
-
+ 
 
   } catch (err) {
     console.error(err);
