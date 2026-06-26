@@ -16,6 +16,8 @@ import KYCModal from "./KYCModal";
 import LogoutConfirmationModal from "@/components/shared/LogoutConfirmationModal";
 import LogoutOverlay           from "@/components/shared/LogoutOverlay";
 
+import { connectSocket } from "@/lib/socket";
+
 
 /* ═══════════════════════════════════════════════════════════════
    HOOKS
@@ -417,6 +419,9 @@ export default function PremiumNavbar() {
   const [kycOpen,         setKycOpen]         = useState(false);
   const [mounted,         setMounted]         = useState(false);
   const [switchLoading,   setSwitchLoading]   = useState(false);
+
+
+
   useEffect(() => { setMounted(true); }, []);
 
   /* Separate refs for desktop + mobile (both rendered but only one visible) */
@@ -464,6 +469,21 @@ export default function PremiumNavbar() {
     onLogout: () => { setShowProfile(false); setShowLogoutModal(true); },
     onSwitchToCustomer: goCustomer,
   };
+
+useEffect(() => {
+  console.log("Logs Realtime:");
+  if (!user?.id) return;
+
+  const socket = connectSocket(String(user.id));
+
+  socket.on("realtime-status", (data) => {
+    console.log("Realtime:", data);
+  });
+
+  return () => {
+    socket.off("realtime-status");
+  };
+}, [user?.id]);
 
   return (
     <>
@@ -635,7 +655,7 @@ export default function PremiumNavbar() {
         onClose={() => setRegionOpen(false)}
       />
 
-      <KYCModal open={kycOpen} setOpen={setKycOpen} />
+      <KYCModal open={kycOpen} setOpen={setKycOpen} />d
 
       {/* Shared logout confirmation modal */}
       <LogoutConfirmationModal

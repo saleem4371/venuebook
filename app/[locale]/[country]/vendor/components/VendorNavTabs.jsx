@@ -11,8 +11,11 @@ import {
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useVendorCategory } from "@/context/VendorCategoryContext";
 
+import { useRealtime } from "@/context/RealtimeContext";
+
 import {
   globalSetting,
+  all_notification
 } from "@/services/booking.service";
 
 /* ─────────────────────────────────────────────────────────────
@@ -62,6 +65,10 @@ function useClickOutside(ref, cb) {
    MAIN COMPONENT
 ═══════════════════════════════════════════════════════════════ */
 export default function VendorNavTabs() {
+
+    const { refreshKey } = useRealtime();
+  
+  
   const pathname = usePathname();
   const params   = useParams();
   const base     = `/${params?.locale}/${params?.country}/vendor`;
@@ -72,6 +79,8 @@ export default function VendorNavTabs() {
 
     const [settings, setSettings] = useState({});
  const [settingsMap, setSettingsMap] = useState({});
+
+  const [allNotification, setAllNotification] = useState([]);
 
    const load = async () => {
       const _settings = await globalSetting();
@@ -233,7 +242,25 @@ export default function VendorNavTabs() {
   ];
   const unread = notifications.length;
 
+   const loadnotification = async () => {
+    try {
+      const res = await all_notification();
+  
+      console.log("API Response:", res);
+  
+   
+  
+      setAllNotification(res.data);
+    } catch (err) {
+      console.error("Load Badge failed:", err);
+      setAllNotification([]);
+    }
+  };
+    
 
+useEffect(() => {
+  loadnotification();
+}, [refreshKey]);
   
 
 
