@@ -1,4 +1,5 @@
 import "./globals.css";
+import Script from "next/script";
 import ServiceWorkerProvider from '../components/ServiceWorkerProvider'
 import PWABottomSheets from '../components/PWABottomSheets'
 import {
@@ -122,18 +123,6 @@ export default async function RootLayout({ children }) {
         ></script>
  
         {/* Capture beforeinstallprompt BEFORE React mounts so we never miss it */}
-        <script dangerouslySetInnerHTML={{ __html: `
-          window.__pwaInstallEvent = null;
-          window.addEventListener('beforeinstallprompt', function(e) {
-            e.preventDefault();
-            window.__pwaInstallEvent = e;
-            window.dispatchEvent(new Event('pwa-installable'));
-          });
-          window.addEventListener('appinstalled', function() {
-            window.__pwaInstalled = true;
-            window.dispatchEvent(new Event('pwa-installed'));
-          });
-        ` }} />
       </head>
 
       <body
@@ -145,6 +134,18 @@ export default async function RootLayout({ children }) {
           {children}
         </ServiceWorkerProvider>
         {/* {children} */}
+        <Script id="pwa-install-listener" strategy="beforeInteractive">{`
+          window.__pwaInstallEvent = null;
+          window.addEventListener('beforeinstallprompt', function(e) {
+            e.preventDefault();
+            window.__pwaInstallEvent = e;
+            window.dispatchEvent(new Event('pwa-installable'));
+          });
+          window.addEventListener('appinstalled', function() {
+            window.__pwaInstalled = true;
+            window.dispatchEvent(new Event('pwa-installed'));
+          });
+        `}</Script>
       </body>
     </html>
   );
