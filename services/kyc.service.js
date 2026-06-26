@@ -20,7 +20,7 @@ async function surepassPost(endpoint, body) {
   if (!res.ok) throw new Error(data.error || "Verification failed");
   return data;
 }
-
+ 
 /**
  * Step 1 — Company PAN verification via Surepass.
  * Returns normalised PAN data: { pan_number, full_name, status, category, address }

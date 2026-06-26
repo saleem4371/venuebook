@@ -1060,43 +1060,43 @@
       "venue": {
         "drone": {
           "name": "Drone Photography",
-          "desc": "Cinematic aerial coverage with 4K footage."
+          "desc": "Cinematic aerial coverage with 4K footage and same-day delivery."
         },
         "livestream": {
           "name": "Live Streaming",
-          "desc": "Professional multi-camera stream to any platform."
+          "desc": "Professional multi-camera stream to YouTube, Instagram, or private link."
         },
         "ledwall": {
           "name": "LED Wall",
-          "desc": "Large-format LED video wall for presentations."
+          "desc": "Large-format LED video wall for presentations, backdrops, or live feeds."
         },
         "decoration": {
           "name": "Premium Decoration",
-          "desc": "Full floral and decor package by our design team."
+          "desc": "Full floral & decor package curated by our in-house design team."
         }
       },
       "farmstay": {
         "bonfire": {
           "name": "Bonfire Night",
-          "desc": "Curated bonfire under the stars with snacks."
+          "desc": "A curated bonfire setup under the stars with snacks and music."
         },
         "bbq": {
           "name": "BBQ Dinner",
-          "desc": "Farm-fresh grilled dinner prepared on-site."
+          "desc": "Farm-fresh grilled dinner for your group, prepared on-site."
         },
         "plantation": {
           "name": "Plantation Walk",
-          "desc": "Guided 2-hour estate walk with expert commentary."
+          "desc": "Guided 2-hour walk through the estate with expert commentary."
         },
         "chef": {
           "name": "Private Chef",
-          "desc": "Personal chef for breakfast, lunch and dinner."
+          "desc": "A personal chef for your stay — breakfast, lunch & dinner included."
         }
       },
       "studio": {
         "lights": {
           "name": "Extra Lighting Kit",
-          "desc": "Professional softbox and rim lights."
+          "desc": "Professional softbox + rim lights for studio-quality setups."
         },
         "camera": {
           "name": "Camera Rental",
@@ -1104,43 +1104,43 @@
         },
         "backdrop": {
           "name": "Additional Backdrop",
-          "desc": "Choose from 20+ seamless backdrops."
+          "desc": "Choose from 20+ seamless paper or muslin backdrops."
         },
         "editor": {
           "name": "Editor Package",
-          "desc": "Same-day color grading by a professional artist."
+          "desc": "Same-day color grading and editing by a professional artist."
         }
       },
       "workspace": {
         "meeting": {
           "name": "Meeting Room Upgrade",
-          "desc": "Private glass cabin with AV and premium seating."
+          "desc": "Private glass cabin with AV system and premium seating."
         },
         "lunch": {
           "name": "Lunch Package",
-          "desc": "Catered buffet lunch from a curated kitchen."
+          "desc": "Catered buffet lunch from a curated local kitchen."
         },
         "reception": {
           "name": "Reception Service",
-          "desc": "Dedicated host to welcome visitors."
+          "desc": "Dedicated front-desk host to welcome visitors all day."
         }
       },
       "rental": {
         "insurance": {
           "name": "Full Coverage Insurance",
-          "desc": "Zero-liability protection for damage or theft."
+          "desc": "Zero-liability protection for damage, theft, or accidents."
         },
         "driver": {
           "name": "Professional Driver",
-          "desc": "Verified chauffeur for full rental duration."
+          "desc": "Background-verified chauffeur for the full rental duration."
         },
         "fuel": {
           "name": "Fuel Package",
-          "desc": "Pre-paid fuel — no refueling hassle."
+          "desc": "Pre-paid fuel — drive without worrying about refueling."
         },
         "extrahours": {
           "name": "Extra Hours",
-          "desc": "Extend rental by 3 hours at a discount."
+          "desc": "Extend your rental by 3 hours at a discounted flat rate."
         }
       },
       "experience": {
@@ -1150,15 +1150,15 @@
         },
         "guide": {
           "name": "Expert Guide Upgrade",
-          "desc": "Certified expert with deep local knowledge."
+          "desc": "Certified expert guide with deep local knowledge."
         },
         "transport": {
           "name": "Round-trip Transport",
-          "desc": "Comfortable AC vehicle pickup and drop."
+          "desc": "Comfortable AC vehicle pickup and drop from your location."
         },
         "meals": {
           "name": "Local Meals",
-          "desc": "Authentic local cuisine — breakfast and lunch."
+          "desc": "Authentic local cuisine — breakfast & lunch included."
         }
       }
     },
@@ -1172,9 +1172,9 @@
       "taxes": "Taxes & GST (18%)",
       "reward_discount": "Reward Discount",
       "coupon_discount": "Coupon Discount",
-      "security_deposit": "Refundable Security Deposit",
-      "security_deposit_note": "Auto-released after checkout",
-      "security_deposit_tooltip": "Fully refundable within 48 hours, provided no damage occurs.",
+      "security_deposit": "Security Deposit",
+      "security_deposit_note": "Refundable after checkout",
+      "security_deposit_tooltip": "Fully refundable within 48 hours provided no damage occurs.",
       "total": "Total Payable",
       "nights": "nights",
       "night": "night",
@@ -1233,10 +1233,7 @@
       "workspace": "Reserve Workspace",
       "rental": "Continue Rental",
       "experience": "Book Experience"
-    },
-    "step_booking": "Booking Details",
-    "step_payment": "Payment",
-    "step_confirm": "Confirmed"
+    }
   },
   "checkout_success": {
     "title": "Booking Confirmed",
