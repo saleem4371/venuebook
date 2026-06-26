@@ -29,7 +29,7 @@ export default function Gallery({ images, setOpen, openTour }) {
     <>
       {/* ================= MOBILE SLIDER ================= */}
       <div
-        className="relative w-full h-[260px] sm:h-[320px] overflow-hidden rounded-2xl lg:hidden"
+        className="relative w-full h-[260px] sm:h-[320px] overflow-hidden rounded-2xl md:hidden"
         onMouseEnter={preload}
         onTouchStart={preload}
       >
@@ -73,7 +73,7 @@ export default function Gallery({ images, setOpen, openTour }) {
       </div>
 
       {/* ================= DESKTOP GRID ================= */}
-      <div className="hidden lg:grid grid-cols-[2fr_1fr_1fr] grid-rows-2 gap-2 rounded-2xl overflow-hidden relative h-[480px]">
+      <div className="hidden md:grid grid-cols-[2fr_1fr_1fr] grid-rows-2 gap-2 rounded-2xl overflow-hidden relative h-[480px]">
 
         {/* Main Image */}
         <div className="row-span-2 relative overflow-hidden cursor-pointer group" onClick={openTour} onMouseEnter={preload}>
@@ -86,31 +86,49 @@ export default function Gallery({ images, setOpen, openTour }) {
           />
         </div>
 
-        {/* Side Images */}
-        {sideImages.map((img, i) => (
+        {/* First 3 side images — normal */}
+        {sideImages.slice(0, 3).map((img, i) => (
           <div key={i} className="relative overflow-hidden cursor-pointer group" onClick={openTour}>
             <img src={img} alt={`Photo ${i + 2}`} loading="eager" decoding="async"
               className="w-full h-full object-cover transition-transform duration-500 will-change-transform group-hover:scale-[1.07]"
             />
             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300 pointer-events-none" />
-            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-              style={{ background: "linear-gradient(125deg, rgba(255,255,255,0.0) 0%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0.0) 100%)" }}
-            />
           </div>
         ))}
 
-        {/* ── Show all photos button — redesigned ── */}
-        <button
+        {/* Last tile — dark overlay, centered icon + label, entire tile clickable */}
+        <div
+          className="relative overflow-hidden cursor-pointer group"
           onClick={openTour}
           onMouseEnter={preload}
-          onTouchStart={preload}
-          className="absolute bottom-4 right-4 group flex items-center gap-2 bg-white text-gray-900 text-sm font-semibold pl-3 pr-4 py-2.5 rounded-2xl shadow-[0_2px_16px_rgba(0,0,0,0.18)] hover:shadow-[0_4px_24px_rgba(0,0,0,0.22)] hover:scale-[1.03] active:scale-[0.97] transition-all duration-200 border border-gray-100"
         >
-          <span className="w-7 h-7 rounded-xl bg-gray-100 group-hover:bg-gray-200 flex items-center justify-center transition-colors duration-200 flex-shrink-0">
-            <LayoutGrid size={14} strokeWidth={2.2} className="text-gray-700" />
-          </span>
-          Show all {images.length} photos
-        </button>
+          <img
+            src={sideImages[3]}
+            alt="Photo 5"
+            loading="eager"
+            decoding="async"
+            className="w-full h-full object-cover transition-transform duration-300 will-change-transform group-hover:scale-[1.01]"
+          />
+
+          {/* Dark overlay — darkens on hover */}
+          <div
+            className="absolute inset-0 transition-all duration-200"
+            style={{ background: "rgba(0,0,0,0.58)" }}
+            onMouseEnter={(e) => e.currentTarget.style.background = "rgba(0,0,0,0.70)"}
+            onMouseLeave={(e) => e.currentTarget.style.background = "rgba(0,0,0,0.58)"}
+          />
+
+          {/* Centered content */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 pointer-events-none">
+            <LayoutGrid size={24} color="#ffffff" strokeWidth={2} />
+            <span
+              className="text-white text-sm lg:text-base leading-tight"
+              style={{ fontWeight: 600, letterSpacing: "normal" }}
+            >
+              Show all {images.length} photos
+            </span>
+          </div>
+        </div>
       </div>
     </>
   );
