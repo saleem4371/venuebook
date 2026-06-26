@@ -210,7 +210,7 @@ function SheetGrid({ loadData, activeCategory, onSelect }) {
       {loadData?.map((item) => {
         const id    = item?.name?.toLowerCase() + "s";
         const cat   = CATEGORIES[id] || {};
-        const color = CATEGORY_COLORS[item.color || "violet"];
+        const color = CATEGORY_COLORS[cat.color || item.color || "violet"];
         const isAct = id === activeCategory;
         return (
           <button
@@ -259,7 +259,7 @@ function PanelContent({ cols, activeCategory, activeColor, onSelect, onClose, t,
         {loadData?.map((item) => {
           const id    = item?.name?.toLowerCase() + "s";
           const cat   = CATEGORIES[id] || {};
-          const color = CATEGORY_COLORS[item.color || "violet"];
+          const color = CATEGORY_COLORS[cat.color || item.color || "violet"];
           const isAct = id === activeCategory;
           return (
             <button
