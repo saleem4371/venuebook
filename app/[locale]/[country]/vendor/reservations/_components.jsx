@@ -18,6 +18,7 @@ import toast from "react-hot-toast";
 import { STATE_CFG } from "./_data";
 
 import { useRouter , useParams } from "next/navigation";
+import { formatPrice } from "@/lib/currency_format";
 
 
 
@@ -46,8 +47,14 @@ export function getActions(state, tA, item, router, locale , country) {
       { key: "delete",    label: tA("delete"),    icon: Trash2,        danger: true  },
     ];
     case "CONFIRMED": return [
-      { key: "edit",     label: tA("edit"),     icon: Edit,      danger: false },
-      { key: "reserve",  label: tA("reserve"),  icon: Bookmark,  danger: false },
+        { key: "edit",     label: tA("edit"),     icon: Edit,      danger: false ,   onClick: () =>
+            router.push(
+              `/${locale}/${country}/vendor/reservations/invoice/${item.id}`
+            ) }, 
+      { key: "reserve",   label: tA("reserve"),   icon: Bookmark,      danger: false , onClick: () =>
+            router.push(
+              `/${locale}/${country}/vendor/reservations/manage_reserve/${item.id}`
+            ) },
       { key: "download", label: tA("download"), icon: FileText,  danger: false },
       { key: "delete",   label: tA("delete"),   icon: Trash2,    danger: true  },
     ];
@@ -311,7 +318,7 @@ const initials = (item.name ?? "")
           </div>
           <div className="text-end">
             <p className="text-[10px] text-gray-400 dark:text-gray-500 leading-none mb-0.5">Amount</p>
-            <p className="text-[13px] font-bold text-gray-900 dark:text-gray-100">₹{item.amount ?? 0}</p>
+            <p className="text-[13px] font-bold text-gray-900 dark:text-gray-100">{formatPrice(item.amount ?? 0)}</p>
           </div>
           <div>
             <p className="text-[10px] text-gray-400 dark:text-gray-500 leading-none mb-0.5">Guests</p>
@@ -375,7 +382,7 @@ const initials = (item.name ?? "")
       <div className="flex items-center gap-1 text-[12px] text-gray-500 dark:text-gray-400 shrink-0 hidden lg:flex">
         <Users size={11} aria-hidden="true" />{Number(item.guests ?? 0).toLocaleString()}
       </div>
-      <p className="text-[13px] font-semibold text-gray-800 dark:text-gray-200 shrink-0 hidden md:block">₹{item.amount ?? 0}</p>
+      <p className="text-[13px] font-semibold text-gray-800 dark:text-gray-200 shrink-0 hidden md:block">{formatPrice(item.amount ?? 0)}</p>
 
       <div className="shrink-0"><StatusBadge workflowState={item.workflowState} /></div>
 
@@ -484,7 +491,7 @@ export function CompactTable({ items, t, tA, onView, onAction }) {
 
                   {/* Amount */}
                   <td className="px-4 py-3 whitespace-nowrap">
-                    <p className="text-[13px] font-semibold text-gray-800 dark:text-gray-200">₹{item.amount ?? 0}</p>
+                    <p className="text-[13px] font-semibold text-gray-800 dark:text-gray-200">{formatPrice(item.amount ?? 0)}</p>
                   </td>
 
                   {/* Status */}
@@ -579,7 +586,7 @@ function CompactRow({ item, t, tA, onView, onAction }) {
 
       {/* ⑦ Amount (hidden below md) */}
       <p className="hidden md:block text-[13px] font-semibold text-gray-700 dark:text-gray-200 shrink-0 w-[80px] text-end tabular-nums">
-        ₹{item.amount ?? 0}
+        {formatPrice(item.amount ?? 0)}
       </p>
 
       {/* ⑧ Payment status (hidden below xl) */}
@@ -708,7 +715,7 @@ const initials = (item.name ?? "")
     { label: t("detail.shift"),     value: item.shift },
     { label: t("detail.venue"),     value: item.venue },
     { label: t("detail.guests"),    value: item.guests.toLocaleString() },
-    { label: t("detail.amount"),    value: `₹${item.amount}` },
+    { label: t("detail.amount"),    value: `${formatPrice(item.amount)}` },
     { label: t("detail.source"),    value: item.source },
     { label: t("detail.caterer"),   value: item.caterer },
     { label: t("detail.decorator"), value: item.decorator },

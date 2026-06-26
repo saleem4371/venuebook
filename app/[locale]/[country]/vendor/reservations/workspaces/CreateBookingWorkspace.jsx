@@ -35,6 +35,7 @@ import {
 import toast from "react-hot-toast";
 
 import { usePathname, useRouter, useParams } from "next/navigation";
+import { formatPrice } from "@/lib/currency_format";
 
 import {
   InvoiceNOAPI,
@@ -44,6 +45,7 @@ import {
   loadAllAddons,
   globalSetting,
   booking_create,
+  loadAllSetting,
 } from "@/services/booking.service";
 
 
@@ -161,8 +163,12 @@ export default function CreateBookingWorkspace() {
 
   const [guestCapacity, setGuestCapacity] = useState("");
 
+  const [discountPercentage, setDiscountPercentage] = useState(0);
+
+
   //Settings
   const [settings, setSettings] = useState({});
+  const [childsettings, setChildSettings] = useState({});
 
   const [settingsMap, setSettingsMap] = useState({});
 
@@ -214,6 +220,7 @@ export default function CreateBookingWorkspace() {
   //Settings
 
   const [summary, setSummary] = useState({
+    baseAmount: 0,
     totalAmount: 0,
     totalGuests: 0,
     subtotal: 0,
@@ -221,6 +228,8 @@ export default function CreateBookingWorkspace() {
     totalAddonQty: 0,
     gst_amt: 0,
     grand_total: 0,
+    discounts: 0,
+    final_total: 0,
   });
 
   /* ══════════════════════════════════════════════════════════════
@@ -241,7 +250,7 @@ export default function CreateBookingWorkspace() {
   const [qtyselectedAddons, setQtySelectedAddons] = useState([]);
 
   const [bookingType, setBookingType] = useState("book");
-  const [reserveType, setReserveType] = useState(1);
+  const [reserveType, setReserveType] = useState('draft');
 
   /* ══════════════════════════════════════════════════════════════
    PAX
@@ -287,39 +296,64 @@ export default function CreateBookingWorkspace() {
     })();
   }, []);
 
-  useEffect(() => {
-    const fetchVenues = async () => {
-      // Validation
-      if (shift.length === 0) return;
+  // useEffect(() => {
+  //   const fetchVenues = async () => {
+  //     // Validation
+  //     if (shift.length === 0) return;
 
-      if (selectionMode === "single" && !eventDate) return;
+  //     if (selectionMode === "single" && !eventDate) return;
 
-      if (
-        selectionMode === "multiple" &&
-        (!dateRange.startDate || !dateRange.endDate)
-      ) {
-        return;
-      }
+  //     if (
+  //       selectionMode === "multiple" &&
+  //       (!dateRange.startDate || !dateRange.endDate)
+  //     ) {
+  //       return;
+  //     }
+
+  //     try {
+  //       setLoading(true);
+
+  //       const payload =
+  //         selectionMode === "single"
+  //           ? {
+  //               selectionMode,
+  //               startDate: eventDate,
+  //               shifts: shift,
+  //             }
+  //           : {
+  //               selectionMode,
+  //               startDate: dateRange.startDate,
+  //               endDate: dateRange.endDate,
+  //               shifts: shift,
+  //             };
+
+  //       const res = await getAvailableVenues(payload);
+
+  //       setVenues(res?.data || []);
+  //     } catch (err) {
+  //       console.error(err);
+  //       setVenues([]);
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
+
+  //   fetchVenues();
+  // }, [selectionMode, eventDate, dateRange.startDate, dateRange.endDate, shift]);
+useEffect(() => {
+  const fetchVenues = async () => {
+    // FARMSTAY: only needs date range, no shift
+    if (activeCategory === "farmstays") {
+      if (!dateRange.startDate || !dateRange.endDate) return;
 
       try {
         setLoading(true);
-
-        const payload =
-          selectionMode === "single"
-            ? {
-                selectionMode,
-                startDate: eventDate,
-                shifts: shift,
-              }
-            : {
-                selectionMode,
-                startDate: dateRange.startDate,
-                endDate: dateRange.endDate,
-                shifts: shift,
-              };
-
-        const res = await getAvailableVenues(payload);
-
+        const res = await getAvailableVenues({
+          selectionMode: "multiple",
+          startDate: dateRange.startDate,
+          endDate: dateRange.endDate,
+          category: "farmstays",
+        });
         setVenues(res?.data || []);
       } catch (err) {
         console.error(err);
@@ -327,10 +361,34 @@ export default function CreateBookingWorkspace() {
       } finally {
         setLoading(false);
       }
-    };
+      return; // stop here for farmstays
+    }
 
-    fetchVenues();
-  }, [selectionMode, eventDate, dateRange.startDate, dateRange.endDate, shift]);
+    // VENUES: existing logic unchanged
+    if (shift.length === 0) return;
+    if (selectionMode === "single" && !eventDate) return;
+    if (selectionMode === "multiple" && (!dateRange.startDate || !dateRange.endDate)) return;
+
+    try {
+      setLoading(true);
+      const payload =
+      
+        selectionMode === "single"
+          ? { selectionMode, startDate: eventDate, shifts: shift , category: "venues"}
+          : { selectionMode, startDate: dateRange.startDate, endDate: dateRange.endDate, shifts: shift , category: "venues"};
+
+      const res = await getAvailableVenues(payload);
+      setVenues(res?.data || []);
+    } catch (err) {
+      console.error(err);
+      setVenues([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchVenues();
+}, [activeCategory, selectionMode, eventDate, dateRange.startDate, dateRange.endDate, shift]);
 
   const toggleVenue = async (venue) => {
     setSelectedVenues((prev) => {
@@ -363,166 +421,229 @@ export default function CreateBookingWorkspace() {
     const load = async () => {
       const addonIds = selectedVenues.map((item) => item.child_venue_id);
 
-      const addons = await loadAllAddons(addonIds);
-      setAddons(addons.data);
+      const addons = await loadAllAddons(addonIds); 
+
+setAddons(addons.data);
     };
 
     load();
   }, [selectedVenues]);
 
+  console.log(childsettings.secAmt)
+
   //RESET
+  // const resetSelection = () => {
+  //   setShift([]);
+  //   setEventDate("");
+  //   setDateRange({ startDate: "", endDate: "" });
+  //   setSelectedVenues([]);
+  //   setVenues([]);
+  //   setPaxRate(0); // 🔥 important
+  // };
+
+  // useEffect(() => {
+  //   resetSelection();
+  // }, [selectionMode]);
+
   const resetSelection = () => {
-    setShift([]);
-    setEventDate("");
-    setDateRange({ startDate: "", endDate: "" });
-    setSelectedVenues([]);
-    setVenues([]);
-    setPaxRate(0); // 🔥 important
-  };
+  setShift([]);
+  setEventDate("");
+  setDateRange({ startDate: "", endDate: "" });
+  setSelectedVenues([]);
+  setVenues([]);
+  setPaxRate(0);
+};
 
-  useEffect(() => {
+// Reset when selectionMode changes (venues only)
+useEffect(() => {
+  if (activeCategory !== "farmstays") {
     resetSelection();
-  }, [selectionMode]);
+  }
+}, [selectionMode]);
 
-  useEffect(() => {
-    // =========================
-    // FORMAT VENUE SETTINGS
-    // =========================
-    const formattedVenues = selectedVenues.map((venue) => {
-      const settings = (venue.child_setting || []).reduce((acc, item) => {
-        acc[item.key] = item.value;
-        return acc;
-      }, {});
+// Reset venues when category switches
+useEffect(() => {
+  setSelectedVenues([]);
+  setVenues([]);
+  setShift([]);
+  setEventDate("");
+  setDateRange({ startDate: "", endDate: "" });
+  setPaxRate(0);
+}, [activeCategory]);
 
-      return {
-        ...venue,
-        settings,
 
-        securityEnabled: settings.security === "true",
+useEffect(() => {
+  // =========================
+  // FORMAT VENUES
+  // =========================
+  const formattedVenues = selectedVenues.map((venue) => {
+    const settings = (venue.child_setting || []).reduce((acc, item) => {
+      acc[item.key] = item.value;
+      return acc;
+    }, {});
 
-        securityAmount:
-          settings.security === "true" ? Number(settings.secAmt || 0) : 0,
-      };
-    });
+    return {
+      ...venue,
+      settings,
+      securityAmount:
+        settings.security === "true"
+          ? Number(settings.secAmt || 0)
+          : 0,
+    };
+  });
 
-    // =========================
-    // TOTAL GUESTS
-    // =========================
-    const totalGuests = formattedVenues.reduce(
-      (sum, venue) => sum + Number(venue.guest_rooms || 0),
-      0,
-    );
+  const capacity = Number(guestCapacity) || 0;
 
-    const capacity = Number(guestCapacity) || 0;
+  // =========================
+  // BASE AMOUNT
+  // =========================
+  let baseAmount = 0;
 
-    let baseAmount = 0;
-    let venueGST = 0;
-    let paxGST = 0;
+  // if (selectionType === "venue") {
+  //   baseAmount = formattedVenues.reduce((sum, venue) => {
+  //     return (
+  //       sum +
+  //       Number(
+  //         selectionMode === "single"
+  //           ? venue.per_day_price
+  //           : venue.total_price || venue.per_day_price
+  //       )
+  //     );
+  //   }, 0);
+  // }
 
-    // =========================
-    // VENUE PRICE
-    // =========================
-    if (selectionType === "venue") {
-      baseAmount = formattedVenues.reduce((sum, venue) => {
-        return (
-          sum +
-          Number(
-            selectionMode === "single"
-              ? venue.per_day_price
-              : venue.total_price || venue.per_day_price,
-          )
-        );
-      }, 0);
+  // if (selectionType === "pax") {
+  //   baseAmount = capacity * (Number(paxRate) || 0);
+  // }
 
-      venueGST = baseAmount * 0.18;
+  if (selectionType === "venue") {
+  baseAmount = formattedVenues.reduce((sum, venue) => {
+    if (activeCategory === "farmstays") {
+      // Use total_price if API returns it, else calculate nights × per_day_price
+      const nights =
+        dateRange.startDate && dateRange.endDate
+          ? Math.round(
+              (new Date(dateRange.endDate) - new Date(dateRange.startDate)) /
+                (1000 * 60 * 60 * 24)
+            )
+          : 1;
+      return sum + Number(venue.total_price || venue.per_day_price * nights);
     }
-
-    // =========================
-    // PAX PRICE
-    // =========================
-    if (selectionType === "pax") {
-      baseAmount = capacity * (Number(paxRate) || 0);
-
-      paxGST = baseAmount * 0.05;
-    }
-
-    // =========================
-    // SECURITY DEPOSIT
-    // =========================
-    const securityDeposit = formattedVenues.reduce(
-      (sum, venue) => sum + venue.securityAmount,
-      0,
+    return (
+      sum +
+      Number(
+        selectionMode === "single"
+          ? venue.per_day_price
+          : venue.total_price || venue.per_day_price
+      )
     );
+  }, 0);
+}
 
-    console.log(securityDeposit);
+  // =========================
+  // DISCOUNT (ONLY BASE)
+  // =========================
+  const validDiscountPercentage = Math.min(
+    15,
+    Math.max(0, Number(discountPercentage || 0))
+  );
 
-    // =========================
-    // ADDONS
-    // =========================
-    const addonSummary = Object.values(selectedAddons).reduce(
-      (acc, item) => {
-        const qty = Number(item.qty || 0);
+  const discountAmount = (baseAmount * validDiscountPercentage) / 100;
 
-        const price = Number(item.addon?.amount ?? item.addon?.price ?? 0);
+  const discountedBase = baseAmount - discountAmount;
 
-        acc.totalQty += qty;
-        acc.totalAmount += qty * price;
+  // =========================
+  // ADDONS
+  // =========================
+  const addonSummary = Object.values(selectedAddons || {}).reduce(
+    (acc, item) => {
+      const qty = Number(item.qty || 0);
+      const price = Number(item.addon?.price ?? item.addon?.amount ?? 0);
 
-        return acc;
-      },
-      {
-        totalQty: 0,
-        totalAmount: 0,
-      },
-    );
+      acc.totalQty += qty;
+      acc.totalAmount += qty * price;
 
-    const totalAddonQty = addonSummary.totalQty;
-    const totalAddonAmount = addonSummary.totalAmount;
+      return acc;
+    },
+    { totalQty: 0, totalAmount: 0 }
+  );
 
-    const addonGST = totalAddonAmount * 0.18;
+  const totalAddonAmount = addonSummary.totalAmount;
 
-    // =========================
-    // FINAL
-    // =========================
-    const subtotal = baseAmount + totalAddonAmount;
+  // =========================
+  // GST LOGIC (IMPORTANT FIX)
+  // =========================
 
-    const gst_amt = venueGST + paxGST + addonGST;
+  let baseGST = 0;
+  let paxGST = 0;
+  let addonGST = totalAddonAmount * 0.18;
 
-    const grand_total = subtotal + gst_amt;
+  if (selectionType === "venue") {
+    // ONLY 18% GST
+    baseGST = discountedBase * 0.18;
+  }
 
-    setSummary({
-      // Main
-      totalAmount: baseAmount,
-      totalGuests,
+  if (selectionType === "pax") {
+    // SPLIT GST (5% + remaining logic)
+    paxGST = discountedBase * 0.05;
 
-      // Addons
-      totalAddonQty,
-      totalAddonAmount,
+    // still keep addon GST 18%
+    addonGST = totalAddonAmount * 0.18;
+  }
 
-      // Security
-      securityDeposit,
+  const gst_amt = baseGST + paxGST + addonGST;
 
-      // Totals
-      subtotal,
+  // =========================
+  // TOTALS
+  // =========================
+  const subtotal = discountedBase + totalAddonAmount;
 
-      // GST
-      venueGST,
-      paxGST,
-      addonGST,
-      gst_amt,
+  const grand_total = subtotal + gst_amt;
 
-      // Final
-      grand_total,
-    });
-  }, [
-    selectedVenues,
-    guestCapacity,
-    selectionType,
-    selectionMode,
-    paxRate,
-    selectedAddons,
-  ]);
+  // =========================
+  // SECURITY
+  // =========================
+  const securityDeposit = formattedVenues.reduce(
+    (sum, v) => sum + Number(v.securityAmount || 0),
+    0
+  );
 
+  const final_total = grand_total + securityDeposit;
+
+  // =========================
+  // SET SUMMARY
+  // =========================
+  setSummary({
+    baseAmount,
+
+    discountPercentage: validDiscountPercentage,
+    discountAmount,
+
+    discountedBase,
+
+    totalAddonAmount,
+
+    subtotal,
+
+    // GST display control
+    baseGST: selectionType === "venue" ? gst_amt : gst_amt - paxGST,
+    paxGST: selectionType === "pax" ? paxGST : 0,
+    addonGST,
+    gst_amt,
+
+    grand_total,
+    securityDeposit,
+    final_total,
+  });
+}, [
+  selectedVenues,
+  guestCapacity,
+  selectionType,
+  selectionMode,
+  paxRate,
+  selectedAddons,
+  discountPercentage,
+]);
   const isInvalidCapacity =
     guestCapacity &&
     summary.totalGuests &&
@@ -592,77 +713,147 @@ const updateField = (key, value) => {
   /* ══════════════════════════════════════════════════════════════
      VALIDATION
   ══════════════════════════════════════════════════════════════ */
-  const validate = () => {
-    const errs = {};
+  // const validate = () => {
+  //   const errs = {};
 
-    if (!eventType) errs.eventType = "Please select an event type";
+  //   if (!eventType) errs.eventType = "Please select an event type";
 
-    if (shift.length === 0) errs.shift = "Please select at least one shift";
+  //   if (shift.length === 0) errs.shift = "Please select at least one shift";
 
+  //   if (selectionMode === "single" && !eventDate) {
+  //     errs.eventDate = "Please choose an event date";
+  //   }
+
+  //   if (
+  //     selectionMode === "multiple" &&
+  //     (!dateRange.startDate || !dateRange.endDate)
+  //   ) {
+  //     errs.dateRange = "Please choose a start and end date";
+  //   }
+
+  //   if (selectedVenues.length === 0) {
+  //     errs.venues = "Please select at least one venue";
+  //   }
+
+  //   if (selectionType === "pax" && !guestCapacity) {
+  //     errs.guestCapacity = "Guest capacity is required for pax pricing";
+  //   }
+
+  //   if (selectionType === "pax") {
+  //     const incompletePackages = packages.filter((pack) => {
+  //       const packageSelection = selectedItems[pack.id] || {};
+  //       const selectedCount = Object.values(packageSelection).reduce(
+  //         (total, items) => total + items.length,
+  //         0,
+  //       );
+  //       const totalAllowed = (pack.categories || []).reduce(
+  //         (total, cat) => total + Number(cat.count || 0),
+  //         0,
+  //       );
+  //       return selectedCount > 0 && selectedCount !== totalAllowed;
+  //     });
+
+  //     if (incompletePackages.length > 0) {
+  //       errs.packages = `Please complete item selection for: ${incompletePackages.map((p) => p.name).join(", ")}`;
+  //     }
+
+  //     if (!paxRate) {
+  //       errs.packages = "Please choose a package and select its items";
+  //     }
+  //   }
+
+  //   if (isInvalidCapacity) {
+  //     errs.guestCapacity = `Maximum required capacity is ${summary.totalGuests}`;
+  //   }
+
+  //   if (!customer.phone.trim()) {
+  //     errs.phone = "Phone number is required";
+  //   } else if (!/^\d{10}$/.test(customer.phone.trim())) {
+  //     errs.phone = "Enter a valid 10-digit phone number";
+  //   }
+
+  //   if (!customer.name.trim()) {
+  //     errs.name = "Customer name is required";
+  //   }
+
+  //   if (customer.email.trim() && !/^\S+@\S+\.\S+$/.test(customer.email.trim())) {
+  //     errs.email = "Enter a valid email address";
+  //   }
+
+  //   setErrors(errs);
+  //   return errs;
+  // };
+const validate = () => {
+  const errs = {};
+
+  if (!eventType) errs.eventType = "Please select an event type";
+
+  // Shift only required for venues
+  if (activeCategory !== "farmstays" && shift.length === 0) {
+    errs.shift = "Please select at least one shift";
+  }
+
+  // Date validation
+  if (activeCategory === "farmstays") {
+    if (!dateRange.startDate || !dateRange.endDate) {
+      errs.dateRange = "Please choose check-in and check-out dates";
+    }
+  } else {
     if (selectionMode === "single" && !eventDate) {
       errs.eventDate = "Please choose an event date";
     }
-
-    if (
-      selectionMode === "multiple" &&
-      (!dateRange.startDate || !dateRange.endDate)
-    ) {
+    if (selectionMode === "multiple" && (!dateRange.startDate || !dateRange.endDate)) {
       errs.dateRange = "Please choose a start and end date";
     }
+  }
 
-    if (selectedVenues.length === 0) {
-      errs.venues = "Please select at least one venue";
+  if (selectedVenues.length === 0) {
+    errs.venues = activeCategory === "farmstays"
+      ? "Please select at least one farmstay"
+      : "Please select at least one venue";
+  }
+
+  if (selectionType === "pax" && !guestCapacity) {
+    errs.guestCapacity = "Guest capacity is required for pax pricing";
+  }
+
+  if (selectionType === "pax") {
+    const incompletePackages = packages.filter((pack) => {
+      const packageSelection = selectedItems[pack.id] || {};
+      const selectedCount = Object.values(packageSelection).reduce(
+        (total, items) => total + items.length, 0
+      );
+      const totalAllowed = (pack.categories || []).reduce(
+        (total, cat) => total + Number(cat.count || 0), 0
+      );
+      return selectedCount > 0 && selectedCount !== totalAllowed;
+    });
+
+    if (incompletePackages.length > 0) {
+      errs.packages = `Please complete item selection for: ${incompletePackages.map((p) => p.name).join(", ")}`;
     }
+    if (!paxRate) errs.packages = "Please choose a package and select its items";
+  }
 
-    if (selectionType === "pax" && !guestCapacity) {
-      errs.guestCapacity = "Guest capacity is required for pax pricing";
-    }
+  if (isInvalidCapacity) {
+    errs.guestCapacity = `Maximum required capacity is ${summary.totalGuests}`;
+  }
 
-    if (selectionType === "pax") {
-      const incompletePackages = packages.filter((pack) => {
-        const packageSelection = selectedItems[pack.id] || {};
-        const selectedCount = Object.values(packageSelection).reduce(
-          (total, items) => total + items.length,
-          0,
-        );
-        const totalAllowed = (pack.categories || []).reduce(
-          (total, cat) => total + Number(cat.count || 0),
-          0,
-        );
-        return selectedCount > 0 && selectedCount !== totalAllowed;
-      });
+  if (!customer.phone.trim()) {
+    errs.phone = "Phone number is required";
+  } else if (!/^\d{10}$/.test(customer.phone.trim())) {
+    errs.phone = "Enter a valid 10-digit phone number";
+  }
 
-      if (incompletePackages.length > 0) {
-        errs.packages = `Please complete item selection for: ${incompletePackages.map((p) => p.name).join(", ")}`;
-      }
+  if (!customer.name.trim()) errs.name = "Customer name is required";
 
-      if (!paxRate) {
-        errs.packages = "Please choose a package and select its items";
-      }
-    }
+  if (customer.email.trim() && !/^\S+@\S+\.\S+$/.test(customer.email.trim())) {
+    errs.email = "Enter a valid email address";
+  }
 
-    if (isInvalidCapacity) {
-      errs.guestCapacity = `Maximum required capacity is ${summary.totalGuests}`;
-    }
-
-    if (!customer.phone.trim()) {
-      errs.phone = "Phone number is required";
-    } else if (!/^\d{10}$/.test(customer.phone.trim())) {
-      errs.phone = "Enter a valid 10-digit phone number";
-    }
-
-    if (!customer.name.trim()) {
-      errs.name = "Customer name is required";
-    }
-
-    if (customer.email.trim() && !/^\S+@\S+\.\S+$/.test(customer.email.trim())) {
-      errs.email = "Enter a valid email address";
-    }
-
-    setErrors(errs);
-    return errs;
-  };
-
+  setErrors(errs);
+  return errs;
+};
   const handlePreview = (id) => {
 
     setReserveType(id)
@@ -678,6 +869,9 @@ const updateField = (key, value) => {
     }
     setShowPreview(true);
   };
+
+
+  console.log(selectedItems)
 
   const handleConfirmSubmit = async () => {
     setSubmitting(true);
@@ -701,14 +895,38 @@ const updateField = (key, value) => {
       : { date_range: { start_date: dateRange.startDate, end_date: dateRange.endDate } }),
     guest_capacity: Number(guestCapacity) || 0,
   },
-  venues: selectedVenues.map((v) => ({
+  // venues: selectedVenues.map((v) => ({
+  //   child_venue_id: v.child_venue_id,
+  //   child_venue_name: v.child_venue_name,
+  //   shift_name: v.shift_name,
+  //   shift_timing: v.shift_timing,
+  //   price: selectionMode === "single" ? v.per_day_price : (v.total_price || v.per_day_price),
+  //   security_amount: v.securityAmount || 0,
+  // })),
+  venues: selectedVenues.map((v) => {
+  const nights =
+    activeCategory === "farmstays" && dateRange.startDate && dateRange.endDate
+      ? Math.round(
+          (new Date(dateRange.endDate) - new Date(dateRange.startDate)) /
+            (1000 * 60 * 60 * 24)
+        )
+      : 1;
+
+  return {
     child_venue_id: v.child_venue_id,
     child_venue_name: v.child_venue_name,
-    shift_name: v.shift_name,
-    shift_timing: v.shift_timing,
-    price: selectionMode === "single" ? v.per_day_price : (v.total_price || v.per_day_price),
+    shift_name: v.shift_name || null,
+    shift_timing: v.shift_timing || null,
+    price:
+      activeCategory === "farmstays"
+        ? Number(v.total_price || v.per_day_price * nights)
+        : selectionMode === "single"
+        ? v.per_day_price
+        : v.total_price || v.per_day_price,
     security_amount: v.securityAmount || 0,
-  })),
+    nights: activeCategory === "farmstays" ? nights : null,
+  };
+}),
   pax_packages: packages
     .filter((p) => Object.values(selectedItems[p.id] || {}).some((a) => a.length > 0))
     .map((p) => ({
@@ -744,7 +962,7 @@ const updateField = (key, value) => {
     email: customer.email,
   },
   pricing: {
-    base_amount: summary.totalAmount,
+    base_amount: summary.baseAmount,
     total_guests: summary.totalGuests,
     addon_amount: summary.totalAddonAmount,
     addon_qty: summary.totalAddonQty,
@@ -752,9 +970,12 @@ const updateField = (key, value) => {
     venue_gst: summary.venueGST,
     pax_gst: summary.paxGST,
     addon_gst: summary.addonGST,
-    gst_total: summary.gst_amt,
+    gst_total: summary.baseGST,
     grand_total: summary.grand_total,
     security_deposit: summary.securityDeposit,
+    discount_percent: summary.discountPercentage,
+    discount_amount: summary.discountAmount,
+    final_total: summary.final_total,
   },
   category:activeCategory,
   reserveType:reserveType,
@@ -763,7 +984,7 @@ const updateField = (key, value) => {
 
 const param  = JSON.stringify(payload);
 
-await booking_create(payload)
+const resp = await booking_create(payload)
 
 
   await new Promise((r) => setTimeout(r, 900));
@@ -776,7 +997,7 @@ await booking_create(payload)
     setShowPreview(false);
     const id =1234567890;
 
-    router.push(`/${locale}/${country}/vendor/reservations/invoice/${id}`)
+    router.push(`/${locale}/${country}/vendor/reservations/invoice/${resp.data.booking_id}`)
 
     toast.success(
       bookingType === "book"
@@ -786,10 +1007,10 @@ await booking_create(payload)
   };
 
  const saveDraft = async () => {
-   setReserveType(0)
+   setReserveType('draft')
      const payload = {
   invoice_no: invoice,
-  booking_type: bookingType,
+  booking_type: 0,
   event: {
     event_type: eventType,
     selection_mode: selectionMode,
@@ -843,7 +1064,7 @@ await booking_create(payload)
     email: customer.email,
   },
   pricing: {
-    base_amount: summary.totalAmount,
+    base_amount: summary.baseAmount,
     total_guests: summary.totalGuests,
     addon_amount: summary.totalAddonAmount,
     addon_qty: summary.totalAddonQty,
@@ -851,9 +1072,12 @@ await booking_create(payload)
     venue_gst: summary.venueGST,
     pax_gst: summary.paxGST,
     addon_gst: summary.addonGST,
-    gst_total: summary.gst_amt,
+    gst_total: summary.baseGST,
     grand_total: summary.grand_total,
     security_deposit: summary.securityDeposit,
+    discount_percent: summary.discountPercentage,
+    discount_amount: summary.discountAmount,
+    final_total: summary.final_total,
   },
   category:activeCategory,
   reserveType:reserveType,
@@ -1292,67 +1516,113 @@ console.log(payload)
                   </p>
                 </div>
               ) : (
-                <div className="grid md:grid-cols-4 gap-3">
-                  {venues.map((venue) => {
-                    const isActive = selectedVenues.some(
-                      (v) => v.child_venue_id === venue.child_venue_id,
-                    );
+               <div className="grid md:grid-cols-4 gap-3">
+  {venues.map((venue) => {
+    const isActive = selectedVenues.some(
+      (v) => v.child_venue_id === venue.child_venue_id,
+    );
 
-                    return (
-                      <motion.button
-                        key={venue.child_venue_id}
-                        type="button"
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => toggleVenue(venue)}
-                        className={`w-full text-left p-4 rounded-xl border transition-all ${
-                          isActive
-                            ? "border-violet-500 bg-violet-50 dark:bg-violet-900/20 shadow-sm shadow-violet-500/10"
-                            : "border-gray-200 dark:border-gray-700 hover:border-violet-300 hover:shadow-sm"
-                        }`}
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-xl bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center">
-                              <Building2 className="h-5 w-5 text-violet-600" />
-                            </div>
+    // -----------------------------
+    // 🔥 CONFLICT CHECK
+    // -----------------------------
+    const conflicts = (venue.bookingConflicts || []).flat?.() || [];
 
-                            <div>
-                              <h4 className="font-medium text-gray-900 dark:text-white">
-                                {venue.child_venue_name}
-                              </h4>
+    const isBlocked = conflicts.length > 0;
 
-                              <p className="text-xs text-gray-500">
-                                {venue.guest_rooms} guests
-                              </p>
-                            </div>
-                          </div>
+    return (
+      <motion.button
+        key={venue.child_venue_id}
+        type="button"
+        whileTap={!isBlocked ? { scale: 0.98 } : {}}
+        onClick={() => {
+          if (isBlocked) return; // 🚫 prevent selection
+          toggleVenue(venue);
+        }}
+        disabled={isBlocked}
+        className={`w-full text-left p-4 rounded-xl border transition-all relative ${
+          isBlocked
+            ? "border-red-400 bg-red-50 dark:bg-red-900/20 opacity-60 cursor-not-allowed"
+            : isActive
+            ? "border-violet-500 bg-violet-50 dark:bg-violet-900/20 shadow-sm shadow-violet-500/10"
+            : "border-gray-200 dark:border-gray-700 hover:border-violet-300 hover:shadow-sm"
+        }`}
+      >
+        {/* 🔴 BOOKED BADGE */}
+        {isBlocked && (
+          <span className="absolute top-2 right-2 text-[10px] bg-red-500 text-white px-2 py-0.5 rounded-full">
+            Booked
+          </span>
+        )}
 
-                          {/* ✅ active indicator */}
-                          {isActive && (
-                            <CheckCircle2 className="h-5 w-5 text-violet-500" />
-                          )}
-                        </div>
+        {/* HEADER */}
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center">
+              <Building2 className="h-5 w-5 text-violet-600" />
+            </div>
 
-                        <div className="mt-3 flex items-center justify-between">
-                          <div>
-                            <p className="text-xs text-gray-500">
-                              {venue.shift_name}
-                            </p>
-                            <p className="text-xs text-gray-400">
-                              {venue.shift_timing}
-                            </p>
-                          </div>
+            <div>
+              <h4 className="font-medium text-gray-900 dark:text-white">
+                {venue.child_venue_name}
+              </h4>
 
-                          <div className="text-right">
-                            <p className="text-lg font-bold text-violet-600">
-                              ₹{venue.per_day_price}
-                            </p>
-                          </div>
-                        </div>
-                      </motion.button>
-                    );
-                  })}
-                </div>
+              <p className="text-xs text-gray-500">
+                {venue.guest_rooms} guests
+              </p>
+            </div>
+          </div>
+
+          {/* ACTIVE ICON */}
+          {!isBlocked && isActive && (
+            <CheckCircle2 className="h-5 w-5 text-violet-500" />
+          )}
+        </div>
+
+        {/* SHIFT + PRICE */}
+        <div className="mt-3 flex items-center justify-between">
+          <div>
+            <p className="text-xs text-gray-500">
+              {venue.shift_names?.join(", ") || "No shift"}
+            </p>
+            <p className="text-xs text-gray-400">
+              {venue.shift_timings?.join(", ") || ""}
+            </p>
+          </div>
+
+          <div className="text-right">
+            <p className="text-lg font-bold text-violet-600">
+              {formatPrice(venue.per_day_price)}
+            </p>
+
+            {/* 🔥 STATUS BADGE */}
+            <span
+              className={`text-[10px] px-2 py-0.5 rounded-full font-medium mt-1 inline-block ${
+                isBlocked
+                  ? "bg-red-100 text-red-700"
+                  : isActive
+                  ? "bg-violet-100 text-violet-700"
+                  : "bg-green-100 text-green-700"
+              }`}
+            >
+              {isBlocked ? "Booked" : isActive ? "Selected" : "Available"}
+            </span>
+          </div>
+        </div>
+
+        {/* 🔥 OPTIONAL DEBUG (REMOVE IN PROD) */}
+        {isBlocked && (
+          <div className="mt-2 text-[10px] text-red-500 space-y-1">
+            {conflicts.map((c, i) => (
+              <div key={i}>
+                {c.date} • {c.shift}
+              </div>
+            ))}
+          </div>
+        )}
+      </motion.button>
+    );
+  })}
+</div>
               )}
               <FieldError message={errors.venues} />
             </div>
@@ -1360,135 +1630,296 @@ console.log(payload)
            )}
 
             {/* § 1 · Farmstays */}
-           { activeCategory =='farmstays' && (
-             <Section icon={CalendarCheck} title="Event Details">
-               <div className="grid md:grid-cols-2 gap-4">
-              <div className="space-y-1.5" data-field="eventDate">
-                <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                  Event Date <span className="text-red-500">*</span>
-                </label>
-                <div className="grid grid-cols-2 gap-3" data-field="dateRange">
-                    {/* From Date */}
-                    <div
-                      className={`flex items-center border rounded-xl px-3 py-2.5 bg-white dark:bg-gray-800 transition ${
-                        errors.dateRange
-                          ? "border-red-400 dark:border-red-500"
-                          : "border-gray-200 dark:border-gray-700 focus-within:border-violet-400 focus-within:ring-2 focus-within:ring-violet-500/20"
-                      }`}
-                    >
-                      <Calendar size={16} className="mr-2 text-gray-400" />
+          {activeCategory === "farmstays" && (
+  <Section icon={CalendarCheck} title="Event Details">
+    {/* Order info strip */}
+    <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-green-600 text-white rounded-xl px-4 py-3 flex flex-wrap items-center justify-between gap-3 text-sm font-medium shadow-sm">
+      <span className="flex items-center gap-1.5">
+        <Calendar size={14} /> Order Date: {orderDate}
+      </span>
+      <span className="flex items-center gap-1.5">
+        <Receipt size={14} /> Form ID: {invoice}
+      </span>
+    </div>
 
-                      <input
-                        type="date"
-                        min={new Date().toISOString().split("T")[0]}
-                        value={dateRange.startDate}
-                        onChange={(e) => {
-                          const value = e.target.value;
+    <div className="grid md:grid-cols-2 gap-4">
+      {/* Check-in / Check-out dates — full width */}
+      <div className="space-y-1.5 md:col-span-2" data-field="dateRange">
+        <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+          Check-in &amp; Check-out Dates <span className="text-red-500">*</span>
+        </label>
+        <div className="grid grid-cols-2 gap-3">
+          {/* Check-in */}
+          <div className={`flex items-center border rounded-xl px-3 py-2.5 bg-white dark:bg-gray-800 transition ${
+            errors.dateRange
+              ? "border-red-400 dark:border-red-500"
+              : "border-gray-200 dark:border-gray-700 focus-within:border-emerald-400 focus-within:ring-2 focus-within:ring-emerald-500/20"
+          }`}>
+            <Calendar size={16} className="mr-2 text-gray-400 shrink-0" />
+            <div className="flex flex-col w-full">
+              <span className="text-[10px] text-gray-400 leading-none mb-0.5">Check-in</span>
+              <input
+                type="date"
+                min={new Date().toISOString().split("T")[0]}
+                value={dateRange.startDate}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setDateRange((prev) => ({
+                    ...prev,
+                    startDate: value,
+                    endDate: prev.endDate && prev.endDate <= value ? "" : prev.endDate,
+                  }));
+                  setSelectedVenues([]);
+                  setErrors((prev) => ({ ...prev, dateRange: undefined }));
+                }}
+                className="w-full outline-none bg-transparent text-sm"
+              />
+            </div>
+          </div>
 
-                          setDateRange((prev) => ({
-                            ...prev,
-                            startDate: value,
-                            endDate:
-                              prev.endDate && prev.endDate < value
-                                ? ""
-                                : prev.endDate,
-                          }));
+          {/* Check-out */}
+          <div className={`flex items-center border rounded-xl px-3 py-2.5 bg-white dark:bg-gray-800 transition ${
+            errors.dateRange
+              ? "border-red-400 dark:border-red-500"
+              : "border-gray-200 dark:border-gray-700 focus-within:border-emerald-400 focus-within:ring-2 focus-within:ring-emerald-500/20"
+          }`}>
+            <Calendar size={16} className="mr-2 text-gray-400 shrink-0" />
+            <div className="flex flex-col w-full">
+              <span className="text-[10px] text-gray-400 leading-none mb-0.5">Check-out</span>
+              <input
+                type="date"
+                min={
+                  dateRange.startDate
+                    ? (() => {
+                        const d = new Date(dateRange.startDate);
+                        d.setDate(d.getDate() + 1);
+                        return d.toISOString().split("T")[0];
+                      })()
+                    : new Date().toISOString().split("T")[0]
+                }
+                value={dateRange.endDate}
+                onChange={(e) => {
+                  setDateRange((prev) => ({ ...prev, endDate: e.target.value }));
+                  setSelectedVenues([]);
+                  setErrors((prev) => ({ ...prev, dateRange: undefined }));
+                }}
+                disabled={!dateRange.startDate}
+                className="w-full outline-none bg-transparent text-sm disabled:cursor-not-allowed disabled:opacity-50"
+              />
+            </div>
+          </div>
+        </div>
 
-                          setSelectedVenues([]);
-                          setErrors((prev) => ({ ...prev, dateRange: undefined }));
-                        }}
-                        className="w-full outline-none bg-transparent text-sm"
-                      />
+        {/* Live night count */}
+        {dateRange.startDate && dateRange.endDate && (() => {
+          const nights = Math.round(
+            (new Date(dateRange.endDate) - new Date(dateRange.startDate)) / (1000 * 60 * 60 * 24)
+          );
+          return nights > 0 ? (
+            <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium mt-1">
+              {nights} night{nights > 1 ? "s" : ""}
+            </p>
+          ) : null;
+        })()}
+        <FieldError message={errors.dateRange} />
+      </div>
+
+      {/* Event Type */}
+      <div className="space-y-1.5" data-field="eventType">
+        <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+          Event Type <span className="text-red-500">*</span>
+        </label>
+        <div className="relative">
+          <select
+            value={eventType}
+            onChange={(e) => {
+              setEventType(e.target.value);
+              setErrors((prev) => ({ ...prev, eventType: undefined }));
+            }}
+            className={`w-full appearance-none border rounded-xl px-3 py-2.5 pr-10 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 outline-none transition ${
+              errors.eventType
+                ? "border-red-400 focus:ring-2 focus:ring-red-500/20"
+                : "border-gray-200 dark:border-gray-700 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20"
+            }`}
+          >
+            <option value="">Select Event Type</option>
+            {event.map((item) => (
+              <option key={item.id} value={item.id}>{item.event_name}</option>
+            ))}
+          </select>
+          <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+        </div>
+        <FieldError message={errors.eventType} />
+      </div>
+
+      {/* Guest Capacity */}
+      <div className="space-y-1.5" data-field="guestCapacity">
+        <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+          Guest Capacity <span className="text-red-500">*</span>
+        </label>
+        <div className={`flex items-center border rounded-xl px-3 py-2.5 bg-white dark:bg-gray-800 transition ${
+          capacityError || errors.guestCapacity
+            ? "border-red-500 ring-2 ring-red-500/20"
+            : "border-gray-200 dark:border-gray-700 focus-within:border-emerald-400 focus-within:ring-2 focus-within:ring-emerald-500/20"
+        }`}>
+          <Users size={15} className="text-gray-400 me-2 shrink-0" />
+          <input
+            type="number"
+            value={guestCapacity}
+            onChange={(e) => {
+              const value = e.target.value;
+              const capacity = Number(value);
+              setGuestCapacity(value);
+              setErrors((prev) => ({ ...prev, guestCapacity: undefined }));
+              if (summary.totalGuests && capacity > summary.totalGuests) {
+                setCapacityError(`Maximum capacity is ${summary.totalGuests}`);
+              } else {
+                setCapacityError("");
+              }
+            }}
+            placeholder="e.g. 50"
+            className="w-full outline-none text-sm bg-transparent text-gray-900 dark:text-gray-100"
+          />
+        </div>
+        <FieldError message={capacityError || errors.guestCapacity} />
+      </div>
+    </div>
+
+    {/* Available Farmstays grid */}
+    <div className="mt-2" data-field="venues">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-semibold text-gray-800 dark:text-white">
+          Available Farmstays <span className="text-red-500">*</span>
+        </h3>
+        <span className="text-xs bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 px-2 py-1 rounded-full font-medium">
+          {venues.length} Found
+        </span>
+      </div>
+
+      {loading ? (
+        <div className="flex flex-col items-center justify-center gap-2 py-10 text-sm text-gray-500">
+          <Loader2 size={20} className="animate-spin text-emerald-500" />
+          Searching available farmstays...
+        </div>
+      ) : venues.length === 0 ? (
+        <div className="border border-dashed border-gray-300 dark:border-gray-700 rounded-xl py-8 text-center">
+          <Building2 className="mx-auto h-8 w-8 text-gray-300 mb-2" />
+          <p className="text-sm text-gray-500">
+            {!dateRange.startDate || !dateRange.endDate
+              ? "Select check-in and check-out dates to see available farmstays"
+              : "No farmstay available for the selected dates"}
+          </p>
+        </div>
+      ) : (
+        <div className="grid md:grid-cols-3 gap-3">
+          {venues.map((venue) => {
+            const isActive = selectedVenues.some(
+              (v) => v.child_venue_id === venue.child_venue_id
+            );
+            const conflicts = (venue.bookingConflicts || []).flat?.() || [];
+            const isBlocked = conflicts.length > 0;
+
+            const nights =
+              dateRange.startDate && dateRange.endDate
+                ? Math.round(
+                    (new Date(dateRange.endDate) - new Date(dateRange.startDate)) /
+                      (1000 * 60 * 60 * 24)
+                  )
+                : 1;
+
+            return (
+              <motion.button
+                key={venue.child_venue_id}
+                type="button"
+                whileTap={!isBlocked ? { scale: 0.98 } : {}}
+                onClick={() => { if (isBlocked) return; toggleVenue(venue); }}
+                disabled={isBlocked}
+                className={`w-full text-left rounded-xl border transition-all relative overflow-hidden ${
+                  isBlocked
+                    ? "border-red-300 bg-red-50 dark:bg-red-900/20 opacity-60 cursor-not-allowed"
+                    : isActive
+                    ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 shadow-sm shadow-emerald-500/10"
+                    : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:border-emerald-300 hover:shadow-sm"
+                }`}
+              >
+                {isBlocked && (
+                  <span className="absolute top-2.5 right-2.5 text-[10px] bg-red-500 text-white px-2 py-0.5 rounded-full z-10 font-medium">
+                    Booked
+                  </span>
+                )}
+
+                {/* Top accent bar */}
+                <div className={`h-1.5 w-full ${
+                  isBlocked
+                    ? "bg-red-400"
+                    : isActive
+                    ? "bg-gradient-to-r from-emerald-500 to-teal-500"
+                    : "bg-gray-100 dark:bg-gray-800"
+                }`} />
+
+                <div className="p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-3">
+                      <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${
+                        isActive ? "bg-emerald-100 dark:bg-emerald-900/40" : "bg-gray-100 dark:bg-gray-800"
+                      }`}>
+                        <Building2 className={`h-5 w-5 ${isActive ? "text-emerald-600" : "text-gray-400"}`} />
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="font-semibold text-sm text-gray-900 dark:text-white truncate">
+                          {venue.child_venue_name}
+                        </h4>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          Up to {venue.guest_rooms} guests
+                        </p>
+                      </div>
                     </div>
-
-                    {/* To Date */}
-                    <div
-                      className={`flex items-center border rounded-xl px-3 py-2.5 bg-white dark:bg-gray-800 transition ${
-                        errors.dateRange
-                          ? "border-red-400 dark:border-red-500"
-                          : "border-gray-200 dark:border-gray-700 focus-within:border-violet-400 focus-within:ring-2 focus-within:ring-violet-500/20"
-                      }`}
-                    >
-                      <Calendar size={16} className="mr-2 text-gray-400" />
-
-                      <input
-                        type="date"
-                        min={
-                          dateRange.startDate ||
-                          new Date().toISOString().split("T")[0]
-                        }
-                        value={dateRange.endDate}
-                        onChange={(e) => {
-                          setDateRange((prev) => ({
-                            ...prev,
-                            endDate: e.target.value,
-                          }));
-
-                          setSelectedVenues([]);
-                          setErrors((prev) => ({ ...prev, dateRange: undefined }));
-                        }}
-                        disabled={!dateRange.startDate}
-                        className="w-full outline-none bg-transparent text-sm disabled:cursor-not-allowed disabled:opacity-50"
-                      />
-                    </div>
+                    {!isBlocked && isActive && (
+                      <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
+                    )}
                   </div>
-                </div>
-                <div className="space-y-1.5" data-field="guestCapacity">
-                <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                  Guest Capacity
-                  {selectionType === "pax" && <span className="text-red-500"> *</span>}
-                </label>
-                <div
-                  className={`flex items-center border rounded-xl px-3 py-2.5 bg-white dark:bg-gray-800 transition
-  ${
-    capacityError || errors.guestCapacity
-      ? "border-red-500 ring-2 ring-red-500/20"
-      : "border-gray-200 dark:border-gray-700 focus-within:border-violet-400 focus-within:ring-2 focus-within:ring-violet-500/20"
-  }`}
-                >
-                  <Users size={15} className="text-gray-400 me-2 shrink-0" />
-                  <input
-                    type="number"
-                    value={guestCapacity}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      const capacity = Number(value);
 
-                      setGuestCapacity(value);
-                      setErrors((prev) => ({ ...prev, guestCapacity: undefined }));
+                  {/* Price */}
+                  <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 flex items-end justify-between">
+                    <div>
+                      <p className="text-[10px] text-gray-400 uppercase tracking-wide">Per night</p>
+                      <p className="text-lg font-bold text-emerald-600">
+                        {formatPrice(venue.per_day_price)}
+                      </p>
+                      {nights > 1 && (
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {nights} nights · {formatPrice(venue.per_day_price * nights)} total
+                        </p>
+                      )}
+                    </div>
+                    <span className={`text-[10px] px-2 py-1 rounded-full font-semibold ${
+                      isBlocked
+                        ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                        : isActive
+                        ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                        : "bg-green-100 text-green-700"
+                    }`}>
+                      {isBlocked ? "Unavailable" : isActive ? "Selected" : "Available"}
+                    </span>
+                  </div>
 
-                      // 🔥 LIVE VALIDATION
-                      if (
-                        summary.totalGuests &&
-                        capacity > summary.totalGuests
-                      ) {
-                        setCapacityError(
-                          `Maximum required capacity is ${summary.totalGuests}`,
-                        );
-                      } else {
-                        setCapacityError("");
-                      }
-                    }}
-                    placeholder="e.g. 200"
-                    className="w-full outline-none text-sm bg-transparent text-gray-900 dark:text-gray-100"
-                  />
+                  {isBlocked && (
+                    <div className="mt-2 space-y-0.5">
+                      {conflicts.map((c, i) => (
+                        <p key={i} className="text-[10px] text-red-500">{c.date} · {c.shift}</p>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <FieldError message={capacityError || errors.guestCapacity} />
-              </div>
-              <div className="mt-4" data-field="Farmstays">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-gray-800 dark:text-white">
-                  Available Farmstays <span className="text-red-500">*</span>
-                </h3>
-
-                <span className="text-xs bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300 px-2 py-1 rounded-full font-medium">
-                  0 Found
-                </span>
-              </div>
-              </div>
-                </div>
-             </Section>
-           )}
+              </motion.button>
+            );
+          })}
+        </div>
+      )}
+      <FieldError message={errors.venues} />
+    </div>
+  </Section>
+)}
 
           {selectionType === "pax" && (
             <>
@@ -1498,7 +1929,7 @@ console.log(payload)
                 badge={
                   paxRate > 0 && (
                     <span className="text-xs bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300 px-2 py-1 rounded-full font-medium">
-                      ₹{paxRate} / pax selected
+                      {formatPrice(paxRate)} / pax selected
                     </span>
                   )
                 }
@@ -1583,7 +2014,7 @@ console.log(payload)
 
                           <div className="mt-1 flex items-baseline gap-1">
                             <span className="text-2xl font-extrabold text-violet-600">
-                              ₹{pack.price}
+                              {formatPrice(pack.price)}
                             </span>
                             <span className="text-xs text-gray-400 font-medium">
                               / pax
@@ -1684,7 +2115,7 @@ console.log(payload)
                     <div className="px-6 py-5 bg-gradient-to-r from-violet-600 via-indigo-600 to-purple-600 text-white flex justify-between items-center">
                       <div>
                         <p className="text-xs uppercase tracking-wide text-white/70 font-medium">
-                          Package · ₹{activePackage.price} / pax
+                          Package · {formatPrice(activePackage.price)} / pax
                         </p>
                         <h2 className="text-lg font-bold mt-0.5">
                           {activePackage.name}
@@ -1702,10 +2133,8 @@ console.log(payload)
                     {/* Categories */}
                     <div className="p-6 space-y-6 max-h-[65vh] overflow-y-auto">
                       {activePackage.categories.map((category) => {
-                        const selected =
-                          selectedItems[activePackage.id]?.[category.id] || [];
-
-                        const catComplete = selected.length === category.count;
+                    const selected = selectedItems[activePackage.id]?.[category.id] || []; 
+                    const catComplete = selected.length === category.count;
 
                         return (
                           <div
@@ -1736,49 +2165,59 @@ console.log(payload)
 
                             <div className="grid md:grid-cols-3 gap-3">
                               {category.items.map((item) => {
-                                const checked = selected.includes(item.id);
+                               // const checked = selected.includes(item.id);
+
+                                 const selected =
+  selectedItems?.[activePackage.id]?.[String(category.id)] || [];
+
+const catComplete = selected.length === category.count;
+
+const checked = selected.some((i) => i.id === item.id);
 
                                 return (
                                   <button
                                     key={item.id}
                                     type="button"
                                     onClick={() => {
-                                      setSelectedItems((prev) => {
-                                        const packageData =
-                                          prev[activePackage.id] || {};
+  setSelectedItems((prev) => {
+  const packageData = prev?.[activePackage.id] || {};
 
-                                        const current =
-                                          packageData[category.id] || [];
+  const catKey = String(category.id); // ✅ FIX TYPE SAFETY
 
-                                        let updated = [];
+  const current = Array.isArray(packageData[catKey])
+    ? packageData[catKey]
+    : [];
 
-                                        if (current.includes(item.id)) {
-                                          updated = current.filter(
-                                            (id) => id !== item.id,
-                                          );
-                                        } else {
-                                          if (
-                                            current.length >= category.count
-                                          ) {
-                                            return prev;
-                                          }
+  const exists = current.some((i) => i.id === item.id);
 
-                                          updated = [...current, item.id];
-                                        }
+  let updated;
 
-                                        return {
-                                          ...prev,
+  if (exists) {
+    updated = current.filter((i) => i.id !== item.id);
+  } else {
+    if (current.length >= category.count) {
+      return prev;
+    }
 
-                                          [activePackage.id]: {
-                                            ...packageData,
+    updated = [
+      ...current,
+      {
+        id: item.id,
+        name: item.name,
+      },
+    ];
+  }
 
-                                            [category.id]: updated,
-                                          },
-                                        };
-                                      });
-
-                                      setPaxRate(activePackage.price);
-                                    }}
+  return {
+    ...prev,
+    [activePackage.id]: {
+      ...packageData,
+      [catKey]: updated,
+    },
+  };
+});
+ setPaxRate(activePackage.price);
+}}
                                     className={`relative border rounded-xl p-3 text-left transition-all ${
                                       checked
                                         ? "border-violet-400 bg-violet-50 dark:bg-violet-900/20 shadow-sm shadow-violet-500/10"
@@ -1792,7 +2231,7 @@ console.log(payload)
                                         </h4>
 
                                         <p className="text-xs text-gray-500 mt-0.5">
-                                          ₹{item.price}
+                                          {formatPrice(item.price)}
                                         </p>
                                       </div>
 
@@ -1961,7 +2400,7 @@ console.log(payload)
                             <p className="text-xs text-gray-500">Price</p>
 
                             <p className="text-lg font-bold text-violet-600">
-                              ₹{addon.amount ?? addon.price ?? 0}
+                              {formatPrice(addon.amount ?? addon.price ?? 0)}
                             </p>
 
                             {addon.type === "unit" && (
@@ -2034,6 +2473,27 @@ console.log(payload)
             )}
           </Section>
 
+          <Section icon={CalendarCheck} title="Discount">
+             <div>
+  <label className="block text-sm font-medium mb-2">
+    Discount (%) - Max 15%
+  </label>
+
+  <input
+    type="number"
+    min="0"
+    max="15"
+    value={discountPercentage}
+    onChange={(e) =>
+      setDiscountPercentage(
+        Math.min(15, Math.max(0, Number(e.target.value)))
+      )
+    }
+    className="w-full rounded-lg border px-3 py-2"
+    placeholder="0"
+  />
+</div>
+            </Section>
           <Section icon={CalendarCheck} title="Booking Type">
             <div className="grid grid-cols-2 gap-4">
               <button
@@ -2201,46 +2661,54 @@ console.log(payload)
             <div className="space-y-2.5">
               <SummaryRow
                 label="Base Price"
-                value={`₹${summary.totalAmount}`}
+                value={`${formatPrice(summary.baseAmount)}`}
               />
+              {discountPercentage != 0 && (
+              <SummaryRow
+                label={`Discount (${discountPercentage}%)`}
+                value={`${formatPrice(summary.discountAmount)}`}
+              />
+              )}
+
               {summary.totalAddonQty != 0 && (
                 <SummaryRow
                   label={`Add-ons (${summary.totalAddonQty})`}
-                  value={`₹${summary.totalAddonAmount}`}
+                  value={`${formatPrice(summary.totalAddonAmount)}`}
                 />
               )}
 
-              <SummaryRow label="Subtotal" value={`₹${summary.subtotal}`} />
+              <SummaryRow label="Subtotal" value={`${formatPrice(summary.subtotal)}`} />
 
               <div className="border-t pt-2">
                 <SummaryRow
                   label="Total GST (18%)"
-                  value={`₹${summary.gst_amt}`}
+                  value={`${formatPrice(summary.baseGST)}`}
                 />
                 {summary.paxGST != 0 && (
                   <SummaryRow
                     label="Total GST (5%)"
-                    value={`₹${summary.paxGST}`}
+                    value={`${formatPrice(summary.paxGST)}`}
                   />
                 )}
               </div>
               <div className="border-t border-gray-100 dark:border-gray-800 pt-2.5">
                 <SummaryRow
                   label="Grand Total"
-                  value={`₹${summary.grand_total}`}
+                  value={`${formatPrice(summary.grand_total)}`}
                   highlight
                 />
               </div>
               <SummaryRow
                 label="Security Deposit"
-                value={`₹${summary.securityDeposit}`}
+                value={`${formatPrice(summary.securityDeposit)}`}
               />
+              <SummaryRow label="Payable Amount" value={`${formatPrice(summary.final_total)}`} />
             </div>
-
+ 
             {/* Action buttons */}
             <div className="space-y-2.5 pt-1">
               <button
-                onClick={() => handlePreview(1)}
+                onClick={() => handlePreview('book')}
                 className="w-full py-2.5 rounded-xl text-sm font-semibold bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-sm shadow-violet-600/20 hover:opacity-90 hover:shadow-md transition-all"
               >
                 Preview Booking
@@ -2248,7 +2716,7 @@ console.log(payload)
 
               <div className="grid grid-cols-2 gap-2">
                 <button
-                  onClick={() => handlePreview(2)}
+                  onClick={() => handlePreview('quotation')}
                   className="py-2.5 rounded-xl text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
                 >
                   Quotation
@@ -2345,7 +2813,7 @@ console.log(payload)
                     Event Details
                   </h3>
                   <div className="rounded-xl border border-gray-100 dark:border-gray-800 px-4 py-1">
-                    <PreviewItem label="Event Type" value={eventType} />
+                    {/* <PreviewItem label="Event Type" value={eventType} />
                     <PreviewItem
                       label="Date"
                       value={
@@ -2361,7 +2829,43 @@ console.log(payload)
                     <PreviewItem
                       label="Guest Capacity"
                       value={guestCapacity ? `${guestCapacity} guests` : "—"}
-                    />
+                    /> */}
+                    {/* In the Preview modal — Event Details section */}
+<PreviewItem label="Event Type" value={eventType} />
+<PreviewItem
+  label={activeCategory === "farmstays" ? "Check-in" : "Date"}
+  value={
+    activeCategory === "farmstays"
+      ? dateRange.startDate
+      : selectionMode === "single"
+      ? eventDate
+      : `${dateRange.startDate} → ${dateRange.endDate}`
+  }
+/>
+{activeCategory === "farmstays" ? (
+  <>
+    <PreviewItem label="Check-out" value={dateRange.endDate} />
+    <PreviewItem
+      label="Duration"
+      value={(() => {
+        const nights = Math.round(
+          (new Date(dateRange.endDate) - new Date(dateRange.startDate)) /
+            (1000 * 60 * 60 * 24)
+        );
+        return `${nights} night${nights > 1 ? "s" : ""}`;
+      })()}
+    />
+  </>
+) : (
+  <PreviewItem
+    label="Shift"
+    value={shift.map((s) => s[0].toUpperCase() + s.slice(1)).join(", ")}
+  />
+)}
+<PreviewItem
+  label="Guest Capacity"
+  value={guestCapacity ? `${guestCapacity} guests` : "—"}
+/>
                   </div>
                 </div>
 
@@ -2386,10 +2890,10 @@ console.log(payload)
                           </p>
                         </div>
                         <p className="text-sm font-bold text-violet-600">
-                          ₹
+                          
                           {selectionMode === "single"
-                            ? v.per_day_price
-                            : v.total_price || v.per_day_price}
+                            ? formatPrice(v.per_day_price)
+                            : formatPrice(v.total_price || v.per_day_price)}
                         </p>
                       </div>
                     ))}
@@ -2421,7 +2925,7 @@ console.log(payload)
                                   {pack.name}
                                 </p>
                                 <p className="text-sm font-bold text-violet-600">
-                                  ₹{pack.price} / pax
+                                  {formatPrice(pack.price)} / pax
                                 </p>
                               </div>
                               <div className="px-4 py-1">
@@ -2444,10 +2948,10 @@ console.log(payload)
                               <div className="flex items-center justify-between px-4 py-2 border-t border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-950/40">
                                 <span className="text-xs text-gray-500 flex items-center gap-1.5">
                                   <Wallet size={12} />
-                                  Pax Cost ({guestCapacity || 0} × ₹{pack.price})
+                                  Pax Cost ({guestCapacity || 0} × {formatPrice(pack.price)})
                                 </span>
                                 <span className="text-sm font-bold text-gray-800 dark:text-gray-100">
-                                  ₹{Number(guestCapacity || 0) * Number(pack.price || 0)}
+                                  {formatPrice(Number(guestCapacity || 0) * Number(pack.price || 0))}
                                 </span>
                               </div>
                             </div>
@@ -2469,7 +2973,7 @@ console.log(payload)
                         <PreviewItem
                           key={idx}
                           label={`${item.addon?.add_on_name} × ${item.qty}`}
-                          value={`₹${Number(item.addon?.amount ?? item.addon?.price ?? 0) * item.qty}`}
+                          value={`${formatPrice(Number(item.addon?.amount ?? item.addon?.price ?? 0) * item.qty)}`}
                         />
                       ))}
                     </div>
@@ -2491,6 +2995,8 @@ console.log(payload)
                     </div>
                   </div>
                 )}
+
+               
 
                 {/* Special Request */}
                 {specialRequest.trim() && (
@@ -2529,28 +3035,30 @@ console.log(payload)
                     Pricing Summary
                   </h3>
                   <div className="rounded-xl bg-gray-50 dark:bg-gray-800/60 px-4 py-3 space-y-2">
-                    <SummaryRow label="Base Price" value={`₹${summary.totalAmount}`} />
+                    <SummaryRow label="Base Price" value={`${formatPrice(summary.baseAmount)}`} />
                     {summary.totalAddonQty != 0 && (
                       <SummaryRow
                         label={`Add-ons (${summary.totalAddonQty})`}
-                        value={`₹${summary.totalAddonAmount}`}
+                        value={`${formatPrice(summary.totalAddonAmount)}`}
                       />
                     )}
-                    <SummaryRow label="Subtotal" value={`₹${summary.subtotal}`} />
-                    <SummaryRow label="GST" value={`₹${summary.gst_amt}`} />
+                    <SummaryRow label="Subtotal" value={`${formatPrice(summary.subtotal)}`} />
+                    <SummaryRow label="GST" value={`${formatPrice(summary.baseGST)}`} />
                     <div className="border-t border-gray-200 dark:border-gray-700 pt-2">
                       <SummaryRow
                         label="Grand Total"
-                        value={`₹${summary.grand_total}`}
+                        value={`${formatPrice(summary.grand_total)}`}
                         highlight
                       />
                     </div>
                     {summary.securityDeposit > 0 && (
                       <SummaryRow
                         label="Security Deposit"
-                        value={`₹${summary.securityDeposit}`}
+                        value={`${formatPrice(summary.securityDeposit)}`}
                       />
                     )}
+<SummaryRow label="Payable Amount" value={`${formatPrice(summary.final_total)}`} />
+                    
                   </div>
                 </div>
               </div>

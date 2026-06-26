@@ -26,6 +26,10 @@ import {
 
 import { all_reservations } from "@/services/booking.service";
 
+import { useRealtime } from "@/context/RealtimeContext";
+
+import { formatPrice } from "@/lib/currency_format";
+
 /* ═══════════════════════════════════════════════════════════════
    DATE FILTER PILL — custom-styled, no browser chrome
    Clicking anywhere on the pill opens the native date picker.
@@ -141,6 +145,10 @@ r = r.filter((i) =>
    MAIN WORKSPACE
 ══════════════════════════════════════════════════════════════ */
 export default function AllReservationsWorkspace() {
+
+  const { refreshKey } = useRealtime();
+
+
   const t  = useTranslations("vendor.reservations");
   const tA = useTranslations("vendor.reservations.actions");
 
@@ -191,7 +199,7 @@ export default function AllReservationsWorkspace() {
       pending:   reserve.filter((i) => ["PENDING", "IN_PROGRESS"].includes(i.workflowState)).length,
       confirmed: confirmed.length,
       reserved:  reserve.filter((i) => i.workflowState === "RESERVED").length,
-      revenue:   `₹${revStr}`,
+      revenue:   `${formatPrice(revStr)}`,
     };
   }, [reserve]);
 
@@ -228,6 +236,10 @@ export default function AllReservationsWorkspace() {
         await load();
       })();
     }, []);
+
+    useEffect(() => {
+  load();
+}, [refreshKey]);
 
   return (
     <div className="space-y-5">
