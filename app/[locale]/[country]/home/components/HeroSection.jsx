@@ -124,6 +124,8 @@ const country = params?.country || "in";
   guests: "",
 });
 
+console.log(mediaMap)
+
   /* Category tab scroll state */
   const tabsRef                       = useRef(null);
   const [canTabLeft,  setCanTabLeft]  = useState(false);
@@ -299,45 +301,37 @@ const country = params?.country || "in";
 
         {/* Background — overflow-hidden scoped here so video scale-105 doesn't bleed */}
         <div className="absolute inset-0 overflow-hidden">
-          {isMobile ? (
-            <div
-              className="absolute inset-0 bg-cover bg-center"
-               style={{
-                backgroundImage: currentMedia.image
-  ? `url(${process.env.NEXT_PUBLIC_API_URL}/${currentMedia.image})`
-  : "url('https://www.venuebook.in/img/sintra.6885ed95.png')",
-              }}
-            />
-          ) :  currentMedia.video ? (
-            <video
-              autoPlay
-              muted
-              loop
-              playsInline
-              className="absolute inset-0 w-full h-full object-cover scale-105"
-            >
-              <source
-  src={`${process.env.NEXT_PUBLIC_API_URL}/${currentMedia.video}`}
-  type="video/mp4"
-/>
-            </video>
-          ) : (
-            <video
-              autoPlay
-              muted
-              loop
-              playsInline
-              className="absolute inset-0 w-full h-full object-cover scale-105"
-            >
-              <source
-                src="https://api.venuebook.in/Upload/Video/HomePage.mp4"
-                type="video/mp4"
-              />
-            </video>
-          )}
-          {/* Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/55 to-black/80" />
-        </div>
+  {isMobile ? (
+    <div
+      className="absolute inset-0 bg-cover bg-center"
+      style={{
+        backgroundImage: `url(${
+          currentMedia.image
+            ? `${process.env.NEXT_PUBLIC_AWS_BUCKET_URL}/${currentMedia.image}`
+            : "https://www.venuebook.in/img/sintra.6885ed95.png"
+        })`,
+      }}
+    />
+  ) : (
+    <video
+      key={currentMedia.video || "default-video"}
+      src={
+        currentMedia.video
+          ? `${process.env.NEXT_PUBLIC_AWS_BUCKET_URL}/${currentMedia.video}`
+          : "https://api.venuebook.in/Upload/Video/HomePage.mp4"
+      }
+      autoPlay
+      muted
+      loop
+      playsInline
+      preload="auto"
+      className="absolute inset-0 w-full h-full object-cover scale-105"
+    />
+  )}
+
+  {/* Overlay */}
+  <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/55 to-black/80" />
+</div>
 
         {/* Content */}
         <div className="relative z-10 flex flex-col flex-1 justify-center w-full max-w-6xl mx-auto px-5 sm:px-8 md:px-12 lg:px-16 pt-32 md:pt-28 pb-8 md:pb-10">
