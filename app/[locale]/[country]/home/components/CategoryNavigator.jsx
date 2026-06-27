@@ -80,7 +80,7 @@ export default function CategoryNavigator({ loadData = [], fabBreakpoint = 768 }
     if (!cat || cat.comingSoon) return;
     setActiveCategory(id);
     handleSetIsOpen(false);
-    router.push(`/${locale}/${country}/search/${cat.route}`);
+    // router.push(`/${locale}/${country}/search/${cat.route}`);
   }, [setActiveCategory, handleSetIsOpen, router, locale, country]);
 
   if (!mounted) return null;
