@@ -469,7 +469,11 @@ async function handlePaymentSave(payment, split) {
 
             const downloadPdf = async () => {
 
- window.open(`http://localhost:3000/invoice/download/${reserve.id}`, "_blank");
+ // window.open(`http://localhost:3000/invoice/download/${reserve.id}`, "_blank");
+               window.open(
+  `${process.env.NEXT_PUBLIC_API_URL}/invoice/download/${params.id}`,
+  "_blank"
+);
 };
 
 
