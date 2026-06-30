@@ -8,6 +8,9 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import lightLogo from "@/assets/logo.svg";
 import darkLogo from "@/assets/logo.png";
 
+import { each_kyc_status } from "@/services/kyc.service";
+
+
 import { useTranslations } from "next-intl";
 import RegionLanguageModal from "../../home/components/RegionLanguageModal";
 import { useAuth } from "@/context/AuthContext";
@@ -420,6 +423,8 @@ export default function PremiumNavbar() {
   const [mounted,         setMounted]         = useState(false);
   const [switchLoading,   setSwitchLoading]   = useState(false);
 
+  const [kycData, setKycData] = useState(null);
+
 
 
   useEffect(() => { setMounted(true); }, []);
@@ -484,6 +489,22 @@ useEffect(() => {
     socket.off("realtime-status");
   };
 }, [user?.id]);
+
+useEffect(() => {
+  if (!open) return;
+
+  const fetchKycStatus = async () => {
+    try {
+      const res = await each_kyc_status();
+      setKycData(res?.data || null);
+    } catch (err) {
+      console.error(err);
+      setKycData(null);
+    }
+  };
+
+  fetchKycStatus();
+}, [open]);
 
   return (
     <>
@@ -655,7 +676,7 @@ useEffect(() => {
         onClose={() => setRegionOpen(false)}
       />
 
-      <KYCModal open={kycOpen} setOpen={setKycOpen} />d
+      <KYCModal open={kycOpen} setOpen={setKycOpen}  kycData={kycData} />
 
       {/* Shared logout confirmation modal */}
       <LogoutConfirmationModal

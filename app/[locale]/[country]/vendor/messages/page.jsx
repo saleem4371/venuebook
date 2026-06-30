@@ -16,7 +16,7 @@
    No modal, no popover, no dropdown — this is a dedicated full page.
 ══════════════════════════════════════════════════════════════════ */
 
-import { Suspense, useCallback } from "react";
+import { Suspense, useCallback ,useEffect,useState } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { MessageCircle } from "lucide-react";
@@ -26,29 +26,25 @@ import ConversationList   from "./components/ConversationList";
 import ChatThread         from "./components/ChatThread";
 import { MOCK_CONVERSATIONS } from "./_data";
 
+import { all_messages } from '@/services/chat.service'
+
 /* ── Empty state (desktop: no conversation selected) ─────────────── */
 function EmptyConversationState() {
   return (
-    <div className="flex flex-col items-center justify-center h-full gap-5 px-8 text-center bg-gray-50/50 dark:bg-gray-950">
-      {/* Icon container */}
-      <div className="relative">
-        <div className="w-16 h-16 rounded-2xl bg-violet-50 dark:bg-violet-950/50 flex items-center justify-center shadow-sm">
-          <MessageCircle
-            size={28}
-            className="text-violet-400 dark:text-violet-500"
-            strokeWidth={1.5}
-          />
+    <div className="flex flex-1 flex-col items-center justify-center text-center">
+      <div className="relative mb-5">
+        <div className="absolute inset-0 rounded-full bg-violet-100 blur-xl opacity-50" />
+        <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/20">
+          <MessageCircle className="h-8 w-8 text-violet-600 dark:text-violet-400" />
         </div>
-        {/* Subtle decorative ring */}
-        <div className="absolute -inset-2 rounded-3xl border border-violet-100 dark:border-violet-900/40 pointer-events-none" />
       </div>
 
       <div>
-        <p className="text-[15px] font-semibold text-gray-800 dark:text-gray-200 mb-1.5">
+        <p className="mb-1.5 text-[15px] font-semibold text-gray-800 dark:text-gray-200">
           Select a conversation
         </p>
-        <p className="text-[13px] text-gray-400 dark:text-gray-500 leading-relaxed max-w-[200px]">
-          Choose a thread from the sidebar to start messaging
+        <p className="max-w-[220px] text-[13px] leading-relaxed text-gray-400 dark:text-gray-500">
+          Choose a thread from the sidebar to start messaging.
         </p>
       </div>
     </div>
@@ -62,12 +58,50 @@ function MessagesInner() {
   const router       = useRouter();
   const pathname     = usePathname();
 
-  /* Active conversation from URL */
+    const [chats, setChat] = useState([]);
   const activeId   = searchParams.get("conversation");
-  const activeConv = MOCK_CONVERSATIONS.find((c) => c.id === activeId) ?? null;
+const activeConv =
+  chats.find((c) => String(c.id) === activeId) ?? null;
+
+const totalUnread = chats.reduce(
+  (sum, c) => sum + (c.unread || 0),
+  0
+);
+
+
+  useEffect(() => {
+    
+  
+    const fetchData = async () => {
+      try {
+        // Start progress bar
+       
+  
+        // API call
+        const res = await all_messages();
+        setChat(res?.data?.data || null);
+  
+      
+  
+      } catch (err) {
+        console.error(err);
+       
+      } finally {
+        // if (interval) clearInterval(interval);
+      }
+    };
+  
+    fetchData();
+  
+   
+  }, []);
+
+  /* Active conversation from URL */
+
+  // const activeConv = chats.find((c) => c.id === activeId) ?? null;
 
   /* Total unread badge for the page header */
-  const totalUnread = MOCK_CONVERSATIONS.reduce((s, c) => s + c.unread, 0);
+  // const totalUnread = chats.reduce((s, c) => s + c.unread, 0);
 
   /* Navigate to a conversation — preserves other search params */
   const handleSelect = useCallback(
@@ -145,7 +179,7 @@ function MessagesInner() {
           ].join(" ")}
         >
           <ConversationList
-            conversations={MOCK_CONVERSATIONS}
+            conversations={chats}
             activeId={activeId}
             onSelect={handleSelect}
           />
@@ -178,10 +212,25 @@ function MessagesInner() {
   );
 }
 
+// /* ── Main export — Suspense boundary required for useSearchParams ── */
+// export default function MessagesPage() {
+//   return (
+//     <Suspense fallback={null}>
+//       <MessagesInner />
+//     </Suspense>
+//   );
+// }
+
 /* ── Main export — Suspense boundary required for useSearchParams ── */
 export default function MessagesPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense
+      fallback={
+        <div className="flex h-[calc(100vh-120px)] items-center justify-center">
+          Loading...
+        </div>
+      }
+    >
       <MessagesInner />
     </Suspense>
   );

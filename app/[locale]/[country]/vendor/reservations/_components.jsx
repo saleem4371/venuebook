@@ -34,11 +34,11 @@ export function getActions(state, tA, item, router, locale , country) {
       { key: "delete",    label: tA("delete"),    icon: Trash2,        danger: true  },
     ];
     case "PENDING": return [
-      { key: "edit",     label: tA("edit"),     icon: Edit,      danger: false ,   onClick: () =>
+      { key: "edit",     label: 'Invoice',     icon: Edit,      danger: false ,   onClick: () =>
             router.push(
               `/${locale}/${country}/vendor/reservations/invoice/${item.id}`
             ) }, 
-      { key: "reserve",   label: tA("reserve"),   icon: Bookmark,      danger: false , onClick: () =>
+      { key: "reserve",   label: 'Manage',   icon: Bookmark,      danger: false , onClick: () =>
             router.push(
               `/${locale}/${country}/vendor/reservations/manage_reserve/${item.id}`
             ) },
@@ -47,22 +47,28 @@ export function getActions(state, tA, item, router, locale , country) {
       { key: "delete",    label: tA("delete"),    icon: Trash2,        danger: true  },
     ];
     case "CONFIRMED": return [
-        { key: "edit",     label: tA("edit"),     icon: Edit,      danger: false ,   onClick: () =>
+        { key: "edit",     label: 'Invoice',      icon: Edit,      danger: false ,   onClick: () =>
             router.push(
               `/${locale}/${country}/vendor/reservations/invoice/${item.id}`
             ) }, 
-      { key: "reserve",   label: tA("reserve"),   icon: Bookmark,      danger: false , onClick: () =>
+      { key: "reserve",   label: 'Manage',   icon: Bookmark,      danger: false , onClick: () =>
             router.push(
               `/${locale}/${country}/vendor/reservations/manage_reserve/${item.id}`
             ) },
-      { key: "download", label: tA("download"), icon: FileText,  danger: false },
-      { key: "delete",   label: tA("delete"),   icon: Trash2,    danger: true  },
+     // { key: "download", label: tA("download"), icon: FileText,  danger: false },
+     // { key: "delete",   label: tA("delete"),   icon: Trash2,    danger: true  },
     ];
     case "RESERVED": return [
-      { key: "confirm",  label: tA("confirm"),  icon: CheckCircle2, danger: false },
-      { key: "edit",     label: tA("edit"),     icon: Edit,         danger: false },
-      { key: "download", label: tA("download"), icon: FileText,     danger: false },
-      { key: "delete",   label: tA("delete"),   icon: Trash2,       danger: true  },
+      { key: "edit",     label: 'Invoice',     icon: Edit,      danger: false ,   onClick: () =>
+            router.push(
+              `/${locale}/${country}/vendor/reservations/invoice/${item.id}`
+            ) }, 
+      { key: "reserve",   label: 'Manage',   icon: Bookmark,      danger: false , onClick: () =>
+            router.push(
+              `/${locale}/${country}/vendor/reservations/manage_reserve/${item.id}`
+            ) },
+     // { key: "download", label: tA("download"), icon: FileText,     danger: false },
+     // { key: "delete",   label: tA("delete"),   icon: Trash2,       danger: true  },
     ];
     case "QUOTATION": return [
       { key: "convert",  label: tA("convert"),  icon: CalendarCheck, danger: false },

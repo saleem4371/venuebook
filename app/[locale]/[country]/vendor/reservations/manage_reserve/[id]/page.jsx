@@ -6,17 +6,22 @@ import {
   Download, Edit, ChevronRight, CheckCircle2, Circle, Plus,
   Bell, MoreHorizontal, Users, Package, CreditCard, ClipboardList,
   History, Copy, X, AlertCircle, ChevronDown, IndianRupee,
-  MessageCircle, Send, RefreshCw, Receipt, CheckCheck,
+  RefreshCw, Receipt, CheckCheck,
   AlertTriangle, Lock, Unlock, Timer, Loader2, Sparkles,
   RotateCcw, Eye, Printer, ChevronUp, Minus, Info, Tag,
   ShoppingBag, Zap, Shield, Search, Trash2, ArrowRight,
-  LayoutGrid, AlertOctagon
+  LayoutGrid, AlertOctagon, ArrowUpCircle, CalendarCheck,MessageCircle
 } from "lucide-react";
 
 import { useRouter , useParams } from "next/navigation";
 
-import { download_invoice, reservation_manage , add_payment} from "@/services/booking.service";
-import { startConversation , conservation_messages, send_messages } from "@/services/chat.service";
+import { download_invoice, reservation_manage , add_payment ,
+   refundSecurityDeposit , generateInvoiceApi, convertToBooking 
+  } from "@/services/booking.service";
+
+  import { startConversation , conservation_messages, send_messages } from "@/services/chat.service";
+
+import { useToast } from "@/components/ToastProvider";
 
 
 /* ─── BOOKING CONSTANTS ─── */
@@ -41,6 +46,35 @@ const buffetMenu = {
   Desserts: ["Chocolate Mousse", "Cheesecake", "Brownie"],
   Beverages: ["Fresh Lime Soda", "Iced Tea", "Water"],
 };
+
+// Demo/mock data used as a fallback for the Add-ons and Packages tabs when
+// the API hasn't supplied a real catalog yet (`reserve.available_addons`) or
+// hasn't attached selection limits to the package categories (min_select /
+// max_select / item_price on pax_categories / pax_item_snapshot). Wire the
+// real data through those API fields and this fallback is bypassed
+// automatically — nothing else needs to change.
+const MOCK_AVAILABLE_ADDONS = [
+  { id: "addon_dj", title: "DJ & Sound Setup", price: 15000 },
+  { id: "addon_photo", title: "Photography (4 hrs)", price: 12000 },
+  { id: "addon_video", title: "Videography (4 hrs)", price: 18000 },
+  { id: "addon_decor_floral", title: "Premium Floral Decor", price: 9000 },
+  { id: "addon_valet", title: "Valet Parking Service", price: 6000 },
+  { id: "addon_anchor", title: "Event Anchor / MC", price: 8000 },
+  { id: "addon_fireworks", title: "Cold Pyro Entry", price: 7500 },
+  { id: "addon_extra_hour", title: "Extra Hour (Venue)", price: 5000 },
+];
+
+// Per-category min/max selection limits and per-item pricing for the
+// Packages editor, keyed by category_name so it lines up with whatever
+// pax_categories the booking actually has.
+const MOCK_CATEGORY_LIMITS = {
+  "Main Course": { min_select: 2, max_select: 3 },
+  "Salads": { min_select: 1, max_select: 2 },
+  "Sides": { min_select: 1, max_select: 2 },
+  "Desserts": { min_select: 1, max_select: 1 },
+  "Beverages": { min_select: 1, max_select: 2 },
+};
+const MOCK_ITEM_PRICE_FALLBACK = 0; // most packages bundle item cost into price/pax
 
 // FIX: all inputs are now coerced with Number(... || 0) so a missing/undefined
 // field on `Booking` or `paidSoFar` can never poison the result into NaN.
@@ -80,16 +114,36 @@ function LoadingSkeleton() {
   );
 }
 
+function getReminderDate(
+  bookingDate,
+  eventDate,
+  beforeDays,
+){
+  if (!bookingDate || !eventDate) {
+    return null;
+  }
+
+  const booking = new Date(bookingDate);
+  const event = new Date(eventDate);
+
+  if (isNaN(booking.getTime()) || isNaN(event.getTime())) {
+    return null;
+  }
+
+  const reminder = new Date(event);
+  reminder.setDate(reminder.getDate() - beforeDays);
+
+  return booking > reminder ? booking : reminder;
+}
+
 /* ─── ROOT ─── */
 export default function BookingDetailPage() {
   const [activeTab, setActiveTab] = useState("overview");
   const [showModal, setShowModal] = useState(false);
-  const [showChat, setShowChat] = useState(false);
   const [reserve, setReserve] = useState(null);
   const [loading, setLoading] = useState(true);
   const [logs, setLogs] = useState([]);
-
-  const [messages, setMessages] = useState([]);
+  const toast = useToast();
 
   // FIX A: Booking is now initialized with safe numeric defaults instead of {}.
   // Before this fix, any read of Booking.basePrice / Booking.gst / etc. before
@@ -121,12 +175,21 @@ const music_troupe = reserve?.parties?.find(p => p.party_type === "music_troupe"
   const [invoiceGenerated, setInvoiceGenerated] = useState(false);
   const [showInvoiceConfirm, setShowInvoiceConfirm] = useState(false);
   const [refundDone, setRefundDone] = useState(false);
+  const [netDeposit, setNetDeposit] = useState(false);
   const [showRefundModal, setShowRefundModal] = useState(false);
   const [editSection, setEditSection] = useState(null);
   const [addons, setAddons] = useState([]);
   const [topProgress, setTopProgress] = useState(0);
 
+  //chat
+    const [messages, setMessages] = useState([]);
+    const [chatRefno, setChatRefno] = useState(0);
+    const [showChat, setShowChat] = useState(false);
+
   const [savingPayment, setSavingPayment] = useState(false);
+
+  const [showConvertConfirm, setShowConvertConfirm] = useState(false);
+const [convertingBooking, setConvertingBooking] = useState(false);
 
   useEffect(() => {
   if (reserve?.charges) {
@@ -165,30 +228,53 @@ useEffect(() => {
   // overwriting it to 0 on every "gst" charge row. The old `acc.gst = 0;`
   // line silently discarded any actual GST amount returned by the API,
   // which combined with Booking starting as {} is the second source of NaN/0.
-  const summary = (reserve.charges || []).reduce(
-    (acc, item) => {
-      const amount = Number(item.total_price || 0);
+const summary = {
+  base: 0,
+  addon: 0,
+  security: 0,
+  gst: 0,
+};
 
-      if (item.charge_type === "base") {
-        acc.base += amount;
-      } else if (item.charge_type === "addon") {
-        acc.addon += amount;
-      } else if (item.charge_type === "security_deposit") {
-        acc.security += amount;
-      } else if (item.charge_type === "gst") {
-        acc.gst += amount;
+let hasFivePercent = false;
+
+(reserve.taxes || []).forEach((tax) => {
+  if (Number(tax.tax_percent) === 5) {
+    hasFivePercent = true;
+  }
+});
+
+(reserve.charges || []).forEach((item) => {
+  const amount = Number(item.total_price || 0);
+
+  switch (item.charge_type) {
+    case "base":
+      // Base always included
+      summary.base += amount;
+
+      // If base has 5% GST
+      if (hasFivePercent) {
+        summary.base += amount * 0.05;
+      } else {
+        // Otherwise 18%
+        summary.base += amount * 0.18;
       }
+      break;
 
-      return acc;
-    },
-    {
-      base: 0,
-      addon: 0,
-      security: 0,
-      gst: 0,
-    }
-  );
+    case "addon":
+      summary.addon += amount;
 
+      // Addons always get 18%
+      summary.addon += amount * 0.18;
+      break;
+
+    case "security_deposit":
+      // No GST
+      summary.security += amount;
+      break;
+  }
+});
+
+console.log(summary);
   // NOTE (point E): if your API never sends a separate "gst" charge_type
   // (i.e. GST is already folded into the "base" row's total_price), `summary.gst`
   // will correctly stay 0 here and basePrice already includes tax — that's fine,
@@ -207,56 +293,110 @@ useEffect(() => {
 
 
   const [refundEnabled, setRefundEnabled] = useState(false);
-  const [chatRefno, setChatRefno] = useState(0);
 
   const router = useRouter();
     const params   = useParams();
+
+      
+        const locale  = params?.locale  || "en";
+        const country = params?.country || "in";
+
+
+// useEffect(() => {
+//   let interval;
+//   let progress = 0;
+
+//   const fetchData = async () => {
+//     try {
+//       // Start progress bar
+//       interval = setInterval(() => {
+//         progress += Math.random() * 15;
+
+//         if (progress >= 90) {
+//           progress = 90;
+//           clearInterval(interval);
+//         }
+
+//         setTopProgress(progress);
+//       }, 80);
+
+//       // API call
+//       const res = await reservation_manage(params.id);
+//       setReserve(res?.data || null);
+
+//       // Finish progress
+//       setTopProgress(100);
+
+//       setTimeout(() => {
+//         setTopProgress(0);
+//         setLoading(false);
+//       }, 400);
+
+//     } catch (err) {
+//       console.error(err);
+//       setReserve(null);
+//       setLoading(false);
+//       setTopProgress(0);
+//     } finally {
+//       if (interval) clearInterval(interval);
+//     }
+//   };
+
+//   fetchData();
+
+//   return () => {
+//     if (interval) clearInterval(interval);
+//   };
+// }, [params.id]);
+
+const fetchReservation = async () => {
+  try {
+    setLoading(true);
+
+    const res = await reservation_manage(params.id);
+    setReserve(res?.data || null);
+  } catch (err) {
+    console.error(err);
+    setReserve(null);
+  } finally {
+    setLoading(false);
+  }
+};
+
+// Fetch data
 useEffect(() => {
-  let interval;
+  if (!params.id) return;
+
+  fetchReservation();
+}, [params.id]);
+
+// Progress animation
+useEffect(() => {
+  if (!loading) {
+    setTopProgress(100);
+
+    const timer = setTimeout(() => {
+      setTopProgress(0);
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }
+
   let progress = 0;
 
-  const fetchData = async () => {
-    try {
-      // Start progress bar
-      interval = setInterval(() => {
-        progress += Math.random() * 15;
+  const interval = setInterval(() => {
+    progress += Math.random() * 15;
 
-        if (progress >= 90) {
-          progress = 90;
-          clearInterval(interval);
-        }
-
-        setTopProgress(progress);
-      }, 80);
-
-      // API call
-      const res = await reservation_manage(params.id);
-      setReserve(res?.data || null);
-
-      // Finish progress
-      setTopProgress(100);
-
-      setTimeout(() => {
-        setTopProgress(0);
-        setLoading(false);
-      }, 400);
-
-    } catch (err) {
-      console.error(err);
-      setReserve(null);
-      setLoading(false);
-      setTopProgress(0);
-    } finally {
-      if (interval) clearInterval(interval);
+    if (progress >= 90) {
+      progress = 90;
+      clearInterval(interval);
     }
-  };
 
-  fetchData();
+    setTopProgress(progress);
+  }, 80);
 
-  return () => {
-    if (interval) clearInterval(interval);
-  };
-}, [params.id]);
+  return () => clearInterval(interval);
+}, [loading]);
 
 
  const addon_total = (addons || []).reduce((sum, item) => sum + Number(item?.total_price || 0),0)
@@ -304,21 +444,28 @@ const totalPaid =
 
   const remaining = Math.max(
   0,
-  Number(grandTotal || 0) +
-    Number(Booking.securityDeposit || 0) -
+  Number(grandTotal || 0) -
     Number(totalPaid || 0)
 );
 
-  //Booking Summary Date
+ // Booking Summary Date
+// Booking Summary Date
+const eventDate = reserve?.event_dates?.[0]?.event_date;
+const bookingDate = reserve?.created_at;
 
-  const eventDate = reserve?.event_dates?.[0]?.event_date;
-  const bookingDate = reserve?.created_at;
-  const remainderdate = '2026-06-23T08:22:26.000Z';
+const reminderDate = getReminderDate(
+  reserve?.created_at,
+  reserve?.event_dates?.[0]?.event_date,
+  7 // Admin configured
+);
+
+
+const remainderdate =   JSON.stringify(reminderDate).replace(/"/g, "");
 
   //booking timer
 
   const booking_type = reserve?.booking_type; //type = booked | reserve | quotation
-  const reserveEndDate = '2026-06-23T08:22:26.000Z';
+  const reserveEndDate = '2026-06-29T08:22:26.000Z';
   const quotationExpireDate = '2026-06-25T08:22:26.000Z';
 
   // Temporary diagnostic logs (point in the report). Safe to remove once the
@@ -444,11 +591,13 @@ async function handlePaymentSave(payment, split) {
     }));
 
     setShowModal(false);
+    toast.success("Payment recorded");
+    fetchReservation();
 
   } catch (error) {
     console.error("Payment save failed:", error);
 
-    alert(
+    toast.error(
       error?.response?.data?.message ||
       "Failed to save payment"
     );
@@ -456,6 +605,93 @@ async function handlePaymentSave(payment, split) {
     setSavingPayment(false);
   }
 }
+
+// Reserve/quotation rows don't carry the Base/Add-on/Security split — they
+// just take a flat advance amount (e.g. ₹1000) against the booking. This
+// keeps that path completely separate from handlePaymentSave above so the
+// booked-type split math is never touched.
+async function handleAdvancePaymentSave(payment) {
+  try {
+    setSavingPayment(true);
+
+    await add_payment({
+      booking_id: reserve.id,
+      payments: [
+        {
+          payment_type: "advance",
+          payment_method: payment.method,
+          amount_paid: payment.amount,
+          payment_date: payment.date,
+          notes: payment.note,
+        },
+      ],
+    });
+
+    const today = new Date().toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+
+    setReceipts(prev => [...prev, {
+      date: today,
+      type: "Advance",
+      amount: payment.amount,
+      method: payment.method,
+      status: "Paid",
+    }]);
+
+    setPaidSoFar(prev => ({
+      ...prev,
+      basePrice: Number(prev.basePrice || 0) + Number(payment.amount || 0),
+    }));
+
+    setShowModal(false);
+    toast.success("Advance payment recorded");
+
+  } catch (error) {
+    console.error("Advance payment save failed:", error);
+    toast.error(error?.response?.data?.message || "Failed to save payment");
+  } finally {
+    setSavingPayment(false);
+  }
+}
+
+
+useEffect(() => {
+  const securityDeposit = receipts.find(
+    (p) => p.payment_type === "security_deposit"
+  );
+
+  const refund = receipts.find(
+    (p) => p.payment_type === "refund"
+  );
+
+  setRefundDone(!!refund);
+
+  const netDeposit =
+    Number(securityDeposit?.amount_paid || 0) -
+    Number(refund?.amount_paid || 0);
+
+  setNetDeposit(netDeposit); // if you have state
+}, [receipts]);
+
+
+//Checked Invoice Generate or not 
+useEffect(() => {
+  if (reserve?.invoice_g_id) {
+    setInvoiceGenerated(true);
+  } else {
+    setInvoiceGenerated(false);
+  }
+}, [reserve?.invoice_g_id]);
+
+const viewInvoice = () => {
+  router.push(
+    `/${locale}/${country}/vendor/reservations/final_invoice/${reserve.id}`
+  );
+};
+
 
   if (loading) return (
     <>
@@ -469,13 +705,91 @@ async function handlePaymentSave(payment, split) {
 
             const downloadPdf = async () => {
 
- // window.open(`http://localhost:3000/invoice/download/${reserve.id}`, "_blank");
-               window.open(
-  `${process.env.NEXT_PUBLIC_API_URL}/invoice/download/${params.id}`,
-  "_blank"
-);
+ window.open(`http://localhost:3000/invoice/download/${reserve.id}`, "_blank");
 };
 
+
+
+//Convert a reserve/quotation row into a confirmed booking.
+const handleConvertToBooking = async () => {
+  try {
+    setConvertingBooking(true);
+    const res = await convertToBooking({ booking_id: reserve.id });
+
+    if (res?.data?.success) {
+      setReserve(prev => ({ ...prev, booking_type: "booked" }));
+      setShowConvertConfirm(false);
+      toast.success("Converted to booking");
+      fetchReservation();
+    } else {
+      toast.error(res?.data?.message || "Could not convert to booking");
+    }
+  } catch (err) {
+    console.error("Convert to booking error:", err);
+    toast.error("Something went wrong while converting to booking");
+  } finally {
+    setConvertingBooking(false);
+  }
+};
+
+
+//Refund
+const handleRefundConfirm = async (refundData) => {
+    const payload = {
+    booking_id: reserve.id,
+    payments: [
+      {
+        payment_date: new Date().toISOString().split("T")[0],
+        payment_type: "security_deposit_refund",
+        payment_method: refundData.payment_method,
+        transaction_id: refundData.transaction_id || null,
+        amount_paid: refundData.refund_amount,
+        notes: refundData.reason,
+      },
+    ],
+  };
+  try {
+    const res = await refundSecurityDeposit(payload);
+
+    if (res.data.success) {
+      setRefundDone(true);
+      setShowRefundModal(false);
+      toast.success("Refund processed");
+      fetchReservation();
+
+    } else {
+      toast.error(res.data.message || "Refund failed");
+    }
+  } catch (err) {
+    console.error(err);
+    toast.error("Something went wrong");
+  }
+};
+
+//invoice generate 
+const handleGenerateInvoice = async () => {
+  const payload = {
+    booking_id: reserve.id,
+  };
+
+  try {
+    const res = await generateInvoiceApi(payload);
+
+    if (res?.data?.success) {
+      setInvoiceGenerated(true);
+      setShowInvoiceConfirm(false);
+      toast.success("Invoice generated");
+      fetchReservation();
+    } else {
+      toast.error(res?.data?.message || "Invoice generate failed");
+    }
+  } catch (err) {
+    console.error("Invoice Error:", err);
+    toast.error("Something went wrong");
+  }
+};
+
+//chat
 
 const openChat = async () => {
   const res = await startConversation({
@@ -490,6 +804,8 @@ const openChat = async () => {
   setShowChat(true);
 };
 
+
+
   return (
     <div className="min-h-screen font-sans text-md">
       {/* TOP PROGRESS BAR */}
@@ -499,14 +815,19 @@ const openChat = async () => {
       </div>
 
       {/* MODALS */}
-      {showModal && <AddPaymentModal Booking={Booking} paidSoFar={paidSoFar} onClose={() => setShowModal(false)} onSave={handlePaymentSave} />}
+      {showModal && booking_type === "booked" && (
+        <AddPaymentModal Booking={Booking} paidSoFar={paidSoFar} onClose={() => setShowModal(false)} onSave={handlePaymentSave} />
+      )}
+      {showModal && (booking_type === "reserve" || booking_type === "quotation") && (
+        <AddAdvancePaymentModal onClose={() => setShowModal(false)} onSave={handleAdvancePaymentSave} bookingType={booking_type} />
+      )}
       {showInvoiceConfirm && (
         <ConfirmModal
           title="Generate Final Invoice"
           message="This will lock the booking and generate a final invoice. All edit options will be disabled. Continue?"
           confirmLabel="Generate Invoice"
           confirmColor="violet"
-          onConfirm={() => { setInvoiceGenerated(true); setShowInvoiceConfirm(false); }}
+          onConfirm={handleGenerateInvoice}
           onClose={() => setShowInvoiceConfirm(false)}
         />
       )}
@@ -514,40 +835,56 @@ const openChat = async () => {
         <RefundModal
           securityDeposit={Number(Booking.securityDeposit || 0)}
           onClose={() => setShowRefundModal(false)}
-          onConfirm={() => { setRefundDone(true); setShowRefundModal(false); }}
+           onConfirm={handleRefundConfirm}
         />
       )}
-      {editSection && <EditModal section={editSection} reserve={reserve} setReserve={setReserve} onClose={() => setEditSection(null)} />}
-      {showChat && <ChatPanel chatRefno = {  chatRefno } messages = {  messages } onClose={() => setShowChat(false)} customerName={customer?.name} />}
+      {editSection && <EditModal section={editSection} reserve={reserve} setReserve={setReserve} onClose={() => setEditSection(null)} toast={toast} bookingType={booking_type} />}
+      {showConvertConfirm && (
+        <ConfirmModal
+          title="Convert to Booking"
+          message="This will confirm the reservation as a full booking. The customer will be notified and the booking timeline will start. Continue?"
+          confirmLabel={convertingBooking ? "Converting…" : "Convert to Booking"}
+          confirmColor="violet"
+          onConfirm={handleConvertToBooking}
+          onClose={() => setShowConvertConfirm(false)}
+        />
+      )}
+
+       {showChat && <ChatPanel chatRefno = {  chatRefno } messages = {  messages } onClose={() => setShowChat(false)} customerName={customer?.name} />}
+
 
       {/* HEADER */}
       <header className=" border-b border-slate-200 sticky top-0 z-30 shadow-sm">
         <div className="max-w-screen-2xl mx-auto px-5 h-14 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-          
+        
           </div>
           <div className="flex items-center gap-2">
             {!invoiceGenerated && (
               <>
-              {/* setShowChat(true) */}
-                <button onClick={() => openChat()}
+               <button onClick={() => openChat()}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 text-xs font-medium hover:bg-slate-50 transition-all">
                   <MessageCircle size={13} /> Chat
                 </button>
+
                 <button onClick={() => downloadPdf()}
                    className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 text-xs font-medium hover:bg-slate-50 transition-all">
                   <Download size={13} /> PDF
                 </button>
+                {(booking_type === "reserve" || booking_type === "quotation") && (
+                  <button onClick={() => setShowConvertConfirm(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 transition-all">
+                    <ArrowUpCircle size={13} /> Convert to Booking
+                  </button>
+                )}
                 <button onClick={() => setEditSection("booking")}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-600 text-white text-xs font-semibold hover:bg-violet-700 transition-all">
                   <Edit size={13} /> Edit Booking
                 </button>
-
-      
               </>
             )}
-            {invoiceGenerated && (
-              <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-violet-200 bg-violet-50 text-violet-700 text-xs font-semibold hover:bg-violet-100 transition-all">
+            {invoiceGenerated && booking_type === "booked" && (
+              <button onClick={ viewInvoice } className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-violet-200 bg-violet-50 text-violet-700 text-xs font-semibold hover:bg-violet-100 transition-all">
                 <Eye size={13} /> View Invoice
               </button>
             )}
@@ -560,19 +897,19 @@ const openChat = async () => {
 
       <div className=" py-5 space-y-4">
 
-        {/* INVOICE LOCKED BANNER */}
-        {invoiceGenerated && (
+        {/* INVOICE LOCKED BANNER — booked type only; reserve/quotation never generate invoices */}
+        {booking_type === "booked" && invoiceGenerated && (
           <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 flex items-center gap-3">
             <CheckCheck size={16} className="text-emerald-600 shrink-0" />
             <p className="text-xs text-emerald-700 font-medium">Invoice has been generated. This booking is now locked and read-only.</p>
-            <button className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 transition-all">
-              <Printer size={12} /> Print Invoice
+            <button onClick={() => downloadPdf()} className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 transition-all">
+              <Printer size={12} /> Download Invoice
             </button>
           </div>
         )}
 
-        {/* PENDING PAYMENT BANNER */}
-        {!invoiceGenerated && !isFullyPaid && (
+        {/* PENDING PAYMENT BANNER — booked type only (uses the Base/Add-on/Security split) */}
+        {booking_type === "booked" && !invoiceGenerated && !isFullyPaid && (
           <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-center gap-3">
             <AlertTriangle size={15} className="text-amber-500 shrink-0" />
             <p className="text-xs text-amber-700 font-medium">
@@ -581,6 +918,22 @@ const openChat = async () => {
             <button onClick={() => setShowModal(true)}
               className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500 text-white text-xs font-semibold hover:bg-amber-600 transition-all">
               <Plus size={12} /> Pay Now
+            </button>
+          </div>
+        )}
+
+        {/* ADVANCE PAYMENT BANNER — reserve/quotation only: a simple flat amount, no Base/Add-on/Security split */}
+        {(booking_type === "reserve" || booking_type === "quotation") && (
+          <div className="bg-violet-50 border border-violet-200 rounded-xl px-4 py-3 flex items-center gap-3">
+            <CalendarCheck size={15} className="text-violet-500 shrink-0" />
+            <p className="text-xs text-violet-700 font-medium">
+              {totalPaid > 0
+                ? <>Advance of <strong>₹{totalPaid.toLocaleString("en-IN")}</strong> received for this {booking_type}.</>
+                : <>No advance collected yet for this {booking_type}.</>}
+            </p>
+            <button onClick={() => setShowModal(true)}
+              className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-600 text-white text-xs font-semibold hover:bg-violet-700 transition-all">
+              <Plus size={12} /> Record Advance
             </button>
           </div>
         )}
@@ -599,6 +952,9 @@ const openChat = async () => {
               value={eventDate ? new Date(eventDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
               sub={`${reserve.shifts[0].shift_name} · 12:00 PM – 6:00 PM`} />*/}
             <HDivider />
+             {reserve?.booking_type === "booked" && (
+  <>
+            
             <div>
               <p className="text-xs text-slate-400 uppercase tracking-wide font-medium mb-1">Status</p>
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-semibold">
@@ -612,11 +968,19 @@ const openChat = async () => {
                 <span className="text-xs text-emerald-600 font-medium">Paid ₹{totalPaid.toLocaleString("en-IN")}</span>
                 {remaining > 0 && <span className="text-xs text-amber-600 font-medium">Due ₹{remaining.toLocaleString("en-IN")}</span>}
               </div>
+              
             </div>
+            </>
+  )}
           </div>
-        </div>
+           
+        </div>  
+
+        
 
         {/* PROGRESS TIMELINE */}
+{reserve?.booking_type === "booked" && (
+  <>
         <BookingTimeline eventDate={eventDate} bookingDate={bookingDate} 
         remainderdate={remainderdate} isFullyPaid={isFullyPaid} 
         refundDone={refundDone} invoiceGenerated={invoiceGenerated} />
@@ -635,7 +999,8 @@ const openChat = async () => {
             remaining={remaining}
           />
         )}
-
+</>
+)}
         {/* RESERVATION TIMER */}
         <ReservationTimer bookingDate={bookingDate} eventDate={eventDate} shift="Evening"  type={booking_type}
         reserveEndDate= {reserveEndDate } quotationExpireDate={quotationExpireDate}
@@ -657,23 +1022,80 @@ const openChat = async () => {
             </div>
           </div>
 
-          {activeTab === "overview" && 
-          <OverviewTab 
-          customer={customer} 
-          caterer={caterer} 
-          decorator={decorator} 
-          sound_system={sound_system} 
-          music_troupe={music_troupe} 
-          addon_total={addon_total} 
-          Booking={Booking} pax_packages = { reserve.pax_packages } pax_categories = { reserve.pax_categories } pax_item_snapshot = {reserve.pax_item_snapshot}
-          paidSoFar={paidSoFar} receipts={receipts} totalPaid={totalPaid} remaining={remaining} grandTotal={grandTotal} reserve={reserve} addons={addons} onAddPayment={() => setShowModal(true)} onEdit={setEditSection} invoiceGenerated={invoiceGenerated} />}
-          {activeTab === "event" && <EventDetailsTab reserve={reserve} onEdit={setEditSection} invoiceGenerated={invoiceGenerated} />}
-          {activeTab === "payments" && <PaymentsTab Booking={Booking} receipts={receipts} totalPaid={totalPaid} 
-          remaining={remaining} paidSoFar={paidSoFar} onAddPayment={() => setShowModal(true)} invoiceGenerated={invoiceGenerated} />}
-          {activeTab === "addons" && <AddonsTab addons={addons} setAddons={setAddons} availableAddons={reserve?.available_addons} invoiceGenerated={invoiceGenerated} />}
-          {activeTab === "packages" && <PackagesTab pax_packages={reserve.pax_packages} pax_categories={reserve.pax_categories} pax_item_snapshot={reserve.pax_item_snapshot} setReserve={setReserve} invoiceGenerated={invoiceGenerated} />}
-          {activeTab === "documents" && <DocumentsTab />}
-          {activeTab === "history" && <HistoryTab receipts={receipts} reserve={reserve} />}
+         {activeTab === "overview" && (
+  <OverviewTab
+    customer={customer}
+    caterer={caterer}
+    decorator={decorator}
+    sound_system={sound_system}
+    music_troupe={music_troupe}
+    addon_total={addon_total}
+    Booking={Booking}
+    pax_packages={reserve.pax_packages}
+    pax_categories={reserve.pax_categories}
+    pax_item_snapshot={reserve.pax_item_snapshot}
+    pax_items={reserve.pax_items}
+    paidSoFar={paidSoFar}
+    receipts={receipts}
+    totalPaid={totalPaid}
+    remaining={remaining}
+    grandTotal={grandTotal}
+    reserve={reserve}
+    addons={addons}
+    bookingType={booking_type}
+    onAddPayment={() => setShowModal(true)}
+    onEdit={setEditSection}
+    invoiceGenerated={invoiceGenerated}
+  />
+)}
+
+{activeTab === "event" && (
+  <EventDetailsTab
+    reserve={reserve}
+    onEdit={setEditSection}
+    invoiceGenerated={invoiceGenerated}
+  />
+)}
+
+{activeTab === "payments" && (
+  <PaymentsTab
+    Booking={Booking}
+    receipts={receipts}
+    totalPaid={totalPaid}
+    remaining={remaining}
+    paidSoFar={paidSoFar}
+    onAddPayment={() => setShowModal(true)}
+    invoiceGenerated={invoiceGenerated}
+    bookingType={booking_type}
+  />
+)}
+
+{/* ✅ ONLY THIS TWO HIDDEN WHEN DATA EXISTS */}
+{activeTab === "addons" && addons?.length > 0 && (
+  <AddonsTab
+    addons={addons}
+    setAddons={setAddons}
+    availableAddons={reserve?.available_addons?.length ? reserve.available_addons : MOCK_AVAILABLE_ADDONS}
+    invoiceGenerated={invoiceGenerated}
+  />
+)}
+
+{activeTab === "packages" && reserve?.pax_packages?.length > 0 && (
+  <PackagesTab
+    pax_packages={reserve.pax_packages}
+    pax_categories={reserve.pax_categories}
+    pax_item_snapshot={reserve.pax_item_snapshot}
+    pax_items={reserve.pax_items}
+    setReserve={setReserve}
+    invoiceGenerated={invoiceGenerated}
+  />
+)}
+
+{activeTab === "documents" && <DocumentsTab />}
+
+{activeTab === "history" && (
+  <HistoryTab reserve={reserve} />
+)}
         </div>
       </div>
     </div>
@@ -984,9 +1406,20 @@ function RefundModal({ securityDeposit, onClose, onConfirm }) {
         </div>
         <div className="flex gap-3 pt-1">
           <button onClick={onClose} className="flex-1 px-4 py-2 rounded-xl border border-slate-200 text-xs text-slate-600 font-medium hover:bg-slate-50">Cancel</button>
-          <button onClick={onConfirm} className="flex-1 px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 flex items-center justify-center gap-1.5">
-            <RotateCcw size={12} /> Confirm Refund
-          </button>
+          <button
+  onClick={() =>
+    onConfirm({
+      refund_amount: refundAmt,
+      payment_method: method,
+      reason,
+      transaction_id: null,
+    })
+  }
+  className="flex-1 px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 flex items-center justify-center gap-1.5"
+>
+  <RotateCcw size={12} />
+  Confirm Refund
+</button>
         </div>
       </div>
     </ModalWrapper>
@@ -994,149 +1427,180 @@ function RefundModal({ securityDeposit, onClose, onConfirm }) {
 }
 
 /* ─── EDIT MODAL ─── */
-function EditModal({ section, reserve, setReserve, onClose }) {
-  const [form, setForm] = useState({ ...reserve });
-  const save = () => { setReserve(form); onClose(); };
+// FIX: the previous version edited flat fields (reserve.name, reserve.email…)
+// that don't exist on this data shape — customer info lives on
+// reserve.parties (filtered by party_type), event info on reserve plus
+// reserve.event_dates[0], and service providers are also entries in
+// reserve.parties. This version edits the real nested shape and offers all
+// three sections in one tabbed modal so "Edit Booking" works the same way
+// for booked, reserve, and quotation rows alike — only the header label
+// changes per type.
+const EDIT_SECTIONS = [
+  { id: "event", label: "Event Details", icon: Calendar },
+  { id: "customer", label: "Customer", icon: User },
+  { id: "providers", label: "Service Providers", icon: Users },
+];
+
+function EditModal({ section, reserve, setReserve, onClose, toast, bookingType }) {
+  const customerParty = reserve?.parties?.find(p => p.party_type === "customer");
+  const catererParty = reserve?.parties?.find(p => p.party_type === "caterer");
+  const decoratorParty = reserve?.parties?.find(p => p.party_type === "decorator");
+  const soundParty = reserve?.parties?.find(p => p.party_type === "sound_system");
+  const musicParty = reserve?.parties?.find(p => p.party_type === "music_troupe");
+
+  const [activeSection, setActiveSection] = useState(
+    EDIT_SECTIONS.some(s => s.id === section) ? section : "event"
+  );
+
+  const [eventForm, setEventForm] = useState({
+    eventType: reserve?.eventType || "",
+    total_pax: reserve?.total_pax || "",
+    event_date: reserve?.event_dates?.[0]?.event_date
+      ? new Date(reserve.event_dates[0].event_date).toISOString().split("T")[0]
+      : "",
+    venue: reserve?.venues?.[0]?.venue_name_snapshot || "",
+  });
+
+  const [customerForm, setCustomerForm] = useState({
+    name: customerParty?.name || "",
+    email: customerParty?.email || "",
+    phone: customerParty?.phone || "",
+  });
+
+  const [providerForm, setProviderForm] = useState({
+    caterer: catererParty?.name || "",
+    decorator: decoratorParty?.name || "",
+    sound_system: soundParty?.name || "",
+    music_troupe: musicParty?.name || "",
+  });
+
+  function updateParty(partyType, name) {
+    setReserve(prev => {
+      const parties = prev?.parties || [];
+      const exists = parties.some(p => p.party_type === partyType);
+      const nextParties = exists
+        ? parties.map(p => p.party_type === partyType ? { ...p, name } : p)
+        : [...parties, { party_type: partyType, name }];
+      return { ...prev, parties: nextParties };
+    });
+  }
+
+  function save() {
+    setReserve(prev => {
+      let next = {
+        ...prev,
+        eventType: eventForm.eventType,
+        total_pax: eventForm.total_pax,
+      };
+      if (prev?.venues?.length) {
+        next.venues = prev.venues.map((v, i) => i === 0 ? { ...v, venue_name_snapshot: eventForm.venue } : v);
+      }
+      if (prev?.event_dates?.length && eventForm.event_date) {
+        next.event_dates = prev.event_dates.map((d, i) => i === 0 ? { ...d, event_date: eventForm.event_date } : d);
+      }
+      return next;
+    });
+
+    // Customer + provider names go through the party updater so the
+    // existing customer/caterer/decorator/sound_system/music_troupe lookups
+    // elsewhere on the page keep working unchanged.
+    setReserve(prev => {
+      const parties = prev?.parties || [];
+      const upsert = (type, fields) => {
+        const exists = parties.find(p => p.party_type === type);
+        if (exists) return parties.map(p => p.party_type === type ? { ...p, ...fields } : p);
+        return [...parties, { party_type: type, ...fields }];
+      };
+      let nextParties = upsert("customer", customerForm);
+      const withType = (list, type, fields) => {
+        const exists = list.find(p => p.party_type === type);
+        if (exists) return list.map(p => p.party_type === type ? { ...p, name: fields } : p);
+        return [...list, { party_type: type, name: fields }];
+      };
+      nextParties = withType(nextParties, "caterer", providerForm.caterer);
+      nextParties = withType(nextParties, "decorator", providerForm.decorator);
+      nextParties = withType(nextParties, "sound_system", providerForm.sound_system);
+      nextParties = withType(nextParties, "music_troupe", providerForm.music_troupe);
+      return { ...prev, parties: nextParties };
+    });
+
+    toast?.success?.("Booking details updated");
+    onClose();
+  }
+
+  const typeLabel = bookingType === "quotation" ? "Quotation" : bookingType === "reserve" ? "Reservation" : "Booking";
+
   return (
     <ModalWrapper onClose={onClose}>
       <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-        <h2 className="text-sm font-bold text-slate-900">Edit Booking Details</h2>
+        <div>
+          <h2 className="text-sm font-bold text-slate-900">Edit {typeLabel} Details</h2>
+          <p className="text-xs text-slate-400 mt-0.5">Update event, customer, or service provider information</p>
+        </div>
         <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100"><X size={14} /></button>
       </div>
-      <div className="p-6 space-y-3">
-        {[
-          { label: "Customer Name", key: "name" },
-          { label: "Email", key: "email" },
-          { label: "Phone", key: "phone" },
-          { label: "Event Type", key: "eventType" },
-          { label: "Guests", key: "guests", type: "number" },
-        ].map(f => (
-          <div key={f.key}>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">{f.label}</label>
-            <input type={f.type || "text"} value={form[f.key] || ""} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
-              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-500" />
-          </div>
+
+      {/* SECTION TABS */}
+      <div className="px-6 pt-3 flex gap-1 border-b border-slate-100">
+        {EDIT_SECTIONS.map(s => (
+          <button key={s.id} onClick={() => setActiveSection(s.id)}
+            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 transition-all ${
+              activeSection === s.id ? "border-violet-600 text-violet-600" : "border-transparent text-slate-500 hover:text-slate-700"
+            }`}>
+            <s.icon size={12} /> {s.label}
+          </button>
         ))}
-        <div className="flex gap-3 pt-2">
-          <button onClick={onClose} className="flex-1 px-4 py-2 rounded-xl border border-slate-200 text-xs text-slate-600 font-medium hover:bg-slate-50">Cancel</button>
-          <button onClick={save} className="flex-1 px-4 py-2 rounded-xl bg-violet-600 text-white text-xs font-semibold hover:bg-violet-700">Save Changes</button>
-        </div>
+      </div>
+
+      <div className="p-6 space-y-3 max-h-[60vh] overflow-y-auto">
+        {activeSection === "event" && (
+          <>
+            <FormField label="Event Type" value={eventForm.eventType} onChange={v => setEventForm(p => ({ ...p, eventType: v }))} placeholder="e.g. Corporate, Wedding" />
+            <div className="grid grid-cols-2 gap-3">
+              <FormField label="Guest Count" type="number" value={eventForm.total_pax} onChange={v => setEventForm(p => ({ ...p, total_pax: v }))} />
+              <FormField label="Event Date" type="date" value={eventForm.event_date} onChange={v => setEventForm(p => ({ ...p, event_date: v }))} />
+            </div>
+            <FormField label="Venue" value={eventForm.venue} onChange={v => setEventForm(p => ({ ...p, venue: v }))} placeholder="Venue name, address" />
+          </>
+        )}
+
+        {activeSection === "customer" && (
+          <>
+            <FormField label="Customer Name" value={customerForm.name} onChange={v => setCustomerForm(p => ({ ...p, name: v }))} />
+            <FormField label="Email" type="email" value={customerForm.email} onChange={v => setCustomerForm(p => ({ ...p, email: v }))} />
+            <FormField label="Phone" type="tel" value={customerForm.phone} onChange={v => setCustomerForm(p => ({ ...p, phone: v }))} />
+          </>
+        )}
+
+        {activeSection === "providers" && (
+          <>
+            <FormField label="Caterer Name" value={providerForm.caterer} onChange={v => setProviderForm(p => ({ ...p, caterer: v }))} placeholder="Not assigned" />
+            <FormField label="Decorator Name" value={providerForm.decorator} onChange={v => setProviderForm(p => ({ ...p, decorator: v }))} placeholder="Not assigned" />
+            <FormField label="Sound System Name" value={providerForm.sound_system} onChange={v => setProviderForm(p => ({ ...p, sound_system: v }))} placeholder="Not assigned" />
+            <FormField label="Music Troupe Name" value={providerForm.music_troupe} onChange={v => setProviderForm(p => ({ ...p, music_troupe: v }))} placeholder="Not assigned" />
+          </>
+        )}
+      </div>
+
+      <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-100 flex gap-3">
+        <button onClick={onClose} className="flex-1 px-4 py-2 rounded-xl border border-slate-200 text-xs text-slate-600 font-medium hover:bg-slate-50">Cancel</button>
+        <button onClick={save} className="flex-1 px-4 py-2 rounded-xl bg-violet-600 text-white text-xs font-semibold hover:bg-violet-700">Save Changes</button>
       </div>
     </ModalWrapper>
   );
 }
 
-/* ─── CHAT PANEL ─── */
-
-function ChatPanel({ chatRefno, onClose, customerName, messages: initialMessages }) {
-  const [input, setInput] = useState("");
-  const [messages, setMessages] = useState(initialMessages || []);
-  const bottomRef = useRef(null);
-
-  useEffect(() => {
-    setMessages(initialMessages || []);
-  }, [initialMessages]);
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  const send = async () => {
-    if (!input.trim()) return;
-
-    const newMsg = {
-      conservation_id: chatRefno,
-      from: "me",
-      text: input.trim(),
-      time: new Date().toLocaleTimeString("en-IN", {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-    };
-
-    setMessages((prev) => [...prev, newMsg]);
-    setInput("");
-
-    await send_messages(newMsg)
-    // TODO: call API / socket here
-  };
-
+function FormField({ label, value, onChange, type = "text", placeholder }) {
   return (
-    <div
-      className="fixed bottom-6 right-6 w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col z-50 overflow-hidden"
-      style={{ height: 400 }}
-    >
-      {/* Header */}
-      <div className="p-3 border-b flex justify-between items-center">
-        <div>
-          <p className="text-sm font-semibold">{customerName}</p>
-          <p className="text-xs text-slate-400">Customer</p>
-        </div>
-        <button onClick={onClose} className="text-xs text-red-500">
-          Close
-        </button>
-      </div>
-
-      {/* Messages */}
-      <div className="flex-1 p-3 overflow-y-auto space-y-2">
-        {messages.map((m, i) => (
-          <div key={i}>
-            {m.from === "system" ? (
-              <div className="text-center text-xs text-slate-400 my-2">
-                {m.text}
-              </div>
-            ) : (
-              <div
-                className={`flex ${
-                  m.from === "me" ? "justify-end" : "justify-start"
-                }`}
-              >
-                <div
-                  className={`max-w-[80%] px-3 py-2 rounded-xl text-xs ${
-                    m.from === "me"
-                      ? "bg-violet-600 text-white rounded-br-none"
-                      : "bg-white border border-slate-200 text-slate-700 rounded-bl-none"
-                  }`}
-                >
-                  {m.text}
-
-                  {m.time && (
-                    <p
-                      className={`text-[10px] mt-1 ${
-                        m.from === "me"
-                          ? "text-white/60"
-                          : "text-slate-400"
-                      }`}
-                    >
-                      {m.time}
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
-
-        <div ref={bottomRef} />
-      </div>
-
-      {/* Input */}
-      <div className="p-2 border-t flex gap-2">
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && send()}
-          placeholder="Type a message…"
-          className="flex-1 px-3 py-2 bg-slate-100 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-500"
-        />
-
-        <button
-          onClick={send}
-          className="px-3 py-2 bg-violet-600 text-white text-xs rounded-xl"
-        >
-          Send
-        </button>
-      </div>
+    <div>
+      <label className="block text-xs font-semibold text-slate-700 mb-1">{label}</label>
+      <input
+        type={type}
+        value={value ?? ""}
+        placeholder={placeholder}
+        onChange={e => onChange(e.target.value)}
+        className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-500"
+      />
     </div>
   );
 }
@@ -1274,6 +1738,80 @@ function AddPaymentModal({ paidSoFar, onClose, onSave ,Booking}) {
   );
 }
 
+/* ─── ADD ADVANCE PAYMENT MODAL (reserve / quotation) ─── */
+// Reserve and quotation rows don't have Base/Add-on/Security buckets to
+// split across — the person just records a flat advance (e.g. ₹1000)
+// against the reservation. Kept as its own component so the booked-type
+// AddPaymentModal and its split math above are never touched.
+function AddAdvancePaymentModal({ onClose, onSave, bookingType }) {
+  const [amount, setAmount] = useState("");
+  const [method, setMethod] = useState("Cash");
+  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [note, setNote] = useState("");
+  const [error, setError] = useState("");
+
+  const numAmount = parseFloat(amount) || 0;
+  const label = bookingType === "quotation" ? "Quotation" : "Reservation";
+
+  function handleSubmit() {
+    if (!numAmount || numAmount <= 0) { setError("Enter a valid amount."); return; }
+    onSave({ amount: numAmount, method, date, note });
+  }
+
+  return (
+    <ModalWrapper onClose={onClose}>
+      <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+        <div>
+          <h2 className="text-sm font-bold text-slate-900">Record Advance Payment</h2>
+          <p className="text-xs text-slate-400">Advance collected against this {label.toLowerCase()}</p>
+        </div>
+        <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100"><X size={14} /></button>
+      </div>
+      <div className="p-5 space-y-4">
+        <div>
+          <label className="block text-xs font-semibold text-slate-700 mb-1.5">Amount <span className="text-red-500">*</span></label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-semibold text-xs">₹</span>
+            <input type="number" min="0" value={amount} onChange={e => { setAmount(e.target.value); setError(""); }}
+              placeholder="0.00" autoFocus
+              className="w-full pl-6 pr-4 py-2.5 border border-slate-200 rounded-xl text-slate-900 font-bold text-base focus:outline-none focus:ring-2 focus:ring-violet-500" />
+          </div>
+          {error && <p className="mt-1 text-xs text-red-600 flex items-center gap-1"><AlertCircle size={11} /> {error}</p>}
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Method</label>
+            <div className="relative">
+              <select value={method} onChange={e => setMethod(e.target.value)}
+                className="w-full appearance-none px-3 py-2.5 border border-slate-200 rounded-xl text-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white">
+                {METHODS.map(m => <option key={m}>{m}</option>)}
+              </select>
+              <ChevronDown size={12} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Date</label>
+            <input type="date" value={date} onChange={e => setDate(e.target.value)}
+              className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-violet-500" />
+          </div>
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-slate-700 mb-1.5">Note <span className="text-slate-400 font-normal">(optional)</span></label>
+          <input value={note} onChange={e => setNote(e.target.value)} placeholder="e.g. Advance to hold the date"
+            className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-500" />
+        </div>
+      </div>
+      <div className="px-5 py-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-2">
+        <button onClick={onClose} className="px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-600 font-medium hover:bg-slate-100">Cancel</button>
+        <button onClick={handleSubmit} disabled={!numAmount || numAmount <= 0}
+          className="px-4 py-2 rounded-xl bg-violet-600 text-white text-xs font-semibold hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5">
+          <Plus size={12} /> Record Advance
+        </button>
+      </div>
+    </ModalWrapper>
+  );
+}
+
 function BucketCard({ label, total, paid, color }) {
   // FIX: coerce here too, so BucketCard is safe no matter which caller (modal
   // or PaymentsTab) invokes it.
@@ -1332,7 +1870,35 @@ function ModalWrapper({ children, onClose }) {
 /* ─── OVERVIEW TAB ─── */
 function OverviewTab({ customer ,caterer, decorator, sound_system, music_troupe, 
   addon_total,Booking,paidSoFar, receipts, totalPaid, remaining, grandTotal, reserve, 
-  addons, onAddPayment, onEdit, invoiceGenerated , pax_packages , pax_categories , pax_item_snapshot }) {
+  addons, onAddPayment, onEdit, invoiceGenerated , pax_packages , pax_categories , pax_item_snapshot,pax_items, bookingType }) {
+
+
+//payment Summary 
+const charges = reserve?.charges || [];
+
+const baseAmount =
+  Number(
+    charges.find((c) => c.charge_type === "base")?.total_price || 0
+  );
+
+const addonTotal = charges
+  .filter((c) => c.charge_type === "addon")
+  .reduce((sum, c) => sum + Number(c.total_price), 0);
+
+const securityDeposit =
+  Number(
+    charges.find((c) => c.charge_type === "security_deposit")?.total_price || 0
+  );
+
+const gst =
+  Number(
+    reserve?.taxes?.reduce(
+      (sum, tax) => sum + Number(tax.tax_amount),
+      0
+    ) || 0
+  );
+
+const grandTotals = baseAmount + addonTotal + gst + securityDeposit;
   return (
     <div className="p-5 grid lg:grid-cols-3 gap-5">
       <div className="lg:col-span-2 space-y-4">
@@ -1369,7 +1935,7 @@ function OverviewTab({ customer ,caterer, decorator, sound_system, music_troupe,
           </div>
         </Section>
 
-        <Section title="Service Provider Details" onEdit={invoiceGenerated ? null : () => onEdit("Service")}>
+        <Section title="Service Provider Details" onEdit={invoiceGenerated ? null : () => onEdit("providers")}>
           <div className="flex gap-6">
             <div className="flex-1 grid sm:grid-cols-2 gap-x-6 gap-y-3">
               {[
@@ -1424,22 +1990,58 @@ function OverviewTab({ customer ,caterer, decorator, sound_system, music_troupe,
   </div>
 </Section>
 
-      <Section title="Packages" badge="Silver Buffet" badgeColor="green">
+      <Section title="Packages" >
 
   {/* PACKAGE HEADER */}
-  <div className="flex flex-wrap gap-1.5 mb-3">
-    {(pax_categories || []).map((cat) => (
-      <span
-        key={cat.id}
-        className="px-2.5 py-1 rounded-full text-xs font-semibold bg-violet-100 text-violet-700 border border-violet-200"
-      >
-        {cat.category_name}
-      </span>
-    ))}
+  {(pax_packages || []).map((pkg) => (
+  <div key={pkg.id} className="mb-6">
+    <h3 className="text-xs  font-bold text-violet-600">
+      {pkg.package_name}
+    </h3>
+
+    <div className="grid grid-cols-3 gap-4 text-sm mb-3">
+      <p>
+        <span className="text-xs font-bold text-slate-700">Pax:</span> <span className="text-xs text-slate-700">{pkg.pax_count}</span> 
+      </p>
+      <p>
+        <span className="text-xs font-bold text-slate-700">Price/Pax:</span> <span className="text-xs text-slate-700">₹{Number(pkg.price_per_pax).toLocaleString()}</span>  
+      </p>
+      <p>
+        <span className="text-xs font-bold text-slate-700">Total:</span> <span className="text-xs text-slate-700"> ₹{Number(pkg.total).toLocaleString()}</span>
+      </p>
+    </div>
+
+    {(pax_categories || []).map((cat) => {
+      const catItems = (pax_items || [])
+        .filter(
+          (item) => String(item.category_id) === String(cat.category_id)
+        )
+        .map((item) =>
+          (pax_item_snapshot || []).find(
+            (snap) => String(snap.item_id) === String(item.item_id)
+          )
+        )
+        .filter(Boolean);
+
+      return (
+        <div key={cat.id} className="mb-3">
+          <p className="text-xs font-bold text-slate-700">
+            {cat.category_name}
+          </p>
+
+          {catItems.map((item) => (
+            <p key={item.id} className="py-0.5 text-xs  text-slate-700">
+              • {item.item_name}
+            </p>
+          ))}
+        </div>
+      );
+    })}
   </div>
+))}
 
   {/* GRID */}
-  <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 text-xs text-slate-600">
+  {/* <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 text-xs text-slate-600">
 
     {(pax_categories || []).map((cat) => {
       const catItems = (pax_item_snapshot || []).filter(
@@ -1450,12 +2052,10 @@ function OverviewTab({ customer ,caterer, decorator, sound_system, music_troupe,
       return (
         <div key={cat.id}>
 
-          {/* CATEGORY TITLE (optional) */}
           <p className="font-bold text-violet-600 mb-1">
             {cat.category_name}
           </p>
 
-          {/* ITEMS */}
           {catItems.map((item) => (
             <p key={item.id} className="py-0.5">
               {item.item_name}
@@ -1466,7 +2066,7 @@ function OverviewTab({ customer ,caterer, decorator, sound_system, music_troupe,
       );
     })}
 
-  </div>
+  </div> */}
 
 </Section>
 
@@ -1479,30 +2079,93 @@ function OverviewTab({ customer ,caterer, decorator, sound_system, music_troupe,
       </div>
 
       <div className="space-y-4">
-        <div className="border border-slate-200 rounded-2xl p-4">
-          <h3 className="font-semibold text-slate-800 text-xs mb-3">Payment Summary</h3>
-          <div className="space-y-2 text-xs">
-            {[
-              { label: "Base Price", value: `₹${Number(reserve.base_amount || 0).toLocaleString("en-IN")}` },
-              { label: "Add-on Total", value: `₹${addon_total.toLocaleString("en-IN")}` },
-              // { label: "GST (18%)", value: `₹${Booking.gst.toLocaleString("en-IN") || 0}` },
-            ].map(r => (
-              <div key={r.label} className="flex justify-between">
-                <span className="text-slate-500">{r.label}</span>
-                <span className="text-slate-700 font-medium">{r.value}</span>
-              </div>
-            ))}
-            <div className="border-t border-slate-100 pt-2 flex justify-between">
-              <span className="font-semibold text-slate-700">Total</span>
-              <span className="font-black text-violet-600">₹{Number(grandTotal || 0).toLocaleString("en-IN")}</span>
-            </div>
-          </div>
-          <div className="mt-3 bg-slate-50 border border-slate-200 rounded-xl p-3 flex justify-between items-center">
-            <span className="text-xs text-slate-500">Security Deposit</span>
-            <span className="font-bold text-slate-700 text-xs">₹{Number(Booking.securityDeposit || 0).toLocaleString("en-IN")}</span>
-          </div>
-        </div>
+    <div className="border border-slate-200 rounded-2xl p-4">
+  <h3 className="font-semibold text-slate-800 text-xs mb-3">
+    Payment Summary
+  </h3>
 
+  {/* {bookingType === "reserve" || bookingType === "quotation" ? (
+    // Reserve/quotation rows don't carry a Base/Add-on/Security/GST
+    // breakdown — there's no fixed grand total yet, just whatever advance
+    // has been collected so far. Showing the booked-type breakdown here
+    // would be misleading, so this is a single, honest figure instead.
+    <div className="space-y-2 text-xs">
+      <div className="flex justify-between">
+        <span className="text-slate-500">Advance Collected</span>
+        <span className="font-black text-violet-600 text-sm">
+          ₹{Number(totalPaid || 0).toLocaleString("en-IN")}
+        </span>
+      </div>
+      <p className="text-xs text-slate-400 pt-1">
+        Base price, add-ons, and security deposit are finalized once this {bookingType} is converted to a booking.
+      </p>
+    </div>
+  ) : ( */}
+  <div className="space-y-2 text-xs">
+    <div className="flex justify-between">
+      <span className="text-slate-500">Base Price</span>
+      <span className="font-medium text-slate-700">
+        ₹{baseAmount.toLocaleString("en-IN")}
+      </span>
+    </div>
+
+    <div className="flex justify-between">
+      <span className="text-slate-500">Add-on Total</span>
+      <span className="font-medium text-slate-700">
+        ₹{addonTotal.toLocaleString("en-IN")}
+      </span>
+    </div>
+
+    {/* <div className="border-t border-slate-100 pt-2 flex justify-between">
+      <span className="font-medium text-slate-600">
+        Taxable Amount
+      </span>
+      <span className="font-semibold text-slate-700">
+        ₹{taxableAmount.toLocaleString("en-IN")}
+      </span>
+    </div> */}
+
+ {reserve?.taxes?.map((item) => (
+  <div
+    key={item.id}
+    className="flex justify-between"
+  >
+    <span className="text-slate-500">
+      {item.tax_name} ({item.tax_percent}%)
+    </span>
+    <span className="font-medium text-slate-700">
+      ₹{Number(item.tax_amount).toLocaleString("en-IN")}
+    </span>
+  </div>
+))}
+    <div className="flex justify-between">
+      <span className="text-slate-500">Security Deposit</span>
+      <span className="font-medium text-slate-700">
+        ₹{securityDeposit.toLocaleString("en-IN")}
+      </span>
+    </div>
+
+    <div className="border-t border-slate-200 pt-3 flex justify-between">
+      <span className="font-semibold text-slate-700">
+        Grand Total
+      </span>
+      <span className="font-black text-violet-600 text-sm">
+        ₹{grandTotals.toLocaleString("en-IN")}
+      </span>
+    </div>
+  </div>
+  {/* )} */}
+
+  {!(bookingType === "reserve" || bookingType === "quotation") && (
+  <div className="mt-4 bg-violet-50 border border-violet-200 rounded-xl p-3">
+    <p className="text-[11px] text-violet-700">
+      <strong>Note:</strong> GST is calculated only on the taxable amount
+      (Base Price + Add-ons). The Security Deposit is refundable and is not
+      included in GST.
+    </p>
+  </div>
+  )}
+</div>
         <div className="border border-slate-200 rounded-2xl p-4">
   <div className="flex items-center justify-between mb-3">
     <h3 className="font-semibold text-slate-800 text-xs">Receipts</h3>
@@ -1564,6 +2227,7 @@ function OverviewTab({ customer ,caterer, decorator, sound_system, music_troupe,
       </span>
     </div>
 
+    {!(bookingType === "reserve" || bookingType === "quotation") && (
     <div className="flex justify-between">
       <span className="text-slate-500">Balance</span>
       <span className={`font-bold ${remaining > 0 ? "text-amber-600" : "text-emerald-600"}`}>
@@ -1572,6 +2236,7 @@ function OverviewTab({ customer ,caterer, decorator, sound_system, music_troupe,
           : "Fully Settled ✓"}
       </span>
     </div>
+    )}
   </div>
 </div>
 
@@ -1706,7 +2371,7 @@ function EventDetailsTab({ reserve, onEdit, invoiceGenerated }) {
 }
 
 /* ─── PAYMENTS TAB ─── */
-function PaymentsTab({ receipts, totalPaid, remaining, paidSoFar, onAddPayment, invoiceGenerated,Booking }) {
+function PaymentsTab({ receipts, totalPaid, remaining, paidSoFar, onAddPayment, invoiceGenerated, Booking, bookingType }) {
   // FIX: same Number-coercion pattern applied here, since this tab calls
   // BucketCard directly with `Booking.basePrice + Booking.gst` style sums.
   const base = Number(Booking?.basePrice || 0);
@@ -1717,16 +2382,36 @@ function PaymentsTab({ receipts, totalPaid, remaining, paidSoFar, onAddPayment, 
   const paidAddon = Number(paidSoFar?.addon || 0);
   const paidSecurity = Number(paidSoFar?.security || 0);
 
+  // Reserve/quotation rows have no Base/Add-on/Security split — they only
+  // ever take a flat advance, so the bucket cards and "balance due" framing
+  // (which assume a fixed grand total) don't apply. We show a simple
+  // "Total collected" figure instead.
+  const isSimplePayment = bookingType === "reserve" || bookingType === "quotation";
+
   return (
     <div className="p-5 space-y-4">
-      <div className="grid grid-cols-3 gap-3">
-        <BucketCard label="Base + GST" total={base + gst} paid={paidBase} color="violet" />
-        <BucketCard label="Add-on" total={addonTotal} paid={paidAddon} color="blue" />
-        <BucketCard label="Security" total={securityDeposit} paid={paidSecurity} color="emerald" />
-      </div>
+      {isSimplePayment ? (
+        <div className="border border-violet-200 bg-violet-50 rounded-2xl p-4 flex items-center justify-between">
+          <div>
+            <p className="text-xs text-violet-500 font-medium uppercase tracking-wide">Total Advance Collected</p>
+            <p className="text-xl font-black text-violet-700 mt-0.5">₹{Number(totalPaid || 0).toLocaleString("en-IN")}</p>
+          </div>
+          {!invoiceGenerated && (
+            <button onClick={onAddPayment} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-violet-600 text-white text-xs font-semibold hover:bg-violet-700">
+              <Plus size={12} /> Record Advance
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="grid grid-cols-3 gap-3">
+          <BucketCard label="Base + GST" total={base + gst} paid={paidBase} color="violet" />
+          <BucketCard label="Add-on" total={addonTotal} paid={paidAddon} color="blue" />
+          <BucketCard label="Security" total={securityDeposit} paid={paidSecurity} color="emerald" />
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-slate-800 text-xs">Transactions</h3>
-        {!invoiceGenerated && (
+        {!invoiceGenerated && !isSimplePayment && (
           <button onClick={onAddPayment} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-violet-600 text-white text-xs font-semibold hover:bg-violet-700">
             <Plus size={11} /> Add Payment
           </button>
@@ -1742,38 +2427,34 @@ function PaymentsTab({ receipts, totalPaid, remaining, paidSoFar, onAddPayment, 
             </tr>
           </thead>
           <tbody>
-            {receipts.map((row, i) => (
+            {receipts.map((r, i) => (
               <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                <td className="px-4 py-2.5 text-slate-500">{row.date}</td>
-                <td className="px-4 py-2.5 text-slate-700 font-medium">{row.type}</td>
-                <td className="px-4 py-2.5 text-slate-500">{row.method || "—"}</td>
-                <td className="px-4 py-2.5 text-slate-800 font-semibold">₹{Number(row.amount || 0).toLocaleString("en-IN")}</td>
+                <td className="px-4 py-2.5 text-slate-500"> {r.payment_date
+            ? new Date(r.payment_date).toLocaleDateString("en-IN")
+            : r.date || "—"}</td>
+                <td className="px-4 py-2.5 text-slate-700 font-medium">{r.payment_type || r.type || "—"}</td>
+                <td className="px-4 py-2.5 text-slate-500"> {r.payment_method || r.method || "—"}</td>
+                <td className="px-4 py-2.5 text-slate-800 font-semibold"> ₹{Number(r.amount_paid || r.amount || 0).toLocaleString("en-IN")}</td>
                 <td className="px-4 py-2.5">
-                  <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">{row.status}</span>
+                  <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">    {r.payment_status || r.status || "Paid"}</span>
                 </td>
               </tr>
             ))}
+
+            {receipts.length === 0 && (
+              <tr>
+                <td colSpan={5} className="px-4 py-8 text-center text-slate-400">No payments recorded yet.</td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
-      <div className="flex justify-end gap-6 text-xs">
-        <span className="text-slate-500">Paid: <strong className="text-emerald-600">₹{Number(totalPaid || 0).toLocaleString("en-IN")}</strong></span>
-        <span className="text-slate-500">Balance: <strong className={remaining > 0 ? "text-amber-600" : "text-emerald-600"}>{remaining > 0 ? `₹${Number(remaining).toLocaleString("en-IN")}` : "Settled ✓"}</strong></span>
-      </div>
-    </div>
-  );
-}
-
-/* ─── SHARED: TOAST ─── */
-function Toast({ message, onClose }) {
-  useEffect(() => {
-    const t = setTimeout(onClose, 2600);
-    return () => clearTimeout(t);
-  }, [onClose]);
-  return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-2 bg-slate-900 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-200">
-      <CheckCheck size={14} className="text-emerald-400" />
-      {message}
+      {!isSimplePayment && (
+        <div className="flex justify-end gap-6 text-xs">
+          <span className="text-slate-500">Paid: <strong className="text-emerald-600">₹{Number(totalPaid || 0).toLocaleString("en-IN")}</strong></span>
+          <span className="text-slate-500">Balance: <strong className={remaining > 0 ? "text-amber-600" : "text-emerald-600"}>{remaining > 0 ? `₹${Number(remaining).toLocaleString("en-IN")}` : "Settled ✓"}</strong></span>
+        </div>
+      )}
     </div>
   );
 }
@@ -1860,7 +2541,7 @@ function ChangesSummary({ rows, deltaAmount, newTotal }) {
 function AddonsTab({ addons, setAddons, availableAddons, invoiceGenerated }) {
   const [query, setQuery] = useState("");
   const [draft, setDraft] = useState(() => addons.map(a => ({ ...a })));
-  const [toast, setToast] = useState(null);
+  const toast = useToast();
   const [confirmRemove, setConfirmRemove] = useState(null);
 
   // Keep the editable draft in sync if the committed addons change from
@@ -1909,7 +2590,7 @@ function AddonsTab({ addons, setAddons, availableAddons, invoiceGenerated }) {
 
   function handleSave() {
     setAddons(draft);
-    setToast("Add-ons updated");
+    toast.success("Add-ons updated");
   }
 
   // Build diff rows for the changes summary: any item whose quantity changed,
@@ -1929,8 +2610,6 @@ function AddonsTab({ addons, setAddons, availableAddons, invoiceGenerated }) {
 
   return (
     <div className="p-5 space-y-4">
-      {toast && <Toast message={toast} onClose={() => setToast(null)} />}
-
       <div className="flex items-center justify-between">
         <div>
           <h3 className="font-semibold text-slate-800 text-sm">Add-ons</h3>
@@ -2099,11 +2778,30 @@ function AddonsTab({ addons, setAddons, availableAddons, invoiceGenerated }) {
 // is_selected), the category cards below already have the UI ready for them.
 function PackagesTab({ pax_packages = [], pax_categories = [], pax_item_snapshot = [], setReserve, invoiceGenerated }) {
   const [showEdit, setShowEdit] = useState(false);
-  const [toast, setToast] = useState(null);
+  const toast = useToast();
 
   const pkg = pax_packages?.[0];
   const categories = pax_categories || [];
-  const items = pax_item_snapshot || [];
+
+  // Fall back to mock min/max selection limits when the API hasn't attached
+  // them to a category yet, so the Edit Package modal's progress bars and
+  // "select N more" prompts are always demoable. Real values from the API
+  // (if present on the category row) always win.
+  const categoriesWithLimits = categories.map(cat => {
+    const mock = MOCK_CATEGORY_LIMITS[cat.category_name];
+    return {
+      ...cat,
+      min_select: typeof cat.min_select === "number" ? cat.min_select : mock?.min_select,
+      max_select: typeof cat.max_select === "number" ? cat.max_select : mock?.max_select,
+    };
+  });
+
+  // Same idea for per-item price + selection state on the snapshot rows.
+  const items = (pax_item_snapshot || []).map(item => ({
+    ...item,
+    item_price: typeof item.item_price === "number" ? item.item_price : MOCK_ITEM_PRICE_FALLBACK,
+    is_selected: item.is_selected !== false,
+  }));
 
   const totalSelected = items.filter(i => i.is_selected !== false).length;
   const packageTotal = Number(pkg?.price_per_pax || 0) * Number(pkg?.pax_count || 0);
@@ -2113,13 +2811,11 @@ function PackagesTab({ pax_packages = [], pax_categories = [], pax_item_snapshot
       setReserve(prev => ({ ...prev, pax_item_snapshot: updatedSnapshot }));
     }
     setShowEdit(false);
-    setToast("Package selections updated");
+    toast.success("Package selections updated");
   }
 
   return (
     <div className="p-5">
-      {toast && <Toast message={toast} onClose={() => setToast(null)} />}
-
       <div className="border border-slate-200 rounded-2xl p-5 max-w-md">
         <div className="flex items-center justify-between mb-1">
           <span className="text-xs font-semibold text-violet-600 bg-violet-50 border border-violet-200 px-2.5 py-1 rounded-full">
@@ -2161,7 +2857,7 @@ function PackagesTab({ pax_packages = [], pax_categories = [], pax_item_snapshot
       {showEdit && (
         <EditPackageModal
           pkg={pkg}
-          categories={categories}
+          categories={categoriesWithLimits}
           items={items}
           onClose={() => setShowEdit(false)}
           onSave={handleSaved}
@@ -2415,39 +3111,77 @@ function DocumentsTab() {
 
 
 /* ─── HISTORY TAB ─── */
-function HistoryTab({ receipts, reserve }) {
-  const all = [
-    ...receipts.map(r => ({
-      icon: CreditCard, color: "text-emerald-500", bg: "bg-emerald-50",
-      title: "Payment Received",
-      desc: `₹${Number(r.amount || 0).toLocaleString("en-IN")} — ${r.type}`,
-      date: r.date, time: "",
-    })),
-    { icon: FileText, color: "text-blue-500", bg: "bg-blue-50", title: "Invoice Generated", desc: "#INV-2026-0012", date: "20 Apr 2026", time: "10:25 AM" },
-    { icon: Calendar, color: "text-slate-500", bg: "bg-slate-100", title: "Booking Created", desc: `#${reserve.refNo}`, date: "20 Apr 2026", time: "10:00 AM" },
-  ];
+// FIX: original HistoryTab received the whole props object instead of being
+// destructured as { reserve }, never returned its JSX from the component
+// (the .map sat in a bare block statement so React rendered nothing), had no
+// container element, and had a stray debug `alert()` left in that fired once
+// per log row on every render. All four are fixed below; the visual styling
+// matches the rest of the page (icon chips, slate dividers) and an empty
+// state is added so the tab isn't blank for reserve/quotation rows with no
+// history yet.
+function HistoryTab({ reserve }) {
+  const logs = reserve?.logs || [];
+
+  if (logs.length === 0) {
+    return (
+      <div className="p-10 text-center">
+        <History size={22} className="text-slate-300 mx-auto mb-2" />
+        <p className="text-xs text-slate-400">No activity recorded yet.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="p-5">
-      <div className="space-y-0">
-        {all.map((item, i) => (
-          <div key={i} className="flex gap-3 py-3 border-b border-slate-100 last:border-0">
-            <div className={`w-8 h-8 rounded-lg ${item.bg} flex items-center justify-center shrink-0`}>
-              <item.icon size={13} className={item.color} />
+      {logs.map((log, i) => {
+        let Icon = ClipboardList;
+        let iconColor = "text-slate-500";
+        let iconBg = "bg-slate-100";
+
+        if (log.description?.toLowerCase().includes("payment")) {
+          Icon = CreditCard;
+          iconColor = "text-emerald-500";
+          iconBg = "bg-emerald-50";
+        } else if (log.description?.toLowerCase().includes("invoice")) {
+          Icon = FileText;
+          iconColor = "text-blue-500";
+          iconBg = "bg-blue-50";
+        } else if (log.description?.toLowerCase().includes("booking")) {
+          Icon = Calendar;
+          iconColor = "text-violet-500";
+          iconBg = "bg-violet-50";
+        }
+
+        return (
+          <div key={log.id || i} className="flex gap-3 py-4 border-b border-slate-100 last:border-0">
+            <div className={`w-8 h-8 rounded-lg ${iconBg} flex items-center justify-center shrink-0`}>
+              <Icon size={13} className={iconColor} />
             </div>
+
             <div className="flex-1">
-              <p className="text-xs font-semibold text-slate-800">{item.title}</p>
-              <p className="text-xs text-slate-500">{item.desc}</p>
-            </div>
-            <div className="text-right shrink-0">
-              <p className="text-xs text-slate-600">{item.date}</p>
-              {item.time && <p className="text-xs text-slate-400">{item.time}</p>}
+              <p className="text-sm font-medium text-slate-900">
+                {log.action || "Activity"}
+              </p>
+
+              <p className="text-xs text-slate-600">
+                {log.description}
+              </p>
+
+              <p className="text-xs text-slate-400 mt-1">
+                {log.created_at ? new Date(log.created_at).toLocaleDateString() : "—"}{" "}
+                {log.created_at && new Date(log.created_at).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </p>
             </div>
           </div>
-        ))}
-      </div>
+        );
+      })}
     </div>
   );
 }
+
 
 /* ─── HELPERS ─── */
 function Section({ title, children, badge, badgeColor = "blue", action, onEdit }) {
@@ -2474,6 +3208,122 @@ function InfoRow({ label, value }) {
       <span className="text-xs text-slate-400 w-24 shrink-0">{label}</span>
       <span className="text-slate-300 mr-1 text-xs">:</span>
       <span className="text-xs font-medium text-slate-700">{value}</span>
+    </div>
+  );
+}
+
+/* ─── CHAT PANEL ─── */
+
+function ChatPanel({ chatRefno, onClose, customerName, messages: initialMessages }) {
+  const [input, setInput] = useState("");
+  const [messages, setMessages] = useState(initialMessages || []);
+  const bottomRef = useRef(null);
+
+  useEffect(() => {
+    setMessages(initialMessages || []);
+  }, [initialMessages]);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const send = async () => {
+    if (!input.trim()) return;
+
+    const newMsg = {
+      conservation_id: chatRefno,
+      message_type: 'booking',
+      from: "me",
+      text: input.trim(),
+      time: new Date().toLocaleTimeString("en-IN", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    };
+
+    setMessages((prev) => [...prev, newMsg]);
+    setInput("");
+
+    await send_messages(newMsg)
+    // TODO: call API / socket here
+  };
+
+  return (
+    <div
+      className="fixed bottom-6 right-6 w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col z-50 overflow-hidden"
+      style={{ height: 400 }}
+    >
+      {/* Header */}
+      <div className="p-3 border-b flex justify-between items-center">
+        <div>
+          <p className="text-sm font-semibold">{customerName}</p>
+          <p className="text-xs text-slate-400">Customer</p>
+        </div>
+        <button onClick={onClose} className="text-xs text-red-500">
+          Close
+        </button>
+      </div>
+
+      {/* Messages */}
+      <div className="flex-1 p-3 overflow-y-auto space-y-2">
+        {messages.map((m, i) => (
+          <div key={i}>
+            {m.from === "system" ? (
+              <div className="text-center text-xs text-slate-400 my-2">
+                {m.text}
+              </div>
+            ) : (
+              <div
+                className={`flex ${
+                  m.from === "me" ? "justify-end" : "justify-start"
+                }`}
+              >
+                <div
+                  className={`max-w-[80%] px-3 py-2 rounded-xl text-xs ${
+                    m.from === "me"
+                      ? "bg-violet-600 text-white rounded-br-none"
+                      : "bg-white border border-slate-200 text-slate-700 rounded-bl-none"
+                  }`}
+                >
+                  {m.text}
+
+                  {m.time && (
+                    <p
+                      className={`text-[10px] mt-1 ${
+                        m.from === "me"
+                          ? "text-white/60"
+                          : "text-slate-400"
+                      }`}
+                    >
+                      {m.time}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+
+        <div ref={bottomRef} />
+      </div>
+
+      {/* Input */}
+      <div className="p-2 border-t flex gap-2">
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && send()}
+          placeholder="Type a message…"
+          className="flex-1 px-3 py-2 bg-slate-100 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-500"
+        />
+
+        <button
+          onClick={send}
+          className="px-3 py-2 bg-violet-600 text-white text-xs rounded-xl"
+        >
+          Send
+        </button>
+      </div>
     </div>
   );
 }
