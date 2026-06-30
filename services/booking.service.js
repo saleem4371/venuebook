@@ -85,4 +85,15 @@ export const all_notification = () => {
   return api.get(`/booking/all_notification`);
 };
 
+export const refundSecurityDeposit = (data) => {
+  return api.post(`/booking/refundSecurityDeposit`,data);
+};
+
+export const generateInvoiceApi = (data) => {
+  return api.post(`/booking/handlGenerateInvoice`,data);
+};
+export const convertToBooking = (data) => {
+  return api.post(`/booking/convertToBooking`,data);
+};
+
    

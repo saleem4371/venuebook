@@ -26,8 +26,8 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
    1. COMPANY PAN VERIFICATION
    Returns: { pan_number, company_name, status, business_category, registered_address }
 ═══════════════════════════════════════════════════════════════════ */
-export async function verifyPAN(panNumber) {
-  const pan = panNumber?.trim().toUpperCase() ?? "";
+export async function verifyPAN(data) {
+  const pan = data.pan?.trim().toUpperCase() ?? "";
 
   if (!pan) throw new Error("PAN number is required.");
   if (!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(pan)) {
@@ -39,6 +39,7 @@ export async function verifyPAN(panNumber) {
   try {
   const payload = {
     pan: pan,
+    category: data.category,
   };
 
   const response = await api.post('/thirdParty/verifyPAN', payload);
@@ -51,6 +52,7 @@ export async function verifyPAN(panNumber) {
     pan_number: response.data.pan_number || pan,
     company_name: response.data.company_name || '',
     status: response.data.status || 'Active',
+    gst_number: response.data.gst_number || '',
     business_category: response.data.business_category || 'Event Management',
     registered_address:
       response.data.registered_addressW ||
