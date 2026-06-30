@@ -14,3 +14,18 @@ export const formatPrice = (amount: number | string) => {
 
   return `${currencyIcon}${Number(amount || 0).toLocaleString("en-IN")}`;
 };
+
+
+export const getCountry = () => {
+  if (typeof window === "undefined") return null;
+
+  try {
+    return JSON.parse(localStorage.getItem("country") || "null");
+  } catch {
+    return null;
+  }
+};
+
+export const currency_icon = () => {
+  return getCountry()?.curreny_icon ?? "₹";
+};
