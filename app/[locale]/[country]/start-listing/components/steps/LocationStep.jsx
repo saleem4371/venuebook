@@ -10,6 +10,11 @@ import {
 } from "./config/locationConfig";
 import CenterPin from "./MapCenterPin";
 
+import { getCountry } from '@/services/global.service'
+import Image from "next/image";
+ 
+
+
 // ─────────────────────────────────────────────────────────────────────────────
 //  Google Maps dark-mode style palette
 // ─────────────────────────────────────────────────────────────────────────────
@@ -71,10 +76,12 @@ function parseAddressComponents(components = []) {
 //  Sub-component: Country dropdown
 // ─────────────────────────────────────────────────────────────────────────────
 
-function CountryDropdown({ value, onChange }) {
+function CountryDropdown({ value, onChange , countries}) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
-  const selected = COUNTRY_LIST.find((c) => c.code === value);
+  const selected = countries.find(
+  (c) => c.iso_code === value
+);
 
   useEffect(() => {
     const handler = (e) => {
@@ -83,6 +90,8 @@ function CountryDropdown({ value, onChange }) {
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
+
+const AWS_URL = process.env.NEXT_PUBLIC_AWS_BUCKET_URL;
 
   return (
     <div ref={ref} className="relative">
@@ -99,28 +108,19 @@ function CountryDropdown({ value, onChange }) {
             : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600",
         ].join(" ")}
       >
-        {selected ? (
-          <>
-            <span className="text-2xl leading-none flex-shrink-0">{selected.flag}</span>
-            <span className="text-sm font-semibold text-gray-800 dark:text-gray-200 flex-1 truncate">
-              {selected.name}
-            </span>
-            <span className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0 mr-0.5">
-              {selected.currency}
-            </span>
-          </>
-        ) : (
-          <span className="text-sm text-gray-400 dark:text-gray-500 flex-1">
-            Select country
-          </span>
-        )}
-        <ChevronDown
-          size={14}
-          className={[
-            "flex-shrink-0 text-gray-400 transition-transform duration-150",
-            open ? "rotate-180" : "",
-          ].join(" ")}
-        />
+          {selected ? (
+    <>
+      <img
+        src={`${process.env.NEXT_PUBLIC_AWS_BUCKET_URL}/${selected.flag}`}
+        alt={selected.name}
+        className="w-5 h-5 rounded-full object-cover"
+      />
+
+      <span>{selected.name}</span>
+    </>
+  ) : (
+    <span>Select country</span>
+  )}
       </button>
 
       {open && (
@@ -132,34 +132,36 @@ function CountryDropdown({ value, onChange }) {
             "bg-white dark:bg-gray-900 shadow-xl shadow-black/10 dark:shadow-black/40 overflow-hidden",
           ].join(" ")}
         >
-          {COUNTRY_LIST.map((c) => (
-            <button
-              key={c.code}
-              type="button"
-              role="option"
-              aria-selected={value === c.code}
-              onClick={() => { onChange(c.code); setOpen(false); }}
-              className={[
-                "w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors",
-                value === c.code
-                  ? "bg-violet-50 dark:bg-violet-950/40"
-                  : "hover:bg-gray-50 dark:hover:bg-gray-800/60",
-              ].join(" ")}
-            >
-              <span className="text-xl leading-none flex-shrink-0">{c.flag}</span>
-              <span
-                className={[
-                  "text-sm font-medium flex-1",
-                  value === c.code
-                    ? "text-violet-700 dark:text-violet-300"
-                    : "text-gray-700 dark:text-gray-300",
-                ].join(" ")}
-              >
-                {c.name}
-              </span>
-              <span className="text-xs text-gray-400 dark:text-gray-500">{c.currency}</span>
-            </button>
-          ))}
+        {countries.map((c) => (
+  <button
+    key={c.id}
+    type="button"
+    role="option"
+    aria-selected={value === c.iso_code}
+    onClick={() => {
+      onChange(c.iso_code);
+      setOpen(false);
+    }}
+    className={[
+      "w-full px-3 py-2 flex items-center gap-3 text-left text-sm transition",
+      value === c.iso_code
+        ? "bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-300"
+        : "hover:bg-gray-50 dark:hover:bg-gray-800",
+    ].join(" ")}
+  >
+    <img
+      src={`${process.env.NEXT_PUBLIC_AWS_BUCKET_URL}/${c.flag}`}
+      alt={c.name}
+      className="w-5 h-5 rounded-full object-cover"
+    />
+
+    <span className="flex-1">{c.name}</span>
+
+    <span className="text-xs text-gray-500">
+      +{c.phone_code}
+    </span>
+  </button>
+))}
         </div>
       )}
     </div>
@@ -279,6 +281,8 @@ export default function LocationStep({ form, updateForm, attempted }) {
   const [geocoding,   setGeocoding]   = useState(false);  // reverse geocode after map drag
   const [locating,    setLocating]    = useState(false);
   const [isDragging,  setIsDragging]  = useState(false);  // drives CenterPin animation
+
+  const [countries, setCountries] = useState([]);
 
   // Google Maps refs (no Marker — CenterPin overlay handles visuals)
   const mapRef       = useRef(null);
@@ -489,9 +493,10 @@ export default function LocationStep({ form, updateForm, attempted }) {
     updateForm({ country: code, pincode: "" });
     touch("country");
   };
-
-  const selectedCountry = COUNTRY_LIST.find((c) => c.code === effectiveCountry);
-
+  
+const selectedCountry = countries.find(
+  (c) => c.iso_code === effectiveCountry
+);
   // ── Sync map when lat/lng is set externally (address search, "Use my location") ──
   // Skip re-pan when coordinates already match the map center — this happens right
   // after the user drags (idle handler sets form.lat/lng from map.getCenter()) and
@@ -518,6 +523,43 @@ export default function LocationStep({ form, updateForm, attempted }) {
     mapInst.current.setZoom(16);
   }, [form.lat, form.lng]);
 
+  //getCountry
+useEffect(() => {
+  loadCountries();
+}, []);
+
+const loadCountries = async () => {
+  try {
+    const res = await getCountry();
+    const list = res.data || [];
+
+    setCountries(list);
+
+    // Read saved object
+    const savedCountry = JSON.parse(
+      localStorage.getItem("country") || "null"
+    );
+
+    if (savedCountry) {
+      const exists = list.find(
+        (c) =>
+          c.iso_code.toLowerCase() ===
+          savedCountry.iso_code.toLowerCase()
+      );
+
+      if (exists) {
+        updateForm({ country: exists.iso_code });
+      }
+    } else if (list.length > 0) {
+      updateForm({ country: list[0].iso_code });
+    }
+  } catch (err) {
+    console.error(err);
+  }
+};
+
+    //const saved = localStorage.getItem("country");
+
   return (
     <div className="space-y-6">
 
@@ -526,7 +568,7 @@ export default function LocationStep({ form, updateForm, attempted }) {
         <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">
           Country <span className="text-red-500">*</span>
         </label>
-        <CountryDropdown value={effectiveCountry} onChange={handleCountryChange} />
+        <CountryDropdown value={effectiveCountry} onChange={handleCountryChange}  countries={countries} />
         <p className="text-xs text-gray-400 dark:text-gray-500 mt-1.5">
           Sets map region, address format, and postal code validation
         </p>
@@ -717,28 +759,41 @@ export default function LocationStep({ form, updateForm, attempted }) {
           </div>
 
           {/* Country — locked, reflects top selector */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">
-              Country
-            </label>
-            <div
-              className={[
-                "w-full flex items-center gap-2.5 px-4 py-3 rounded-xl border",
-                "bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700",
-                "text-sm font-medium text-gray-500 dark:text-gray-400 select-none",
-              ].join(" ")}
-            >
-              <span className="text-lg leading-none flex-shrink-0">
-                {selectedCountry?.flag || "🌍"}
-              </span>
-              <span className="flex-1 truncate">
-                {selectedCountry?.name || "Not selected"}
-              </span>
-              <span className="text-[10px] text-gray-400 dark:text-gray-600 flex-shrink-0">
-                ↑ Set above
-              </span>
-            </div>
-          </div>
+        <div>
+  <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">
+    Country
+  </label>
+
+  <div
+    className={[
+      "w-full flex items-center gap-2.5 px-4 py-3 rounded-xl border",
+      "bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700",
+      "text-sm font-medium text-gray-500 dark:text-gray-400 select-none",
+    ].join(" ")}
+  >
+    <div className="w-6 h-6 flex-shrink-0 rounded-full overflow-hidden bg-white border border-gray-200">
+      {selectedCountry?.flag ? (
+        <img
+          src={`${process.env.NEXT_PUBLIC_AWS_BUCKET_URL}/${selectedCountry.flag}`}
+          alt={selectedCountry.name}
+          className="w-full h-full object-cover"
+        />
+      ) : (
+        <span className="flex items-center justify-center w-full h-full text-base">
+          🌍
+        </span>
+      )}
+    </div>
+
+    <span className="flex-1 truncate">
+      {selectedCountry?.name || "Not selected"}
+    </span>
+
+    <span className="text-[10px] text-gray-400 dark:text-gray-600 flex-shrink-0">
+      ↑ Set above
+    </span>
+  </div>
+</div>
         </div>
       </div>
 

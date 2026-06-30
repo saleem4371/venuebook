@@ -22,7 +22,6 @@ const inputCls = (invalid) => [
 import { getPropertyName } from "@/services/global.service";
 
 
- 
 
 export default function BasicsStep({ form, updateForm, attempted  }) {
   const [touched, setTouched] = useState({});
@@ -40,6 +39,8 @@ export default function BasicsStep({ form, updateForm, attempted  }) {
   const [isLoading, setIsLoading] = useState(true);
   const showSkeleton = useSkeletonDelay(isLoading);
 
+  
+
   useEffect(() => {
     load();
   }, [form.category]);
@@ -56,7 +57,33 @@ export default function BasicsStep({ form, updateForm, attempted  }) {
     }
   };
 
-  
+ const farmstayStyleGroups =
+  form.category === "farmstay"
+    ? Object.values(
+        (property ?? []).reduce((acc, item) => {
+          const groupName =
+            item.style_property === 1
+              ? "Farm Collection"
+              : item.style_property === 2
+              ? "Unique & Luxury Stay"
+              : "Other";
+
+          if (!acc[groupName]) {
+            acc[groupName] = {
+              group: groupName,
+              options: [],
+            };
+          }
+
+          acc[groupName].options.push({
+            key: item.id,
+            label: item.name,
+          });
+
+          return acc;
+        }, {})
+      )
+    : [];
 
   if (showSkeleton) return <BasicsSkeleton />;
 
@@ -117,7 +144,7 @@ export default function BasicsStep({ form, updateForm, attempted  }) {
       </div>
 
       {/* ── Subcategory / Type ── */}
-      {property.length > 0 && (
+      {form.category !== "farmstay" && property.length > 0 && (
         <div>
           <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-1">
             Property type <span className="text-red-500">*</span>
@@ -154,6 +181,23 @@ export default function BasicsStep({ form, updateForm, attempted  }) {
         </div>
       )}
 
+      {/* ── Farmstay Style (farmstay only) ── */}
+      {form.category === "farmstay" && (
+        // <FarmstayStyleSelector
+        //   value={form.farmstayStyle || ""}
+        //   onChange={(v) => { updateForm({ farmstayStyle: v }); touch("farmstayStyle"); }}
+        //   showError={showErr("farmstayStyle") && !form.farmstayStyle}
+        // />
+        <FarmstayStyleSelector
+  groups={farmstayStyleGroups}
+  value={form.farmstayStyle || ""}
+  onChange={(v) => {
+    updateForm({ farmstayStyle: v });
+    touch("farmstayStyle");
+  }}
+  showError={showErr("farmstayStyle") && !form.farmstayStyle}
+/>
+      )}
 
     </div>
   );
@@ -164,45 +208,82 @@ export default function BasicsStep({ form, updateForm, attempted  }) {
 //  Rendered only when category === "farmstay"
 // ─────────────────────────────────────────────────────────────────────────────
 
-const FARMSTAY_STYLE_GROUPS = [
-  {
-    group: "Farm Collection",
-    options: [
-      { key: "farm_collection",   label: "The Farm Collection"  },
-      { key: "rustic_nature",     label: "Rustic & Nature Lodges" },
-      { key: "agro_tourism",      label: "Agro Tourism Focus"   },
-      { key: "sight_view",        label: "Sight & View Stay"    },
-    ],
-  },
-  {
-    group: "Unique & Luxury Stay",
-    options: [
-      { key: "unique_structures", label: "Unique Structures"  },
-      { key: "luxury_villas",     label: "Luxury Villas"      },
-      { key: "waterfront",        label: "Waterfront Access"  },
-    ],
-  },
-];
 
-function FarmstayStyleSelector({ value, onChange, showError }) {
+
+// function FarmstayStyleSelector({ value, onChange, showError }) {
+//   return (
+//     <div>
+//       <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-1">
+//         Farmstay style <span className="text-red-500">*</span>
+//       </label>
+//       <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+//         Choose the style that best describes your farmstay
+//       </p>
+
+//       <div className="space-y-4">
+//         {FARMSTAY_STYLE_GROUPS.map((grp) => (
+//           <div key={grp.group}>
+//             <p className="text-[11px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2">
+//               {grp.group}
+//             </p>
+//             <div className="flex flex-wrap gap-2">
+//               {grp.options.map((opt) => {
+//                 const active = value === opt.key;
+//                 return (
+//                   <button
+//                     key={opt.key}
+//                     type="button"
+//                     onClick={() => onChange(opt.key)}
+//                     className={[
+//                       "px-4 py-2 rounded-full border text-sm font-medium transition-all duration-150",
+//                       "focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500",
+//                       active
+//                         ? "border-violet-600 bg-violet-600 text-white shadow-sm"
+//                         : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-900 hover:border-violet-400 dark:hover:border-violet-600 hover:text-violet-700 dark:hover:text-violet-300",
+//                     ].join(" ")}
+//                   >
+//                     {opt.label}
+//                   </button>
+//                 );
+//               })}
+//             </div>
+//           </div>
+//         ))}
+//       </div>
+
+//       {showError && (
+//         <p className="text-xs text-red-500 mt-2">Please select a farmstay style</p>
+//       )}
+//     </div>
+//   );
+// }
+function FarmstayStyleSelector({
+  groups,
+  value,
+  onChange,
+  showError,
+}) {
   return (
     <div>
       <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-1">
         Farmstay style <span className="text-red-500">*</span>
       </label>
+
       <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-        Choose the style that best describes your farmstay
+        Choose the style that best describes your farmstays
       </p>
 
       <div className="space-y-4">
-        {FARMSTAY_STYLE_GROUPS.map((grp) => (
+        {(groups || []).map((grp) => (
           <div key={grp.group}>
             <p className="text-[11px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2">
               {grp.group}
             </p>
+
             <div className="flex flex-wrap gap-2">
               {grp.options.map((opt) => {
                 const active = value === opt.key;
+
                 return (
                   <button
                     key={opt.key}
@@ -226,7 +307,9 @@ function FarmstayStyleSelector({ value, onChange, showError }) {
       </div>
 
       {showError && (
-        <p className="text-xs text-red-500 mt-2">Please select a farmstay style</p>
+        <p className="text-xs text-red-500 mt-2">
+          Please select a farmstay style
+        </p>
       )}
     </div>
   );

@@ -4,6 +4,8 @@ import { useState,useEffect } from "react";
 import { IndianRupee, Info, ChevronDown, Check, Clock, AlertCircle ,Percent} from "lucide-react";
 import { PRICING_CONFIG, VENUE_SHIFTS, TIME_SLOTS } from "./config/pricingConfig";
 
+import { currency_icon } from '@/lib/currency_format'
+
 // ─── Shared helpers ────────────────────────────────────────────────────────
 
 const inputCls = (invalid) => [
@@ -16,12 +18,19 @@ const inputCls = (invalid) => [
 ].join(" ");
 
 function RupeeInput({ value, onChange, onBlur, placeholder, invalid }) {
+
+  const currency = currency_icon();
   return (
     <div className="relative">
-      <Percent
+
+      {/* <Percent
         size={14}
         className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
-      />
+      /> */}
+      <span size={14}
+        className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+          {currency}
+        </span>
       <input
         type="number"
         min="0"

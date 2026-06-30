@@ -10,6 +10,7 @@ import { getCountryName, getLocationConfig } from "./config/locationConfig";
 import { getAmenties } from "@/services/global.service";
 import { ReviewSkeleton, useSkeletonDelay } from "./skeletons/index";
 
+import { currency_icon,formatPrice } from '@/lib/currency_format'
 
 // ─── Section card ──────────────────────────────────────────────────────────
 
@@ -93,6 +94,8 @@ export default function ReviewStep({ form, goToStep }) {
   const [isLoading, setIsLoading]  = useState(true);
   const showSkeleton = useSkeletonDelay(isLoading);
 
+   const currency = currency_icon();
+
   useEffect(() => {
     load();
   }, [form.category]);
@@ -152,7 +155,7 @@ export default function ReviewStep({ form, goToStep }) {
                   <div key={s.key} className="flex items-center justify-between">
                     <span className="text-xs text-gray-600 dark:text-gray-400">{s.label} · {s.time}</span>
                     <span className="text-xs font-semibold text-gray-800 dark:text-gray-200">
-                      {fmt(pricing.shifts[s.key].price)}
+                      {formatPrice(pricing.shifts[s.key].price)}
                     </span>
                   </div>
                 ))}
@@ -178,7 +181,7 @@ export default function ReviewStep({ form, goToStep }) {
             </p>
           )}
 
-          {pricing.deposit && <Row label="Security deposit" value={fmt(pricing.deposit)} />}
+          {pricing.deposit && <Row label="Security deposit" value={formatPrice(pricing.deposit)} />}
         </>
       );
     }
@@ -190,10 +193,10 @@ export default function ReviewStep({ form, goToStep }) {
         {rates.map((r) => {
           // Support both flat (pricing.nightly) and nested (pricing.rates.nightly)
           const val = pricing[r.key] || pricing.rates?.[r.key];
-          return val ? <Row key={r.key} label={r.label} value={fmt(val)} /> : null;
+          return val ? <Row key={r.key} label={r.label} value={formatPrice(val)} /> : null;
         })}
         {pricingConfig.weekendToggle && pricing.weekendEnabled && (
-          <Row label="Weekend rate" value={fmt(pricing.weekendRate || pricing.weekendPrice)} />
+          <Row label="Weekend rate" value={formatPrice(pricing.weekendRate || pricing.weekendPrice)} />
         )}
         {pricingConfig.checkInOut && (
           <>
@@ -202,7 +205,7 @@ export default function ReviewStep({ form, goToStep }) {
           </>
         )}
         {pricingConfig.hasDeposit && pricing.deposit && (
-          <Row label="Security deposit" value={fmt(pricing.deposit)} />
+          <Row label="Security deposit" value={formatPrice(pricing.deposit)} />
         )}
       </>
     );
@@ -268,7 +271,7 @@ export default function ReviewStep({ form, goToStep }) {
           );
         })()}
       </Section>
-
+       
       {/* ── Step 2: Amenities ── */}
       <Section title="Amenities" stepIndex={2} onEdit={goToStep}>
 
