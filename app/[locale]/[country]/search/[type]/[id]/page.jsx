@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import { AnimatePresence } from "framer-motion";
 import { MapPin, Building2, ChevronRight, Users, UtensilsCrossed, BedDouble, Bath, Star } from "lucide-react";
@@ -24,7 +24,7 @@ function PropertyMeta({ category }) {
 
   if (key === "venues") {
     return (
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-gray-500 dark:text-gray-400 mt-1.5">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1.5">
         <span className="flex items-center gap-1.5">
           <Users size={13} strokeWidth={1.6} className="text-gray-400 flex-none" />
           1,000 Guests
@@ -39,9 +39,9 @@ function PropertyMeta({ category }) {
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-gray-500 dark:text-gray-400 mt-1.5">
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1.5">
       <span className="flex items-center gap-1.5">
-        <BedDouble size={13} strokeWidth={1.6} className="text-gray-400 flex-none" />
+        <BedDouble size={12} strokeWidth={1.6} className="text-gray-400 flex-none" />
         4 bedrooms
       </span>
       {dot}
@@ -67,8 +67,44 @@ export default function ListingPage() {
   const [openTour, setOpenTour] = useState(false);
   const [active, setActive] = useState("photos");
   const [showTabs, setShowTabs] = useState(false);
+
+  // ── Actual header height (measured at runtime, updated on resize) ──────────
+  // Avoids hardcoding an offset that drifts across screen sizes / content changes.
+  const [headerH, setHeaderH] = useState(57);
+  // Ref keeps the scroll handler up-to-date without re-adding the listener.
+  const scrollOffsetRef = useRef(57 + 44 + 8); // header + section-nav + gap
   const [calendarRange, setCalendarRange] = useState({ start: null, end: null });
   const [venueSelection, setVenueSelection] = useState({ date: null, shift: null, shiftLabel: null, shiftTime: null });
+  const [calendarResetKey,    setCalendarResetKey]    = useState(0);
+  const [calendarResetShiftKey, setCalendarResetShiftKey] = useState(0);
+  const [calendarResetEndKey,  setCalendarResetEndKey]  = useState(0);
+
+  const propertyName = catKey === "venues"
+    ? "Monappa Heritage Convention Hall"
+    : catKey === "farmstays"
+    ? "Deenapani Valley Farmstay"
+    : undefined;
+
+  // Event Date X — clears date + shift
+  const clearVenueSelection = () => {
+    setVenueSelection({ date: null, shift: null, shiftLabel: null, shiftTime: null });
+    setCalendarResetKey((k) => k + 1);
+  };
+  // Time Slot X — clears shift only, keeps date
+  const clearShift = () => {
+    setVenueSelection((prev) => ({ ...prev, shift: null, shiftLabel: null, shiftTime: null }));
+    setCalendarResetShiftKey((k) => k + 1);
+  };
+  // Check-in X — clears both dates
+  const clearCalendarRange = () => {
+    setCalendarRange({ start: null, end: null });
+    setCalendarResetKey((k) => k + 1);
+  };
+  // Checkout X — clears end only, keeps start
+  const clearCheckout = () => {
+    setCalendarRange((prev) => ({ ...prev, end: null }));
+    setCalendarResetEndKey((k) => k + 1);
+  };
 
   const images = [
     "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85",
@@ -105,33 +141,86 @@ export default function ListingPage() {
     location: "Location",
   };
 
+  // ── Measure actual header height; update offset ref whenever it changes ─────
+  useEffect(() => {
+    const NAV_H = 44; // section-nav inner height (py-3 × 2 + text ≈ 44px)
+    const GAP   = 8;  // breathing room so headings aren't flush with the nav
+    const measure = () => {
+      const hdr = document.querySelector("header");
+      if (!hdr) return;
+      const h = hdr.offsetHeight;
+      setHeaderH(h);
+      scrollOffsetRef.current = h + NAV_H + GAP;
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    const hdr = document.querySelector("header");
+    if (hdr) ro.observe(hdr);
+    return () => ro.disconnect();
+  }, []);
+
+  // ── Scroll: show/hide tabs + track active section ─────────────────────────
+  // Uses a ref for the offset so the handler never closes over stale state.
   useEffect(() => {
     const onScroll = () => {
       const scrollY = window.scrollY;
-      setShowTabs(scrollY > 220);
-      for (const id of sections) {
-        const el = document.getElementById(id);
-        if (el) {
-          const top = el.getBoundingClientRect().top;
-          if (top <= 140 && top >= -500) setActive(id);
+      // Show tabs once the gallery is fully scrolled past
+      setShowTabs(scrollY > 150);
+
+      // Reverse-iterate: deepest section whose top has reached the sticky nav wins
+      const offset = scrollOffsetRef.current;
+      for (let i = sections.length - 1; i >= 0; i--) {
+        const el = document.getElementById(sections[i]);
+        if (el && el.getBoundingClientRect().top <= offset + 20) {
+          setActive(sections[i]);
+          break;
         }
       }
     };
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+  }, []); // intentionally empty — offset read via ref, sections is stable
 
   return (
     <div className="flex flex-col relative bg-white dark:bg-gray-950 min-h-screen">
 
-      {/* ── STICKY SECTION TABS — top must match fixed header height exactly ── */}
-      <div style={{ top: "56px" }} className={`sticky z-[60] bg-white dark:bg-gray-950 border-b border-gray-100 dark:border-gray-800 shadow-sm transition-all duration-300 ${showTabs ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}>
+      {/*
+        ── STICKY SECTION TABS ────────────────────────────────────────────────
+        Z-INDEX LAYER REFERENCE (do not use arbitrary values elsewhere):
+          z-[201]  Modal panels   (EnquiryModal, AmenitiesGrid)
+          z-[200]  Modal backdrops
+          z-[190]  Fullscreen overlays (PhotoTourOverlay)
+          z-[150]  Global header  (fixed)
+          z-[101]  Mobile booking sheet panel
+          z-[100]  Mobile booking sheet backdrop
+          z-[40]   Mobile bottom booking bar
+          z-[30]   Sticky section navigation  ← this element
+          z-auto   Page content
+        ──────────────────────────────────────────────────────────────────────
+        top is set from the measured header height so the nav always sits flush
+        below the header regardless of viewport / content changes.
+      */}
+      <div
+        id="section-nav"
+        style={{ top: `${headerH}px` }}
+        className={`sticky z-[30] border-b transition-all duration-300 ${
+          showTabs
+            ? "opacity-100 pointer-events-auto bg-white/95 dark:bg-gray-950/95 backdrop-blur-sm border-gray-100 dark:border-gray-800 shadow-[0_2px_12px_rgba(0,0,0,0.06)]"
+            : "opacity-0 pointer-events-none bg-white dark:bg-gray-950 border-transparent"
+        }`}
+      >
         <div className="max-w-7xl mx-auto px-4 md:px-6">
           <div className="flex gap-6 overflow-x-auto text-sm py-3" style={{ scrollbarWidth: "none" }}>
             {sections.map((tab) => (
               <button
                 key={tab}
-                onClick={() => document.getElementById(tab)?.scrollIntoView({ behavior: "smooth" })}
+                onClick={() => {
+                  const el = document.getElementById(tab);
+                  if (!el) return;
+                  // Offset by header + nav height so the section heading is fully visible
+                  const top = el.getBoundingClientRect().top + window.scrollY - scrollOffsetRef.current;
+                  window.scrollTo({ top, behavior: "smooth" });
+                }}
                 className={`pb-1 whitespace-nowrap transition-colors duration-150 ${
                   active === tab
                     ? `font-semibold ${colors.tabTextActive} border-b-2 ${colors.tabBorderColor}`
@@ -163,7 +252,7 @@ export default function ListingPage() {
 
               {/* ── LEFT: core property info ── */}
               <div className="flex-1 min-w-0">
-                <h1 className="text-[22px] md:text-2xl lg:text-[26px] font-bold text-gray-900 dark:text-white leading-snug tracking-tight">
+                <h1 className="text-xl md:text-2xl lg:text-[26px] font-bold text-gray-900 dark:text-white leading-snug tracking-tight">
                   {catKey === "venues" ? "Monappa Heritage Convention Hall" : "Riverside Farmstay — Deenapani Estate"}
                 </h1>
 
@@ -172,14 +261,14 @@ export default function ListingPage() {
 
                 {/* Location */}
                 <div className="mt-2 flex items-center gap-1.5">
-                  <MapPin size={14} className={`${colors.accent} flex-none`} strokeWidth={2} />
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <MapPin size={13} className={`${colors.accent} flex-none`} strokeWidth={2} />
+                  <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">
                     {catKey === "venues" ? "Kadri, Mangalore, Karnataka, India" : "Kaikamba, Mangalore, Karnataka, India"}
                   </span>
                 </div>
 
                 {/* Starting price — below location, both categories */}
-                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                <p className="mt-2 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                   {catKey === "venues" ? (
                     <>Starting from{" "}<span className="font-semibold text-gray-900 dark:text-white">₹20,00,000</span></>
                   ) : (
@@ -189,7 +278,7 @@ export default function ListingPage() {
                 </p>
 
                 {/* Rating + reviews */}
-                <div className="flex items-center gap-3 mt-2 text-sm">
+                <div className="flex items-center gap-3 mt-2 text-xs sm:text-sm">
                   <span className="flex items-center gap-1 font-semibold text-gray-900 dark:text-white">
                     <Star size={14} className="fill-amber-400 text-amber-400" />
                     4.8
@@ -214,13 +303,13 @@ export default function ListingPage() {
                   M
                 </div>
                 <div className="min-w-0 md:text-center md:w-full">
-                  <p className="text-[10px] uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1 font-medium">
+                  <p className="text-[9px] sm:text-[10px] uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1 font-medium">
                     Part of
                   </p>
-                  <p className="font-semibold text-xs md:text-sm text-gray-900 dark:text-white leading-snug">
+                  <p className="font-semibold text-[11px] sm:text-xs md:text-sm text-gray-900 dark:text-white leading-snug">
                     {catKey === "venues" ? "Monappa Estates Group" : "Deenapani Estate Collection"}
                   </p>
-                  <p className={`text-xs mt-2 flex items-center md:justify-center gap-0.5 font-medium ${colors.accent} group-hover:gap-1.5 transition-all`}>
+                  <p className={`text-[11px] sm:text-xs mt-2 flex items-center md:justify-center gap-0.5 font-medium ${colors.accent} group-hover:gap-1.5 transition-all`}>
                     View Parent Property <ChevronRight size={11} />
                   </p>
                 </div>
@@ -228,10 +317,8 @@ export default function ListingPage() {
 
             </div>
 
-            {/* Hero Highlights bar */}
-            <div id="highlights">
-              <HeroHighlights category={category} />
-            </div>
+            {/* Signature Highlights */}
+            <HeroHighlights category={category} />
 
             {/* Calendar — moved directly after highlights */}
             <div id="calendar" className="border-t border-gray-100 dark:border-gray-800 py-4">
@@ -240,11 +327,14 @@ export default function ListingPage() {
                 isMember={true}
                 onSelectionChange={setVenueSelection}
                 onRangeChange={setCalendarRange}
+                resetKey={calendarResetKey}
+                resetShiftKey={calendarResetShiftKey}
+                resetEndKey={calendarResetEndKey}
               />
             </div>
 
             {/* Description */}
-            <div className="border-t border-gray-100 dark:border-gray-800 pt-6 pb-6 text-sm text-gray-600 dark:text-gray-300 leading-7">
+            <div className="border-t border-gray-100 dark:border-gray-800 pt-6 pb-6 text-sm text-gray-600 dark:text-gray-300 leading-6 sm:leading-7">
               {catKey === "venues"
                 ? "A heritage convention hall nestled in the heart of Mangalore. With colonial-era architecture, modern AV infrastructure, and an experienced catering team, this venue has hosted over 2,000 events ranging from intimate corporate dinners to grand weddings of 1,000+ guests."
                 : "A beautifully maintained estate nestled in the hills of Deenapani. Wake up to sunrise views, sip fresh coffee from the plantation, and unwind by the pool. Perfect for families, friends, and couples looking for a quiet, nature-immersive escape just hours from the city."
@@ -257,8 +347,8 @@ export default function ListingPage() {
                 G
               </div>
               <div>
-                <p className="font-semibold text-gray-900 dark:text-white">Hosted by Gaurav</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Superhost · 4 years · 98% response rate</p>
+                <p className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white">Hosted by Gaurav</p>
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Superhost · 4 years · 98% response rate</p>
               </div>
             </div>
 
@@ -266,21 +356,7 @@ export default function ListingPage() {
             <ExperienceBlock category={category} />
 
             {/* Amenities — premium icon grid */}
-            <AmenitiesGrid
-              category={category}
-              amenities={catKey === "venues"
-                ? ["Central AC", "High-speed Wi-Fi", "Stage & PA System", "AV Equipment", "In-house Catering", "Valet Parking", "Power Backup", "Bridal Suite"]
-                : catKey === "farmstays"
-                ? ["Private Pool", "High-speed Wi-Fi", "Central AC", "Fully Equipped Kitchen", "Bonfire Pit", "Free Parking", "Power Backup", "Plantation Trail", "Pet Friendly", "Organic Plantation"]
-                : catKey === "studios"
-                ? ["Photography Setup", "Lighting Included", "Green Screen", "Soundproofed", "Editing Suite", "Props Available", "High-speed Wi-Fi", "Free Parking"]
-                : catKey === "workspaces"
-                ? ["1 Gbps Internet", "Free Coffee", "Printing Included", "Meeting Rooms", "24/7 Access", "Free Parking", "Whiteboard Walls", "Phone Booths"]
-                : catKey === "rentals"
-                ? ["Delivery Available", "Setup Included", "Fully Insured", "24/7 Support", "Free Parking", "Power Backup"]
-                : ["Expert Guide", "Gear Included", "Meals Included", "Transport Provided", "24/7 Support", "Free Cancellation"]
-              }
-            />
+            <AmenitiesGrid category={category} />
 
           </div>
 
@@ -290,9 +366,13 @@ export default function ListingPage() {
             <div className="sticky top-[112px]">
               <BookingCard
                 category={category}
-                propertyName={catKey === "venues" ? "Monappa Heritage Convention Hall" : undefined}
+                propertyName={propertyName}
                 calendarRange={calendarRange}
                 venueSelection={venueSelection}
+                onClearVenueSelection={clearVenueSelection}
+                onClearShift={clearShift}
+                onClearCalendarRange={clearCalendarRange}
+                onClearCheckout={clearCheckout}
               />
             </div>
           </div>
@@ -312,19 +392,19 @@ export default function ListingPage() {
         {/* Map */}
         <div id="location" className="border-t border-gray-100 dark:border-gray-800 pt-8 mt-2 mb-12">
           <div className="mb-5">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Location</h2>
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">Location</h2>
             <div className="flex items-center gap-2 mt-2">
-              <MapPin size={15} className={`${colors.accent} flex-none`} strokeWidth={2} />
-              <span className="text-base font-semibold text-gray-800 dark:text-gray-200">
+              <MapPin size={14} className={`${colors.accent} flex-none`} strokeWidth={2} />
+              <span className="text-sm sm:text-base font-semibold text-gray-800 dark:text-gray-200">
                 {catKey === "venues" ? "Kadri, Mangalore, Karnataka, India" : "Kaikamba, Mangalore, Karnataka, India"}
               </span>
             </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1.5 ml-[23px]">
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1.5 ml-[22px]">
               Exact address shared after booking confirmation.
             </p>
           </div>
           <div className="rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-800 shadow-sm">
-            <div className="w-full h-[380px]">
+            <div className="w-full h-[200px] sm:h-[280px] md:h-[380px]">
               <iframe
                 src="https://maps.google.com/maps?q=mangalore&t=&z=13&ie=UTF8&iwloc=&output=embed"
                 className="w-full h-full border-0"
@@ -337,10 +417,21 @@ export default function ListingPage() {
       </div>
 
       {/* Mobile bottom bar */}
+      {/*
+        Mobile bottom bar — receives the exact same calendar state as the
+        desktop card so there is a single source of truth for dates, range,
+        nights, and pricing across both layouts.
+      */}
       <BookingCard
         category={category}
         mobileOnly
-        propertyName={catKey === "venues" ? "Monappa Heritage Convention Hall" : undefined}
+        propertyName={propertyName}
+        calendarRange={calendarRange}
+        venueSelection={venueSelection}
+        onClearVenueSelection={clearVenueSelection}
+        onClearShift={clearShift}
+        onClearCalendarRange={clearCalendarRange}
+        onClearCheckout={clearCheckout}
       />
 
       {/* Photo tour overlay */}

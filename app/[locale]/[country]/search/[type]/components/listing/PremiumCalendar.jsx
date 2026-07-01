@@ -178,7 +178,7 @@ function VenueMonthGrid({ year, month, selectedDate, onDateClick, colors, catKey
   );
 }
 
-function VenueCalendar({ category, colors, isMember, onSelectionChange }) {
+function VenueCalendar({ category, colors, isMember, onSelectionChange, resetKey, resetShiftKey }) {
   const catKey = normalizeCategory(category);
   const basePrice = BASE_PRICE[catKey] ?? 20000;
   const now = new Date();
@@ -186,6 +186,12 @@ function VenueCalendar({ category, colors, isMember, onSelectionChange }) {
   const [baseMonth, setBaseMonth] = useState({ year: now.getFullYear(), month: now.getMonth() });
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedShift, setSelectedShift] = useState(null);
+
+  // Full reset (Event Date X cleared)
+  useEffect(() => { setSelectedDate(null); setSelectedShift(null); }, [resetKey]);
+
+  // Shift-only reset (Time Slot X cleared — keeps selectedDate)
+  useEffect(() => { setSelectedShift(null); }, [resetShiftKey]);
 
   const SHIFTS = [
     { id: "morning",   label: "Morning",   time: "8:00 AM – 1:00 PM",  icon: Sunrise,      mult: 0.50 },
@@ -470,7 +476,7 @@ function StayMonthGrid({ year, month, range, hoverDate, checkoutLimit, onDateCli
   );
 }
 
-function StayCalendar({ category, colors, isMember, onRangeChange }) {
+function StayCalendar({ category, colors, isMember, onRangeChange, resetKey, resetEndKey }) {
   const catKey = normalizeCategory(category);
   const minNights = MIN_NIGHTS[catKey] ?? 1;
   const now = new Date();
@@ -482,6 +488,12 @@ function StayCalendar({ category, colors, isMember, onRangeChange }) {
 
   // Notify parent when range changes
   useEffect(() => { onRangeChange?.(range); }, [range]);
+
+  // Full reset (Check-in X cleared)
+  useEffect(() => { setRange({ start: null, end: null }); setHoverDate(null); setRangeError(null); }, [resetKey]);
+
+  // End-only reset (Checkout X cleared — keeps start)
+  useEffect(() => { setRange((prev) => ({ ...prev, end: null })); setHoverDate(null); setRangeError(null); }, [resetEndKey]);
 
   const nextMonth = useMemo(() => addMonths(baseMonth.year, baseMonth.month, 1), [baseMonth]);
 
@@ -625,11 +637,11 @@ function StayCalendar({ category, colors, isMember, onRangeChange }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // EXPORT — routes to correct mode based on category
 // ═══════════════════════════════════════════════════════════════════════════════
-export default function PremiumCalendar({ category = "venues", isMember = true, onSelectionChange, onRangeChange }) {
+export default function PremiumCalendar({ category = "venues", isMember = true, onSelectionChange, onRangeChange, resetKey, resetShiftKey, resetEndKey }) {
   const colors = getCategoryColors(category);
   const mode = getCalendarMode(category);
 
   return mode === "event"
-    ? <VenueCalendar category={category} colors={colors} isMember={isMember} onSelectionChange={onSelectionChange} />
-    : <StayCalendar category={category} colors={colors} isMember={isMember} onRangeChange={onRangeChange} />;
+    ? <VenueCalendar category={category} colors={colors} isMember={isMember} onSelectionChange={onSelectionChange} resetKey={resetKey} resetShiftKey={resetShiftKey} />
+    : <StayCalendar category={category} colors={colors} isMember={isMember} onRangeChange={onRangeChange} resetKey={resetKey} resetEndKey={resetEndKey} />;
 }

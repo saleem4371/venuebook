@@ -262,8 +262,8 @@ export default function ExperienceBlock({ category }) {
   return (
     <div className="border-t border-gray-100 dark:border-gray-800 pt-8">
       <div className="mb-5">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{data.heading}</h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{data.subheading}</p>
+        <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">{data.heading}</h2>
+        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">{data.subheading}</p>
       </div>
 
       {/* Tab pills — horizontal scroll with fade + arrows */}
@@ -306,13 +306,13 @@ export default function ExperienceBlock({ category }) {
         </div>
 
         {/* Content */}
-        <div className="p-5 flex items-start justify-between gap-4">
+        <div className="p-4 sm:p-5 flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1.5">
-              <ItemIcon size={18} className={iconAccent} strokeWidth={1.75} />
-              <h3 className="font-semibold text-gray-900 dark:text-white">{item.title}</h3>
+              <ItemIcon size={16} className={iconAccent} strokeWidth={1.75} />
+              <h3 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white">{item.title}</h3>
             </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-3">{item.desc}</p>
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-3">{item.desc}</p>
             {/* Capacity + layout chips */}
             <div className="flex flex-wrap gap-2 text-xs">
               <span className={`px-2.5 py-1 rounded-full font-medium ${tagBg}`}>{item.capacity}</span>

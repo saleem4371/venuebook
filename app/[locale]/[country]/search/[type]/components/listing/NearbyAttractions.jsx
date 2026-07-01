@@ -137,7 +137,7 @@ function PlaceCard({ place }) {
   return (
     <div className="group rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 hover:shadow-md transition-all duration-200 cursor-pointer">
       {/* Image */}
-      <div className="relative h-40 overflow-hidden">
+      <div className="relative h-36 sm:h-40 overflow-hidden">
         <img
           src={place.image}
           alt={place.name}
@@ -156,11 +156,11 @@ function PlaceCard({ place }) {
       </div>
 
       {/* Info */}
-      <div className="p-4">
-        <h3 className="font-semibold text-sm text-gray-900 dark:text-white leading-tight mb-2">
+      <div className="p-3 sm:p-4">
+        <h3 className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-white leading-tight mb-1.5 sm:mb-2">
           {place.name}
         </h3>
-        <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+        <div className="flex items-center gap-2 sm:gap-3 text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
           <span className="flex items-center gap-1">
             <MapPin size={10} /> {place.distance}
           </span>
@@ -191,8 +191,8 @@ export default function NearbyAttractions({ category }) {
   return (
     <div className="border-t border-gray-100 dark:border-gray-800 pt-8 pb-2">
       <div className="mb-5">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{title}</h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{subtitle}</p>
+        <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">{title}</h2>
+        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">{subtitle}</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

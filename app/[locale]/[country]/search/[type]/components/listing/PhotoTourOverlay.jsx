@@ -221,7 +221,7 @@ export default function PhotoTourOverlay({ images = [], onClose }) {
   return (
     <>
       <motion.div
-        className="fixed inset-0 z-50 flex flex-col bg-white dark:bg-gray-950"
+        className="fixed inset-0 z-[190] flex flex-col bg-white dark:bg-gray-950"
         style={{ willChange: "transform" }}
         initial={{ y: "100%" }}
         animate={{ y: 0 }}

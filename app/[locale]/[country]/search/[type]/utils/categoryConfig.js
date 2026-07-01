@@ -182,7 +182,7 @@ export function getCalendarMode(category) {
 //   3 buttons → primary gradient full-width + two outlined side-by-side below
 export function getDefaultCTA(category) {
   const key = normalizeCategory(category);
-  if (key === "venues")    return ["reserve", "enquiry", "paxEnquiry"];
+  if (key === "venues")    return ["reserve", "book", "enquiry", "paxEnquiry"];
   if (key === "farmstays") return ["book"];
   if (key === "studios" || key === "workspaces") return ["book"];
   if (key === "rentals")   return ["reserve", "paxEnquiry"];

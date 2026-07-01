@@ -185,18 +185,18 @@ export default function SocialProofHub({ category }) {
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <div className="flex items-center gap-1.5">
-          <Star size={20} className="text-amber-400 fill-amber-400" />
-          <span className="text-2xl font-bold text-gray-900 dark:text-white">4.8</span>
+          <Star size={18} className="text-amber-400 fill-amber-400" />
+          <span className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">4.8</span>
         </div>
-        <div className="w-px h-6 bg-gray-200 dark:bg-gray-700" />
-        <span className="text-gray-500 dark:text-gray-400 text-sm">{totalReviews} reviews</span>
+        <div className="w-px h-5 bg-gray-200 dark:bg-gray-700" />
+        <span className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm">{totalReviews} reviews</span>
       </div>
 
       {/* Rating breakdown */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-8 gap-y-3 mb-7 pb-6 border-b border-gray-100 dark:border-gray-800">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 sm:gap-x-8 gap-y-3 mb-7 pb-6 border-b border-gray-100 dark:border-gray-800">
         {RATING_BREAKDOWN.map(({ label, value }) => (
-          <div key={label} className="flex items-center gap-3">
-            <span className="text-xs text-gray-500 dark:text-gray-400 w-24 flex-none">{label}</span>
+          <div key={label} className="flex items-center gap-2 sm:gap-3">
+            <span className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 w-20 sm:w-24 flex-none">{label}</span>
             <div className="flex-1 h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
               <div
                 className="h-full bg-gray-800 dark:bg-gray-200 rounded-full"
@@ -235,7 +235,7 @@ export default function SocialProofHub({ category }) {
             return (
               <div
                 key={review.id}
-                className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 hover:shadow-sm transition-shadow"
+                className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 sm:p-5 hover:shadow-sm transition-shadow"
               >
                 {/* Author */}
                 <div className="flex items-start gap-3 mb-3">

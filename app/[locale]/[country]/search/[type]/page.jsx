@@ -4,15 +4,18 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { useParams, useSearchParams } from "next/navigation";
-import { X, Scale, SearchX, MapPin, SlidersHorizontal } from "lucide-react";
+import { X, Scale, SearchX, MapPin, SlidersHorizontal, Clapperboard, Map as MapIcon } from "lucide-react";
 
 import MapView           from "./components/MapView";
 import VenueCard         from "./components/VenueCard";
 import FilterDrawer      from "./components/FilterDrawer";
 import WishlistPopup     from "./components/WishlistPopup";
 import FilterRow         from "./components/FilterRow";
+import ReelsPanel        from "./components/ReelsPanel";
+import MobileReels       from "./components/MobileReels";
 import { DEFAULT_FILTERS } from "./components/FilterDrawer";
 import ListingsSearchBar from "./components/ListingsSearchBar";
+import { getDemoVideoUrl } from "./data/demoReelVideos";
 
 import { useCategory }          from "@/context/CategoryContext";
 import { useUI }                from "@/context/UIContext";
@@ -86,7 +89,7 @@ export default function SearchPage() {
   const { locale, country } = useParams();
   const searchParams        = useSearchParams();
 
-  const { showMap, setShowMap, filterOpen, setFilterOpen, setLoginOpen } = useUI();
+  const { showMap, setShowMap, showReels, setShowReels, filterOpen, setFilterOpen, setLoginOpen } = useUI();
   const { activeCategory } = useCategory();
 
   /* ── data ──────────────────────────────────────────────────── */
@@ -107,6 +110,7 @@ export default function SearchPage() {
   const [selectedCategory, setSelectedCategory]  = useState(null);
   const [mapBounds,        setMapBounds]         = useState(null);
   const [mapResetKey,      setMapResetKey]       = useState(0);
+  const [viewMode,         setViewMode]          = useState("map"); // "map" | "reels"
   /* Venues reported as visible by MapView — drives the card grid */
   const [cardVenues,       setCardVenues]        = useState(null);
   /* Init from URL params (passed by home page search) */
@@ -156,6 +160,21 @@ export default function SearchPage() {
    * Before the first map idle fires, fall back to allCards so something renders.
    */
   const displayCards = cardVenues ?? allCards;
+
+  /**
+   * reelVenues — same as displayCards but every entry is guaranteed to have
+   * a videoUrl.  Real backend videos take priority; demo videos fill the gap.
+   * Remove getDemoVideoUrl() call once the backend populates venue.videoUrl.
+   */
+  const reelVenues = useMemo(
+    () => displayCards.map((venue, idx) => ({
+      ...venue,
+      videoUrl: venue.videoUrl || "https://vb-venue-images.s3.eu-north-1.amazonaws.com/vb_video/video.mp4" 
+      // videoUrl: venue.videoUrl || venue.video_url || venue.coverVideo
+      //   || getDemoVideoUrl(activeCategory, idx),
+    })),
+    [displayCards, activeCategory],
+  );
 
   /* ── Pagination ───────────────────────────────────────────────── */
   const PAGE_SIZE = 12;
@@ -426,35 +445,85 @@ export default function SearchPage() {
           />
         </div>
 
-        {/* ── RIGHT: Map column (40%) — desktop only ────────────── */}
+        {/* ── RIGHT: Map / Reels panel (40%) — desktop only ─────── */}
         <div className="hidden lg:block w-[40%] flex-shrink-0">
+          {/* Map ↔ Reels toggle — top of right column, no gap */}
           <div
-            className="sticky overflow-hidden relative"
-            style={{ top: MAP_TOP, height: MAP_H }}
+            className="sticky z-[29] bg-white dark:bg-gray-950 border-b border-l border-gray-100 dark:border-gray-800 flex items-center px-3"
+            style={{ top: MAP_TOP, height: 56 }}
           >
-            <MapView
-              venues={allCards}
-              hoverVenue={hoverVenue}
-              country={selected_country.name}
-              category={activeCategory}
-              isLoading={isLoadingVenues}
-              onBoundsChange={setMapBounds}
-              resetKey={mapResetKey}
-              preferredLocation={preferredLocation}
-              searchLocationLabel={searchLocLabel}
-              onVenueClick={handleVenueClick}
-              onVisibleVenuesChange={setCardVenues}
-              onMapClusterHover={handleMapClusterHover}
-              onMapMarkerHover={handleMapMarkerHover}
-            />
-
-            {/* ── Listing count overlay — top-left of map ── */}
-            <div className="absolute top-5 left-5 z-10 pointer-events-none">
-              <span className="inline-flex items-center gap-1.5 bg-white dark:bg-gray-900 rounded-full px-3 py-1.5 shadow-md text-sm font-semibold text-gray-800 dark:text-gray-100 border border-gray-100 dark:border-gray-800">
-                <span className="font-bold">{displayCards.length}</span>
-                {t("venues_in_this_area")}
-              </span>
+            {/* Segmented toggle */}
+            <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-gray-100 dark:bg-gray-800">
+              {[
+                { key: "map",   Icon: MapIcon,      label: "Map" },
+                { key: "reels", Icon: Clapperboard, label: "Reels" },
+              ].map(({ key, Icon, label }) => (
+                <button
+                  key={key}
+                  onClick={() => setViewMode(key)}
+                  className={[
+                    "inline-flex items-center gap-1.5 h-8 px-3.5 rounded-md text-[12px] font-semibold transition-all",
+                    viewMode === key
+                      ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                      : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300",
+                  ].join(" ")}
+                >
+                  <Icon size={13} strokeWidth={2} />
+                  {label}
+                </button>
+              ))}
             </div>
+          </div>
+
+          {/* Panel content — starts immediately below toggle */}
+          <div
+            className="sticky relative"
+            style={{ top: MAP_TOP + 56, height: `calc(100vh - ${MAP_TOP + 56}px)` }}
+          >
+            {/* Map — always mounted, hidden when reels active (preserves map state) */}
+            <div className={viewMode === "map" ? "absolute inset-0 overflow-hidden" : "absolute inset-0 overflow-hidden invisible pointer-events-none"}>
+              {/* Venue count chip — overlaid top-left of map */}
+              {viewMode === "map" && (
+                <div className="absolute top-3 left-3 z-10 pointer-events-none">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold text-gray-800 dark:text-gray-100 shadow-md"
+                    style={{ background: "rgba(255,255,255,0.92)", backdropFilter: "blur(8px)" }}>
+                    <span className="font-bold">{displayCards.length}</span>
+                    {t("venues_in_this_area")}
+                  </span>
+                </div>
+              )}
+              <MapView
+                venues={allCards}
+                hoverVenue={hoverVenue}
+                country={selected_country.name}
+                category={activeCategory}
+                isLoading={isLoadingVenues}
+                onBoundsChange={setMapBounds}
+                resetKey={mapResetKey}
+                preferredLocation={preferredLocation}
+                searchLocationLabel={searchLocLabel}
+                onVenueClick={handleVenueClick}
+                onVisibleVenuesChange={setCardVenues}
+                onMapClusterHover={handleMapClusterHover}
+                onMapMarkerHover={handleMapMarkerHover}
+              />
+            </div>
+
+            {/* Reels panel — mounted only when active */}
+            {viewMode === "reels" && (
+              <div className="absolute inset-0 overflow-hidden">
+                <ReelsPanel
+                  venues={reelVenues}
+                  category={activeCategory}
+                  locale={locale}
+                  country={country}
+                  wishlist={wishlist}
+                  compares={compares}
+                  onWishlist={setWishlistVenue}
+                  onCompare={handleCompare}
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -636,6 +705,20 @@ export default function SearchPage() {
         )}
       </AnimatePresence>
 
+
+      {/* ── Mobile Reels overlay ────────────────────────────────── */}
+      <MobileReels
+        open={showReels}
+        onClose={() => setShowReels(false)}
+        venues={displayCards}
+        category={activeCategory}
+        locale={locale}
+        country={country}
+        wishlist={wishlist}
+        compares={compares}
+        onWishlist={setWishlistVenue}
+        onCompare={handleCompare}
+      />
 
       {/* ── Filter drawer ────────────────────────────────────────── */}
       <FilterDrawer
