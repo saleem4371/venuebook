@@ -1,33 +1,3 @@
-// "use client";
-
-// import { createContext, useContext, useState } from "react";
-
-// const UIContext = createContext();
-
-// export function UIProvider({ children }) {
-//   const [showMap, setShowMap] = useState(false);
-//   const [filterOpen, setFilterOpen] = useState(false);
-
-//   // ✅ AUTO HIDE LOGIC
-//   const hideBottomMenu = showMap || filterOpen;
-
-//   return (
-//     <UIContext.Provider
-//       value={{
-//         showMap,
-//         setShowMap,
-//         filterOpen,
-//         setFilterOpen,
-//         hideBottomMenu, // ✅ expose
-//       }}
-//     >
-//       {children}
-//     </UIContext.Provider>
-//   );
-// }
-
-// export const useUI = () => useContext(UIContext);
-
 "use client";
 
 import { createContext, useContext, useState } from "react";
@@ -38,10 +8,11 @@ export function UIProvider({ children }) {
   const [loginOpen,          setLoginOpen]          = useState(false);
   const [filterOpen,         setFilterOpen]         = useState(false);
   const [showMap,            setShowMap]            = useState(false);
+  const [showReels,          setShowReels]          = useState(false);
   const [compareOpen,        setCompareOpen]        = useState(false);
   const [categorySheetOpen,  setCategorySheetOpen]  = useState(false);
 
-  const hideBottomMenu = showMap || filterOpen || compareOpen;
+  const hideBottomMenu = showMap || showReels || filterOpen || compareOpen;
 
   return (
     <UIContext.Provider
@@ -52,6 +23,8 @@ export function UIProvider({ children }) {
         setFilterOpen,
         showMap,
         setShowMap,
+        showReels,
+        setShowReels,
         compareOpen,
         setCompareOpen,
         categorySheetOpen,
