@@ -19,6 +19,8 @@ import PropertyTypeModal from "./listing/components/PropertyTypeModal";
 import { vendor_category } from "@/services/home.service";
 import { listing_sub_check } from "@/services/listing.service";
 
+import { SocketProvider } from "@/context/SocketContext";
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // VENDOR ENABLED CATEGORIES
@@ -183,6 +185,8 @@ export default function AdminLayout({ children }) {
   /* Messages page owns its own padding/layout for the split-pane viewport fill */
   const isMessagesPage   = /\/vendor\/messages/.test(pathname);
 
+   const { user } = useAuth();
+
   const loadCategory = async () => {
     try {
       const addons = await vendor_category();
@@ -211,7 +215,7 @@ export default function AdminLayout({ children }) {
         <VendorAuthGuard>
         <VendorUIProvider>
         <PropertyTypeModalProvider>
-
+<SocketProvider userId={user?.id}>
           {/* PRIMARY HEADER */}
           <Navbar />
 
@@ -242,7 +246,9 @@ export default function AdminLayout({ children }) {
             isFullBleedPage={isFullBleedPage || isMessagesPage}
             isFullBleedPage1={isFullBleedPage1}
           >
-            {children}
+             
+{children}
+            
           </PageMainWrapper>
 
           {/* CINEMATIC CATEGORY TRANSITION OVERLAY -- portal to document.body */}
@@ -256,7 +262,7 @@ export default function AdminLayout({ children }) {
 
           {/* PROPERTY TYPE MODAL -- rendered here, outside PageMainWrapper transforms */}
           <PropertyModalRenderer />
-
+</SocketProvider>
         </PropertyTypeModalProvider>
         </VendorUIProvider>
         </VendorAuthGuard>

@@ -10,14 +10,25 @@ import {
   AlertTriangle, Lock, Unlock, Timer, Loader2, Sparkles,
   RotateCcw, Eye, Printer, ChevronUp, Minus, Info, Tag,
   ShoppingBag, Zap, Shield, Search, Trash2, ArrowRight,
-  LayoutGrid, AlertOctagon, ArrowUpCircle, CalendarCheck,MessageCircle
+  LayoutGrid, AlertOctagon, ArrowUpCircle, CalendarCheck,MessageCircle,Clock3
 } from "lucide-react";
+
 
 import { useRouter , useParams } from "next/navigation";
 
 import { download_invoice, reservation_manage , add_payment ,
-   refundSecurityDeposit , generateInvoiceApi, convertToBooking 
+   refundSecurityDeposit , generateInvoiceApi, convertToBooking ,
+
+    getAvailableVenues,
+    load_shift_event,
+    Load_all_packages,
+    loadAllAddons,
+    globalSetting,
+    booking_create,
+    loadAllSetting,
+
   } from "@/services/booking.service";
+
 
   import { startConversation , conservation_messages, send_messages } from "@/services/chat.service";
 
@@ -47,12 +58,7 @@ const buffetMenu = {
   Beverages: ["Fresh Lime Soda", "Iced Tea", "Water"],
 };
 
-// Demo/mock data used as a fallback for the Add-ons and Packages tabs when
-// the API hasn't supplied a real catalog yet (`reserve.available_addons`) or
-// hasn't attached selection limits to the package categories (min_select /
-// max_select / item_price on pax_categories / pax_item_snapshot). Wire the
-// real data through those API fields and this fallback is bypassed
-// automatically — nothing else needs to change.
+
 const MOCK_AVAILABLE_ADDONS = [
   { id: "addon_dj", title: "DJ & Sound Setup", price: 15000 },
   { id: "addon_photo", title: "Photography (4 hrs)", price: 12000 },
@@ -64,9 +70,6 @@ const MOCK_AVAILABLE_ADDONS = [
   { id: "addon_extra_hour", title: "Extra Hour (Venue)", price: 5000 },
 ];
 
-// Per-category min/max selection limits and per-item pricing for the
-// Packages editor, keyed by category_name so it lines up with whatever
-// pax_categories the booking actually has.
 const MOCK_CATEGORY_LIMITS = {
   "Main Course": { min_select: 2, max_select: 3 },
   "Salads": { min_select: 1, max_select: 2 },
@@ -141,15 +144,18 @@ export default function BookingDetailPage() {
   const [activeTab, setActiveTab] = useState("overview");
   const [showModal, setShowModal] = useState(false);
   const [reserve, setReserve] = useState(null);
+  const [currency, setCurrency] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [moreaddon, setMoreaddon] = useState(true);
+
+  const [event, setEvent] = useState([]);
+  const [packages, setPackage] = useState([]);
+
+
   const [logs, setLogs] = useState([]);
   const toast = useToast();
 
-  // FIX A: Booking is now initialized with safe numeric defaults instead of {}.
-  // Before this fix, any read of Booking.basePrice / Booking.gst / etc. before
-  // the summary effect ran would be `undefined`, and undefined + undefined = NaN.
-  // This is what produced the "₹NaN" in the Add Payment modal on first render
-  // (e.g. opening the modal quickly, or whenever `reserve.charges` is empty/missing).
+
   const [Booking, setBooking] = useState({
     basePrice: 0,
     addonTotal: 0,
@@ -224,10 +230,7 @@ useEffect(() => {
   setReceipts(reserve.payments || []);
 
   // 3. Charges summary
-  // FIX B: the reducer now ACCUMULATES gst (acc.gst += amount) instead of
-  // overwriting it to 0 on every "gst" charge row. The old `acc.gst = 0;`
-  // line silently discarded any actual GST amount returned by the API,
-  // which combined with Booking starting as {} is the second source of NaN/0.
+
 const summary = {
   base: 0,
   addon: 0,
@@ -349,19 +352,71 @@ console.log(summary);
 //   };
 // }, [params.id]);
 
+
 const fetchReservation = async () => {
   try {
     setLoading(true);
 
     const res = await reservation_manage(params.id);
-    setReserve(res?.data || null);
+    setReserve(res?.data || null); 
+
+
+      const resp = await load_shift_event();
+    
+      const events = resp?.data ?? 0;
+      setEvent(events);
+  
+      const _packages = await Load_all_packages();
+      setPackage(_packages.data);
+
+      //  const addonIds = reserve.venues.map((item) => item.child_venue_id);
+      //  const addons = await loadAllAddons(addonIds); 
+      
+      // setMoreaddon(addons.data);
+
+
+      // const addonIds = selectedVenues.map((item) => item.child_venue_id);
+      
+      // const addons = await loadAllAddons(addonIds); 
+      
+      // setAddons(addons.data);
+  
+      // const _settings = await globalSetting();
+      // setSettings(_settings.data);
+
+
+    
   } catch (err) {
     console.error(err);
     setReserve(null);
+    setCurrency(null);
   } finally {
     setLoading(false);
   }
 };
+
+useEffect(() => {
+  if (!reserve?.venues?.length) {
+    setMoreaddon([]);
+    return;
+  }
+
+  const fetchAddons = async () => {
+    try {
+      const addonIds = reserve.venues.map(
+        (item) => item.child_venue_id
+      );
+
+      const res = await loadAllAddons(addonIds);
+      setMoreaddon(res?.data ?? []);
+    } catch (err) {
+      console.error(err);
+      setMoreaddon([]);
+    }
+  };
+
+  fetchAddons();
+}, [reserve]);
 
 // Fetch data
 useEffect(() => {
@@ -451,6 +506,7 @@ const totalPaid =
  // Booking Summary Date
 // Booking Summary Date
 const eventDate = reserve?.event_dates?.[0]?.event_date;
+const eventDates = reserve?.event_dates?.event_date;
 const bookingDate = reserve?.created_at;
 
 const reminderDate = getReminderDate(
@@ -1075,7 +1131,7 @@ const openChat = async () => {
   <AddonsTab
     addons={addons}
     setAddons={setAddons}
-    availableAddons={reserve?.available_addons?.length ? reserve.available_addons : MOCK_AVAILABLE_ADDONS}
+    availableAddons={moreaddon}
     invoiceGenerated={invoiceGenerated}
   />
 )}
@@ -1085,9 +1141,10 @@ const openChat = async () => {
     pax_packages={reserve.pax_packages}
     pax_categories={reserve.pax_categories}
     pax_item_snapshot={reserve.pax_item_snapshot}
-    pax_items={reserve.pax_items}
+    pax_count={reserve?.total_pax}
     setReserve={setReserve}
     invoiceGenerated={invoiceGenerated}
+    package={packages}
   />
 )}
 
@@ -1881,6 +1938,14 @@ const baseAmount =
     charges.find((c) => c.charge_type === "base")?.total_price || 0
   );
 
+const discount =
+  Number(
+    charges.find((c) => c.charge_type === "discount")?.total_price || 0
+  );
+
+  const discount_percentage = charges.find((c) => c.charge_type === "discount")?.unit_price || 0 ;
+
+
 const addonTotal = charges
   .filter((c) => c.charge_type === "addon")
   .reduce((sum, c) => sum + Number(c.total_price), 0);
@@ -1898,22 +1963,29 @@ const gst =
     ) || 0
   );
 
-const grandTotals = baseAmount + addonTotal + gst + securityDeposit;
+const grandTotals = baseAmount +( discount) + addonTotal + gst + securityDeposit;
   return (
     <div className="p-5 grid lg:grid-cols-3 gap-5">
       <div className="lg:col-span-2 space-y-4">
         <Section title="Event Details" onEdit={invoiceGenerated ? null : () => onEdit("event")}>
           <div className="grid sm:grid-cols-2 gap-x-6 gap-y-3">
             {[
-              { label: "Event Name", value: reserve.eventType },
-              { label: "Event Type", value: "Corporate" },
-              // { label: "Shift", value: reserve.shifts[0].shift_name },
-              { label: "Capacity", value: `${reserve?.total_pax} Guests` },
-              { label: "From", value: "12:00 PM" },
-              { label: "To", value: "06:00 PM" },
-            ].map(r => (
-              <InfoRow key={r.label} label={r.label} value={r.value} />
-            ))}
+  { label: "Event Name", value: reserve.eventType },
+  { label: "Capacity", value: `${reserve?.total_pax} Guests` },
+  { label: "Event Date", value: reserve.event_date },
+
+  ...(reserve?.shifts?.flatMap((shift) => [
+    { label: "Event Shift", value: shift.shift_name },
+    { label: "From", value: shift.start_time || "-" },
+    { label: "To", value: shift.end_time || "-" },
+  ]) || []),
+].map((r, index) => (
+  <InfoRow
+    key={`${r.label}-${index}`}
+    label={r.label}
+    value={r.value}
+  />
+))}
           </div>
         </Section>
 
@@ -2109,6 +2181,15 @@ const grandTotals = baseAmount + addonTotal + gst + securityDeposit;
       </span>
     </div>
 
+   <div className="flex justify-between">
+  <span className="text-slate-500">
+    Discount ({Math.abs(discount_percentage)}%)
+  </span>
+  <span className="font-medium text-slate-700">
+    ₹{Math.abs(discount).toLocaleString("en-IN")}
+  </span>
+</div>
+    
     <div className="flex justify-between">
       <span className="text-slate-500">Add-on Total</span>
       <span className="font-medium text-slate-700">
@@ -2344,20 +2425,37 @@ function EventDetailsTab({ reserve, onEdit, invoiceGenerated }) {
         {!invoiceGenerated && <button onClick={() => onEdit("event")} className="flex items-center gap-1 text-xs text-violet-600 font-semibold hover:underline"><Edit size={11} /> Edit</button>}
       </div>
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        {[
-          { label: "Event Name", value: reserve.eventType, icon: ClipboardList },
-          { label: "Event Type", value: "Corporate", icon: Users },
-          { label: "Venue", value: reserve.venues?.[0]?.venue_name_snapshot?.split(",")[0], icon: MapPin },
-          { label: "Guests", value: `${reserve?.total_pax} Guests`, icon: Users },
-          { label: "Start", value: "12:00 PM", icon: Clock },
-          { label: "End", value: "06:00 PM", icon: Clock },
-          { label: "Date", value: reserve.event_dates?.[0]?.event_date ? new Date(reserve.event_dates[0].event_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—", icon: Calendar },
-          // { label: "Shift", value: reserve.shifts[0].shift_name, icon: Clock },
-          { label: "Duration", value: "6 Hours", icon: Timer },
-        ].map(item => (
-          <div key={item.label} className="bg-slate-50 rounded-xl p-3 flex items-start gap-2.5">
+             {[
+  {
+    label: "Event Name",
+    value: reserve.eventType,
+  },
+  {
+    label: "Capacity",
+    value: `${reserve?.total_pax} Guests`,
+  },
+  {
+    label: "Event Date",
+    value: reserve.event_date,
+  },
+  ...(reserve?.shifts?.flatMap((shift) => [
+    {
+      label: "Event Shift",
+      value: shift.shift_name,
+    },
+    {
+      label: "From",
+      value: shift.start_time || "-",
+    },
+    {
+      label: "To",
+      value: shift.end_time || "-",
+    },
+  ]) ?? []),
+].map((item, index) => (
+          <div key={index} className="bg-slate-50 rounded-xl p-3 flex items-start gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center shrink-0">
-              <item.icon size={14} className="text-violet-500" />
+                {/* <Icon size={16} className="text-violet-600" /> */}
             </div>
             <div>
               <p className="text-xs text-slate-400 font-medium">{item.label}</p>
@@ -2544,17 +2642,48 @@ function AddonsTab({ addons, setAddons, availableAddons, invoiceGenerated }) {
   const toast = useToast();
   const [confirmRemove, setConfirmRemove] = useState(null);
 
-  // Keep the editable draft in sync if the committed addons change from
-  // outside this tab (e.g. a payment was recorded that also touched addons).
   useEffect(() => {
     setDraft(addons.map(a => ({ ...a })));
   }, [addons]);
 
   const catalog = availableAddons || [];
 
-  const filteredCatalog = catalog.filter(c =>
-    (c.title || c.name || "").toLowerCase().includes(query.trim().toLowerCase())
-  );
+  // Enrich draft rows with catalog metadata (type/stock/add_on_id) so we can
+  // enforce stock limits even though `addons` originally comes from charges
+  // and doesn't carry that info itself.
+  const catalogByName = Object.fromEntries(catalog.map(c => [c.add_on_name, c]));
+  const enrichedDraft = draft.map(d => {
+    const match = catalogByName[d.title];
+    return {
+      ...d,
+      add_on_id: d.add_on_id || match?.add_on_id,
+      type: d.type || match?.type,
+      stock: d.stock ?? match?.stock ?? Infinity,
+    };
+  });
+
+  function getAddedQty(item) {
+    const name = item.title || item.add_on_name;
+    const match = enrichedDraft.find(d => d.title === name || d.add_on_id === item.add_on_id);
+    return match ? Number(match.quantity || 0) : 0;
+  }
+
+  function getRemainingStock(item) {
+    const stock = Number(item.stock || 0);
+    return stock - getAddedQty(item);
+  }
+
+  const filteredCatalog = catalog
+    .filter(c => (c.add_on_name || "").toLowerCase().includes(query.trim().toLowerCase()))
+    .filter(item => {
+      const addedQty = getAddedQty(item);
+      if (item.type === "unit") {
+        // Unit-based: hide only once fully consumed
+        return getRemainingStock(item) > 0;
+      }
+      // Total/one-time: hide once it's been added at all
+      return addedQty === 0;
+    });
 
   const draftTotal = draft.reduce((s, a) => s + Number(a.unit_price || 0) * Number(a.quantity || 0), 0);
   const committedTotal = addons.reduce((s, a) => s + Number(a.unit_price || 0) * Number(a.quantity || 0), 0);
@@ -2562,21 +2691,40 @@ function AddonsTab({ addons, setAddons, availableAddons, invoiceGenerated }) {
 
   function addFromCatalog(item) {
     setDraft(prev => {
-      const existing = prev.find(p => p.title === (item.title || item.name));
+      const existing = prev.find(p => p.title === item.add_on_name);
       if (existing) {
-        return prev.map(p => p.title === existing.title ? { ...p, quantity: Number(p.quantity || 0) + 1 } : p);
+        // Don't exceed stock for unit-type addons
+        const stock = Number(item.stock || Infinity);
+        if (item.type === "unit" && Number(existing.quantity || 0) >= stock) {
+          return prev;
+        }
+        return prev.map(p =>
+          p.title === existing.title ? { ...p, quantity: Number(p.quantity || 0) + 1 } : p
+        );
       }
-      return [...prev, {
-        id: item.id || Date.now(),
-        title: item.title || item.name,
-        unit_price: Number(item.price || item.unit_price || 0),
-        quantity: 1,
-      }];
+      return [
+        ...prev,
+        {
+          id: item.id || Date.now(),
+          add_on_id: item.add_on_id,
+          title: item.add_on_name,
+          unit_price: Number(item.price || item.unit_price || 0),
+          quantity: 1,
+          type: item.type,
+          stock: item.stock,
+        },
+      ];
     });
   }
 
-  function updateQty(id, qty) {
-    setDraft(prev => prev.map(a => a.id === id ? { ...a, quantity: qty } : a));
+  function updateQty(id, qty, max) {
+    setDraft(prev =>
+      prev.map(a => {
+        if (a.id !== id) return a;
+        const cappedQty = max != null && isFinite(max) ? Math.min(qty, max) : qty;
+        return { ...a, quantity: cappedQty };
+      })
+    );
   }
 
   function removeItem(id) {
@@ -2593,8 +2741,6 @@ function AddonsTab({ addons, setAddons, availableAddons, invoiceGenerated }) {
     toast.success("Add-ons updated");
   }
 
-  // Build diff rows for the changes summary: any item whose quantity changed,
-  // plus items fully added or removed.
   const changeRows = (() => {
     const rows = [];
     const byTitleCommitted = Object.fromEntries(addons.map(a => [a.title, a]));
@@ -2642,35 +2788,41 @@ function AddonsTab({ addons, setAddons, availableAddons, invoiceGenerated }) {
               <div className="p-6 text-center">
                 <Package size={22} className="text-slate-300 mx-auto mb-2" />
                 <p className="text-xs text-slate-400">No catalog connected yet.</p>
-                <p className="text-xs text-slate-300 mt-1">Wire up <code className="bg-slate-100 px-1 rounded">reserve.available_addons</code> to populate this list.</p>
+                <p className="text-xs text-slate-300 mt-1">
+                  Wire up <code className="bg-slate-100 px-1 rounded">reserve.available_addons</code> to populate this list.
+                </p>
               </div>
             )}
             {catalog.length > 0 && filteredCatalog.length === 0 && (
               <div className="p-6 text-center">
                 <Search size={18} className="text-slate-300 mx-auto mb-2" />
-                <p className="text-xs text-slate-400">No add-ons match "{query}"</p>
+                <p className="text-xs text-slate-400">
+                  {query ? `No add-ons match "${query}"` : "All available add-ons have been added"}
+                </p>
               </div>
             )}
             {filteredCatalog.map((item, i) => {
-              const name = item.title || item.name;
-              const alreadyAdded = draft.find(d => d.title === name);
+              const remaining = getRemainingStock(item);
               return (
                 <div key={item.id || i} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-slate-50 transition-colors">
                   <div className="min-w-0">
-                    <p className="text-xs font-semibold text-slate-800 truncate">{name}</p>
-                    <p className="text-xs text-slate-400">₹{Number(item.price || item.unit_price || 0).toLocaleString("en-IN")}</p>
+                    <p className="text-xs font-semibold text-slate-800 truncate">{item.add_on_name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs text-slate-400">₹{Number(item.price || 0).toLocaleString("en-IN")}</p>
+                      {item.type === "unit" && (
+                        <span className="text-[10px] font-medium text-slate-400">
+                          · {remaining} available
+                        </span>
+                      )}
+                    </div>
                   </div>
                   {!invoiceGenerated && (
-                    alreadyAdded ? (
-                      <span className="shrink-0 text-xs font-semibold text-violet-600 bg-violet-50 border border-violet-200 px-2.5 py-1 rounded-lg">
-                        Added · {alreadyAdded.quantity}
-                      </span>
-                    ) : (
-                      <button onClick={() => addFromCatalog(item)}
-                        className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-violet-600 text-white text-xs font-semibold hover:bg-violet-700 transition-all">
-                        <Plus size={11} /> Add
-                      </button>
-                    )
+                    <button
+                      onClick={() => addFromCatalog(item)}
+                      className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-violet-600 text-white text-xs font-semibold hover:bg-violet-700 transition-all"
+                    >
+                      <Plus size={11} /> Add
+                    </button>
                   )}
                 </div>
               );
@@ -2694,9 +2846,10 @@ function AddonsTab({ addons, setAddons, availableAddons, invoiceGenerated }) {
               </div>
             )}
             <div className="divide-y divide-slate-100">
-              {draft.map(a => {
+              {enrichedDraft.map(a => {
                 const lineTotal = Number(a.unit_price || 0) * Number(a.quantity || 0);
                 const pendingRemove = confirmRemove === a.id;
+                const maxQty = a.type === "unit" ? Number(a.stock || Infinity) : 1;
                 return (
                   <div key={a.id} className="px-4 py-3 transition-all">
                     <div className="flex items-center justify-between gap-3">
@@ -2704,8 +2857,13 @@ function AddonsTab({ addons, setAddons, availableAddons, invoiceGenerated }) {
                         <p className="text-xs font-semibold text-slate-800 truncate">{a.title}</p>
                         <p className="text-xs text-slate-400">₹{Number(a.unit_price || 0).toLocaleString("en-IN")} / item</p>
                       </div>
-                      {!invoiceGenerated && (
-                        <QtyStepper value={Number(a.quantity || 0)} onChange={v => updateQty(a.id, v)} min={1} />
+                      {!invoiceGenerated && a.type === "unit" && (
+                        <QtyStepper
+                          value={Number(a.quantity || 0)}
+                          onChange={v => updateQty(a.id, v, maxQty)}
+                          min={1}
+                          max={maxQty}
+                        />
                       )}
                       <div className="text-right w-20 shrink-0">
                         <p className="text-xs font-bold text-slate-800">₹{lineTotal.toLocaleString("en-IN")}</p>
@@ -2739,14 +2897,9 @@ function AddonsTab({ addons, setAddons, availableAddons, invoiceGenerated }) {
       </div>
 
       {isDirty && (
-        <ChangesSummary
-          rows={changeRows}
-          deltaAmount={draftTotal - committedTotal}
-          newTotal={null}
-        />
+        <ChangesSummary rows={changeRows} deltaAmount={draftTotal - committedTotal} newTotal={null} />
       )}
 
-      {/* STICKY SUMMARY / SAVE BAR */}
       {!invoiceGenerated && (
         <div className="sticky bottom-0 -mx-5 -mb-5 px-5 py-3.5 bg-white border-t border-slate-200 flex items-center justify-between gap-3">
           <span className="text-xs text-slate-500">
@@ -2754,12 +2907,18 @@ function AddonsTab({ addons, setAddons, availableAddons, invoiceGenerated }) {
             {isDirty && <span className="text-amber-600 font-medium ml-2">· unsaved changes</span>}
           </span>
           <div className="flex gap-2">
-            <button onClick={handleCancel} disabled={!isDirty}
-              className="px-3.5 py-2 rounded-xl border border-slate-200 text-xs text-slate-600 font-medium hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+            <button
+              onClick={handleCancel}
+              disabled={!isDirty}
+              className="px-3.5 py-2 rounded-xl border border-slate-200 text-xs text-slate-600 font-medium hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+            >
               Cancel
             </button>
-            <button onClick={handleSave} disabled={!isDirty}
-              className="px-4 py-2 rounded-xl bg-violet-600 text-white text-xs font-semibold hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+            <button
+              onClick={handleSave}
+              disabled={!isDirty}
+              className="px-4 py-2 rounded-xl bg-violet-600 text-white text-xs font-semibold hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+            >
               Save changes
             </button>
           </div>
@@ -2776,39 +2935,48 @@ function AddonsTab({ addons, setAddons, availableAddons, invoiceGenerated }) {
 // shows selection counts for awareness only and never blocks Save on them.
 // If those fields get added later (min_select / max_select / item_price /
 // is_selected), the category cards below already have the UI ready for them.
-function PackagesTab({ pax_packages = [], pax_categories = [], pax_item_snapshot = [], setReserve, invoiceGenerated }) {
+function PackagesTab({ package: pkgData = [], pax_item_snapshot = [],  pax_count = 1, setReserve, invoiceGenerated }) {
   const [showEdit, setShowEdit] = useState(false);
   const toast = useToast();
 
-  const pkg = pax_packages?.[0];
-  const categories = pax_categories || [];
+  const pkg = pkgData?.[0];
+  const categories = pkg?.categories || [];
 
-  // Fall back to mock min/max selection limits when the API hasn't attached
-  // them to a category yet, so the Edit Package modal's progress bars and
-  // "select N more" prompts are always demoable. Real values from the API
-  // (if present on the category row) always win.
-  const categoriesWithLimits = categories.map(cat => {
-    const mock = MOCK_CATEGORY_LIMITS[cat.category_name];
-    return {
-      ...cat,
-      min_select: typeof cat.min_select === "number" ? cat.min_select : mock?.min_select,
-      max_select: typeof cat.max_select === "number" ? cat.max_select : mock?.max_select,
-    };
-  });
+  // Flatten items across categories, tagging each with its parent category
+  // info and the category's required select-count (used as both min & max).
+  const allItems = categories.flatMap(cat =>
+    (cat.items || []).map(item => ({
+      ...item,
+      category_id: cat.id,
+      category_name: cat.name,
+      min_select: cat.count,
+      max_select: cat.count,
+    }))
+  );
 
-  // Same idea for per-item price + selection state on the snapshot rows.
-  const items = (pax_item_snapshot || []).map(item => ({
+  // Match existing selections by item id. Adjust `s.item_id ?? s.id` below
+  // if your snapshot rows key selection differently.
+  const selectedIds = new Set((pax_item_snapshot || []).map(s => String(s.item_id ?? s.id)));
+  const items = allItems.map(item => ({
     ...item,
-    item_price: typeof item.item_price === "number" ? item.item_price : MOCK_ITEM_PRICE_FALLBACK,
-    is_selected: item.is_selected !== false,
+    is_selected: selectedIds.has(String(item.id)),
   }));
 
-  const totalSelected = items.filter(i => i.is_selected !== false).length;
-  const packageTotal = Number(pkg?.price_per_pax || 0) * Number(pkg?.pax_count || 0);
+  const totalSelected = items.filter(i => i.is_selected).length;
+  const packageTotal = Number(pkg?.price || 0) * Number(pax_count || 0);
 
-  function handleSaved(updatedSnapshot) {
+function handleSaved(updatedItems) {
+    const snapshot = updatedItems
+      .filter(i => i.is_selected)
+      .map(i => ({
+        item_id: String(i.id),
+        item_name: i.name,
+        category_id: i.category_id,
+        price: i.price ?? 0,
+      }));
+
     if (setReserve) {
-      setReserve(prev => ({ ...prev, pax_item_snapshot: updatedSnapshot }));
+      setReserve(prev => ({ ...prev, pax_item_snapshot: snapshot }));
     }
     setShowEdit(false);
     toast.success("Package selections updated");
@@ -2819,7 +2987,7 @@ function PackagesTab({ pax_packages = [], pax_categories = [], pax_item_snapshot
       <div className="border border-slate-200 rounded-2xl p-5 max-w-md">
         <div className="flex items-center justify-between mb-1">
           <span className="text-xs font-semibold text-violet-600 bg-violet-50 border border-violet-200 px-2.5 py-1 rounded-full">
-            {pkg?.package_name || "No package"}
+            {pkg?.name || "No package"}
           </span>
           {!invoiceGenerated && pkg && (
             <button onClick={() => setShowEdit(true)} className="flex items-center gap-1 text-xs text-violet-600 font-semibold hover:underline">
@@ -2828,15 +2996,15 @@ function PackagesTab({ pax_packages = [], pax_categories = [], pax_item_snapshot
           )}
         </div>
 
-        <h3 className="text-base font-bold text-slate-900 mt-2">{pkg?.package_name || "Standard Buffet Package"}</h3>
+        <h3 className="text-base font-bold text-slate-900 mt-2">{pkg?.name || "Package"}</h3>
         <p className="text-xl font-black text-violet-600 mt-0.5">
-          ₹{Number(pkg?.price_per_pax || 0).toLocaleString("en-IN")} <span className="text-xs font-medium text-slate-400">/ pax</span>
+          ₹{Number(pkg?.price || 0).toLocaleString("en-IN")} <span className="text-xs font-medium text-slate-400">/ pax</span>
         </p>
 
         <div className="grid grid-cols-2 gap-3 mt-4">
           <div className="bg-slate-50 rounded-xl p-3">
             <p className="text-xs text-slate-400 font-medium">Guests</p>
-            <p className="text-sm font-bold text-slate-800 mt-0.5">{pkg?.pax_count || 0}</p>
+            <p className="text-sm font-bold text-slate-800 mt-0.5">{pax_count || 0}</p>
           </div>
           <div className="bg-slate-50 rounded-xl p-3">
             <p className="text-xs text-slate-400 font-medium">Package total</p>
@@ -2857,8 +3025,9 @@ function PackagesTab({ pax_packages = [], pax_categories = [], pax_item_snapshot
       {showEdit && (
         <EditPackageModal
           pkg={pkg}
-          categories={categoriesWithLimits}
+          categories={categories}
           items={items}
+          paxCount={pax_count}
           onClose={() => setShowEdit(false)}
           onSave={handleSaved}
         />
@@ -2868,17 +3037,17 @@ function PackagesTab({ pax_packages = [], pax_categories = [], pax_item_snapshot
 }
 
 /* ─── EDIT PACKAGE MODAL ─── */
-function EditPackageModal({ pkg, categories, items, onClose, onSave }) {
-  const [draftItems, setDraftItems] = useState(() => items.map(i => ({ ...i, is_selected: i.is_selected !== false })));
+function EditPackageModal({ pkg, categories, items, paxCount, onClose, onSave }) {
+  const [draftItems, setDraftItems] = useState(() => items.map(i => ({ ...i })));
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
 
-  const isDirty = JSON.stringify(draftItems) !== JSON.stringify(items.map(i => ({ ...i, is_selected: i.is_selected !== false })));
+  const isDirty = JSON.stringify(draftItems) !== JSON.stringify(items);
 
   const totalSelected = draftItems.filter(i => i.is_selected).length;
-  const packageTotal = Number(pkg?.price_per_pax || 0) * Number(pkg?.pax_count || 0);
+  const packageTotal = Number(pkg?.price || 0) * Number(paxCount || 0);
 
   function toggleItem(id) {
-    setDraftItems(prev => prev.map(i => i.id === id ? { ...i, is_selected: !i.is_selected } : i));
+    setDraftItems(prev => prev.map(i => (i.id === id ? { ...i, is_selected: !i.is_selected } : i)));
   }
 
   function requestClose() {
@@ -2893,26 +3062,30 @@ function EditPackageModal({ pkg, categories, items, onClose, onSave }) {
   const changeRows = (() => {
     const rows = [];
     categories.forEach(cat => {
-      const before = items.filter(i => String(i.category_id) === String(cat.category_id) && i.is_selected !== false).length;
-      const after = draftItems.filter(i => String(i.category_id) === String(cat.category_id) && i.is_selected).length;
-      if (before !== after) rows.push({ label: `${cat.category_name} items`, from: before, to: after });
+      const before = items.filter(i => String(i.category_id) === String(cat.id) && i.is_selected).length;
+      const after = draftItems.filter(i => String(i.category_id) === String(cat.id) && i.is_selected).length;
+      if (before !== after) rows.push({ label: `${cat.name} items`, from: before, to: after });
     });
     return rows;
   })();
 
   return (
     <>
-      <div onClick={e => e.target === e.currentTarget && requestClose()}
-        className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150"
-          style={{ width: "90vw", maxWidth: "1400px", height: "90vh" }}>
-
+      <div
+        onClick={e => e.target === e.currentTarget && requestClose()}
+        className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4"
+      >
+        <div
+          className="bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150"
+          style={{ width: "90vw", maxWidth: "1400px", height: "90vh" }}
+        >
           {/* HEADER */}
           <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0">
             <div>
-              <h2 className="text-sm font-bold text-slate-900">{pkg?.package_name || "Standard Buffet Package"}</h2>
+              <h2 className="text-sm font-bold text-slate-900">{pkg?.name || "Package"}</h2>
               <p className="text-xs text-slate-400 mt-0.5">
-                {pkg?.pax_count || 0} guests · ₹{Number(pkg?.price_per_pax || 0).toLocaleString("en-IN")}/pax · Package value ₹{packageTotal.toLocaleString("en-IN")} · Selected {totalSelected}/{draftItems.length}
+                {paxCount || 0} guests · ₹{Number(pkg?.price || 0).toLocaleString("en-IN")}/pax · Package value ₹
+                {packageTotal.toLocaleString("en-IN")} · Selected {totalSelected}/{draftItems.length}
               </p>
             </div>
             <button onClick={requestClose} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100">
@@ -2924,41 +3097,42 @@ function EditPackageModal({ pkg, categories, items, onClose, onSave }) {
           <div className="flex-1 flex overflow-hidden">
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
               {categories.map(cat => {
-                const catItems = draftItems.filter(i => String(i.category_id) === String(cat.category_id));
+                const catItems = draftItems.filter(i => String(i.category_id) === String(cat.id));
                 const selectedCount = catItems.filter(i => i.is_selected).length;
-                const hasMin = typeof cat.min_select === "number";
-                const hasMax = typeof cat.max_select === "number";
+                const required = typeof cat.count === "number" ? cat.count : null;
                 const pct = catItems.length > 0 ? Math.min(100, (selectedCount / catItems.length) * 100) : 0;
-                const incomplete = hasMin && selectedCount < cat.min_select;
+                const incomplete = required != null && selectedCount < required;
 
                 return (
-                  <div key={cat.id || cat.category_id} className="border border-slate-200 rounded-2xl p-4">
+                  <div key={cat.id} className="border border-slate-200 rounded-2xl p-4">
                     <div className="flex items-center justify-between mb-1">
                       <div className="flex items-center gap-2">
-                        <p className="text-sm font-bold text-slate-800">{cat.category_name}</p>
-                        {(hasMin || hasMax) && (
-                          <span className="text-xs text-slate-400">
-                            {hasMin && `Min: ${cat.min_select}`}{hasMin && hasMax && " · "}{hasMax && `Max: ${cat.max_select}`}
-                          </span>
-                        )}
+                        <p className="text-sm font-bold text-slate-800">{cat.name}</p>
+                        {required != null && <span className="text-xs text-slate-400">Choose: {required}</span>}
                       </div>
-                      <span className="text-xs font-semibold text-slate-500">Selected: {selectedCount}/{catItems.length}</span>
+                      <span className="text-xs font-semibold text-slate-500">
+                        Selected: {selectedCount}/{catItems.length}
+                      </span>
                     </div>
 
                     <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden mb-3">
-                      <div className={`h-full rounded-full transition-all duration-300 ${incomplete ? "bg-amber-400" : "bg-violet-500"}`} style={{ width: `${pct}%` }} />
+                      <div
+                        className={`h-full rounded-full transition-all duration-300 ${incomplete ? "bg-amber-400" : "bg-violet-500"}`}
+                        style={{ width: `${pct}%` }}
+                      />
                     </div>
 
                     {incomplete && (
                       <div className="flex items-center gap-1.5 mb-3 px-2.5 py-1.5 bg-amber-50 border border-amber-200 rounded-lg text-xs font-medium text-amber-700 w-fit">
-                        <AlertTriangle size={11} /> Select {cat.min_select - selectedCount} more item{cat.min_select - selectedCount === 1 ? "" : "s"}
+                        <AlertTriangle size={11} /> Select {required - selectedCount} more item
+                        {required - selectedCount === 1 ? "" : "s"}
                       </div>
                     )}
 
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
                       {catItems.map(item => {
                         const selected = item.is_selected;
-                        const disabledByMax = !selected && hasMax && selectedCount >= cat.max_select;
+                        const disabledByMax = !selected && required != null && selectedCount >= required;
                         return (
                           <button
                             key={item.id}
@@ -2970,16 +3144,18 @@ function EditPackageModal({ pkg, categories, items, onClose, onSave }) {
                               selected
                                 ? "border-violet-500 bg-violet-50 shadow-sm"
                                 : disabledByMax
-                                  ? "border-slate-200 bg-white opacity-50 cursor-not-allowed"
-                                  : "border-slate-200 bg-white hover:border-violet-300"
+                                ? "border-slate-200 bg-white opacity-50 cursor-not-allowed"
+                                : "border-slate-200 bg-white hover:border-violet-300",
                             ].join(" ")}
                           >
-                            {selected && (
-                              <CheckCircle2 size={14} className="absolute top-2 right-2 text-violet-600" />
-                            )}
-                            <p className={`text-xs font-semibold pr-4 ${selected ? "text-violet-800" : "text-slate-700"}`}>{item.item_name}</p>
-                            {typeof item.item_price === "number" && (
-                              <p className={`text-xs mt-0.5 ${selected ? "text-violet-500" : "text-slate-400"}`}>₹{item.item_price.toLocaleString("en-IN")}</p>
+                            {selected && <CheckCircle2 size={14} className="absolute top-2 right-2 text-violet-600" />}
+                            <p className={`text-xs font-semibold pr-4 ${selected ? "text-violet-800" : "text-slate-700"}`}>
+                              {item.name}
+                            </p>
+                            {typeof item.price === "number" && (
+                              <p className={`text-xs mt-0.5 ${selected ? "text-violet-500" : "text-slate-400"}`}>
+                                ₹{item.price.toLocaleString("en-IN")}
+                              </p>
                             )}
                           </button>
                         );
@@ -3001,20 +3177,31 @@ function EditPackageModal({ pkg, categories, items, onClose, onSave }) {
             <div className="w-72 shrink-0 border-l border-slate-100 bg-slate-50 p-5 overflow-y-auto">
               <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Package summary</p>
               <div className="space-y-2.5 text-xs">
-                <div className="flex justify-between"><span className="text-slate-500">Guests</span><span className="font-semibold text-slate-800">{pkg?.pax_count || 0}</span></div>
-                <div className="flex justify-between"><span className="text-slate-500">Price / pax</span><span className="font-semibold text-slate-800">₹{Number(pkg?.price_per_pax || 0).toLocaleString("en-IN")}</span></div>
-                <div className="flex justify-between border-t border-slate-200 pt-2.5"><span className="text-slate-500">Package total</span><span className="font-bold text-violet-600">₹{packageTotal.toLocaleString("en-IN")}</span></div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Guests</span>
+                  <span className="font-semibold text-slate-800">{paxCount || 0}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Price / pax</span>
+                  <span className="font-semibold text-slate-800">₹{Number(pkg?.price || 0).toLocaleString("en-IN")}</span>
+                </div>
+                <div className="flex justify-between border-t border-slate-200 pt-2.5">
+                  <span className="text-slate-500">Package total</span>
+                  <span className="font-bold text-violet-600">₹{packageTotal.toLocaleString("en-IN")}</span>
+                </div>
               </div>
 
               <div className="mt-4 pt-4 border-t border-slate-200 space-y-2.5">
                 {categories.map(cat => {
-                  const catItems = draftItems.filter(i => String(i.category_id) === String(cat.category_id));
+                  const catItems = draftItems.filter(i => String(i.category_id) === String(cat.id));
                   const selectedCount = catItems.filter(i => i.is_selected).length;
-                  const incomplete = typeof cat.min_select === "number" && selectedCount < cat.min_select;
+                  const incomplete = typeof cat.count === "number" && selectedCount < cat.count;
                   return (
-                    <div key={cat.id || cat.category_id} className="flex items-center justify-between text-xs">
-                      <span className={incomplete ? "text-amber-600 font-medium" : "text-slate-500"}>{cat.category_name}</span>
-                      <span className={`font-semibold ${incomplete ? "text-amber-700" : "text-slate-700"}`}>{selectedCount}/{catItems.length}</span>
+                    <div key={cat.id} className="flex items-center justify-between text-xs">
+                      <span className={incomplete ? "text-amber-600 font-medium" : "text-slate-500"}>{cat.name}</span>
+                      <span className={`font-semibold ${incomplete ? "text-amber-700" : "text-slate-700"}`}>
+                        {selectedCount}/{catItems.length}
+                      </span>
                     </div>
                   );
                 })}
@@ -3024,16 +3211,21 @@ function EditPackageModal({ pkg, categories, items, onClose, onSave }) {
                 <div className="flex items-center justify-between text-xs mb-2">
                   <span className="text-slate-500">Categories complete</span>
                   <span className="font-semibold text-slate-700">
-                    {categories.filter(cat => {
-                      const catItems = draftItems.filter(i => String(i.category_id) === String(cat.category_id));
-                      const selectedCount = catItems.filter(i => i.is_selected).length;
-                      return typeof cat.min_select !== "number" || selectedCount >= cat.min_select;
-                    }).length}/{categories.length}
+                    {
+                      categories.filter(cat => {
+                        const catItems = draftItems.filter(i => String(i.category_id) === String(cat.id));
+                        const selectedCount = catItems.filter(i => i.is_selected).length;
+                        return typeof cat.count !== "number" || selectedCount >= cat.count;
+                      }).length
+                    }
+                    /{categories.length}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-slate-500">Items selected</span>
-                  <span className="font-semibold text-slate-700">{totalSelected}/{draftItems.length}</span>
+                  <span className="font-semibold text-slate-700">
+                    {totalSelected}/{draftItems.length}
+                  </span>
                 </div>
               </div>
 
@@ -3055,8 +3247,11 @@ function EditPackageModal({ pkg, categories, items, onClose, onSave }) {
               <button onClick={requestClose} className="px-4 py-2 rounded-xl border border-slate-200 text-xs text-slate-600 font-medium hover:bg-slate-50 transition-all">
                 Cancel
               </button>
-              <button onClick={handleSave} disabled={!isDirty}
-                className="px-4 py-2 rounded-xl bg-violet-600 text-white text-xs font-semibold hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+              <button
+                onClick={handleSave}
+                disabled={!isDirty}
+                className="px-4 py-2 rounded-xl bg-violet-600 text-white text-xs font-semibold hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              >
                 Save selection
               </button>
             </div>

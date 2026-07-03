@@ -12,6 +12,8 @@ import {
   CheckCircle2,
 } from "lucide-react";
 
+import { useSocket } from "@/context/SocketContext";
+
 
 import { useVendorCategory } from "@/context/VendorCategoryContext";
 
@@ -19,7 +21,7 @@ import { settingsAPI , saveSettingsAPI , loadSettingsAPI} from "@/services/setti
 
 const BRAND = "linear-gradient(242deg,#a44bf3,#499ce8)";
 
-
+ 
 
 export default function SettingsPage() {
   const { activeCategory } = useVendorCategory();
@@ -27,6 +29,8 @@ export default function SettingsPage() {
  const [loadData, setLoadData] = useState([]);
 const [settings, setSettings] = useState({});
 const [loadSetting, setLoadSetting] = useState({});
+
+const { status } = useSocket();
 
 const load = async () => {
   try {
@@ -83,6 +87,12 @@ load();
 
 
 }, [activeCategory]);
+
+  useEffect(() => {
+    load();
+
+  }, [status]);
+
 
   const initialSettings = loadData.reduce((acc, section) => {
   section.settings.forEach((field) => {

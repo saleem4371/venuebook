@@ -20,7 +20,7 @@ export default function CategorySelectModal({
   const [selected,   setSelected]   = useState(() => toSingular(defaultCategory));
   const [loading,    setLoading]     = useState(true);
   const [mounted,    setMounted]     = useState(false);
-  const [parentData,    setParentData]     = useState('');
+  const [parentData,    setParentData]     = useState({});
   const [childData, setChildData] = useState([]);
 
   /* Portal mount guard */
@@ -60,30 +60,65 @@ export default function CategorySelectModal({
 
   const activeCat = categories.find((c) => c.name === selected);
 
-useEffect(() => {
-  if (!activeCat?.name) {
-    // setPageLoading(false);
-    return;
-  }
+// useEffect(() => {
+//   if (!activeCat?.name) {
+//     // setPageLoading(false);
+//     return;
+//   }
 
+//   load_parent(activeCat);
+// }, [activeCat]);
+
+useEffect(() => {
+  if (!activeCat?.name) return;
   load_parent(activeCat);
-}, [activeCat]);
+}, [activeCat?.name]);
+
+useEffect(() => {
+  if (!categories.length) return;
+
+  if (!categories.some(c => c.name === selected)) {
+    setSelected(categories[0].name);
+  }
+}, [categories, selected]);
+
+// const load_parent = async (selected) => {
+//   try {
+//     // setPageLoading(true);
+
+//     const resp = await parent_of_category(selected.name);
+//     const resps = await child_of_category(selected.name);
+
+//     setParentData(resp?.data?.[0] || []);
+//     setChildData(Array.isArray(resps?.data) ? resps.data : []);
+//   } catch (err) {
+//     console.error(err);
+//     setParentData({});
+//     setChildData([]);//childData
+//   } finally {
+//     // setPageLoading(false);
+//   }
+// };
 
 const load_parent = async (selected) => {
+  if (!selected?.name) return;
+
   try {
-    // setPageLoading(true);
+    const [resp, resps] = await Promise.all([
+      parent_of_category(selected.name),
+      child_of_category(selected.name),
+    ]);
 
-    const resp = await parent_of_category(selected.name);
-    const resps = await child_of_category(selected.name);
+    const parent = Array.isArray(resp?.data)
+  ? resp.data[0]
+  : resp?.data ?? {};
 
-    setParentData(resp?.data?.[0] || []);
+setParentData(parent);
     setChildData(Array.isArray(resps?.data) ? resps.data : []);
   } catch (err) {
     console.error(err);
-    setParentData([]);
-    setChildData([]);//childData
-  } finally {
-    // setPageLoading(false);
+    setParentData({});
+    setChildData([]);
   }
 };
 
@@ -272,10 +307,11 @@ const progress =
           isLimitReached ? "bg-red-500" : "bg-violet-600"
         }`}
         style={{
-          width: `${Math.min(
-            (currentChildCount / maxChildCount) * 100,
-            100
-          )}%`,
+          // width: `${Math.min(
+          //   (currentChildCount / maxChildCount) * 100,
+          //   100
+          // )}%`,
+          width: `${progress}%`,
         }}
       />
     </div>

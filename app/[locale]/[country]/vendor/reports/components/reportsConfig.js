@@ -4,7 +4,7 @@
  */
 
 import { CATEGORIES, CATEGORY_TINTS, CATEGORY_COLORS, CATEGORY_ORDER, DEFAULT_CATEGORY } from "@/config/categoryConfig";
-
+ 
 /* ─── Gradients ──────────────────────────────────────────────────────────── */
 export const REPORT_GRADIENTS = {
   venues:      "linear-gradient(242deg, #a44bf3, #499ce8)",
@@ -57,7 +57,7 @@ export const CATEGORY_REPORT_DATA = {
       { id:3301, name:"Priya Mehta",       amount:52000, date:"15-Mar-2026", detail:"Terrace Garden",     status:"Booked",    paidOn:"15 Mar 2026", paymentMode:"Bank Transfer",         breakdown:[{label:"Base price",value:42000},{label:"Security deposit",value:7500},{label:"Add-ons",value:2500},{label:"Refund",value:0,negative:true}] },
       { id:7182, name:"Anjali Rao",        amount:28400, date:"02-Mar-2026", detail:"Banquet Hall B",     status:"Completed", paidOn:"02 Mar 2026", paymentMode:"Online · UPI",          breakdown:[{label:"Base price",value:23000},{label:"Security deposit",value:4000},{label:"Add-ons",value:1400},{label:"Refund",value:0,negative:true}] },
       { id:5519, name:"Deepak Nair",       amount:18750, date:"20-Feb-2026", detail:"Main Hall",          status:"Cancelled", paidOn:"20 Feb 2026", paymentMode:"Online · Card",         breakdown:[{label:"Base price",value:15000},{label:"Security deposit",value:2500},{label:"Add-ons",value:1250},{label:"Refund",value:18750,negative:true}] },
-    ],
+    ], 
     aging: {
       bucketValues: [16976137, 219146, 2106246, 2514034],
       rows: [

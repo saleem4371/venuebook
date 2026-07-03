@@ -12,14 +12,92 @@ import {
   Mail, Phone, MapPin, Eye, Edit, Trash2,
   Users, CheckCircle2, Bookmark, Save, FileText,
   History, MoreHorizontal, CalendarCheck,
-  Inbox, Sparkles, Clock, XCircle,Sheet
+  Inbox, Sparkles, Clock, XCircle, Sheet, Loader2, CalendarDays
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { STATE_CFG } from "./_data";
 
 import { useRouter , useParams } from "next/navigation";
-import { formatPrice } from "@/lib/currency_format";
+import { formatPrice , exchange_convert,formatDate } from "@/lib/currency_format";
 
+
+/* ═══════════════════════════════════════════════════════════════
+   MULTI-VALUE HELPERS
+   Event date, venue and guest count can each be either a single
+   value or an array of values (multi-day / multi-venue bookings).
+   These helpers normalize + format them consistently everywhere.
+═══════════════════════════════════════════════════════════════ */
+function toList(val) {
+  if (val === undefined || val === null || val === "") return [];
+  return Array.isArray(val) ? val.filter((v) => v !== undefined && v !== null && v !== "") : [val];
+}
+
+function formatShortDate(d) {
+  const date = new Date(d);
+  if (isNaN(date.getTime())) return String(d);
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+/** Returns a display string for event date(s). Single -> formatDate(),
+ *  Multiple -> "Jul 1 – Jul 4" style range spanning earliest to latest. */
+export function formatEventDate(eventDate) {
+  if (!eventDate) return "-";
+
+  const dates = Array.isArray(eventDate)
+    ? eventDate
+    : String(eventDate)
+        .split(",")
+        .map((d) => d.trim())
+        .filter(Boolean);
+
+  if (dates.length === 0) return "-";
+  if (dates.length === 1) return formatDate(dates[0]);
+
+  const sorted = dates.sort(
+    (a, b) => new Date(a).getTime() - new Date(b).getTime()
+  );
+
+  return `${formatShortDate(sorted[0])} – ${formatShortDate(
+    sorted[sorted.length - 1]
+  )}`;
+}
+
+/** Returns a display string for venue(s). Single -> the venue name,
+ *  Multiple -> "Venue A +2 more". */
+export function formatVenue(venue) {
+  const venues = toList(venue);
+  if (venues.length === 0) return "-";
+  if (venues.length === 1) return venues[0];
+  return `${venues[0]} +${venues.length - 1} more`;
+}
+
+/** Returns a total guest count. Accepts either a single number or an
+ *  array of per-day / per-venue counts (summed). */
+export function formatGuestsTotal(guests) {
+  const list = toList(guests);
+  if (list.length === 0) return 0;
+  if (list.length === 1) return Number(list[0]) || 0;
+  return list.reduce((sum, g) => sum + (Number(g) || 0), 0);
+}
+
+/* Small pill that flags whether a field represents a single value or
+   multiple values (e.g. "Single Date" vs "3 Dates"). */
+function MultiBadge({ count, label, className = "" }) {
+  const multi = count > 1;
+  return (
+    <span
+      className={[
+        "inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-[1px] rounded-full uppercase tracking-wide shrink-0 leading-none",
+        multi
+          ? "bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300"
+          : "bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500",
+        className,
+      ].join(" ")}
+    >
+      {multi ? `${count} ${label}` : `Single ${label}`}
+    </span>
+  );
+}
 
 
 /* ═══════════════════════════════════════════════════════════════
@@ -255,7 +333,7 @@ function PayBadge({ status }) {
 /* ═══════════════════════════════════════════════════════════════
    RESERVATION CARD  (Grid view — premium, consistent height)
 ═══════════════════════════════════════════════════════════════ */
-export function ReservationCard({ item, t, tA, onView, onAction }) {
+export function ReservationCard({ item, t, tA, onView, onAction , currency }) {
   // const initials = item.name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
 const initials = (item.name ?? "")
   .split(" ")
@@ -264,6 +342,15 @@ const initials = (item.name ?? "")
   .join("")
   .toUpperCase()
   .slice(0, 2);
+
+  console.log(currency)
+
+  const indiaRate = 86;      // fetched from DB
+const uaeRate = 3.6725;    // fetched from DB
+
+  const dateCount  = toList(item.eventDate).length || 1;
+  const venueCount = toList(item.venue).length || 1;
+  const guestCount = toList(item.guests).length || 1;
 
  
 
@@ -283,9 +370,33 @@ const initials = (item.name ?? "")
       <div className="p-4 flex flex-col gap-3 flex-1">
         {/* Header: avatar + name + ref + actions */}
         <div className="flex items-start gap-3">
-          <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[12px] font-bold text-white select-none ${item.avatarColor}`}>
+          {/* <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[12px] font-bold text-white select-none ${item.avatarColor}`}>
             {initials}
-          </span>
+          </span> */}
+
+ <div className="relative inline-flex">
+  <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[12px] font-bold text-white select-none ${item.avatarColor}`}>
+    {initials}
+  </span>
+
+  {/* Mode badge - top right */}
+  {item.selection_mode && (
+    <span className="absolute -right-2 -top-2 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
+      {item.selection_mode.charAt(0).toUpperCase()}
+    </span>
+  )}
+
+  {/* Type badge - bottom right */}
+  {item.selection_type && (
+    <span className="absolute -right-2 -bottom-2 rounded-full bg-blue-500 px-1.5 py-0.5 text-[9px] font-bold text-white">
+      {item.selection_type}
+    </span>
+  )}
+</div>
+
+
+            {item.selection_mode} -  {item.selection_type}
+
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate leading-snug">{item.name}</p>
             <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 font-mono">{item.refNo}</p>
@@ -312,25 +423,32 @@ const initials = (item.name ?? "")
           </p>
           <p className="flex items-center gap-2 truncate">
             <MapPin size={10} className="shrink-0 text-gray-300 dark:text-gray-600" aria-hidden="true" />
-            <span className="truncate">{item.venue}</span>
+            <span className="truncate">{formatVenue(item.venue)}</span>
+            {/* <MultiBadge count={venueCount} label="Venues" /> */}
           </p>
         </div>
 
         {/* Metadata grid — pinned to bottom */}
         <div className="mt-auto pt-3 border-t border-gray-50 dark:border-white/[0.04] grid grid-cols-2 gap-y-2 gap-x-3">
           <div>
-            <p className="text-[10px] text-gray-400 dark:text-gray-500 leading-none mb-0.5">Event Date</p>
-            <p className="text-[12px] font-semibold text-gray-700 dark:text-gray-200 truncate">{item.eventDate}</p>
+            <p className="text-[10px] text-gray-400 dark:text-gray-500 leading-none mb-1 flex items-center gap-1">
+              Event Date 
+              {/* <MultiBadge count={dateCount} label="Dates" /> */}
+            </p>
+            <p className="text-[12px] font-semibold text-gray-700 dark:text-gray-200 truncate">{formatEventDate(item.eventDate)}</p>
           </div>
           <div className="text-end">
             <p className="text-[10px] text-gray-400 dark:text-gray-500 leading-none mb-0.5">Amount</p>
             <p className="text-[13px] font-bold text-gray-900 dark:text-gray-100">{formatPrice(item.amount ?? 0)}</p>
           </div>
           <div>
-            <p className="text-[10px] text-gray-400 dark:text-gray-500 leading-none mb-0.5">Guests</p>
+            <p className="text-[10px] text-gray-400 dark:text-gray-500 leading-none mb-1 flex items-center gap-1">
+              Guests 
+              {/* <MultiBadge count={guestCount} label="Pax" /> */}
+            </p>
             <p className="text-[12px] font-semibold text-gray-700 dark:text-gray-200 flex items-center gap-1">
               <Users size={10} className="text-gray-400" aria-hidden="true" />
-              {Number(item.guests ?? 0).toLocaleString()}
+              {formatGuestsTotal(item.guests).toLocaleString()}
             </p>
           </div>
           <div className="text-end">
@@ -366,6 +484,12 @@ const initials = (item.name ?? "")
   .join("")
   .toUpperCase()
   .slice(0, 2);
+
+    const indiaRate = 94.60;      // fetched from DB
+const uaeRate = 3.67;    // fetched from DB
+
+  const dateCount = toList(item.eventDate).length || 1;
+
   return (
     <motion.div
       layout
@@ -375,20 +499,40 @@ const initials = (item.name ?? "")
       className="flex flex-col sm:flex-row sm:items-center gap-3 px-5 py-4 border-b border-gray-50 dark:border-gray-800/70 last:border-b-0 hover:bg-gray-50/70 dark:hover:bg-gray-800/30 transition-colors"
     >
       <div className="flex items-center gap-3 sm:w-52 shrink-0 min-w-0">
+        <div className="relative inline-flex">
         <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white ${item.avatarColor}`}>{initials}</span>
-        
+          {item.selection_mode && (
+    <span className="absolute -right-2 -top-2 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
+      {item.selection_mode.charAt(0).toUpperCase()}
+    </span>
+  )}
+
+  {/* Type badge - bottom right */}
+  {item.selection_type && (
+    <span className="absolute -right-2 -bottom-2 rounded-full bg-blue-500 px-1.5 py-0.5 text-[9px] font-bold text-white">
+      {item.selection_type}
+    </span>
+  )}
+  </div>
+
         <div className="min-w-0">
           <p className="text-[13px] font-semibold text-gray-900 dark:text-gray-100 truncate">{item.name}</p>
           <p className="text-[10px] text-gray-400 dark:text-gray-500 font-mono">{item.refNo}</p>
         </div>
       </div>
 
-      <p className="flex-1 text-[12px] text-gray-500 dark:text-gray-400 truncate hidden sm:block">{item.venue}</p>
-      <p className="text-[12px] text-gray-500 dark:text-gray-400 shrink-0 hidden md:block">{item.eventDate}</p>
-      <div className="flex items-center gap-1 text-[12px] text-gray-500 dark:text-gray-400 shrink-0 hidden lg:flex">
-        <Users size={11} aria-hidden="true" />{Number(item.guests ?? 0).toLocaleString()}
+      <p className="flex-1 text-[12px] text-gray-500 dark:text-gray-400 truncate hidden sm:block">{formatVenue(item.venue)}</p>
+      <div className="hidden md:flex items-center gap-1.5 shrink-0">
+        <p className="text-[12px] text-gray-500 dark:text-gray-400">{formatEventDate(item.eventDate)}</p>
+        {/* <MultiBadge count={dateCount} label="Dates" /> */}
       </div>
-      <p className="text-[13px] font-semibold text-gray-800 dark:text-gray-200 shrink-0 hidden md:block">{formatPrice(item.amount ?? 0)}</p>
+      <div className="flex items-center gap-1 text-[12px] text-gray-500 dark:text-gray-400 shrink-0 hidden lg:flex">
+        <Users size={11} aria-hidden="true" />{formatGuestsTotal(item.guests).toLocaleString()}
+      </div>
+      <p className="text-[13px] font-semibold text-gray-800 dark:text-gray-200 shrink-0 hidden md:block">{formatPrice(item.amount ?? 0)}
+
+         
+      </p>
 
       <div className="shrink-0"><StatusBadge workflowState={item.workflowState} /></div>
 
@@ -410,8 +554,30 @@ const initials = (item.name ?? "")
    COMPACT TABLE  — enterprise list / table view
    Columns: Guest · Venue · Date · Type · Guests · Amount · Status · Actions
 ═══════════════════════════════════════════════════════════════ */
-export function CompactTable({ items, t, tA, onView, onAction }) {
+export function CompactTable({ items, t, tA, onView, onAction  }) {
   const COL_CLS = "px-4 py-3 text-start text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider whitespace-nowrap";
+
+   const indiaRate = 94.60;      // fetched from DB
+const uaeRate = 3.67;    // fetched from DB
+
+  const router = useRouter();
+  const params   = useParams();
+
+  
+    const locale  = params?.locale  || "en";
+    const country = params?.country || "in";
+
+  // Tracks which row's Ref No is currently navigating, so we can show
+  // a smooth inline loading state instead of a jarring instant jump.
+  const [loadingId, setLoadingId] = useState(null);
+
+  const handleRefClick = (item) => {
+    if (loadingId) return; // avoid duplicate taps mid-navigation
+    setLoadingId(item.id);
+    router.push(
+      `/${locale}/${country}/vendor/reservations/manage_reserve/${item.id}`
+    );
+  };
 
   return (
     <div className="bg-white dark:bg-[#0f172a] border border-gray-100 dark:border-white/[0.05] rounded-2xl shadow-sm overflow-hidden">
@@ -445,9 +611,14 @@ export function CompactTable({ items, t, tA, onView, onAction }) {
   .toUpperCase()
   .slice(0, 2);
               const isLast   = idx === items.length - 1;
+              const dateCount  = toList(item.eventDate).length || 1;
+              const venueCount = toList(item.venue).length || 1;
+              const isRowLoading = loadingId === item.id;
               return (
-                <tr
+                <motion.tr
                   key={item.id}
+                  animate={isRowLoading ? { opacity: 0.55 } : { opacity: 1 }}
+                  transition={{ duration: 0.25, ease: "easeOut" }}
                   className={[
                     "transition-colors hover:bg-gray-50/60 dark:hover:bg-white/[0.025]",
                     !isLast ? "border-b border-gray-50 dark:border-white/[0.04]" : "",
@@ -456,33 +627,86 @@ export function CompactTable({ items, t, tA, onView, onAction }) {
                   {/* Guest */}
                   <td className="px-4 py-3 whitespace-nowrap">
                     <div className="flex items-center gap-2.5">
+                      <div className="relative inline-flex">
                       {/* <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white bg-violet-500`}> */}
                       <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white ${item.avatarColor}`}>
                         {initials}
                       </span>
+                         {item.selection_mode && (
+    <span className="absolute -right-2 -top-2 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
+      {item.selection_mode.charAt(0).toUpperCase()}
+    </span>
+  )}
+
+  {/* Type badge - bottom right */}
+  {item.selection_type && (
+    <span className="absolute -right-2 -bottom-2 rounded-full bg-blue-500 px-1.5 py-0.5 text-[9px] font-bold text-white">
+      {item.selection_type}
+    </span>
+  )}
+  </div>
+
                       <p className="text-[13px] font-semibold text-gray-800 dark:text-gray-200 truncate max-w-[140px]">{item.name}</p>
                     </div>
                   </td>
 
-                  {/* Ref No */}
+                  {/* Ref No — click to manage, with smooth loading state */}
                   <td className="px-4 py-3 whitespace-nowrap">
-                    <p className="text-[11px] font-mono text-gray-400 dark:text-gray-500">{item.refNo}</p>
+                    <button
+                      type="button"
+                      onClick={() => handleRefClick(item)}
+                      disabled={isRowLoading}
+                      aria-busy={isRowLoading}
+                      className="inline-flex items-center gap-1.5 text-[11px] font-mono text-violet-600 hover:text-violet-700 hover:underline dark:text-violet-400 cursor-pointer disabled:cursor-wait disabled:no-underline disabled:text-violet-400/80 transition-colors"
+                    >
+                      <AnimatePresence mode="wait" initial={false}>
+                        {isRowLoading ? (
+                          <motion.span
+                            key="loading"
+                            initial={{ opacity: 0, y: 2 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -2 }}
+                            transition={{ duration: 0.15 }}
+                            className="flex items-center gap-1.5"
+                          >
+                            <Loader2 size={11} className="animate-spin" aria-hidden="true" />
+                            <span>Opening…</span>
+                          </motion.span>
+                        ) : (
+                          <motion.span
+                            key="ref"
+                            initial={{ opacity: 0, y: 2 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -2 }}
+                            transition={{ duration: 0.15 }}
+                          >
+                            {item.refNo}
+                          </motion.span>
+                        )}
+                      </AnimatePresence>
+                    </button>
                   </td>
 
                   {/* Venue */}
                   <td className="px-4 py-3 max-w-[160px]">
-                    <p className="text-[12px] text-gray-500 dark:text-gray-400 truncate">{item.venue}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-[12px] text-gray-500 dark:text-gray-400 truncate">{formatVenue(item.venue)}</p>
+                      {/* <MultiBadge count={venueCount} label="Venues" /> */}
+                    </div>
                   </td>
 
                   {/* Date */}
                   <td className="px-4 py-3 whitespace-nowrap">
-                    <p className="text-[12px] text-gray-500 dark:text-gray-400">{item.eventDate}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-[12px] text-gray-500 dark:text-gray-400">{formatEventDate(item.eventDate)}</p>
+                      {/* <MultiBadge count={dateCount} label="Dates" /> */}
+                    </div>
                   </td>
 
                   {/* Type + Shift */}
                   <td className="px-4 py-3 whitespace-nowrap">
                     <div className="space-y-0.5">
-                      <p className="text-[12px] text-gray-600 dark:text-gray-300 font-medium">{item.eventType}</p>
+                      <p className="text-[12px] text-gray-600 dark:text-gray-300 font-medium">{item.eventType} </p>
                       <p className="text-[10px] text-gray-400 dark:text-gray-600 capitalize">{item.shift}</p>
                     </div>
                   </td>
@@ -491,13 +715,14 @@ export function CompactTable({ items, t, tA, onView, onAction }) {
                   <td className="px-4 py-3 text-center whitespace-nowrap">
                     <span className="inline-flex items-center gap-1 text-[12px] text-gray-500 dark:text-gray-400">
                       <Users size={11} aria-hidden="true" />
-                      {Number(item.guests ?? 0).toLocaleString()}
+                      {formatGuestsTotal(item.guests).toLocaleString()}
                     </span>
                   </td>
 
                   {/* Amount */}
                   <td className="px-4 py-3 whitespace-nowrap">
                     <p className="text-[13px] font-semibold text-gray-800 dark:text-gray-200">{formatPrice(item.amount ?? 0)}</p>
+                    {/* { exchange_convert(item.amount ?? 0, indiaRate, uaeRate)} */}
                   </td>
 
                   {/* Status */}
@@ -518,7 +743,7 @@ export function CompactTable({ items, t, tA, onView, onAction }) {
                       <ActionMenu item={item} tA={tA} onAction={onAction} />
                     </div>
                   </td>
-                </tr>
+                </motion.tr>
               );
             })}
           </tbody>
@@ -545,15 +770,29 @@ function CompactRow({ item, t, tA, onView, onAction }) {
   .toUpperCase()
   .slice(0, 2);
 
+  const dateCount = toList(item.eventDate).length || 1;
+
   return (
     <div className="group flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50/60 dark:hover:bg-white/[0.025] transition-colors min-w-0">
-
+<div className="relative inline-flex">
       {/* ① Avatar */}
       {/* <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white bg-violet-500`}> */}
       <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white ${item.avatarColor}`}>
         {initials}
       </span>
+ {item.selection_mode && (
+    <span className="absolute -right-2 -top-2 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
+      {item.selection_mode.charAt(0).toUpperCase()}
+    </span>
+  )}
 
+  {/* Type badge - bottom right */}
+  {item.selection_type && (
+    <span className="absolute -right-2 -bottom-2 rounded-full bg-blue-500 px-1.5 py-0.5 text-[9px] font-bold text-white">
+      {item.selection_type}
+    </span>
+  )}
+  </div>
       {/* ② Guest — name + ref */}
       <div className="flex-[1.3] min-w-0">
         <p className="text-[13px] font-semibold text-gray-800 dark:text-gray-200 truncate leading-snug">{item.name}</p>
@@ -574,20 +813,23 @@ function CompactRow({ item, t, tA, onView, onAction }) {
 
       {/* ④ Venue + event type (hidden below md) */}
       <div className="hidden md:flex flex-[1.2] min-w-0 flex-col gap-0.5">
-        <p className="text-[12px] text-gray-600 dark:text-gray-300 font-medium truncate leading-snug">{item.venue}</p>
+        <p className="text-[12px] text-gray-600 dark:text-gray-300 font-medium truncate leading-snug">{formatVenue(item.venue)}</p>
         <p className="text-[10px] text-gray-400 dark:text-gray-500 leading-tight">{item.eventType} · {item.shift}</p>
       </div>
 
       {/* ⑤ Dates — reservation + event (hidden below lg) */}
-      <div className="hidden lg:flex flex-col shrink-0 w-[96px] gap-0.5">
+      <div className="hidden lg:flex flex-col shrink-0 w-[112px] gap-0.5">
         <p className="text-[10px] text-gray-400 dark:text-gray-500 leading-snug">Bkd {item.orderDate}</p>
-        <p className="text-[11px] font-semibold text-gray-600 dark:text-gray-300 leading-tight">{item.eventDate}</p>
+        <div className="flex items-center gap-1">
+          <p className="text-[11px] font-semibold text-gray-600 dark:text-gray-300 leading-tight truncate">{formatEventDate(item.eventDate)}</p>
+          {/* <MultiBadge count={dateCount} label="Dt" /> */}
+        </div>
       </div>
 
       {/* ⑥ Pax (hidden below lg) */}
       <div className="hidden lg:flex items-center gap-1 shrink-0 w-[46px]">
         <Users size={10} className="text-gray-400 dark:text-gray-500 shrink-0" aria-hidden="true" />
-        <span className="text-[12px] font-semibold text-gray-600 dark:text-gray-300">{Number(item.guests ?? 0).toLocaleString()}</span>
+        <span className="text-[12px] font-semibold text-gray-600 dark:text-gray-300">{formatGuestsTotal(item.guests).toLocaleString()}</span>
       </div>
 
       {/* ⑦ Amount (hidden below md) */}
@@ -713,14 +955,19 @@ const initials = (item.name ?? "")
   .toUpperCase()
   .slice(0, 2);
 
+  const dateList  = toList(item.eventDate);
+  const venueList = toList(item.venue);
+  const isMultiDate  = dateList.length > 1;
+  const isMultiVenue = venueList.length > 1;
+
   const fields = [
     { label: t("detail.ref"),       value: item.refNo },
     { label: t("detail.orderDate"), value: item.orderDate },
-    { label: t("detail.date"),      value: item.eventDate },
+    { label: t("detail.date"),      value: formatEventDate(item.eventDate) },
     { label: t("detail.eventType"), value: item.eventType },
     { label: t("detail.shift"),     value: item.shift },
-    { label: t("detail.venue"),     value: item.venue },
-    { label: t("detail.guests"),    value: item.guests.toLocaleString() },
+    { label: t("detail.venue"),     value: formatVenue(item.venue) },
+    { label: t("detail.guests"),    value: formatGuestsTotal(item.guests).toLocaleString() },
     { label: t("detail.amount"),    value: `${formatPrice(item.amount)}` },
     { label: t("detail.source"),    value: item.source },
     { label: t("detail.caterer"),   value: item.caterer },
@@ -730,16 +977,62 @@ const initials = (item.name ?? "")
   return (
     <>
       <div className="flex items-center gap-4 mb-5">
+        <div className="relative inline-flex">
         <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white ${item.avatarColor}`}>{initials}</span>
+       {item.selection_mode && (
+    <span className="absolute -right-2 -top-2 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
+      {item.selection_mode.charAt(0).toUpperCase()}
+    </span>
+  )}
+
+  {/* Type badge - bottom right */}
+  {item.selection_type && (
+    <span className="absolute -right-2 -bottom-2 rounded-full bg-blue-500 px-1.5 py-0.5 text-[9px] font-bold text-white">
+      {item.selection_type}
+    </span>
+  )}
+  </div>
         {/* <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white bg-violet-500`}>{initials}</span> */}
         <div className="min-w-0">
           <h2 className="text-base font-bold text-gray-900 dark:text-gray-100 truncate">{item.name}</h2>
           <div className="flex items-center gap-2 mt-1 flex-wrap">
             <StatusBadge workflowState={item.workflowState} />
             <span className="text-[10px] font-mono text-gray-400 dark:text-gray-500">{item.refNo}</span>
+            {/* <MultiBadge count={dateList.length || 1} label="Dates" /> */}
+            {/* <MultiBadge count={venueList.length || 1} label="Venues" /> */}
           </div>
         </div>
       </div>
+
+      {/* If multi-day / multi-venue, break out the individual dates & venues */}
+      {(isMultiDate || isMultiVenue) && (
+        <div className="mb-4 rounded-xl bg-gray-50 dark:bg-white/[0.03] border border-gray-100 dark:border-white/[0.05] p-3 space-y-2">
+          {isMultiDate && (
+            <div className="flex items-start gap-2">
+              <CalendarDays size={13} className="text-gray-400 dark:text-gray-500 mt-0.5 shrink-0" aria-hidden="true" />
+              <div className="flex flex-wrap gap-1.5">
+                {dateList.map((d, i) => (
+                  <span key={i} className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-white dark:bg-gray-900 border border-gray-100 dark:border-white/[0.06] text-gray-600 dark:text-gray-300">
+                    {formatDate(d)}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+          {isMultiVenue && (
+            <div className="flex items-start gap-2">
+              <MapPin size={13} className="text-gray-400 dark:text-gray-500 mt-0.5 shrink-0" aria-hidden="true" />
+              <div className="flex flex-wrap gap-1.5">
+                {venueList.map((v, i) => (
+                  <span key={i} className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-white dark:bg-gray-900 border border-gray-100 dark:border-white/[0.06] text-gray-600 dark:text-gray-300">
+                    {v}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="space-y-0 mb-4">
         {fields.map(({ label, value }) => (

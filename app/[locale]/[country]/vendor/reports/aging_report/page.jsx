@@ -22,6 +22,8 @@ import {
 import { useVendorCategory } from "@/context/VendorCategoryContext";
 import { getReportConfig }   from "../components/reportsConfig";
 
+import { reports } from '@/services/report.service'
+
 /* ─── Static styling config for the four aging buckets ───────────────────────
    Values (bucketValues[i]) come from the per-category config.
    Only the visual chrome lives here.                                         */
@@ -111,6 +113,28 @@ export default function AgingReport() {
   const [expanded, setExpanded] = useState(null);
   const [sortBy,   setSortBy]   = useState("total");
   const [sortDir,  setSortDir]  = useState("desc");
+  const [areport,  setaReport]  = useState([]);
+
+ 
+
+ const load = async () => {
+  try {
+    setLoading(true);
+
+    const res = await reports();
+
+    setaReport(res.data || {});
+  } catch (err) {
+    console.error(err);
+  } finally {
+    setLoading(false);
+  }
+};
+
+useEffect(() => {
+  load();
+}, []);
+
 
   useEffect(() => {
     setLoading(true);
@@ -121,13 +145,20 @@ export default function AgingReport() {
   const cat = getReportConfig(activeCategory);
 
   /* Merge static bucket styling with per-category values */
-  const BUCKETS = BUCKET_META.map((meta, i) => ({
-    ...meta,
-    value: cat.data.aging.bucketValues[i],
-  }));
+
+    const agingData = areport?.venues?.aging ?? {
+  bucketValues: [0, 0, 0, 0],
+  rows: [],
+};
+const BUCKETS = BUCKET_META.map((meta, i) => ({
+  ...meta,
+  value: Number(agingData.bucketValues?.[i] || 0),
+}));
+
+
 
   /* Per-category invoice rows */
-  const ROWS = cat.data.aging.rows;
+  const ROWS = agingData.rows || [];
 
   /* Summary totals — derived from the rows */
   const totalOut  = ROWS.reduce((a, r) => a + r.outstanding, 0);

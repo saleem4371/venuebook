@@ -17,6 +17,8 @@ import {
 import { useVendorCategory }              from "@/context/VendorCategoryContext";
 import { getReportConfig, STATUS_CONFIG } from "../components/reportsConfig";
 
+import { reports } from '@/services/report.service'
+
 const MONTHS = [
   "Jan","Feb","Mar","Apr","May","Jun",
   "Jul","Aug","Sep","Oct","Nov","Dec",
@@ -145,6 +147,28 @@ export default function RevenueReport() {
   const [sortBy,   setSortBy]   = useState(null);
   const [sortDir,  setSortDir]  = useState("desc");
 
+    const [areport,  setaReport]  = useState([]);
+  
+   
+  
+   const load = async () => {
+    try {
+      setLoading(true);
+  
+      const res = await reports();
+  
+      setaReport(res.data || {});
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  useEffect(() => {
+    load();
+  }, []);
+
   useEffect(() => {
     setLoading(true);
     const t = setTimeout(() => setLoading(false), 420);
@@ -152,7 +176,10 @@ export default function RevenueReport() {
   }, [activeCategory]);
 
   const cat = getReportConfig(activeCategory);
-  const { data, kpiDefs } = cat;
+
+const kpiDefs = cat.kpiDefs;
+
+const data = areport?.venues ?? cat.data;
 
   const chartData = data.chart.map((v, i) => ({
     month: MONTHS[i], value: v,

@@ -25,10 +25,11 @@ import {
 } from "../_components";
 
 import { all_reservations } from "@/services/booking.service";
+  import { getAllCurrencies  } from "@/services/global.service";
 
 import { useRealtime } from "@/context/RealtimeContext";
 
-import { formatPrice } from "@/lib/currency_format";
+import { formatPrice,formatDate } from "@/lib/currency_format";
 
 /* ═══════════════════════════════════════════════════════════════
    DATE FILTER PILL — custom-styled, no browser chrome
@@ -160,6 +161,7 @@ export default function AllReservationsWorkspace() {
   const [detailItem,  setDetailItem]  = useState(null);
   const [filters,     setFilters]     = useState(EMPTY_FILTERS);
   const [reserve,     setReserve]     = useState([]);
+  const [currency,     setCurrency]     = useState([]);
 
   /* Reactive filter setter — auto-resets page on change */
   const setFilter = useCallback((k, v) => {
@@ -189,19 +191,48 @@ export default function AllReservationsWorkspace() {
 
 
 
+  // const stats = useMemo(() => {
+  //   const confirmed = reserve.filter((i) => i.workflowState === "CONFIRMED");
+  //   const revenue   = confirmed.reduce((s, i) => s + Number(i.amountNum), 0);
+  //   const revStr    = revenue >= 10000000 ? `${(revenue / 10000000).toFixed(2)} Cr` : `${(revenue / 100000).toFixed(1)} L`;
+  //   return {
+  //     total:     reserve.length,
+  //     leads:     reserve.filter((i) => i.workflowState === "lead").length,
+  //     pending:   reserve.filter((i) => ["PENDING", "IN_PROGRESS"].includes(i.workflowState)).length,
+  //     confirmed: confirmed.length,
+  //     reserved:  reserve.filter((i) => i.workflowState === "RESERVED").length,
+  //     revenue:   `${formatPrice(revStr)}`,
+  //   };
+  // }, [reserve]);//
   const stats = useMemo(() => {
-    const confirmed = reserve.filter((i) => i.workflowState === "CONFIRMED");
-    const revenue   = confirmed.reduce((s, i) => s + i.amountNum, 0);
-    const revStr    = revenue >= 10000000 ? `${(revenue / 10000000).toFixed(2)} Cr` : `${(revenue / 100000).toFixed(1)} L`;
-    return {
-      total:     reserve.length,
-      leads:     reserve.filter((i) => i.workflowState === "lead").length,
-      pending:   reserve.filter((i) => ["PENDING", "IN_PROGRESS"].includes(i.workflowState)).length,
-      confirmed: confirmed.length,
-      reserved:  reserve.filter((i) => i.workflowState === "RESERVED").length,
-      revenue:   `${formatPrice(revStr)}`,
-    };
-  }, [reserve]);
+  const confirmed = reserve.filter(
+    (i) => i.workflowState === "CONFIRMED"
+  );
+
+  const revenue = confirmed.reduce((sum, item) => {
+    const amount = Number(
+      String(item.amountNum ?? 0).replace(/,/g, "")
+    );
+
+    return sum + (isNaN(amount) ? 0 : amount);
+  }, 0);
+
+  const revStr =
+    revenue >= 10000000
+      ? `${(revenue / 10000000).toFixed(2)} Cr`
+      : `${(revenue / 100000).toFixed(1)} L`;
+
+  return {
+    total: reserve.length,
+    leads: reserve.filter((i) => i.workflowState === "lead").length,
+    pending: reserve.filter((i) =>
+      ["PENDING", "IN_PROGRESS"].includes(i.workflowState)
+    ).length,
+    confirmed: confirmed.length,
+    reserved: reserve.filter((i) => i.workflowState === "RESERVED").length,
+    revenue: revStr, // Don't call formatPrice here
+  };
+}, [reserve]);
 
   const viewOptions = [
     { key: "compact", Icon: List,        label: t("views.compact") },
@@ -225,9 +256,13 @@ export default function AllReservationsWorkspace() {
       : [];
 
     setReserve(bookings);
+
+      const resp = await getAllCurrencies();
+    setCurrency(resp?.data || []);
   } catch (err) {
     console.error("Load reservations failed:", err);
     setReserve([]);
+    setCurrency([]);
   }
 };
   
@@ -450,7 +485,7 @@ export default function AllReservationsWorkspace() {
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
           >
             {paginatedItems.map((item) => (
-              <ReservationCard key={item.id} item={item} t={t} tA={tA} onView={handleView} onAction={handleAction} />
+              <ReservationCard key={item.id} item={item} t={t} tA={tA} onView={handleView} onAction={handleAction} currency ={ currency } />
             ))}
           </motion.div>
         ) : (

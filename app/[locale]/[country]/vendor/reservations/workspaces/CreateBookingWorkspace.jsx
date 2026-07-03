@@ -7,8 +7,8 @@
    All sections, fields, and action buttons preserved.
 ══════════════════════════════════════════════════════════════════ */
 
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence, animate } from "framer-motion";
 import {
   Calendar,
   Users,
@@ -101,14 +101,76 @@ function FieldError({ message }) {
   );
 }
 
+/* ── Animated price value ─────────────────────────────────────
+   Smoothly counts from the previous number to the new one, and
+   gives a subtle "pop" + colour flash whenever the value changes.
+   Used across the pricing summary so every add-on / package /
+   discount action feels responsive instead of a hard jump-cut.
+──────────────────────────────────────────────────────────────── */
+function AnimatedAmount({ value = 0, className = "" }) {
+  const numeric = Number(value) || 0;
+  const [display, setDisplay] = useState(numeric);
+  const [pulse, setPulse] = useState(false);
+  const prevRef = useRef(numeric);
+
+  useEffect(() => {
+    const from = prevRef.current;
+    const to = numeric;
+
+    if (from === to) return;
+
+    // direction-aware pulse colour (green on increase, amber on decrease)
+    setPulse(to > from ? "up" : "down");
+
+    const controls = animate(from, to, {
+      duration: 0.55,
+      ease: [0.16, 1, 0.3, 1],
+      onUpdate: (v) => setDisplay(v),
+      onComplete: () => {
+        prevRef.current = to;
+        setTimeout(() => setPulse(false), 220);
+      },
+    });
+
+    return () => controls.stop();
+  }, [numeric]);
+
+  return (
+    <motion.span
+      key={pulse ? `${pulse}-${numeric}` : "static"}
+      initial={pulse ? { scale: 1 } : false}
+      animate={
+        pulse
+          ? { scale: [1, 1.12, 1] }
+          : { scale: 1 }
+      }
+      transition={{ duration: 0.35, ease: "easeOut" }}
+      className={`inline-block tabular-nums rounded-md px-1 -mx-1 transition-colors duration-300 ${
+        pulse === "up"
+          ? "bg-emerald-100/70 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400"
+          : pulse === "down"
+          ? "bg-amber-100/70 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"
+          : ""
+      } ${className}`}
+    >
+      {formatPrice(Math.round(display))}
+    </motion.span>
+  );
+}
+
 /* ── Summary row ───────────────────────────────────────────── */
-function SummaryRow({ label, value, highlight = false }) {
+function SummaryRow({ label, value, raw, highlight = false }) {
+  const hasRaw = raw !== undefined && raw !== null;
   return (
     <div
-      className={`flex justify-between text-sm ${highlight ? "font-bold text-violet-600 dark:text-violet-400" : "text-gray-600 dark:text-gray-400"}`}
+      className={`flex justify-between items-center text-sm ${highlight ? "font-bold text-violet-600 dark:text-violet-400" : "text-gray-600 dark:text-gray-400"}`}
     >
       <span>{label}</span>
-      <span>{value}</span>
+      {hasRaw ? (
+        <AnimatedAmount value={raw} className={highlight ? "text-base" : ""} />
+      ) : (
+        <span>{value}</span>
+      )}
     </div>
   );
 }
@@ -296,50 +358,6 @@ export default function CreateBookingWorkspace() {
     })();
   }, []);
 
-  // useEffect(() => {
-  //   const fetchVenues = async () => {
-  //     // Validation
-  //     if (shift.length === 0) return;
-
-  //     if (selectionMode === "single" && !eventDate) return;
-
-  //     if (
-  //       selectionMode === "multiple" &&
-  //       (!dateRange.startDate || !dateRange.endDate)
-  //     ) {
-  //       return;
-  //     }
-
-  //     try {
-  //       setLoading(true);
-
-  //       const payload =
-  //         selectionMode === "single"
-  //           ? {
-  //               selectionMode,
-  //               startDate: eventDate,
-  //               shifts: shift,
-  //             }
-  //           : {
-  //               selectionMode,
-  //               startDate: dateRange.startDate,
-  //               endDate: dateRange.endDate,
-  //               shifts: shift,
-  //             };
-
-  //       const res = await getAvailableVenues(payload);
-
-  //       setVenues(res?.data || []);
-  //     } catch (err) {
-  //       console.error(err);
-  //       setVenues([]);
-  //     } finally {
-  //       setLoading(false);
-  //     }
-  //   };
-
-  //   fetchVenues();
-  // }, [selectionMode, eventDate, dateRange.startDate, dateRange.endDate, shift]);
 useEffect(() => {
   const fetchVenues = async () => {
     // FARMSTAY: only needs date range, no shift
@@ -432,19 +450,6 @@ setAddons(addons.data);
   console.log(childsettings.secAmt)
 
   //RESET
-  // const resetSelection = () => {
-  //   setShift([]);
-  //   setEventDate("");
-  //   setDateRange({ startDate: "", endDate: "" });
-  //   setSelectedVenues([]);
-  //   setVenues([]);
-  //   setPaxRate(0); // 🔥 important
-  // };
-
-  // useEffect(() => {
-  //   resetSelection();
-  // }, [selectionMode]);
-
   const resetSelection = () => {
   setShift([]);
   setEventDate("");
@@ -499,23 +504,6 @@ useEffect(() => {
   // =========================
   let baseAmount = 0;
 
-  // if (selectionType === "venue") {
-  //   baseAmount = formattedVenues.reduce((sum, venue) => {
-  //     return (
-  //       sum +
-  //       Number(
-  //         selectionMode === "single"
-  //           ? venue.per_day_price
-  //           : venue.total_price || venue.per_day_price
-  //       )
-  //     );
-  //   }, 0);
-  // }
-
-  // if (selectionType === "pax") {
-  //   baseAmount = capacity * (Number(paxRate) || 0);
-  // }
-
   if (selectionType === "venue") {
   baseAmount = formattedVenues.reduce((sum, venue) => {
     if (activeCategory === "farmstays") {
@@ -539,6 +527,13 @@ useEffect(() => {
     );
   }, 0);
 }
+
+  // 🔧 FIX: this branch was previously commented out, which meant
+  // baseAmount always stayed 0 for PAX pricing even after choosing a
+  // package + entering guest capacity. Restored so PAX pricing works.
+  if (selectionType === "pax") {
+    baseAmount = capacity * (Number(paxRate) || 0);
+  }
 
   // =========================
   // DISCOUNT (ONLY BASE)
@@ -649,6 +644,8 @@ useEffect(() => {
     summary.totalGuests &&
     Number(guestCapacity) < summary.totalGuests;
 
+    
+
   const handleAddonToggle = (addon) => {
     setSelectedAddons((prev) => {
       const updated = { ...prev };
@@ -713,76 +710,6 @@ const updateField = (key, value) => {
   /* ══════════════════════════════════════════════════════════════
      VALIDATION
   ══════════════════════════════════════════════════════════════ */
-  // const validate = () => {
-  //   const errs = {};
-
-  //   if (!eventType) errs.eventType = "Please select an event type";
-
-  //   if (shift.length === 0) errs.shift = "Please select at least one shift";
-
-  //   if (selectionMode === "single" && !eventDate) {
-  //     errs.eventDate = "Please choose an event date";
-  //   }
-
-  //   if (
-  //     selectionMode === "multiple" &&
-  //     (!dateRange.startDate || !dateRange.endDate)
-  //   ) {
-  //     errs.dateRange = "Please choose a start and end date";
-  //   }
-
-  //   if (selectedVenues.length === 0) {
-  //     errs.venues = "Please select at least one venue";
-  //   }
-
-  //   if (selectionType === "pax" && !guestCapacity) {
-  //     errs.guestCapacity = "Guest capacity is required for pax pricing";
-  //   }
-
-  //   if (selectionType === "pax") {
-  //     const incompletePackages = packages.filter((pack) => {
-  //       const packageSelection = selectedItems[pack.id] || {};
-  //       const selectedCount = Object.values(packageSelection).reduce(
-  //         (total, items) => total + items.length,
-  //         0,
-  //       );
-  //       const totalAllowed = (pack.categories || []).reduce(
-  //         (total, cat) => total + Number(cat.count || 0),
-  //         0,
-  //       );
-  //       return selectedCount > 0 && selectedCount !== totalAllowed;
-  //     });
-
-  //     if (incompletePackages.length > 0) {
-  //       errs.packages = `Please complete item selection for: ${incompletePackages.map((p) => p.name).join(", ")}`;
-  //     }
-
-  //     if (!paxRate) {
-  //       errs.packages = "Please choose a package and select its items";
-  //     }
-  //   }
-
-  //   if (isInvalidCapacity) {
-  //     errs.guestCapacity = `Maximum required capacity is ${summary.totalGuests}`;
-  //   }
-
-  //   if (!customer.phone.trim()) {
-  //     errs.phone = "Phone number is required";
-  //   } else if (!/^\d{10}$/.test(customer.phone.trim())) {
-  //     errs.phone = "Enter a valid 10-digit phone number";
-  //   }
-
-  //   if (!customer.name.trim()) {
-  //     errs.name = "Customer name is required";
-  //   }
-
-  //   if (customer.email.trim() && !/^\S+@\S+\.\S+$/.test(customer.email.trim())) {
-  //     errs.email = "Enter a valid email address";
-  //   }
-
-  //   setErrors(errs);
-  //   return errs;
-  // };
 const validate = () => {
   const errs = {};
 
@@ -895,14 +822,6 @@ const validate = () => {
       : { date_range: { start_date: dateRange.startDate, end_date: dateRange.endDate } }),
     guest_capacity: Number(guestCapacity) || 0,
   },
-  // venues: selectedVenues.map((v) => ({
-  //   child_venue_id: v.child_venue_id,
-  //   child_venue_name: v.child_venue_name,
-  //   shift_name: v.shift_name,
-  //   shift_timing: v.shift_timing,
-  //   price: selectionMode === "single" ? v.per_day_price : (v.total_price || v.per_day_price),
-  //   security_amount: v.securityAmount || 0,
-  // })),
   venues: selectedVenues.map((v) => {
   const nights =
     activeCategory === "farmstays" && dateRange.startDate && dateRange.endDate
@@ -1093,7 +1012,7 @@ console.log(payload)
  }
 
 
-
+console.log(settingsMap)
   /* ══════════════════════════════════════════════════════════════
      PAGE LOADING SKELETON
   ══════════════════════════════════════════════════════════════ */
@@ -2095,8 +2014,7 @@ console.log(payload)
                 </div>
                 <FieldError message={errors.packages} />
               </Section>
-
-
+ 
               <AnimatePresence>
               {openModal && activePackage && (
                 <motion.div
@@ -2277,7 +2195,10 @@ const checked = selected.some((i) => i.id === item.id);
                         </button>
 
                         <button
-                          onClick={() => setOpenModal(false)}
+                          onClick={() => {
+    setPaxRate(activePackage.price);
+    setOpenModal(false);
+  }}
                           className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-sm hover:opacity-90 transition"
                         >
                           Save Selection
@@ -2290,6 +2211,99 @@ const checked = selected.some((i) => i.id === item.id);
               </AnimatePresence>
             </>
           )}
+          
+           {/* § 5 · CUSTOMER DETAILS */}
+          <Section icon={Users} title="Customer Details">
+            <div className="flex items-center justify-between py-1">
+              <span className="text-sm text-gray-600 dark:text-gray-400">
+                Are you booking for yourself?
+              </span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={selfBook}
+                onClick={() => setSelfBook((v) => !v)}
+                className={`relative w-10 h-5 rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 ${selfBook ? "bg-violet-600" : "bg-gray-300 dark:bg-gray-600"}`}
+              >
+                <span
+                  className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${selfBook ? "start-5" : "start-0.5"}`}
+                />
+              </button>
+            </div>
+            <div className="grid md:grid-cols-3 gap-4">
+              <div data-field="phone">
+                <div
+                  className={`flex items-center rounded-xl px-3 py-2.5 bg-white dark:bg-gray-800 border transition ${
+                    errors.phone
+                      ? "border-red-400 dark:border-red-500"
+                      : "border-gray-200 dark:border-gray-700 focus-within:border-violet-400 focus-within:ring-2 focus-within:ring-violet-500/20"
+                  }`}
+                >
+                  <Phone size={15} className="text-gray-400 me-2 shrink-0" />
+                  <input
+                    className="w-full outline-none text-sm bg-transparent text-gray-900 dark:text-gray-100 placeholder:text-gray-400"
+                    placeholder="Phone Number"
+                    type="tel"
+                    value={customer.phone}
+                    onChange={(e) => {
+                      setCustomer((c) => ({ ...c, phone: e.target.value }));
+                      setErrors((prev) => ({ ...prev, phone: undefined }));
+                      setIsDirty(true);
+                    }}
+                  />
+                </div>
+                <FieldError message={errors.phone} />
+              </div>
+
+              <div data-field="name">
+                <div
+                  className={`flex items-center rounded-xl px-3 py-2.5 bg-white dark:bg-gray-800 border transition ${
+                    errors.name
+                      ? "border-red-400 dark:border-red-500"
+                      : "border-gray-200 dark:border-gray-700 focus-within:border-violet-400 focus-within:ring-2 focus-within:ring-violet-500/20"
+                  }`}
+                >
+                  <User size={15} className="text-gray-400 me-2 shrink-0" />
+                  <input
+                    className="w-full outline-none text-sm bg-transparent text-gray-900 dark:text-gray-100 placeholder:text-gray-400"
+                    placeholder="Name"
+                    type="text"
+                    value={customer.name}
+                    onChange={(e) => {
+                      setCustomer((c) => ({ ...c, name: e.target.value }));
+                      setErrors((prev) => ({ ...prev, name: undefined }));
+                      setIsDirty(true);
+                    }}
+                  />
+                </div>
+                <FieldError message={errors.name} />
+              </div>
+
+              <div data-field="email">
+                <div
+                  className={`flex items-center rounded-xl px-3 py-2.5 bg-white dark:bg-gray-800 border transition ${
+                    errors.email
+                      ? "border-red-400 dark:border-red-500"
+                      : "border-gray-200 dark:border-gray-700 focus-within:border-violet-400 focus-within:ring-2 focus-within:ring-violet-500/20"
+                  }`}
+                >
+                  <Mail size={15} className="text-gray-400 me-2 shrink-0" />
+                  <input
+                    className="w-full outline-none text-sm bg-transparent text-gray-900 dark:text-gray-100 placeholder:text-gray-400"
+                    placeholder="Email"
+                    type="email"
+                    value={customer.email}
+                    onChange={(e) => {
+                      setCustomer((c) => ({ ...c, email: e.target.value }));
+                      setErrors((prev) => ({ ...prev, email: undefined }));
+                      setIsDirty(true);
+                    }}
+                  />
+                </div>
+                <FieldError message={errors.email} />
+              </div>
+            </div>
+          </Section>
 
           {/* § 2 · SERVICE PROVIDER DETAILS */}
 
@@ -2412,8 +2426,9 @@ const checked = selected.some((i) => i.id === item.id);
 
                           {/* Normal Addon */}
                           {addon.type !== "unit" && (
-                            <button
+                            <motion.button
                               type="button"
+                              whileTap={{ scale: 0.9 }}
                               onClick={() => handleAddonToggle(addon)}
                               className={`px-5 py-2 rounded-xl text-sm font-medium transition ${
                                 isSelected
@@ -2422,7 +2437,7 @@ const checked = selected.some((i) => i.id === item.id);
                               }`}
                             >
                               {isSelected ? "Added ✓" : "Add"}
-                            </button>
+                            </motion.button>
                           )}
                         </div>
 
@@ -2435,27 +2450,40 @@ const checked = selected.some((i) => i.id === item.id);
                             </div>
 
                             <div className="flex items-center justify-center rounded-xl border overflow-hidden">
-                              <button
+                              <motion.button
                                 type="button"
+                                whileTap={{ scale: 0.85 }}
                                 disabled={qty === 0}
                                 onClick={() => updateAddonQty(addon, "remove")}
                                 className="w-10 h-10 text-xl disabled:opacity-40"
                               >
                                 −
-                              </button>
+                              </motion.button>
 
-                              <div className="w-14 text-center font-semibold border-x">
-                                {qty}
+                              <div className="w-14 text-center font-semibold border-x overflow-hidden">
+                                <AnimatePresence mode="popLayout">
+                                  <motion.span
+                                    key={qty}
+                                    initial={{ y: -14, opacity: 0 }}
+                                    animate={{ y: 0, opacity: 1 }}
+                                    exit={{ y: 14, opacity: 0 }}
+                                    transition={{ duration: 0.18, ease: "easeOut" }}
+                                    className="block"
+                                  >
+                                    {qty}
+                                  </motion.span>
+                                </AnimatePresence>
                               </div>
 
-                              <button
+                              <motion.button
                                 type="button"
+                                whileTap={{ scale: 0.85 }}
                                 disabled={qty >= stock}
                                 onClick={() => updateAddonQty(addon, "add")}
                                 className="w-10 h-10 text-xl disabled:opacity-40"
                               >
                                 +
-                              </button>
+                              </motion.button>
                             </div>
 
                             {qty >= stock && (
@@ -2476,17 +2504,17 @@ const checked = selected.some((i) => i.id === item.id);
           <Section icon={CalendarCheck} title="Discount">
              <div>
   <label className="block text-sm font-medium mb-2">
-    Discount (%) - Max 15%
+    Discount (%) - Max {settingsMap.maxdisc}%
   </label>
 
   <input
     type="number"
     min="0"
-    max="15"
+    max={settingsMap.maxdisc}
     value={discountPercentage}
     onChange={(e) =>
       setDiscountPercentage(
-        Math.min(15, Math.max(0, Number(e.target.value)))
+        Math.min(settingsMap.maxdisc, Math.max(0, Number(e.target.value)))
       )
     }
     className="w-full rounded-lg border px-3 py-2"
@@ -2552,98 +2580,7 @@ const checked = selected.some((i) => i.id === item.id);
             />
           </Section>
 
-          {/* § 5 · CUSTOMER DETAILS */}
-          <Section icon={Users} title="Customer Details">
-            <div className="flex items-center justify-between py-1">
-              <span className="text-sm text-gray-600 dark:text-gray-400">
-                Are you booking for yourself?
-              </span>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={selfBook}
-                onClick={() => setSelfBook((v) => !v)}
-                className={`relative w-10 h-5 rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 ${selfBook ? "bg-violet-600" : "bg-gray-300 dark:bg-gray-600"}`}
-              >
-                <span
-                  className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${selfBook ? "start-5" : "start-0.5"}`}
-                />
-              </button>
-            </div>
-            <div className="grid md:grid-cols-3 gap-4">
-              <div data-field="phone">
-                <div
-                  className={`flex items-center rounded-xl px-3 py-2.5 bg-white dark:bg-gray-800 border transition ${
-                    errors.phone
-                      ? "border-red-400 dark:border-red-500"
-                      : "border-gray-200 dark:border-gray-700 focus-within:border-violet-400 focus-within:ring-2 focus-within:ring-violet-500/20"
-                  }`}
-                >
-                  <Phone size={15} className="text-gray-400 me-2 shrink-0" />
-                  <input
-                    className="w-full outline-none text-sm bg-transparent text-gray-900 dark:text-gray-100 placeholder:text-gray-400"
-                    placeholder="Phone Number"
-                    type="tel"
-                    value={customer.phone}
-                    onChange={(e) => {
-                      setCustomer((c) => ({ ...c, phone: e.target.value }));
-                      setErrors((prev) => ({ ...prev, phone: undefined }));
-                      setIsDirty(true);
-                    }}
-                  />
-                </div>
-                <FieldError message={errors.phone} />
-              </div>
-
-              <div data-field="name">
-                <div
-                  className={`flex items-center rounded-xl px-3 py-2.5 bg-white dark:bg-gray-800 border transition ${
-                    errors.name
-                      ? "border-red-400 dark:border-red-500"
-                      : "border-gray-200 dark:border-gray-700 focus-within:border-violet-400 focus-within:ring-2 focus-within:ring-violet-500/20"
-                  }`}
-                >
-                  <User size={15} className="text-gray-400 me-2 shrink-0" />
-                  <input
-                    className="w-full outline-none text-sm bg-transparent text-gray-900 dark:text-gray-100 placeholder:text-gray-400"
-                    placeholder="Name"
-                    type="text"
-                    value={customer.name}
-                    onChange={(e) => {
-                      setCustomer((c) => ({ ...c, name: e.target.value }));
-                      setErrors((prev) => ({ ...prev, name: undefined }));
-                      setIsDirty(true);
-                    }}
-                  />
-                </div>
-                <FieldError message={errors.name} />
-              </div>
-
-              <div data-field="email">
-                <div
-                  className={`flex items-center rounded-xl px-3 py-2.5 bg-white dark:bg-gray-800 border transition ${
-                    errors.email
-                      ? "border-red-400 dark:border-red-500"
-                      : "border-gray-200 dark:border-gray-700 focus-within:border-violet-400 focus-within:ring-2 focus-within:ring-violet-500/20"
-                  }`}
-                >
-                  <Mail size={15} className="text-gray-400 me-2 shrink-0" />
-                  <input
-                    className="w-full outline-none text-sm bg-transparent text-gray-900 dark:text-gray-100 placeholder:text-gray-400"
-                    placeholder="Email"
-                    type="email"
-                    value={customer.email}
-                    onChange={(e) => {
-                      setCustomer((c) => ({ ...c, email: e.target.value }));
-                      setErrors((prev) => ({ ...prev, email: undefined }));
-                      setIsDirty(true);
-                    }}
-                  />
-                </div>
-                <FieldError message={errors.email} />
-              </div>
-            </div>
-          </Section>
+        
         </div>
 
         {/* ── RIGHT — Pricing summary sidebar ──────────────── */}
@@ -2661,48 +2598,48 @@ const checked = selected.some((i) => i.id === item.id);
             <div className="space-y-2.5">
               <SummaryRow
                 label="Base Price"
-                value={`${formatPrice(summary.baseAmount)}`}
+                raw={summary.baseAmount}
               />
               {discountPercentage != 0 && (
               <SummaryRow
                 label={`Discount (${discountPercentage}%)`}
-                value={`${formatPrice(summary.discountAmount)}`}
+                raw={summary.discountAmount}
               />
               )}
 
               {summary.totalAddonQty != 0 && (
                 <SummaryRow
                   label={`Add-ons (${summary.totalAddonQty})`}
-                  value={`${formatPrice(summary.totalAddonAmount)}`}
+                  raw={summary.totalAddonAmount}
                 />
               )}
 
-              <SummaryRow label="Subtotal" value={`${formatPrice(summary.subtotal)}`} />
+              <SummaryRow label="Subtotal" raw={summary.subtotal} />
 
               <div className="border-t pt-2">
                 <SummaryRow
                   label="Total GST (18%)"
-                  value={`${formatPrice(summary.baseGST)}`}
+                  raw={summary.baseGST}
                 />
                 {summary.paxGST != 0 && (
                   <SummaryRow
                     label="Total GST (5%)"
-                    value={`${formatPrice(summary.paxGST)}`}
+                    raw={summary.paxGST}
                   />
                 )}
               </div>
               <div className="border-t border-gray-100 dark:border-gray-800 pt-2.5">
                 <SummaryRow
                   label="Grand Total"
-                  value={`${formatPrice(summary.grand_total)}`}
+                  raw={summary.grand_total}
                   highlight
                 />
               </div>
               <SummaryRow
                 label="Security Deposit"
-                value={`${formatPrice(summary.securityDeposit)}`}
+                raw={summary.securityDeposit}
               />
-              <SummaryRow label="Payable Amount" value={`${formatPrice(summary.final_total)}`} />
+              <SummaryRow label="Payable Amount" raw={summary.final_total} />
             </div>
  
             {/* Action buttons */}
@@ -2813,23 +2750,6 @@ const checked = selected.some((i) => i.id === item.id);
                     Event Details
                   </h3>
                   <div className="rounded-xl border border-gray-100 dark:border-gray-800 px-4 py-1">
-                    {/* <PreviewItem label="Event Type" value={eventType} />
-                    <PreviewItem
-                      label="Date"
-                      value={
-                        selectionMode === "single"
-                          ? eventDate
-                          : `${dateRange.startDate} → ${dateRange.endDate}`
-                      }
-                    />
-                    <PreviewItem
-                      label="Shift"
-                      value={shift.map((s) => s[0].toUpperCase() + s.slice(1)).join(", ")}
-                    />
-                    <PreviewItem
-                      label="Guest Capacity"
-                      value={guestCapacity ? `${guestCapacity} guests` : "—"}
-                    /> */}
                     {/* In the Preview modal — Event Details section */}
 <PreviewItem label="Event Type" value={eventType} />
 <PreviewItem
@@ -3035,29 +2955,29 @@ const checked = selected.some((i) => i.id === item.id);
                     Pricing Summary
                   </h3>
                   <div className="rounded-xl bg-gray-50 dark:bg-gray-800/60 px-4 py-3 space-y-2">
-                    <SummaryRow label="Base Price" value={`${formatPrice(summary.baseAmount)}`} />
+                    <SummaryRow label="Base Price" raw={summary.baseAmount} />
                     {summary.totalAddonQty != 0 && (
                       <SummaryRow
                         label={`Add-ons (${summary.totalAddonQty})`}
-                        value={`${formatPrice(summary.totalAddonAmount)}`}
+                        raw={summary.totalAddonAmount}
                       />
                     )}
-                    <SummaryRow label="Subtotal" value={`${formatPrice(summary.subtotal)}`} />
-                    <SummaryRow label="GST" value={`${formatPrice(summary.baseGST)}`} />
+                    <SummaryRow label="Subtotal" raw={summary.subtotal} />
+                    <SummaryRow label="GST" raw={summary.baseGST} />
                     <div className="border-t border-gray-200 dark:border-gray-700 pt-2">
                       <SummaryRow
                         label="Grand Total"
-                        value={`${formatPrice(summary.grand_total)}`}
+                        raw={summary.grand_total}
                         highlight
                       />
                     </div>
                     {summary.securityDeposit > 0 && (
                       <SummaryRow
                         label="Security Deposit"
-                        value={`${formatPrice(summary.securityDeposit)}`}
+                        raw={summary.securityDeposit}
                       />
                     )}
-<SummaryRow label="Payable Amount" value={`${formatPrice(summary.final_total)}`} />
+<SummaryRow label="Payable Amount" raw={summary.final_total} />
                     
                   </div>
                 </div>

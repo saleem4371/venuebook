@@ -8,10 +8,10 @@ import ActionRequired       from "../components/dashboard/ActionRequired";
 import OnlineOfflineSummary from "../components/dashboard/OnlineOfflineSummary";
 import WalletFinance        from "../components/dashboard/WalletFinance";
 import LeadsTracker         from "../components/dashboard/LeadsTracker";
-
-export default function Dashboard() {
-  return (
-    <div className="space-y-5">
+ 
+export default function Dashboard() { 
+  return (   
+    <div className="space-y-5"> 
 
       {/* ── Page header ─────────────────────────────────────────────────── */}
       <PageHeader
