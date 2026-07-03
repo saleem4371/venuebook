@@ -23,7 +23,7 @@ import { CATEGORIES, CATEGORY_TINTS } from "@/config/categoryConfig";
 import { useAuth } from "@/context/AuthContext";
 
 import { findPropertyname } from "@/services/global.service";
-import { recent_views } from "@/services/home.service";
+import { recent_views , Api_recommeded} from "@/services/home.service";
 
 /* ── Category page content ──────────────────────────────────── */
 const CATEGORY_CONTENT = {
@@ -688,6 +688,7 @@ export default function Home() {
 
   const [loadData, setLoadData]  = useState([]);
   const [recent, setRecent]  = useState([]);
+  const [recommeded, setRecommeded]  = useState([]);
 
   const { user } = useAuth();
 
@@ -718,15 +719,36 @@ export default function Home() {
     load();
   }, [activeCategory]);
 
-  useEffect(() => {
-    const recentView = async (venue) => {
-      if (!user) return true;
 
-      const res = await recent_views();
-      setRecent(res?.data ?? []);
-    };
-    recentView();
-  }, [user]);
+  const getRecommendedVenues = async () => {
+  const res = await Api_recommeded();
+  setRecommeded(res?.data ?? []);
+};
+
+const getRecentViews = async () => {
+  if (!user) {
+    setRecent([]);
+    return;
+  }
+
+  const res = await recent_views();
+  setRecent(res?.data ?? []);
+};
+
+useEffect(() => {
+  const loadData = async () => {
+    try {
+      await Promise.all([
+        getRecommendedVenues(),
+        getRecentViews(),
+      ]);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  loadData();
+}, [user]);
 
   return (
     <>
@@ -745,9 +767,9 @@ export default function Home() {
                 <VenueSection
                   title={content.sections[0].title}
                   subtitle={content.sections[0].subtitle}
-                  venues={SAMPLE_VENUES}
+                  venues={recommeded}
                   tint={tint}
-                    dataSource="mock"
+                    dataSource="api"
                 />
               )}
 
