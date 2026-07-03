@@ -15,7 +15,7 @@ import lightLogo from "@/assets/logo.svg";
 import darkLogo  from "@/assets/logo.png";
 import { CATEGORY_TINTS } from "@/config/categoryConfig";
 
-import { cashfree_subscription,cashfree_plans } from '@/services/payment.service'
+import { cashfree_subscription,cashfree_plans, stripe_subscription } from '@/services/payment.service'
 import { last_parent_id } from "@/services/listing.service";
 import termsData from "@/data/terms_and_conditions.json";
 
@@ -23,6 +23,9 @@ import { load } from "@cashfreepayments/cashfree-js";
 
 import { useCategory } from "@/context/CategoryContext";
 import { Exo_2 } from "next/font/google";
+import { currency_icon,formatPrice , getCountry} from '@/lib/currency_format'
+
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Config
@@ -145,7 +148,10 @@ export default function PaymentPage() {
   const [showTermsModal,     setShowTermsModal]     = useState(false);
   const [mobileExpanded,     setMobileExpanded]     = useState(false);
 
-  console.log(selectedModes)
+    const [loading, setLoading] = useState(false);
+
+    const countrys = getCountry();
+  console.log(countrys.id)
 
 
 useEffect(() => {
@@ -234,6 +240,17 @@ const plan =
 
 const basePrice    = Number(plan?.offer_amount || plan?.amount || 0);
 const maxVenue    = Number(plan?.max_venue);
+const percentage    = Number(plan?.percentage || 0);
+
+// ── Plan type flags — drive whether the payment gateway is required ──
+// 1. Free plan:       ₹0 subscription + 0% commission  → no gateway, straight to dashboard
+// 2. Paid plan:        subscription amount > 0 (commission % may or may not be set) → go through gateway
+// 3. Commission plan:  ₹0 subscription + commission % > 0 → no gateway, straight to dashboard
+const isFreePlan       = basePrice === 0 && percentage === 0;
+const isCommissionPlan = basePrice === 0 && percentage > 0;
+const isPaidPlan       = basePrice > 0;
+const skipPaymentGateway = isFreePlan || isCommissionPlan;
+
 // For annual plans the API returns the yearly charge; derive per-month for display.
 const perMonth     = billing === "2" && basePrice > 0 ? Math.round(basePrice / 12) : basePrice;
 const subtotal     = Math.max(0, basePrice);
@@ -279,8 +296,45 @@ const fmt = (n) =>
   const handleActivate = () => {
     if (!agreed || activating) return;
     setActivating(true);
+
+    // Free plan (₹0 + 0%) or Commission plan (₹0 + %) — no payment required
+    if (skipPaymentGateway) {
+      activateWithoutPayment();
+      return;
+    }
+
+    // Paid plan — go through the Cashfree payment gateway as before
     payment_gateway(1);
   };
+
+  // Activates the listing directly (Free plan or Commission-only plan) without
+  // opening any payment gateway, then sends the user to their dashboard.
+  const activateWithoutPayment = async () => {
+    try {
+      const payload = {
+        selected: 1,
+        selectedPlan,
+        agreed,
+        selectedModes: Array.from(selectedModes),
+        coupon,
+        billing,
+        parent_venue_id: parentId,
+        category,
+      };
+
+      await cashfree_subscription(payload);
+
+      try { localStorage.setItem("vb_payment_type", "no_payment_required"); } catch (_) {}
+      try { localStorage.removeItem("vb_pending_" + category); } catch (_) {}
+
+      router.push("/" + locale + "/" + country + "/vendor/dashboard");
+    } catch (error) {
+      console.error("Activation Error:", error);
+    } finally {
+      setActivating(false);
+    }
+  };
+
   const payment_gateway = async (selected) => {
   try {
    
@@ -332,15 +386,58 @@ payment_gateway(0)
   const closeTerms = () => setShowTermsModal(false);
   const acceptTerms = () => { setAgreed(true); setShowTermsModal(false); };
 
+   const handleSubscribe = async () => {
+    if (!agreed || activating) return;
+
+    // Free plan (₹0 + 0%) or Commission plan (₹0 + %) — no Stripe checkout required
+    if (skipPaymentGateway) {
+      setActivating(true);
+      await activateWithoutPayment();
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const res = await stripe_subscription({
+         selectedPlan,
+    category,
+    parent_venue_id: parentId,
+    selectedModes: Array.from(selectedModes),
+      });
+
+   
+
+      if (res.data.success) {
+        window.location.href = res.data.checkout_url;
+      }
+    } catch (err) {
+      console.error(err);
+      alert(err?.response?.data?.message || "Subscription failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
   const summaryProps = {
     plan, billing, basePrice, perMonth, gst, total, annualTotal, selectedModes,
     agreed, activating,
+    isFreePlan, isCommissionPlan, isPaidPlan,
     onActivate:   handleActivate,
     onPayLater:   handlePayLater,
     onOpenTerms:  openTerms,
-    tint, fmt, payConfig,
+    tint, fmt, payConfig,loading,
+  handleSubscribe,
+  countrys,
   };
 
+
+
+ //check Year Enabled 
+ const hasAnnualPlans = plans.some(
+  p => String(p.plan_title) === "2"
+);
 
   return (
     <>
@@ -553,7 +650,8 @@ payment_gateway(0)
                     </div>
                   </div>
 
-                  {/* Billing toggle */}
+                  {/* Billing toggle — hidden when only a single billing cycle (plan_title "1") exists for this plan set */}
+                  {hasAnnualPlans && (
                   <div className="flex items-center p-1 rounded-xl bg-gray-100/80 dark:bg-gray-800/80 flex-shrink-0 gap-0.5">
                     {[
                       { key: "1", label: "Monthly" },
@@ -586,6 +684,7 @@ payment_gateway(0)
                       </button>
                     ))}
                   </div>
+                  )}
                 </div>
 
                 {category === "venue" ? (
@@ -597,6 +696,14 @@ payment_gateway(0)
                     const price       = billing === "2" && rawPrice > 0 ? Math.round(rawPrice / 12) : rawPrice;
                     const annualPrice = billing === "2" ? rawPrice : rawPrice * 12;
                     const saving      = p.discount > 0 ? p.discount : 0;
+                    
+                    //New Updates
+                    const percentage = Number(p.percentage || 0);
+
+const isPercentagePlan = rawPrice === 0 && percentage > 0;
+const isFreePlan = rawPrice === 0 && percentage === 0;
+
+
                     return (
                       <motion.div
                         key={p.id}
@@ -647,7 +754,7 @@ payment_gateway(0)
 
                           {/* Right: price */}
                           <div className="text-end flex-shrink-0">
-                            {rawPrice === 0 ? (
+                            {rawPrice === 0  ? (
                               <span className="text-[30px] font-extrabold text-gray-900 dark:text-white">Free</span>
                             ) : billing === "2" ? (
                               <>
@@ -693,6 +800,12 @@ payment_gateway(0)
                       const annualPrice = billing === "2" ? rawPrice : rawPrice * 12;
                       const active      = selectedPlan === p.id;
                       const saving      = p.discount > 0 ? p.discount : 0;
+                      // FIX: these were previously undefined in this scope (only existed in the
+                      // venue single-plan block above), causing a ReferenceError for non-venue
+                      // categories. Now computed per-plan here.
+                      const percentage       = Number(p.percentage || 0);
+                      const isPercentagePlan = rawPrice === 0 && percentage > 0;
+                      const isFreePlan       = rawPrice === 0 && percentage === 0;
                       return (
                         <motion.button
                           key={p.id}
@@ -730,9 +843,32 @@ payment_gateway(0)
                             {p.plan_name}
                           </p>
                           <div className="mb-4">
-                            {rawPrice === 0 ? (
-                              <span className="text-[26px] font-extrabold text-gray-900 dark:text-white leading-none">Free</span>
-                            ) : billing === "2" ? (
+                           {isPercentagePlan ? (
+  <>
+    <div className="flex items-baseline gap-1">
+      <span className="text-[26px] font-extrabold text-gray-900 dark:text-white">
+        {percentage}%
+      </span>
+      <span className="text-xs text-gray-400">
+        Commission
+      </span>
+    </div>
+
+    <p className="text-[10px] text-gray-400 mt-1">
+      Platform commission on every booking
+    </p>
+  </>
+) : isFreePlan ? (
+  <>
+    <span className="text-[26px] font-extrabold text-gray-900 dark:text-white">
+      Free
+    </span>
+
+    <p className="text-[10px] text-gray-400 mt-1">
+      No subscription fee
+    </p>
+  </>
+) : billing === "2" ? (
                               <>
                                 <div className="flex items-baseline gap-0.5 leading-none">
                                   <span className="text-[13px] font-semibold text-gray-400 mb-0.5">₹</span>
@@ -887,7 +1023,8 @@ payment_gateway(0)
 function SummaryPanel({
   plan, billing, basePrice, perMonth, gst, total, annualTotal,
   selectedModes, agreed, activating,
-  onActivate, onPayLater, onOpenTerms, tint, fmt, payConfig,
+  isFreePlan, isCommissionPlan, isPaidPlan,
+  onActivate, onPayLater, onOpenTerms,handleSubscribe, tint, fmt, payConfig,loading,country
 }) {
   const isAnnual      = billing === "2";
   const isFree        = basePrice === 0;
@@ -896,12 +1033,17 @@ function SummaryPanel({
 
   // Display price in plan row header
   // Annual: show yearly total big; Monthly: show monthly
-  const displayPrice  = isFree ? "Free" : isAnnual ? fmt(basePrice) + "/year" : fmt(basePrice) + "/month";
+  const displayPrice  = isFree ? "Free" : isAnnual ? formatPrice(basePrice) + "/year" : formatPrice(basePrice) + "/month";
   const displaySub    = isFree ? null : isAnnual
-    ? fmt(perMonth) + "/month · billed annually"
+    ? formatPrice(perMonth) + "/month · billed annually"
     : billingPeriod;
 
   const gateway = payConfig?.gateway || "Cashfree";
+
+  // CTA label: Free plan → "Activate Free", Commission-only plan → "Activate",
+  // Paid plan → "Pay & Activate" (unchanged design/behaviour for paid plans)
+  const ctaLabel = isFreePlan ? "Activate Free" : isCommissionPlan ? "Activate" : "Pay & Activate";
+  
 
   return (
     <div className="space-y-3">
@@ -983,13 +1125,13 @@ function SummaryPanel({
                 Subscription{isAnnual && !isFree ? " (annual)" : ""}
               </span>
               <span className="font-semibold text-gray-700 dark:text-gray-200">
-                {isFree ? "Free" : fmt(basePrice)}
+                {isFree ? "Free" : formatPrice(basePrice)}
               </span>
             </div>
             {!isFree && (
               <div className="flex items-center justify-between text-[12px]">
                 <span className="text-gray-400 dark:text-gray-500">GST (18%)</span>
-                <span className="font-semibold text-gray-700 dark:text-gray-200">+ {fmt(gst)}</span>
+                <span className="font-semibold text-gray-700 dark:text-gray-200">+ {formatPrice(gst)}</span>
               </div>
             )}
           </div>
@@ -1006,7 +1148,7 @@ function SummaryPanel({
                 </p>
                 {isAnnual && annualGrand > 0 && (
                   <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">
-                    incl. 18% GST · {fmt(perMonth)}/month
+                    incl. 18% GST · {formatPrice(perMonth)}/month
                   </p>
                 )}
               </div>
@@ -1015,7 +1157,7 @@ function SummaryPanel({
                   className="text-[22px] font-extrabold leading-tight tracking-tight"
                   style={{ color: tint.hex }}
                 >
-                  {isFree ? "Free" : isAnnual ? fmt(annualGrand) : fmt(total)}
+                  {isFree ? "Free" : isAnnual ? formatPrice(annualGrand) : formatPrice(total)}
                 </p>
                 {!isFree && (
                   <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">
@@ -1055,6 +1197,7 @@ function SummaryPanel({
       </button>
 
       {/* ── Primary CTA ── */}
+      { country?.id === 2 ? (
       <button
         type="button"
         disabled={!agreed || activating}
@@ -1081,10 +1224,54 @@ function SummaryPanel({
         ) : (
           <>
             <Lock size={14} strokeWidth={2.5} className="flex-shrink-0" />
-            {isFree ? "Activate Free" : "Pay & Activate"}
+            {ctaLabel}
           </>
         )}
       </button>
+) : (
+
+
+      <button
+        type="button"
+        disabled={!agreed || activating}
+        onClick={handleSubscribe}
+        className={[
+          "w-full flex items-center justify-center gap-2 py-4 rounded-xl",
+          "text-[15px] font-bold text-white transition-all duration-150",
+          "focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2",
+          agreed && !activating
+            ? "hover:opacity-90 active:scale-[0.98] shadow-lg shadow-violet-200/50 dark:shadow-violet-950/40"
+            : "opacity-40 cursor-not-allowed shadow-none",
+        ].join(" ")}
+        style={{
+          background: agreed && !activating
+            ? "linear-gradient(135deg, #a44bf3 0%, #499ce8 100%)"
+            : "#9ca3af",
+        }}
+      >
+        {activating ? (
+          <>
+            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            Processing…
+          </>
+        ) : (
+          <>
+            <Lock size={14} strokeWidth={2.5} className="flex-shrink-0" />
+            {ctaLabel}
+          </>
+        )}
+      </button>
+)}
+
+
+
+      {/* <button
+      onClick={handleSubscribe}
+      disabled={loading}
+      className="bg-blue-600 text-white px-5 py-2 rounded"
+    >
+      {loading ? "Please wait..." : "Stripe Subscribe"}
+    </button> */}
 
       {/* ── Pay Later ── */}
       <button
@@ -1120,14 +1307,19 @@ function SummaryPanel({
 function MobilePayBar({
   plan, billing, basePrice, perMonth, gst, total, annualTotal,
   selectedModes, agreed, activating,
+  isFreePlan, isCommissionPlan, isPaidPlan,
   onActivate, onPayLater, onOpenTerms, tint, fmt, payConfig,
-  expanded, onToggleExpand,
+  expanded, onToggleExpand
 }) {
   const isAnnual    = billing === "2";
   const isFree      = basePrice === 0;
   const annualGrand = annualTotal > 0 ? annualTotal + Math.round(annualTotal * 0.18) : 0;
-  const displayAmt  = isFree ? "Free" : isAnnual ? fmt(annualGrand) : fmt(total);
+  const displayAmt  = isFree ? "Free" : isAnnual ? formatPrice(annualGrand) : formatPrice(total);
   const period      = isFree ? "" : isAnnual ? "/year" : "/month";
+
+  // CTA label: Free plan → "Activate Free", Commission-only plan → "Activate",
+  // Paid plan → "Pay & Activate" (unchanged design/behaviour for paid plans)
+  const ctaLabel = isFreePlan ? "Activate Free" : isCommissionPlan ? "Activate" : "Pay & Activate";
 
   return (
     <div className="lg:hidden fixed bottom-0 inset-x-0 z-40">
@@ -1186,13 +1378,13 @@ function MobilePayBar({
                   <div className="flex justify-between text-[12px]">
                     <span className="text-gray-400">Subscription{isAnnual && !isFree ? " (annual)" : ""}</span>
                     <span className="font-semibold text-gray-700 dark:text-gray-200">
-                      {isFree ? "Free" : fmt(basePrice)}
+                      {isFree ? "Free" : formatPrice(basePrice)}
                     </span>
                   </div>
                   {!isFree && (
                     <div className="flex justify-between text-[12px]">
                       <span className="text-gray-400">GST (18%)</span>
-                      <span className="font-semibold text-gray-700 dark:text-gray-200">+ {fmt(gst)}</span>
+                      <span className="font-semibold text-gray-700 dark:text-gray-200">+ {formatPrice(gst)}</span>
                     </div>
                   )}
                 </div>
@@ -1206,7 +1398,7 @@ function MobilePayBar({
                     <div>
                       <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Grand Total</p>
                       {isAnnual && !isFree && (
-                        <p className="text-[10px] text-gray-400 mt-0.5">incl. GST · {fmt(perMonth)}/month</p>
+                        <p className="text-[10px] text-gray-400 mt-0.5">incl. GST · {formatPrice(perMonth)}/month</p>
                       )}
                     </div>
                     <div className="text-end">
@@ -1311,7 +1503,7 @@ function MobilePayBar({
               {activating ? (
                 <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Processing…</>
               ) : (
-                <><Lock size={14} strokeWidth={2.5} /> {isFree ? "Activate Free" : "Pay & Activate"}</>
+                <><Lock size={14} strokeWidth={2.5} /> {ctaLabel}</>
               )}
             </button>
           </div>

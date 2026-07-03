@@ -489,10 +489,24 @@ export default function LocationStep({ form, updateForm, attempted }) {
     );
   };
 
+  // const handleCountryChange = (code) => {
+  //   updateForm({ country: code, pincode: "" });
+  //   touch("country");
+  // };
   const handleCountryChange = (code) => {
-    updateForm({ country: code, pincode: "" });
-    touch("country");
-  };
+  const selected = countries.find((c) => c.iso_code === code);
+
+  if (selected) {
+    localStorage.setItem("country", JSON.stringify(selected));
+  }
+
+  updateForm({
+    country: code,
+    pincode: "",
+  });
+
+  touch("country");
+};
   
 const selectedCountry = countries.find(
   (c) => c.iso_code === effectiveCountry

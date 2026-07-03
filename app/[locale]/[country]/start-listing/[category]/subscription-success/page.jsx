@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useSearchParams, useRouter, useParams } from "next/navigation";
-import { verify_subscription } from "@/services/payment.service";
+import { verify_subscription,verify_stripe_subscription } from "@/services/payment.service";
 
 // ─── Lightweight canvas confetti ────────────────────────────────────────────
 function launchConfetti(canvas) {
@@ -83,50 +83,115 @@ export default function SuccessPage() {
   const canvasRef = useRef(null);
   const cleanupRef = useRef(null);
 
+  // useEffect(() => {
+  //   const verify = async () => {
+  //     try {
+  //       const subscriptionId = searchParams.get("subscription_id");
+
+  //        const sessionId = searchParams.get("session_id");
+
+  //       if (!subscriptionId) {
+  //         setStatus("failed");
+  //         setMessage("Invalid subscription link.");
+  //         return;
+  //       }
+
+  //       const res = await verify_subscription(subscriptionId);
+  //       const subscriptionStatus = res?.data?.subscription_status || res?.subscription_status;
+
+  //       if (subscriptionStatus === "ACTIVE" || subscriptionStatus === "BANK_APPROVAL_PENDING") {
+  //         localStorage.removeItem("vb_pending_category");
+
+  //         let payType = "pay_now";
+  //         try { payType = localStorage.getItem("vb_payment_type") || "pay_now"; } catch (_) {}
+  //         try { localStorage.removeItem("vb_payment_type"); } catch (_) {}
+
+  //         if (payType === "pay_later") {
+  //           setMessage("Your listing is saved. Complete payment anytime from your dashboard.");
+  //           setStatus("success_later");
+  //         } else {
+  //           setMessage("Your listing is now live on venuebook.in!");
+  //           setStatus("success_paid");
+  //         }
+
+  //         setTimeout(() => {
+  //           router.push(`/${locale}/${country}/vendor/dashboard`);
+  //         }, payType === "pay_later" ? 6000 : 5000);
+  //       } else {
+  //         setStatus("failed");
+  //         setMessage("Subscription is not active yet. Please try again or contact support.");
+  //       }
+  //     } catch (err) {
+  //       setStatus("failed");
+  //       setMessage("Verification failed. Please try again.");
+  //     }
+  //   };
+
+  //   verify();
+  // }, [searchParams, router, locale, country]);
+
   useEffect(() => {
-    const verify = async () => {
-      try {
-        const subscriptionId = searchParams.get("subscription_id");
+  const verify = async () => {
+    try {
+      const subscriptionId = searchParams.get("subscription_id");
+      const sessionId = searchParams.get("session_id");
 
-        if (!subscriptionId) {
-          setStatus("failed");
-          setMessage("Invalid subscription link.");
-          return;
-        }
-
-        const res = await verify_subscription(subscriptionId);
-        const subscriptionStatus = res?.data?.subscription_status || res?.subscription_status;
-
-        if (subscriptionStatus === "ACTIVE" || subscriptionStatus === "BANK_APPROVAL_PENDING") {
-          localStorage.removeItem("vb_pending_category");
-
-          let payType = "pay_now";
-          try { payType = localStorage.getItem("vb_payment_type") || "pay_now"; } catch (_) {}
-          try { localStorage.removeItem("vb_payment_type"); } catch (_) {}
-
-          if (payType === "pay_later") {
-            setMessage("Your listing is saved. Complete payment anytime from your dashboard.");
-            setStatus("success_later");
-          } else {
-            setMessage("Your listing is now live on venuebook.in!");
-            setStatus("success_paid");
-          }
-
-          setTimeout(() => {
-            router.push(`/${locale}/${country}/vendor/dashboard`);
-          }, payType === "pay_later" ? 6000 : 5000);
-        } else {
-          setStatus("failed");
-          setMessage("Subscription is not active yet. Please try again or contact support.");
-        }
-      } catch (err) {
+      // Neither exists
+      if (!subscriptionId && !sessionId) {
         setStatus("failed");
-        setMessage("Verification failed. Please try again.");
+        setMessage("Invalid subscription link.");
+        return;
       }
-    };
 
-    verify();
-  }, [searchParams, router, locale, country]);
+      let res;
+
+      if (subscriptionId) {
+        // Verify using subscription ID
+        res = await verify_subscription(subscriptionId);
+      } else if (sessionId) {
+        // Verify Stripe Checkout Session
+        res = await verify_stripe_subscription(sessionId);
+      }
+
+      const subscriptionStatus =
+        res?.data?.subscription_status || res?.subscription_status;
+
+      if (
+        subscriptionStatus === "ACTIVE" ||
+        subscriptionStatus === "BANK_APPROVAL_PENDING"
+      ) {
+        localStorage.removeItem("vb_pending_category");
+
+        let payType = localStorage.getItem("vb_payment_type") || "pay_now";
+        localStorage.removeItem("vb_payment_type");
+
+        if (payType === "pay_later") {
+          setMessage(
+            "Your listing is saved. Complete payment anytime from your dashboard."
+          );
+          setStatus("success_later");
+        } else {
+          setMessage("Your listing is now live on venuebook.in!");
+          setStatus("success_paid");
+        }
+
+        setTimeout(() => {
+          router.push(`/${locale}/${country}/vendor/dashboard`);
+        }, payType === "pay_later" ? 6000 : 5000);
+      } else {
+        setStatus("failed");
+        setMessage(
+          "Subscription is not active yet. Please try again or contact support."
+        );
+      }
+    } catch (err) {
+      setStatus("failed");
+      setMessage("Verification failed. Please try again.");
+    }
+  };
+
+  verify();
+}, [searchParams, router, locale, country]);
 
   // Trigger confetti when paid success
   useEffect(() => {

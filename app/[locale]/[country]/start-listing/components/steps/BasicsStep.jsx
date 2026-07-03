@@ -192,7 +192,8 @@ export default function BasicsStep({ form, updateForm, attempted  }) {
   groups={farmstayStyleGroups}
   value={form.farmstayStyle || ""}
   onChange={(v) => {
-    updateForm({ farmstayStyle: v });
+    console.log(v)
+    updateForm({ farmstayStyle: v ,subcategory:v});
     touch("farmstayStyle");
   }}
   showError={showErr("farmstayStyle") && !form.farmstayStyle}
