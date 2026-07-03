@@ -25,7 +25,7 @@ const PRICE_SUFFIX = {
 };
 
 export default function VenueCard({ venue, dataSource, category }) {
-  const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+  const BASE_URL = process.env.NEXT_PUBLIC_AWS_BUCKET_URL;
 
   const [currentImage, setCurrentImage] = useState(0);
   const [hovered,      setHovered]      = useState(false);
