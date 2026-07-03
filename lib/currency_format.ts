@@ -1,3 +1,6 @@
+
+import { format } from "date-fns";
+
 export const formatPrice = (amount: number | string) => {
   if (typeof window === "undefined") {
     return amount;
@@ -28,4 +31,22 @@ export const getCountry = () => {
 
 export const currency_icon = () => {
   return getCountry()?.curreny_icon ?? "₹";
+};
+
+
+export const exchange_convert = (
+  price: number,
+  fromRate: number,
+  toRate: number
+): number => {
+  const usd = price / fromRate;
+  return +(usd * toRate).toFixed(2);
+};
+
+
+
+
+export const formatDate = ( date: string | Date, dateFormat = "dd MMM yyyy") => {
+  // return format(new Date(date), dateFormat);
+  return date;
 };
