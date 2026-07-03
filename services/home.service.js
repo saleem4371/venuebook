@@ -6,3 +6,7 @@ export const recent_views = () => {
 export const vendor_category = () => {
   return api.get("/home/vendor_category");
 };
+export const Api_recommeded = () => {
+  return api.get("/home/recommeded");
+};
+

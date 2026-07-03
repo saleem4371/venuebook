@@ -28,9 +28,14 @@ export const country_of_category = () => {
   return api.get(`/global/country_of_category`);
 };
 
-// export const getAllCurrencies = () => {
-//   return api.get(`/global/getAllCurrencies`);
-// };
+export const getAllCurrencies = () => {
+  return api.get(`/global/getAllCurrencies`);
+};
+
+export const getnotification = () => {
+  return api.get("/notification/list");
+};
+
 
 
 export const getAmenties = (category) => {
