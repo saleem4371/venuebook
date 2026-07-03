@@ -1,7 +1,9 @@
 import "./globals.css";
 import Script from "next/script";
-import ServiceWorkerProvider from '../components/ServiceWorkerProvider'
-import PWABottomSheets from '../components/PWABottomSheets'
+
+
+import { ToastProvider } from "../components/ToastProvider";
+
 import {
   Plus_Jakarta_Sans,
   Noto_Sans_Devanagari,
@@ -25,7 +27,6 @@ export const metadata = {
     'Discover and book venues, farmstays, studios, workspaces & rentals',
 
   manifest: '/manifest.json',
-  themeColor: '#000000',
 
   icons: {
     icon: [
@@ -116,7 +117,7 @@ export default async function RootLayout({ children }) {
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="NextPWA" />
         <meta name="description" content="Progressive Web App with Notifications" />
-        <script
+       <script
           src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAzQBQV6-t21jRrYTU9WGOnAO0iz-fpGEI&libraries=places"
           async
           defer
@@ -129,10 +130,14 @@ export default async function RootLayout({ children }) {
         suppressHydrationWarning
         className="min-h-screen bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 antialiased font-sans"
       >
-         <ServiceWorkerProvider>
-          <PWABottomSheets />
+         {/* <ServiceWorkerProvider> */}
+          {/* <PWABottomSheets /> */}
+          <ToastProvider position="bottom-center">
+            {/* <InstallPopup /> */}
           {children}
-        </ServiceWorkerProvider>
+        </ToastProvider>
+          {/* {children} */}
+        {/* </ServiceWorkerProvider> */}
         {/* {children} */}
         <Script id="pwa-install-listener" strategy="beforeInteractive">{`
           window.__pwaInstallEvent = null;
