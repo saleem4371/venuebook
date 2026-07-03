@@ -8,7 +8,10 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import lightLogo from "@/assets/logo.svg";
 import darkLogo from "@/assets/logo.png";
 
-import { each_kyc_status } from "@/services/kyc.service";
+import { each_kyc_status , suscription_detail } from "@/services/kyc.service";
+
+
+import { useVendorCategory } from "@/context/VendorCategoryContext";
 
 
 import { useTranslations } from "next-intl";
@@ -19,7 +22,7 @@ import KYCModal from "./KYCModal";
 import LogoutConfirmationModal from "@/components/shared/LogoutConfirmationModal";
 import LogoutOverlay           from "@/components/shared/LogoutOverlay";
 
-import { connectSocket } from "@/lib/socket";
+import { useSocket } from "@/context/SocketContext";
 
 
 /* ═══════════════════════════════════════════════════════════════
@@ -203,7 +206,7 @@ function AvatarArea({
   notifications,
   logout
 }) {
-  const unread = notifications.length;
+  const unread = notifications?.notifications?.length;
 
   return (
     <div ref={profileRef} className="relative">
@@ -220,32 +223,34 @@ function AvatarArea({
                 onClick={() => setShowNotif(false)}
                 className="text-xs font-medium text-violet-600 dark:text-violet-400 hover:underline cursor-pointer"
               >
-                Mark all read
+                Mark all read 
               </button>
             </div>
             <ul className="py-1.5" role="none">
-              {notifications.map((n, i) => (
-                <li key={i} role="none">
-                  <Link
-                    href={`${base}/notifications`}
-                    onClick={() => setShowNotif(false)}
-                    className="flex w-full items-start gap-3 px-4 py-2.5 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors"
-                  >
-                    <span
-                      className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-violet-500"
-                      aria-hidden="true"
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-gray-800 dark:text-gray-200 leading-snug">
-                        {n.text}
-                      </span>
-                      <span className="block text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-                        {n.time}
-                      </span>
-                    </span>
-                  </Link>
-                </li>
-              ))}
+             <ul className="py-1.5" role="none">
+  {(notifications?.notifications ?? []).map((n, i) => (
+    <li key={i} role="none">
+      <Link
+        href={`${base}/notifications`}
+        onClick={() => setShowNotif(false)}
+        className="flex w-full items-start gap-3 px-4 py-2.5 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors"
+      >
+        <span
+          className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-violet-500"
+          aria-hidden="true"
+        />
+        <span className="min-w-0 flex-1">
+          <span className="block text-gray-800 dark:text-gray-200 leading-snug">
+            {n.message}
+          </span>
+          <span className="block text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+            {n.created_at}
+          </span>
+        </span>
+      </Link>
+    </li>
+  ))}
+</ul>
             </ul>
           </motion.div>
         )}
@@ -422,9 +427,20 @@ export default function PremiumNavbar() {
   const [kycOpen,         setKycOpen]         = useState(false);
   const [mounted,         setMounted]         = useState(false);
   const [switchLoading,   setSwitchLoading]   = useState(false);
+  const [subscriptionData,   setSubscriptionData]   = useState({});
+
+    const { activeCategory } = useVendorCategory();
+
+
+  //const [status, setStatus] = useState(null);
 
   const [kycData, setKycData] = useState(null);
+  const [notification, setNotification] = useState(null);
 
+// const { status } = useSocket();
+
+
+const { status } = useSocket();
 
 
   useEffect(() => { setMounted(true); }, []);
@@ -450,11 +466,11 @@ export default function PremiumNavbar() {
     }, 650);
   }, [switchLoading, router, locale, country]);
 
-  const notifications = [
-    { text: "New lead received", time: "2 min ago" },
-    { text: "Booking confirmed", time: "15 min ago" },
-    { text: "Payment received", time: "1 hr ago" },
-  ];
+  // const notifications = [
+  //   { text: "New lead received", time: "2 min ago" },
+  //   { text: "Booking confirmed", time: "15 min ago" },
+  //   { text: "Payment received", time: "1 hr ago" },
+  // ];
 
   const sharedAreaProps = {
     showProfile,
@@ -466,33 +482,18 @@ export default function PremiumNavbar() {
     isLoggedIn,
     user,
     base,
-    notifications,
+    notifications: notification,   // ← was `notification,` — key must match AvatarArea's prop name
     onRegion: () => {
       setShowProfile(false);
       setRegionOpen(true);
     },
     onLogout: () => { setShowProfile(false); setShowLogoutModal(true); },
     onSwitchToCustomer: goCustomer,
-  };
+};
 
-useEffect(() => {
-  console.log("Logs Realtime:");
-  if (!user?.id) return;
-
-  const socket = connectSocket(String(user.id));
-
-  socket.on("realtime-status", (data) => {
-    console.log("Realtime:", data);
-  });
-
-  return () => {
-    socket.off("realtime-status");
-  };
-}, [user?.id]);
 
 useEffect(() => {
   if (!open) return;
-
   const fetchKycStatus = async () => {
     try {
       const res = await each_kyc_status();
@@ -502,9 +503,28 @@ useEffect(() => {
       setKycData(null);
     }
   };
-
   fetchKycStatus();
 }, [open]);
+
+
+useEffect(() => {
+  SUbsStatus();
+}, [activeCategory]);
+
+  const SUbsStatus = async () => {
+    try {
+      const subscription = await suscription_detail();
+setSubscriptionData(subscription.data[0])
+    } catch (err) {
+      console.error(err);
+      setSubscriptionData(null);
+    }
+  };
+
+
+
+
+
 
   return (
     <>
@@ -611,19 +631,21 @@ useEffect(() => {
             </button>
 
             {/* Plan badge — separate from KYC, between Globe and avatar */}
-            <PlanBadge plan={user?.plan || "starter"} base={base} />
+            <PlanBadge plan={subscriptionData?.plan_name || "-"} base={base} subscriptionData={subscriptionData}/>
 
             {/* Avatar + profile dropdown + notif panel */}
-            <AvatarArea profileRef={profileRefD} {...sharedAreaProps} logout={logout} />
+            <AvatarArea profileRef={profileRefD} {...sharedAreaProps} logout={logout} /> 
           </div>
         </nav>
+  
+  <RealtimeStatusToast status={status} />
 
         {/* ── Mobile: Logo + Avatar only ── */}
         <nav
           aria-label="Mobile vendor header"
           className="flex md:hidden h-[64px] w-full items-center justify-between px-5 sm:px-6"
         >
-          <Brandlogo href={`${base}/dashboard`} isDark={isDark} />
+          <Brandlogo href={`${base}/dashboard`} isDark={isDark} /> 
 
           {/*
             Mobile header order: [KYC] [Theme] [Globe] [Plan] [Profile]
@@ -663,11 +685,12 @@ useEffect(() => {
             </button>
 
             {/* Subscription / plan badge — stays beside profile, same as desktop */}
-            <PlanBadge plan={user?.plan || "starter"} base={base} />
+            <PlanBadge plan={subscriptionData?.plan_name || "-"} base={base} subscriptionData={subscriptionData} />  
 
             {/* Avatar + profile dropdown (Switch to Customer lives inside here on mobile) */}
             <AvatarArea profileRef={profileRefM} {...sharedAreaProps} logout={logout} />
           </div>
+     
         </nav>
       </header>
 
@@ -707,37 +730,6 @@ useEffect(() => {
    Replace DEMO_SUBSCRIPTION + `user?.plan` with real API data
    when subscription backend is wired up.
 ═══════════════════════════════════════════════════════════════ */
-const PLAN_CONFIG = {
-  starter: {
-    label:     "Starter",
-    labelFull: "Starter Plan",
-    text:      "text-amber-700 dark:text-amber-400",
-    bg:        "bg-amber-50 dark:bg-amber-950/25",
-    border:    "border-amber-200/60 dark:border-amber-700/30",
-  },
-  professional: {
-    label:     "Professional",
-    labelFull: "Professional Plan",
-    text:      "text-blue-700 dark:text-blue-400",
-    bg:        "bg-blue-50 dark:bg-blue-950/25",
-    border:    "border-blue-200/60 dark:border-blue-700/30",
-  },
-  business: {
-    label:     "Business",
-    labelFull: "Business Plan",
-    text:      "text-purple-700 dark:text-purple-400",
-    bg:        "bg-purple-50 dark:bg-purple-950/25",
-    border:    "border-purple-200/60 dark:border-purple-700/30",
-  },
-  enterprise: {
-    label:     "Enterprise",
-    labelFull: "Enterprise Plan",
-    text:      "text-white",
-    bg:        "",          /* gradient via inline style */
-    border:    "border-transparent",
-    gradient:  "linear-gradient(135deg, #7c3aed 0%, #4f46e5 50%, #0ea5e9 100%)",
-  },
-};
 
 /* Demo subscription data — replace with real API call */
 const DEMO_SUBSCRIPTION = {
@@ -745,41 +737,164 @@ const DEMO_SUBSCRIPTION = {
   nextRenewal: "Jul 9, 2026",
 };
 
-function PlanBadge({ plan = "starter", base = "" }) {
-  const t   = useTranslations("header");
-  const key = (plan || "starter").toLowerCase();
-  const cfg = PLAN_CONFIG[key] ?? PLAN_CONFIG.starter;
+/* ═══════════════════════════════════════════════════════════════
+   PLAN CONFIG — module-level so both PremiumNavbar and PlanBadge
+   can read it. Keys match getPlanName()'s return values exactly.
+═══════════════════════════════════════════════════════════════ */
+// function getPlanName(subscription = {}) {
+//   const min = Number(subscription.min_venue || 0);
+//   const max = Number(subscription.max_venue || 0);
+
+//   if (min === 0 && max === 0) return subscription?.plan_name;
+//   if (min === 1 && max === 1) return "Starter";
+//   if (min >= 2 && max <= 4) return "Premium";
+//   if (min >= 5) return "Standard";
+//   return "Normal";
+// }
+function getPlanName(subscription = {}) {
+  const min = Number(subscription?.min_venue ?? 0);
+  const max = Number(subscription?.max_venue ?? 0);
+
+  // No venue restriction -> use original plan name
+  if (min === 0 && max === 0) {
+    return subscription?.plan_name || "Normal";
+  }
+
+  // 1 venue
+  if (min === 1 && max === 1) {
+    return "Starter";
+  }
+
+  // 2-4 venues
+  if (min >= 2 && max >= 2 && max <= 4) {
+    return "Premium";
+  }
+
+  // 5 or more venues
+  if (min >= 5) {
+    return "Standard";
+  }
+
+  return subscription?.plan_name || "Normal";
+}
+
+const PLAN_CONFIG = {
+  normal: {
+    label: "Normal",
+    labelFull: "Normal Plan",
+    text: "text-white",
+      bg: "",
+    border: "border-transparent",
+    gradient: "linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #d946ef 100%)",
+    glow: "shadow-[0_2px_12px_-2px_rgba(168,85,247,0.55)]",
+    icon: <StarIcon />,
+  },
+  starter: {
+    label: "Starter",
+    labelFull: "Starter Plan",
+    text: "text-amber-700 dark:text-amber-400",
+    bg: "bg-amber-50 dark:bg-amber-950/25",
+    border: "border-amber-200/60 dark:border-amber-700/30",
+    icon: <ZapIcon />,
+  },
+  premium: {
+    label: "Premium",
+    labelFull: "Premium Plan",
+    text: "text-white",
+    bg: "",
+    border: "border-transparent",
+    gradient: "linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #d946ef 100%)",
+    glow: "shadow-[0_2px_12px_-2px_rgba(168,85,247,0.55)]",
+    icon: <StarIcon />,
+  },
+  standard: {
+    label: "Standard",
+    labelFull: "Standard Plan",
+    text: "text-white",
+    bg: "",
+    border: "border-transparent",
+    gradient: "linear-gradient(135deg, #0ea5e9 0%, #6366f1 50%, #4f46e5 100%)",
+    glow: "shadow-[0_2px_12px_-2px_rgba(99,102,241,0.55)]",
+    icon: <ZapIcon />,
+  },
+};
+
+/* ═══════════════════════════════════════════════════════════════
+   PLAN BADGE
+═══════════════════════════════════════════════════════════════ */
+function PlanBadge({ plan, base = "", subscriptionData = {} }) {
+  const t = useTranslations("header");
 
   const [open, setOpen] = useState(false);
-  const ref             = useRef(null);
+  const ref = useRef(null);
   useClickOutside(ref, () => setOpen(false));
 
+  // const planTitle = getPlanName(subscriptionData);
+  // const key = planTitle.toLowerCase();
+  // const cfg = PLAN_CONFIG[key] ?? PLAN_CONFIG.normal;
+  const planTitle = getPlanName(subscriptionData);
+const key =
+  subscriptionData?.min_venue === 0 &&
+  subscriptionData?.max_venue === 0
+    ? "normal"
+    : planTitle.toLowerCase();
+
+const cfg = {
+  ...PLAN_CONFIG[key],
+  label:
+    key === "normal"
+      ? subscriptionData?.plan_name || "Normal"
+      : PLAN_CONFIG[key].label,
+  labelFull:
+    key === "normal"
+      ? `${subscriptionData?.plan_name || "Normal"} Plan`
+      : PLAN_CONFIG[key].labelFull,
+};
+
+  const billingCycle = "Monthly";
+
+  const renewalDate = subscriptionData?.next_billing_date
+    ? new Date(subscriptionData.next_billing_date).toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      })
+    : "-";
+
+  const status = Number(subscriptionData?.status) === 1 ? "Active" : "Inactive";
+
   return (
-    <div ref={ref} className="relative">
+    <div className="relative" ref={ref}>
       {/* ── Badge trigger ── */}
       <motion.button
         type="button"
-        onClick={() => setOpen((p) => !p)}
+        onClick={() => setOpen((v) => !v)}
         aria-label={`Current plan: ${cfg.label}`}
         aria-expanded={open}
         aria-haspopup="dialog"
-        whileHover={{ scale: 1.02 }}
+        whileHover={{ scale: 1.03 }}
         whileTap={{ scale: 0.97 }}
         transition={{ duration: 0.12 }}
         className={[
-          "inline-flex items-center cursor-pointer",
+          "inline-flex items-center gap-1.5 cursor-pointer",
           "rounded-full border",
           "px-2.5 py-1 sm:px-3 sm:py-1.5",
-          "text-xs font-semibold leading-none",
-          "transition-all duration-150 hover:shadow-sm",
+          "text-xs font-semibold leading-none tracking-tight",
+          "transition-all duration-150",
+          cfg.glow ? `hover:brightness-110 ${cfg.glow}` : "hover:shadow-sm",
           "focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2",
-          cfg.text, cfg.bg, cfg.border,
+          cfg.text,
+          cfg.bg,
+          cfg.border,
         ].join(" ")}
         style={cfg.gradient ? { background: cfg.gradient } : undefined}
       >
-        {/* Tablet + Mobile (<1024px): short label e.g. "Starter" */}
+        <span className={cfg.gradient ? "opacity-90" : "opacity-70"} aria-hidden="true">
+          {cfg.icon}
+        </span>
+        {/* Tablet + Mobile (<1024px): short label */}
         <span className="lg:hidden">{cfg.label}</span>
-        {/* Desktop (1024px+): full label e.g. "Starter Plan" */}
+        {/* Desktop (1024px+): full label */}
         <span className="hidden lg:inline">{cfg.labelFull}</span>
       </motion.button>
 
@@ -790,44 +905,78 @@ function PlanBadge({ plan = "starter", base = "" }) {
             role="dialog"
             aria-label="Subscription details"
             initial={{ opacity: 0, scale: 0.95, y: -6 }}
-            animate={{ opacity: 1, scale: 1,    y: 0   }}
-            exit={{    opacity: 0, scale: 0.95, y: -6  }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: -6 }}
             transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-            className={[
-              "absolute end-0 top-full mt-5 md:mt-6 z-50 w-64",
-              "rounded-2xl overflow-hidden",
-              "bg-white dark:bg-gray-900",
-              "border border-gray-100 dark:border-gray-800",
-              "shadow-xl shadow-gray-300/40 dark:shadow-black/50",
-            ].join(" ")}
+            className="absolute end-0 top-full mt-5 md:mt-6 z-50 w-72 rounded-2xl overflow-hidden bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-xl shadow-gray-300/40 dark:shadow-black/50"
           >
-            {/* Plan + billing info */}
-            <div className="px-4 pt-4 pb-3 border-b border-gray-100 dark:border-gray-800">
-              <p className={`text-sm font-bold ${cfg.text}`}>
-                {t("vendor_plan_label", { plan: cfg.label })}
-              </p>
-              <div className="mt-2.5 space-y-1.5">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-gray-500 dark:text-gray-400">
-                    {t("vendor_billing_cycle")}
-                  </span>
-                  <span className="font-medium text-gray-700 dark:text-gray-300">
-                    {DEMO_SUBSCRIPTION.cycle}
+            {/* Header */}
+            <div
+              className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 relative overflow-hidden"
+              style={cfg.gradient ? { background: cfg.gradient } : undefined}
+            >
+              <div className="relative flex items-center justify-between">
+                <div>
+                  <p className={`text-sm font-bold ${cfg.gradient ? "text-white" : cfg.text}`}>
+                    {planTitle} Plan
+                  </p>
+                  <span
+                    className={[
+                      "mt-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5",
+                      "text-[10px] font-semibold uppercase tracking-wide",
+                      status === "Active"
+                        ? cfg.gradient
+                          ? "bg-white/20 text-white"
+                          : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400"
+                        : cfg.gradient
+                          ? "bg-white/20 text-white"
+                          : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400",
+                    ].join(" ")}
+                  >
+                    <span
+                      className={[
+                        "h-1.5 w-1.5 rounded-full",
+                        status === "Active" ? (cfg.gradient ? "bg-white" : "bg-emerald-500") : (cfg.gradient ? "bg-white/70" : "bg-gray-400"),
+                      ].join(" ")}
+                    />
+                    {status}
                   </span>
                 </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-gray-500 dark:text-gray-400">
-                    {t("vendor_next_renewal")}
-                  </span>
-                  <span className="font-medium text-gray-700 dark:text-gray-300">
-                    {DEMO_SUBSCRIPTION.nextRenewal}
-                  </span>
-                </div>
+                <span
+                  className={[
+                    "flex h-9 w-9 items-center justify-center rounded-xl",
+                    cfg.gradient ? "bg-white/15 text-white" : `${cfg.bg} ${cfg.text}`,
+                  ].join(" ")}
+                >
+                  {cfg.icon}
+                </span>
               </div>
             </div>
 
+            {/* Billing info */}
+            <div className="px-5 py-4 space-y-3 text-xs border-b border-gray-100 dark:border-gray-800">
+              <div className="flex justify-between">
+                <span className="text-gray-500 dark:text-gray-400">Billing Cycle</span>
+                <span className="font-medium text-gray-800 dark:text-gray-200">{billingCycle}</span>
+              </div>
+
+              <div className="flex justify-between">
+                <span className="text-gray-500 dark:text-gray-400">Next Renewal</span>
+                <span className="font-medium text-gray-800 dark:text-gray-200">{renewalDate}</span>
+              </div>
+
+              {subscriptionData?.offer_amount != null && (
+                <div className="flex justify-between">
+                  <span className="text-gray-500 dark:text-gray-400">Amount</span>
+                  <span className="font-semibold text-gray-900 dark:text-white">
+                    ₹{subscriptionData.offer_amount}
+                  </span>
+                </div>
+              )}
+            </div>
+
             {/* Actions */}
-            <ul className="py-1.5" role="none">
+            <ul className="py-2" role="none">
               <li role="none">
                 <MenuItem
                   icon={<ZapIcon />}
@@ -860,7 +1009,6 @@ function PlanBadge({ plan = "starter", base = "" }) {
     </div>
   );
 }
-
 /* ═══════════════════════════════════════════════════════════════
    SVG ICONS
 ═══════════════════════════════════════════════════════════════ */
@@ -999,3 +1147,216 @@ function StarIcon() {
   );
 }
 
+function RealtimeStatusToast({ status }) {
+  const [visible, setVisible] = useState(false);
+  const [entry, setEntry] = useState(null); // { message, type, timestamp, isRepeat }
+  const lastMessageRef = useRef(null);
+  const timerRef = useRef(null);
+
+  useEffect(() => {
+    if (!status) return;
+
+    const isRepeat = lastMessageRef.current === status.message;
+    lastMessageRef.current = status.message;
+
+    setEntry({
+      message: status.message,
+      type: status.type,
+      timestamp: new Date(),
+      isRepeat,
+    });
+    setVisible(true);
+
+    clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setVisible(false), 10000);
+
+    return () => clearTimeout(timerRef.current);
+  }, [status]);
+
+  const STYLES = {
+    connected: {
+      ring: "ring-emerald-500/20",
+      glow: "shadow-[0_20px_50px_-12px_rgba(16,185,129,0.35)]",
+      iconBg: "bg-emerald-50 dark:bg-emerald-500/10",
+      iconRing: "ring-emerald-500/30",
+      iconColor: "text-emerald-600 dark:text-emerald-400",
+      dot: "bg-emerald-500",
+      bar: "from-emerald-500 via-teal-400 to-emerald-500",
+      pulse: false,
+      icon: (
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="20 6 9 17 4 12" />
+        </svg>
+      ),
+    },
+    disconnected: {
+      ring: "ring-amber-500/20",
+      glow: "shadow-[0_20px_50px_-12px_rgba(245,158,11,0.35)]",
+      iconBg: "bg-amber-50 dark:bg-amber-500/10",
+      iconRing: "ring-amber-500/30",
+      iconColor: "text-amber-600 dark:text-amber-400",
+      dot: "bg-amber-500",
+      bar: "from-amber-500 via-orange-400 to-amber-500",
+      pulse: true,
+      icon: (
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 9v4" /><path d="M12 17h.01" />
+          <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
+        </svg>
+      ),
+    },
+    reconnecting: {
+      ring: "ring-amber-500/20",
+      glow: "shadow-[0_20px_50px_-12px_rgba(245,158,11,0.35)]",
+      iconBg: "bg-amber-50 dark:bg-amber-500/10",
+      iconRing: "ring-amber-500/30",
+      iconColor: "text-amber-600 dark:text-amber-400",
+      dot: "bg-amber-500",
+      bar: "from-amber-500 via-orange-400 to-amber-500",
+      pulse: true,
+      icon: (
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 12a9 9 0 1 1-2.64-6.36" /><polyline points="21 3 21 9 15 9" />
+        </svg>
+      ),
+    },
+    error: {
+      ring: "ring-red-500/20",
+      glow: "shadow-[0_20px_50px_-12px_rgba(239,68,68,0.35)]",
+      iconBg: "bg-red-50 dark:bg-red-500/10",
+      iconRing: "ring-red-500/30",
+      iconColor: "text-red-600 dark:text-red-400",
+      dot: "bg-red-500",
+      bar: "from-red-500 via-rose-400 to-red-500",
+      pulse: true,
+      icon: (
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" />
+        </svg>
+      ),
+    },
+  };
+  const cfg = STYLES[entry?.type] || STYLES.connected;
+
+  const timeLabel = entry?.timestamp
+    ? entry.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+    : "";
+
+  return (
+    <div className="fixed top-[84px] right-4 sm:right-6 z-[9999] w-full max-w-sm pointer-events-none flex justify-end">
+      <AnimatePresence>
+        {visible && entry && (
+          <motion.div
+            layout
+            initial={{ x: 80, opacity: 0, scale: 0.92 }}
+            animate={{ x: 0, opacity: 1, scale: 1 }}
+            exit={{ x: 80, opacity: 0, scale: 0.92, transition: { duration: 0.22, ease: [0.4, 0, 1, 1] } }}
+            transition={{ type: "spring", stiffness: 340, damping: 28, mass: 0.9 }}
+            className={[
+              "pointer-events-auto relative overflow-hidden rounded-[20px]",
+              "ring-1", cfg.ring,
+              "bg-white/80 dark:bg-gray-900/80 backdrop-blur-2xl backdrop-saturate-150",
+              "border border-white/60 dark:border-white/5",
+              cfg.glow,
+            ].join(" ")}
+          >
+            {/* Ambient top sheen */}
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/80 dark:via-white/20 to-transparent" />
+
+            <AnimatePresence mode="popLayout">
+              {entry.isRepeat ? (
+                /* ── REPEAT: compact, refined pill ── */
+                <motion.div
+                  key="time-only"
+                  initial={{ opacity: 0, filter: "blur(2px)" }}
+                  animate={{ opacity: 1, filter: "blur(0px)" }}
+                  exit={{ opacity: 0, filter: "blur(2px)" }}
+                  transition={{ duration: 0.22 }}
+                  className="flex items-center gap-3 px-4 py-3"
+                >
+                  <span className="relative flex h-2 w-2 shrink-0">
+                    {cfg.pulse && (
+                      <span className={`absolute inline-flex h-full w-full animate-ping rounded-full ${cfg.dot} opacity-60`} />
+                    )}
+                    <span className={`relative inline-flex h-2 w-2 rounded-full ${cfg.dot}`} />
+                  </span>
+
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-gray-500">
+                    Status confirmed
+                  </span>
+
+                  <span className="ml-auto flex items-center gap-1.5 rounded-full bg-slate-100/80 dark:bg-white/5 px-2.5 py-1 text-[11px] font-bold text-slate-500 dark:text-gray-400 tabular-nums">
+                    {timeLabel}
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() => setVisible(false)}
+                    aria-label="Dismiss"
+                    className="shrink-0 flex h-5 w-5 items-center justify-center rounded-full text-slate-300 hover:text-slate-600 hover:bg-slate-100 dark:text-gray-600 dark:hover:text-gray-300 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                  >
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                </motion.div>
+              ) : (
+                /* ── FIRST TIME / NEW MESSAGE: full premium card ── */
+                <motion.div
+                  key="message"
+                  initial={{ opacity: 0, filter: "blur(2px)" }}
+                  animate={{ opacity: 1, filter: "blur(0px)" }}
+                  exit={{ opacity: 0, filter: "blur(2px)" }}
+                  transition={{ duration: 0.22 }}
+                  className="flex items-start gap-3.5 px-4 py-3.5"
+                >
+                  <span className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ring-1 ${cfg.iconBg} ${cfg.iconRing} ${cfg.iconColor}`}>
+                    {cfg.pulse && (
+                      <span className={`absolute inset-0 rounded-xl ${cfg.dot} opacity-20 animate-ping`} />
+                    )}
+                    {cfg.icon}
+                  </span>
+
+                  <div className="min-w-0 flex-1 pt-0.5">
+                    <p className="text-[13px] font-semibold text-slate-900 dark:text-gray-100 leading-snug tracking-[-0.01em]">
+                      {entry.message}
+                    </p>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-slate-300 dark:text-gray-600">
+                        <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+                      </svg>
+                      <p className="text-[11px] font-medium text-slate-400 dark:text-gray-500 tabular-nums">{timeLabel}</p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setVisible(false)}
+                    aria-label="Dismiss"
+                    className="shrink-0 flex h-6 w-6 items-center justify-center rounded-full text-slate-300 hover:text-slate-600 hover:bg-slate-100 dark:text-gray-600 dark:hover:text-gray-300 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Auto-dismiss countdown — refined, thinner, glowing */}
+            <div className="relative h-[3px] w-full bg-slate-100/60 dark:bg-white/5">
+              <motion.div
+                key={`bar-${entry.timestamp?.getTime()}`}
+                initial={{ scaleX: 1 }}
+                animate={{ scaleX: 0 }}
+                transition={{ duration: 10, ease: "linear" }}
+                style={{ transformOrigin: "right" }}
+                className={`h-full w-full bg-gradient-to-r ${cfg.bar}`}
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}

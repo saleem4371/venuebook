@@ -4,34 +4,44 @@ import { motion, AnimatePresence } from "framer-motion";
 import { usePathname, useParams } from "next/navigation";
 import Link from "next/link";
 import {
-  LayoutDashboard, Building2, CalendarDays, ClipboardList,
-  BarChart2, Package, Layers, Settings,
-  MoreHorizontal, X, Bell, MessageSquareText,
+  LayoutDashboard,
+  Building2,
+  CalendarDays,
+  ClipboardList,
+  BarChart2,
+  Package,
+  Layers,
+  Settings,
+  MoreHorizontal,
+  X,
+  Bell,
+  MessageSquareText,
+  Loader2,
 } from "lucide-react";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useVendorCategory } from "@/context/VendorCategoryContext";
 
 import { useRealtime } from "@/context/RealtimeContext";
 
-import {
-  globalSetting,
-  all_notification
-} from "@/services/booking.service";
+import { getnotification } from "@/services/global.service";
+import { useSocket } from "@/context/SocketContext";
+
+import { globalSetting, all_notification } from "@/services/booking.service";
 
 /* ─────────────────────────────────────────────────────────────
    ANIMATION PRESETS
 ───────────────────────────────────────────────────────────── */
 const DROPDOWN_ANIM = {
-  initial:    { opacity: 0, scale: 0.97, y: -6 },
-  animate:    { opacity: 1, scale: 1,    y:  0 },
-  exit:       { opacity: 0, scale: 0.97, y: -6 },
+  initial: { opacity: 0, scale: 0.97, y: -6 },
+  animate: { opacity: 1, scale: 1, y: 0 },
+  exit: { opacity: 0, scale: 0.97, y: -6 },
   transition: { duration: 0.14, ease: [0.16, 1, 0.3, 1] },
 };
 
 const DRAWER_ANIM = {
-  initial:    { y: "100%" },
-  animate:    { y: 0 },
-  exit:       { y: "100%" },
+  initial: { y: "100%" },
+  animate: { y: 0 },
+  exit: { y: "100%" },
   transition: { type: "spring", stiffness: 380, damping: 38, mass: 0.8 },
 };
 
@@ -41,8 +51,7 @@ const DRAWER_ANIM = {
 const TAB_BASE =
   "relative flex items-center gap-1.5 px-3 text-[13px] font-medium whitespace-nowrap transition-all duration-150 cursor-pointer select-none outline-none focus-visible:ring-2 focus-visible:ring-violet-500/60 h-[46px]";
 
-const TAB_ACTIVE =
-  "text-gray-900 dark:text-gray-50 font-semibold";
+const TAB_ACTIVE = "text-gray-900 dark:text-gray-50 font-semibold";
 
 const TAB_INACTIVE =
   "text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200";
@@ -55,7 +64,9 @@ const DROPDOWN_PANEL =
 ───────────────────────────────────────────────────────────── */
 function useClickOutside(ref, cb) {
   useEffect(() => {
-    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) cb(); };
+    const h = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) cb();
+    };
     document.addEventListener("mousedown", h);
     return () => document.removeEventListener("mousedown", h);
   }, [ref, cb]);
@@ -65,35 +76,37 @@ function useClickOutside(ref, cb) {
    MAIN COMPONENT
 ═══════════════════════════════════════════════════════════════ */
 export default function VendorNavTabs() {
+  const { refreshKey } = useRealtime();
 
-    const { refreshKey } = useRealtime();
-  
-  
   const pathname = usePathname();
-  const params   = useParams();
-  const base     = `/${params?.locale}/${params?.country}/vendor`;
+  const params = useParams();
+  const base = `/${params?.locale}/${params?.country}/vendor`;
 
   const { activeCategory } = useVendorCategory();
 
-  // Setting consdtion 
+  // Setting consdtion
 
-    const [settings, setSettings] = useState({});
- const [settingsMap, setSettingsMap] = useState({});
+  const [settings, setSettings] = useState({});
+  const [settingsMap, setSettingsMap] = useState({});
 
   const [allNotification, setAllNotification] = useState([]);
+  const [reservationCount, setReservationCount] = useState(0);
 
-   const load = async () => {
-      const _settings = await globalSetting();
-      setSettings(_settings.data);
-    };
-  
-    useEffect(() => {
-      (async () => {
-        await load();
-      })();
-    }, []);
+  const load = async () => {
+    const _settings = await globalSetting();
+    setSettings(_settings.data);
+  };
 
-      useEffect(() => {
+  // Re-fetch settings on mount AND whenever a realtime event bumps
+  // refreshKey (e.g. a setting was changed elsewhere) so the tabs
+  // (like the Packages tab gated by paxPricing) stay in sync live.
+  useEffect(() => {
+    (async () => {
+      await load();
+    })();
+  }, [refreshKey]);
+
+  useEffect(() => {
     if (!settings?.length) return;
 
     const map = settings.reduce((acc, item) => {
@@ -110,81 +123,142 @@ export default function VendorNavTabs() {
     setSettingsMap(map);
   }, [settings]);
 
+  const { status } = useSocket();
+
+  useEffect(() => {
+    fetchNotify();
+  }, [status, refreshKey]);
+
+  const fetchNotify = async () => {
+    try {
+      // setLoading(true);
+
+      const resp = await getnotification();
+      setAllNotification(resp?.data || {});
+      setReservationCount(resp?.data?.counts?.booking_count || 0);
+    } catch (err) {
+      console.error(err);
+      setAllNotification(null);
+    } finally {
+      // setLoading(false);
+    }
+  };
+  //setReservationCount
   /* ── Tab list ─────────────────────────────────────────── */
-  // const allTabs = useMemo(() => {
-  //   const TABS = [
-  //     { label: "Dashboard",    href: `${base}/dashboard`,    icon: LayoutDashboard, legacyPaths: [] },
-  //     { label: "Listing",      href: `${base}/listing`,      icon: Building2,       legacyPaths: [] },
-  //     { label: "Calendar",     href: `${base}/calendar`,     icon: CalendarDays,   legacyPaths: [] },
-  //     {
-  //       label: "Reservations",
-  //       href:  `${base}/reservations`,
-  //       icon:  ClipboardList,
-  //       badge: 14, // combined: 12 leads + 2 bookings
-  //       legacyPaths: [`${base}/leads`, `${base}/bookings`],
-  //     },
-  //     { label: "Messages",  href: `${base}/messages`,  icon: MessageSquareText, badge: 11, legacyPaths: [] },
-  //     { label: "Addons",    href: `${base}/addons`,    icon: Layers,    legacyPaths: [] },
-  //     { label: "Packages",  href: `${base}/package`,   icon: Package,       legacyPaths: [] },
-  //     { label: "Settings",  href: `${base}/settings`,  icon: Settings,      legacyPaths: [] },
-  //     { label: "Reports",   href: `${base}/reports`,   icon: BarChart2,     legacyPaths: [] },
-  //   ];
-  //   return activeCategory !== "venues"
-  //     ? TABS.filter((t) => t.label !== "Packages")
-  //     : TABS;
-  // }, [base, activeCategory]);
+
   const allTabs = useMemo(() => {
-  const TABS = [
-    { label: "Dashboard", href: `${base}/dashboard`, icon: LayoutDashboard, legacyPaths: [] },
-    { label: "Listing", href: `${base}/listing`, icon: Building2, legacyPaths: [] },
-    { label: "Calendar", href: `${base}/calendar`, icon: CalendarDays, legacyPaths: [] },
-    {
-      label: "Reservations",
-      href: `${base}/reservations`,
-      icon: ClipboardList,
-      badge: 14,
-      legacyPaths: [`${base}/leads`, `${base}/bookings`],
-    },
-    { label: "Messages", href: `${base}/messages`, icon: MessageSquareText, badge: 11, legacyPaths: [] },
-    { label: "Addons", href: `${base}/addons`, icon: Layers, legacyPaths: [] },
+    const TABS = [
+      {
+        label: "Dashboard",
+        href: `${base}/dashboard`,
+        icon: LayoutDashboard,
+        legacyPaths: [],
+      },
+      {
+        label: "Listing",
+        href: `${base}/listing`,
+        icon: Building2,
+        legacyPaths: [],
+      },
+      {
+        label: "Calendar",
+        href: `${base}/calendar`,
+        icon: CalendarDays,
+        legacyPaths: [],
+      },
+      {
+        label: "Reservations",
+        href: `${base}/reservations`,
+        icon: ClipboardList,
+        badge: reservationCount,
+        legacyPaths: [`${base}/leads`, `${base}/bookings`],
+      },
+      {
+        label: "Messages",
+        href: `${base}/messages`,
+        icon: MessageSquareText,
+        badge: 11,
+        legacyPaths: [],
+      },
+      {
+        label: "Addons",
+        href: `${base}/addons`,
+        icon: Layers,
+        legacyPaths: [],
+      },
 
-    // Only include Packages if paxPricing exists
-    ...(settingsMap?.paxPricing
-      ? [
-          {
-            label: "Packages",
-            href: `${base}/package`,
-            icon: Package,
-            legacyPaths: [],
-          },
-        ]
-      : []),
+      // Only include Packages if paxPricing exists
+      ...(settingsMap?.paxPricing
+        ? [
+            {
+              label: "Packages",
+              href: `${base}/package`,
+              icon: Package,
+              legacyPaths: [],
+            },
+          ]
+        : []),
 
-    { label: "Settings", href: `${base}/settings`, icon: Settings, legacyPaths: [] },
-    { label: "Reports", href: `${base}/reports`, icon: BarChart2, legacyPaths: [] },
-  ];
+      {
+        label: "Settings",
+        href: `${base}/settings`,
+        icon: Settings,
+        legacyPaths: [],
+      },
+      {
+        label: "Reports",
+        href: `${base}/reports`,
+        icon: BarChart2,
+        legacyPaths: [],
+      },
+    ];
 
-  return activeCategory !== "venues"
-    ? TABS.filter((t) => t.label !== "Packages")
-    : TABS;
-}, [base, activeCategory, settingsMap]);
+    return activeCategory !== "venues"
+      ? TABS.filter((t) => t.label !== "Packages")
+      : TABS;
+  }, [base, activeCategory, settingsMap, reservationCount]);
 
   /* ── Overflow state ───────────────────────────────────── */
   const [overflowIndex, setOverflowIndex] = useState(allTabs.length);
-  const [morePos, setMorePos]             = useState({ top: 0, left: 0 });
-  const [showMore,  setShowMore]  = useState(false);
+  const [morePos, setMorePos] = useState({ top: 0, left: 0 });
+  const [showMore, setShowMore] = useState(false);
   const [showNotif, setShowNotif] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
+  // Tracks the href the user just clicked, so we can show a loading
+  // affordance until the route actually changes.
+  const [pendingHref, setPendingHref] = useState(null);
 
- 
   const containerRef = useRef(null);
-  const measureRefs  = useRef([]);
-  const moreBtnRef   = useRef(null);
+  const measureRefs = useRef([]);
+  const moreBtnRef = useRef(null);
   const notifAreaRef = useRef(null);
 
   const closeNotif = useCallback(() => setShowNotif(false), []);
   useClickOutside(notifAreaRef, closeNotif);
+
+  /* ── Click loading feedback ───────────────────────────── */
+  const handleTabClick = useCallback(
+    (href) => {
+      if (href === pathname) return; // already there, nothing to show
+      setPendingHref(href);
+      setShowMore(false);
+      setMobileDrawerOpen(false);
+    },
+    [pathname]
+  );
+
+  // Clear pending state once the route actually changes.
+  useEffect(() => {
+    setPendingHref(null);
+  }, [pathname]);
+
+  // Safety net: don't let a tab spin forever if navigation stalls.
+  useEffect(() => {
+    if (!pendingHref) return;
+    const t = setTimeout(() => setPendingHref(null), 6000);
+    return () => clearTimeout(t);
+  }, [pendingHref]);
 
   /* ── Overflow calculation ─────────────────────────────── */
   const MORE_BTN_W = 80;
@@ -219,12 +293,15 @@ export default function VendorNavTabs() {
     const id = requestAnimationFrame(recalculate);
     const obs = new ResizeObserver(recalculate);
     if (containerRef.current) obs.observe(containerRef.current);
-    return () => { cancelAnimationFrame(id); obs.disconnect(); };
+    return () => {
+      cancelAnimationFrame(id);
+      obs.disconnect();
+    };
   }, [recalculate]);
 
-  const visibleTabs  = allTabs.slice(0, overflowIndex);
+  const visibleTabs = allTabs.slice(0, overflowIndex);
   const overflowTabs = allTabs.slice(overflowIndex);
-  const hasMore      = overflowTabs.length > 0;
+  const hasMore = overflowTabs.length > 0;
 
   const openMore = useCallback(() => {
     if (moreBtnRef.current) {
@@ -235,34 +312,8 @@ export default function VendorNavTabs() {
   }, []);
 
   /* ── Notifications ────────────────────────────────────── */
-  const notifications = [
-    { text: "New lead received",  time: "2 min ago"  },
-    { text: "Booking confirmed",  time: "15 min ago" },
-    { text: "Payment received",   time: "1 hr ago"   },
-  ];
-  const unread = notifications.length;
 
-   const loadnotification = async () => {
-    try {
-      const res = await all_notification();
-  
-      console.log("API Response:", res);
-  
-   
-  
-      setAllNotification(res.data);
-    } catch (err) {
-      console.error("Load Badge failed:", err);
-      setAllNotification([]);
-    }
-  };
-    
-
-useEffect(() => {
-  loadnotification();
-}, [refreshKey]);
-  
-
+  const unread = allNotification?.counts?.notification_count;
 
   return (
     <>
@@ -270,7 +321,6 @@ useEffect(() => {
           DESKTOP NAV  (hidden on mobile)
       ════════════════════════════════════════════════════ */}
       <div className="hidden md:block fixed inset-x-0 top-[72px] z-30">
-
         {/* Bar */}
         <div
           className="
@@ -282,15 +332,22 @@ useEffect(() => {
           "
         >
           <div className="xl:max-w-7xl xl:mx-auto px-6 me-[150px]">
-            <div ref={containerRef} className="flex items-center justify-center h-[46px] relative">
-
+            <div
+              ref={containerRef}
+              className="flex items-center justify-center h-[46px] relative"
+            >
               {/* Hidden measurement row */}
               <div
                 aria-hidden="true"
                 style={{
-                  position: "absolute", top: 0, left: 0,
-                  visibility: "hidden", pointerEvents: "none",
-                  display: "flex", alignItems: "center", gap: "4px",
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  visibility: "hidden",
+                  pointerEvents: "none",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
                   height: "46px",
                 }}
               >
@@ -304,7 +361,13 @@ useEffect(() => {
                       <tab.icon size={14} />
                       <span>{tab.label}</span>
                       {tab.badge > 0 && (
-                        <span style={{ display: "inline-flex", width: "18px", height: "16px" }} />
+                        <span
+                          style={{
+                            display: "inline-flex",
+                            width: "18px",
+                            height: "16px",
+                          }}
+                        />
                       )}
                     </div>
                   </div>
@@ -314,26 +377,92 @@ useEffect(() => {
               {/* Visible tabs */}
               <div className="flex items-center  gap-0.5 overflow-hidden">
                 {visibleTabs.map((tab) => {
-                  const Icon   = tab.icon;
-                  const active = pathname.startsWith(tab.href) ||
-                    (tab.legacyPaths?.some((p) => pathname.startsWith(p)) ?? false);
+                  const Icon = tab.icon;
+                  const active =
+                    pathname.startsWith(tab.href) ||
+                    (tab.legacyPaths?.some((p) => pathname.startsWith(p)) ??
+                      false);
+                  const isPending = pendingHref === tab.href;
                   return (
-                    <Link key={tab.label} href={tab.href} className="shrink-0">
-                      <div className={`${TAB_BASE} ${active ? TAB_ACTIVE : TAB_INACTIVE}`}>
-
+                    <Link
+                      key={tab.label}
+                      href={tab.href}
+                      className="shrink-0"
+                      onClick={() => handleTabClick(tab.href)}
+                      aria-busy={isPending}
+                    >
+                      <div
+                        className={`${TAB_BASE} ${active ? TAB_ACTIVE : TAB_INACTIVE} ${
+                          isPending ? "opacity-70" : ""
+                        }`}
+                      >
                         {/* Sliding underline */}
                         {active && (
                           <motion.span
                             layoutId="desktopActiveUnderline"
                             className="absolute bottom-0 left-0 right-0 h-[2px] bg-violet-600 dark:bg-violet-400"
-                            transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                            transition={{
+                              type: "spring",
+                              stiffness: 420,
+                              damping: 34,
+                            }}
                           />
                         )}
 
-                        <Icon
-                          size={14}
-                          className={`shrink-0 ${active ? "text-violet-600 dark:text-violet-400" : ""}`}
-                        />
+                        {/* Pending progress shimmer */}
+                        {isPending && (
+                          <motion.span
+                            className="absolute bottom-0 left-0 right-0 h-[2px] bg-violet-400/70 dark:bg-violet-500/70"
+                            initial={{ scaleX: 0, opacity: 0.9 }}
+                            animate={{ scaleX: 1, opacity: [0.9, 0.4, 0.9] }}
+                            transition={{
+                              scaleX: { duration: 0.9, ease: "easeInOut" },
+                              opacity: {
+                                duration: 0.9,
+                                repeat: Infinity,
+                                ease: "easeInOut",
+                              },
+                            }}
+                            style={{ transformOrigin: "left" }}
+                          />
+                        )}
+
+                        <AnimatePresence mode="wait" initial={false}>
+                          {isPending ? (
+                            <motion.span
+                              key="loading"
+                              initial={{ opacity: 0, scale: 0.8 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              exit={{ opacity: 0, scale: 0.8 }}
+                              transition={{ duration: 0.12 }}
+                              className="flex items-center justify-center shrink-0"
+                            >
+                              <Loader2
+                                size={14}
+                                className="animate-spin text-violet-500 dark:text-violet-400"
+                              />
+                            </motion.span>
+                          ) : (
+                            <motion.span
+                              key="icon"
+                              initial={{ opacity: 0, scale: 0.8 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              exit={{ opacity: 0, scale: 0.8 }}
+                              transition={{ duration: 0.12 }}
+                              className="flex items-center justify-center shrink-0"
+                            >
+                              <Icon
+                                size={14}
+                                className={
+                                  active
+                                    ? "text-violet-600 dark:text-violet-400"
+                                    : ""
+                                }
+                              />
+                            </motion.span>
+                          )}
+                        </AnimatePresence>
+
                         <span className="tracking-[-0.01em]">{tab.label}</span>
 
                         {/* Badge */}
@@ -355,9 +484,10 @@ useEffect(() => {
                     onClick={() => (showMore ? setShowMore(false) : openMore())}
                     className={`
                       ${TAB_BASE} shrink-0
-                      ${showMore
-                        ? "text-gray-800 dark:text-gray-200"
-                        : TAB_INACTIVE
+                      ${
+                        showMore
+                          ? "text-gray-800 dark:text-gray-200"
+                          : TAB_INACTIVE
                       }
                     `}
                   >
@@ -376,9 +506,10 @@ useEffect(() => {
                     relative flex items-center justify-center
                     w-9 h-9 rounded-lg transition-all duration-150
                     focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/60
-                    ${showNotif
-                      ? "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200"
-                      : "text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100/80 dark:hover:bg-gray-800/60"
+                    ${
+                      showNotif
+                        ? "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200"
+                        : "text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100/80 dark:hover:bg-gray-800/60"
                     }
                   `}
                   whileTap={{ scale: 0.93 }}
@@ -411,7 +542,9 @@ useEffect(() => {
                       {/* Header */}
                       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800">
                         <div className="flex items-center gap-2">
-                          <p className="text-[13px] font-semibold text-gray-900 dark:text-gray-100">Notifications</p>
+                          <p className="text-[13px] font-semibold text-gray-900 dark:text-gray-100">
+                            Notifications
+                          </p>
                           <span className="inline-flex items-center justify-center h-4 min-w-[16px] px-1 rounded-full bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300 text-[9px] font-bold">
                             {unread}
                           </span>
@@ -427,7 +560,7 @@ useEffect(() => {
 
                       {/* Items */}
                       <ul className="py-1">
-                        {notifications.map((n, i) => (
+                        {allNotification?.notifications.map((n, i) => (
                           <li key={i}>
                             <Link
                               href={`${base}/notifications`}
@@ -436,8 +569,12 @@ useEffect(() => {
                             >
                               <span className="mt-[6px] h-1.5 w-1.5 shrink-0 rounded-full bg-violet-500" />
                               <span className="min-w-0 flex-1">
-                                <span className="block text-[13px] text-gray-800 dark:text-gray-200 leading-snug">{n.text}</span>
-                                <span className="block text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">{n.time}</span>
+                                <span className="block text-[13px] text-gray-800 dark:text-gray-200 leading-snug">
+                                  {n.message}
+                                </span>
+                                <span className="block text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">
+                                  {n.created_at}
+                                </span>
                               </span>
                             </Link>
                           </li>
@@ -458,7 +595,6 @@ useEffect(() => {
                   )}
                 </AnimatePresence>
               </div>
-
             </div>
           </div>
         </div>
@@ -477,31 +613,52 @@ useEffect(() => {
             />
             <motion.div
               {...DROPDOWN_ANIM}
-              style={{ position: "fixed", top: morePos.top, left: morePos.left, zIndex: 9999 }}
+              style={{
+                position: "fixed",
+                top: morePos.top,
+                left: morePos.left,
+                zIndex: 9999,
+              }}
               className={`w-52 ${DROPDOWN_PANEL}`}
             >
               <ul className="py-1.5" role="menu">
                 {overflowTabs.map((tab) => {
-                  const Icon   = tab.icon;
-                  const active = pathname.startsWith(tab.href) ||
-                    (tab.legacyPaths?.some((p) => pathname.startsWith(p)) ?? false);
+                  const Icon = tab.icon;
+                  const active =
+                    pathname.startsWith(tab.href) ||
+                    (tab.legacyPaths?.some((p) => pathname.startsWith(p)) ??
+                      false);
+                  const isPending = pendingHref === tab.href;
                   return (
                     <li key={tab.label} role="none">
                       <Link
                         href={tab.href}
-                        onClick={() => setShowMore(false)}
+                        onClick={() => handleTabClick(tab.href)}
                         role="menuitem"
+                        aria-busy={isPending}
                         className={[
                           "flex items-center gap-3 px-4 py-2.5 text-[13px] transition-colors",
                           active
                             ? "text-violet-700 dark:text-violet-300 font-semibold bg-violet-50/70 dark:bg-violet-950/30"
                             : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/60",
+                          isPending ? "opacity-70" : "",
                         ].join(" ")}
                       >
-                        <Icon
-                          size={14}
-                          className={active ? "text-violet-500 shrink-0" : "text-gray-400 shrink-0"}
-                        />
+                        {isPending ? (
+                          <Loader2
+                            size={14}
+                            className="animate-spin text-violet-500 shrink-0"
+                          />
+                        ) : (
+                          <Icon
+                            size={14}
+                            className={
+                              active
+                                ? "text-violet-500 shrink-0"
+                                : "text-gray-400 shrink-0"
+                            }
+                          />
+                        )}
                         {tab.label}
                         {tab.badge > 0 && (
                           <span className="ms-auto inline-flex items-center justify-center h-4 min-w-[16px] px-1 rounded-full bg-red-500 text-white text-[9px] font-bold leading-none">
@@ -517,7 +674,6 @@ useEffect(() => {
           </>
         )}
       </AnimatePresence>
-
 
       {/* ════════════════════════════════════════════════════
           MOBILE OVERFLOW DRAWER
@@ -555,7 +711,9 @@ useEffect(() => {
 
               {/* Header */}
               <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 dark:border-gray-800">
-                <p className="text-[14px] font-semibold text-gray-900 dark:text-gray-100">Navigation</p>
+                <p className="text-[14px] font-semibold text-gray-900 dark:text-gray-100">
+                  Navigation
+                </p>
                 <button
                   type="button"
                   onClick={() => setMobileDrawerOpen(false)}
@@ -568,39 +726,54 @@ useEffect(() => {
               {/* All tabs grid */}
               <div className="p-4 grid grid-cols-3 gap-2">
                 {allTabs.map((tab) => {
-                  const Icon   = tab.icon;
-                  const active = pathname.startsWith(tab.href) ||
-                    (tab.legacyPaths?.some((p) => pathname.startsWith(p)) ?? false);
+                  const Icon = tab.icon;
+                  const active =
+                    pathname.startsWith(tab.href) ||
+                    (tab.legacyPaths?.some((p) => pathname.startsWith(p)) ??
+                      false);
+                  const isPending = pendingHref === tab.href;
                   return (
                     <Link
                       key={tab.label}
                       href={tab.href}
-                      onClick={() => setMobileDrawerOpen(false)}
+                      onClick={() => handleTabClick(tab.href)}
+                      aria-busy={isPending}
                     >
                       <motion.div
                         whileTap={{ scale: 0.94 }}
                         className={`
                           relative flex flex-col items-center gap-1.5
                           py-3 px-2 rounded-xl transition-colors
-                          ${active
-                            ? "bg-gray-50 dark:bg-gray-800/60 border border-violet-200/60 dark:border-violet-800/40"
-                            : "bg-gray-50 dark:bg-gray-800/50 border border-transparent"
+                          ${
+                            active
+                              ? "bg-gray-50 dark:bg-gray-800/60 border border-violet-200/60 dark:border-violet-800/40"
+                              : "bg-gray-50 dark:bg-gray-800/50 border border-transparent"
                           }
+                          ${isPending ? "opacity-70" : ""}
                         `}
                       >
-                        <Icon
-                          size={18}
-                          className={active
-                            ? "text-violet-600 dark:text-violet-400"
-                            : "text-gray-500 dark:text-gray-400"
-                          }
-                        />
+                        {isPending ? (
+                          <Loader2
+                            size={18}
+                            className="animate-spin text-violet-500 dark:text-violet-400"
+                          />
+                        ) : (
+                          <Icon
+                            size={18}
+                            className={
+                              active
+                                ? "text-violet-600 dark:text-violet-400"
+                                : "text-gray-500 dark:text-gray-400"
+                            }
+                          />
+                        )}
                         <span
                           className={`
                             text-[11px] font-medium text-center leading-tight
-                            ${active
-                              ? "text-violet-700 dark:text-violet-300"
-                              : "text-gray-600 dark:text-gray-400"
+                            ${
+                              active
+                                ? "text-violet-700 dark:text-violet-300"
+                                : "text-gray-600 dark:text-gray-400"
                             }
                           `}
                         >

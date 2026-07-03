@@ -18,6 +18,8 @@ import {
   verifyGST,
 } from "@/services/kycVerification";
 
+import { currency_icon,formatPrice , getCountry} from '@/lib/currency_format'
+
 import { SubmitKYC, each_kyc_status } from "@/services/kyc.service";
 
 /* ─── Design tokens ──────────────────────────────────────────────── */
@@ -80,6 +82,10 @@ export default function KYCModal({ open, setOpen , kycData }) {
   const [bankData,    setBankData]    = useState(null);
   const [docData,     setDocData]     = useState(null);
 
+  const countries = getCountry();
+
+
+
   /* ── Restore from localStorage ─────────────────────────────────── */
   // useEffect(() => {
   //   if (!open) return;
@@ -94,65 +100,125 @@ export default function KYCModal({ open, setOpen , kycData }) {
   //   } catch { /* noop */ }
   // }, [open]);
 
-  useEffect(() => {
-  if (!open) return;
+useEffect(() => {
+  if (!open || !kycData) return;
 
   try {
-    // If API data exists, save it to localStorage
-    if (kycData) {
-      const data = {
-        category: kycData.category ?? null,
-        panData: kycData.panData ?? null,
-        aadhaarData: kycData.aadhaarData ?? null,
-        bankData: kycData.bankData ?? null,
-        docData: kycData.docData ?? null,
-        step: kycData.step ?? 0,
-      };
+    // ---------------- PAN ----------------
+    if (kycData.pan) {
+      const panDetails =
+        typeof kycData.pan.doc_details === "string"
+          ? JSON.parse(kycData.pan.doc_details)
+          : kycData.pan.doc_details;
 
-      localStorage.setItem(KYC_KEY, JSON.stringify(data));
+      // GST
+      const gstDetails = kycData.gst
+        ? typeof kycData.gst.doc_details === "string"
+          ? JSON.parse(kycData.gst.doc_details)
+          : kycData.gst.doc_details
+        : null;
+
+      const gstNumber =
+        kycData.gst?.document_number ||
+        gstDetails?.gstin_list?.[0]?.gstin ||
+        "";
+
+      setPanData({
+        pan_number: kycData.pan.document_number,
+        company_name: panDetails.full_name,
+        business_category: panDetails.category,
+        registered_address: panDetails.address?.full,
+        status: panDetails.status,
+        verification_status: kycData.pan.verification_status,
+        fromBackend: true,
+      });
+
+      setDocData({
+        company_name: panDetails.full_name,
+        pan_number: kycData.pan.document_number,
+        business_category: panDetails.category,
+        registered_address: panDetails.address?.full,
+        gst_number: gstNumber,
+        gst_details: gstDetails,
+        gstVerified: !!gstNumber,
+        fileName: kycData.pan.file_url?.split("/").pop() || "",
+      });
     }
 
-    // Restore from localStorage
-    const s = JSON.parse(localStorage.getItem(KYC_KEY) || "{}");
+    // ---------------- Aadhaar ----------------
+    if (kycData.aadhaar) {
+      const details =
+        typeof kycData.aadhaar.doc_details === "string"
+          ? JSON.parse(kycData.aadhaar.doc_details)
+          : kycData.aadhaar.doc_details;
 
-    setCategory(s.category ?? null);
-    setPanData(s.panData ?? null);
-    setDocData(s.panData ?? null);
-    setAadhaarData(s.aadhaarData ?? null);
-    setBankData(s.bankData ?? null);
-    // setDocData(s.docData ?? null);
-    setStep(s.step ?? 0);
+      setAadhaarData({
+        full_name: details.name,
+        dob: details.dob,
+        gender: details.gender,
+        address: details.address,
+        aadhaar_number: details.masked_number,
+        fromBackend: true,
+      });
+    }
+
+    // ---------------- Bank ----------------
+    if (kycData.bank) {
+      setBankData({
+        account_holder: kycData.bank.business_name,
+        bank_name: kycData.bank.bank_name,
+        branch: kycData.bank.branch_name,
+        account_masked:
+          "XXXX XXXX " +
+          (kycData.bank.account_number?.slice(-4) || ""),
+        ifsc: kycData.bank.ifsc,
+        account_number: kycData.bank.account_number,
+        account_type: kycData.bank.account_type,
+        verification_status: kycData.bank.verification_status,
+        status: kycData.bank.verification_status,
+        fromBackend: true,
+      });
+    }
   } catch (err) {
-    console.error(err);
+    console.error("KYC Parse Error:", err);
   }
 }, [open, kycData]);
 
   /* ── Persist to localStorage ───────────────────────────────────── */
-  useEffect(() => {
-    if (!open) return;
-    try {
-      localStorage.setItem(KYC_KEY, JSON.stringify({
+useEffect(() => {
+  if (!open) return;
+
+  try {
+    localStorage.setItem(
+      KYC_KEY,
+      JSON.stringify({
         category,
         panData,
         aadhaarData,
         bankData,
-        docData: docData ? {
-          match: docData.match,
-          fileName: docData.file?.name ?? docData.fileName,
-          message: docData.message,
-          gst: docData.gst,
-          gstVerified: docData.gstVerified,
-          legalName: docData.legalName,
-          tradeName: docData.tradeName,
-          status: docData.status,
-          state: docData.state,
-          registrationDate: docData.registrationDate,
-        } : null,
+        docData: docData
+          ? {
+              ...docData,
+              // File objects can't be stored
+              file: undefined,
+              fileName: docData.file?.name ?? docData.fileName ?? null,
+            }
+          : null,
         step,
-      }));
-    } catch { /* noop */ }
-  }, [category, panData, aadhaarData, bankData, docData, step, open]);
-
+      })
+    );
+  } catch (err) {
+    console.error("[KYC Save]", err);
+  }
+}, [
+  open,
+  category,
+  panData,
+  aadhaarData,
+  bankData,
+  docData,
+  step,
+]);
   /* ── Pre-fill from backend if already verified ──────────────────── */
   // useEffect(() => {
   //   if (!open) return;
@@ -238,11 +304,27 @@ useEffect(() => {
     return true;
   }, [step, category, panData, aadhaarData, bankData, docData]);
 
+  // const goNext = () => {
+  //   if (!canAdvance()) return;
+  //   setDir(1);
+  //   setStep(s => Math.min(s + 1, 5));
+  // };
   const goNext = () => {
-    if (!canAdvance()) return;
-    setDir(1);
-    setStep(s => Math.min(s + 1, 5));
-  };
+  if (!canAdvance()) return;
+
+  setDir(1);
+
+  if (
+    step === 1 &&
+    category === "business" &&
+    docData?.gstVerified
+  ) {
+    setStep(3); // Skip GST step
+    return;
+  }
+
+  setStep((s) => Math.min(s + 1, 5));
+};
 
   const goBack = () => {
     setDir(-1);
@@ -316,6 +398,7 @@ useEffect(() => {
               step={step}
               category={category}
               onClose={handleClose}
+              countries={countries}
             />
 
             {/* Mobile stepper */}
@@ -350,7 +433,7 @@ useEffect(() => {
                           <Step0Category category={category} setCategory={setCategory} />
                         )}
                         {step === 1 && (
-                          <Step1PAN panData={panData} setPanData={setPanData} category ={category} />
+                          <Step1PAN panData={panData} docData={docData} setPanData={setPanData} setDocData={setDocData} category ={category} />
                         )}
                         {step === 2 && (
                           category === "personal"
@@ -401,7 +484,7 @@ useEffect(() => {
 /* ─────────────────────────────────────────────────────────────────────
    HEADER — shows country + category badge
 ───────────────────────────────────────────────────────────────────── */
-function KYCHeader({ submitted, step, category, onClose }) {
+function KYCHeader({ submitted, step, category, onClose ,countries}) {
   const catMeta = category ? CATEGORY_META[category] : null;
   /* Display step as 1-based, skip step 0 in count */
   const displayStep = step === 0 ? 1 : step;
@@ -426,7 +509,11 @@ function KYCHeader({ submitted, step, category, onClose }) {
             <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-semibold
               bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400
               px-2 py-0.5 rounded-full">
-              {COUNTRY.flag} {COUNTRY.name}
+                <img
+        src={`${process.env.NEXT_PUBLIC_AWS_BUCKET_URL}/${countries.flag}`}
+        alt={countries.name}
+        className="w-5 h-5 rounded-full object-cover"
+      />{countries.name}
             </span>
 
             {/* Category pill — shown once chosen */}
@@ -738,7 +825,7 @@ function Step0Category({ category, setCategory }) {
 /* ════════════════════════════════════════════════════════════════════
    STEP 1 — PAN VERIFICATION
 ════════════════════════════════════════════════════════════════════ */
-function Step1PAN({ panData, setPanData ,category}) {
+function Step1PAN({ panData,docData, setPanData ,setDocData, category}) {
   const [pan,   setPan]   = useState(panData?.pan_number ?? "");
   const [phase, setPhase] = useState(panData ? "verified" : "idle");
   const [error, setError] = useState("");
@@ -809,6 +896,22 @@ const handleVerify = async () => {
 
     setPanData(data);
     setPhase("verified");
+
+    if (category === "business" && data?.gst_number) {
+  setDocData({
+    gstVerified: 'verified',
+    gst_number: data.gst_number,
+    company_name: data.company_name,
+    pan_number: data.pan_number,
+    business_category: data.business_category,
+    registered_address: data.registered_address,
+    gst_details: data.gst_details,
+  });
+}
+
+setPhase("verified");
+
+alert( docData?.gstVerified )
   } catch (e) {
     console.error(e);
     setError(e?.message || "Verification failed. Please try again.");
@@ -1446,8 +1549,8 @@ function Step4Doc({ docData, setDocData, panData }) {
   };
 
   return (
-    <StepShell title="Company PAN upload" icon={Upload}
-      desc="Upload a clear scan or photo of your company PAN card.">
+    <StepShell title="Property Verification Document" icon={Upload}
+      desc="  Upload a Property Ownership or Occupancy Document">
       <AnimatePresence mode="wait">
         {phase === "validating" ? (
           <motion.div key="vfy" {...fadeUp}>
@@ -1493,7 +1596,7 @@ function Step4Doc({ docData, setDocData, panData }) {
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                      Drop your company PAN card here
+                      Property verification document · Click to replace
                     </p>
                     <p className="text-xs text-gray-400 mt-1">JPG · PNG · PDF · Max 5 MB</p>
                   </div>
@@ -1520,7 +1623,23 @@ function Step4Doc({ docData, setDocData, panData }) {
               </motion.div>
             )}
 
-            <InfoNote>Only your company PAN card is required. All uploads are encrypted at rest.</InfoNote>
+            <InfoNote>
+Upload <strong>any ONE</strong> of the following documents to verify your property:
+<ul className="mt-2 list-disc pl-5 space-y-1 text-xs">
+  <li>Sale Deed</li>
+  <li>Khata Certificate</li>
+  <li>Patta</li>
+  <li>RTC / Pahani (Agricultural Land)</li>
+  <li>Lease / Rental Agreement</li>
+  <li>Latest Property Tax Receipt</li>
+  <li>Latest Electricity Bill</li>
+  <li>Address Proof of Property</li>
+</ul>
+
+<p className="mt-3 text-[11px] text-gray-500">
+  Water Bill is optional and may be requested if additional verification is required.
+</p>
+</InfoNote>
           </motion.div>
         )}
       </AnimatePresence>
@@ -1537,7 +1656,7 @@ function Step5Review({ panData, aadhaarData, bankData, docData, category }) {
     { key:1, label:"Company PAN verified",   icon:CreditCard,  done:!!panData },
     { key:2, label:step2Label,                icon:Fingerprint, done: category === "business" ? !!docData?.gstVerified : !!aadhaarData },
     { key:3, label:"Bank account verified",  icon:Landmark,    done:!!bankData },
-    { key:4, label:"Company PAN uploaded",   icon:Upload,      done:!!(docData?.file || docData?.fileName) },
+    { key:4, label:"Property Verification Document",   icon:Upload,      done:!!(docData?.file || docData?.fileName) },
   ];
   const allDone = checks.every(c => c.done);
 
