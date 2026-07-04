@@ -143,8 +143,6 @@ function VenueMonthGrid({ year, month, selectedDate, onDateClick, colors, catKey
           const past = isPast(date);
           const disabled = booked || past;
           const selected = sameDay(date, selectedDate);
-          const isToday = key === toKey(new Date());
-
           return (
             <div
               key={key}
@@ -155,7 +153,6 @@ function VenueMonthGrid({ year, month, selectedDate, onDateClick, colors, catKey
                 relative flex items-center justify-center w-10 h-10 rounded-full transition-all duration-100
                 ${selected ? `${colors.selBg} shadow-sm` : ""}
                 ${!disabled && !selected ? `hover:${colors.light}` : ""}
-                ${isToday && !selected ? `ring-1 ${colors.selRing} ring-offset-1` : ""}
               `}>
                 <span className={`
                   text-xs font-semibold leading-none
@@ -303,6 +300,7 @@ function VenueCalendar({ category, colors, isMember, onSelectionChange, resetKey
           {selectedDate && (
             <motion.div
               key="shift-panel"
+              id="shift-panel"
               initial={{ opacity: 0, x: 18 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 18 }}
@@ -426,7 +424,6 @@ function StayMonthGrid({ year, month, range, hoverDate, checkoutLimit, onDateCli
           const inRange = range.start && range.end && date > range.start && date < range.end;
           const inHover = selectingCheckout && hoverDate && date > range.start && date < hoverDate && !postLimit;
           const isHoverEnd = selectingCheckout && hoverDate && sameDay(date, hoverDate) && !postLimit;
-          const isToday = key === toKey(new Date());
           const hasRangeEnd = !!range.end;
 
           return (
@@ -455,7 +452,6 @@ function StayMonthGrid({ year, month, range, hoverDate, checkoutLimit, onDateCli
                 ${isStart || isEnd ? `${colors.selBg} shadow-sm` : ""}
                 ${isHoverEnd ? `border-2 ${colors.border} ${colors.light}` : ""}
                 ${!disabled && !isStart && !isEnd && !isHoverEnd ? "hover:bg-gray-100 dark:hover:bg-gray-800" : ""}
-                ${isToday && !isStart && !isEnd ? `ring-1 ${colors.selRing} ring-offset-1` : ""}
               `}>
                 <span className={`
                   text-xs font-semibold leading-none

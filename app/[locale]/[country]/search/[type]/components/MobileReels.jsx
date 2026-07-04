@@ -12,7 +12,53 @@ import { ArrowLeft, Clapperboard } from "lucide-react";
 import ReelCard from "./ReelCard";
 import { CATEGORY_TINTS } from "@/config/categoryConfig";
 
-const PRELOAD_AHEAD = 2; // preload images N reels ahead
+const PRELOAD_AHEAD = 1; // only current + prev + next (point 9: performance)
+const BASE_URL = process.env.NEXT_PUBLIC_AWS_BUCKET_URL ?? "";
+
+function getVenueCover(venue) {
+  const img = (venue?.images ?? [])[0];
+  if (!img) return null;
+  return typeof img === "string"
+    ? (img.startsWith("http") ? img : `${BASE_URL}/${img}`)
+    : (img?.image || img?.url || null);
+}
+
+/** Small "Up Next" preview card shown near the end of a reel */
+function MobileUpNextCard({ venue, onClick }) {
+  const cover = getVenueCover(venue);
+  return (
+    <button
+      onClick={onClick}
+      className="text-left overflow-hidden"
+      style={{
+        width: 136,
+        borderRadius: 14,
+        background: "rgba(12,12,12,0.88)",
+        backdropFilter: "blur(14px)",
+        WebkitBackdropFilter: "blur(14px)",
+        border: "1px solid rgba(255,255,255,0.12)",
+        boxShadow: "0 8px 24px rgba(0,0,0,0.55)",
+      }}
+    >
+      <p style={{
+        fontSize: 8, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase",
+        color: "rgba(255,255,255,0.4)", padding: "8px 10px 4px",
+      }}>
+        Up Next
+      </p>
+      {cover
+        ? <img src={cover} alt="" className="w-full object-cover" style={{ height: 68, display: "block" }} />
+        : <div className="w-full bg-gray-800" style={{ height: 68 }} />
+      }
+      <div style={{ padding: "8px 10px 10px" }}>
+        <p style={{ fontSize: 11, fontWeight: 700, color: "#fff", lineHeight: 1.3,
+          overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
+          {venue.title || venue.name || "Next Property"}
+        </p>
+      </div>
+    </button>
+  );
+}
 
 export default function MobileReels({
   open,
@@ -25,20 +71,40 @@ export default function MobileReels({
   compares = [],
   onWishlist,
   onCompare,
+  startIndex = 0,
 }) {
   const scrollRef   = useRef(null);
   const [activeIdx, setActiveIdx] = useState(0);
+  const [progress,  setProgress]  = useState(0);
   const accent      = CATEGORY_TINTS[category]?.hex ?? "#7c3aed";
 
-  // Reset to top when opened
+  // Reset progress whenever the active reel changes
+  useEffect(() => { setProgress(0); }, [activeIdx]);
+
+  const scrollToNext = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const target = el.querySelector(`[data-reel-idx="${activeIdx + 1}"]`);
+    target?.scrollIntoView({ behavior: "smooth" });
+  }, [activeIdx]);
+
+  // Scroll to the correct reel when opened (supports resume-from-position)
   useEffect(() => {
-    if (open) {
-      setActiveIdx(0);
-      setTimeout(() => {
-        scrollRef.current?.scrollTo({ top: 0, behavior: "instant" });
-      }, 50);
-    }
-  }, [open]);
+    if (!open) return;
+    const idx = startIndex ?? 0;
+    setActiveIdx(idx);
+    setTimeout(() => {
+      const el = scrollRef.current;
+      if (!el) return;
+      if (idx === 0) {
+        el.scrollTo({ top: 0, behavior: "instant" });
+      } else {
+        el.querySelector(`[data-reel-idx="${idx}"]`)
+          ?.scrollIntoView({ behavior: "instant" });
+      }
+    }, 50);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, startIndex]);
 
   // IntersectionObserver: track which reel is visible
   useEffect(() => {
@@ -61,7 +127,8 @@ export default function MobileReels({
     return () => observer.disconnect();
   }, [open, venues.length]);
 
-  const handleClose = useCallback(() => { onClose?.(); }, [onClose]);
+  // Pass activeIdx so the caller (e.g. GlobalMobileReels) can save position for smart resume
+  const handleClose = useCallback(() => { onClose?.(activeIdx); }, [onClose, activeIdx]);
 
   if (!open) return null;
 
@@ -86,6 +153,29 @@ export default function MobileReels({
           >
             <ArrowLeft size={20} className="text-white" strokeWidth={2.5} />
           </button>
+
+          {/* Up Next — slides in from right during final 15% of reel */}
+          <AnimatePresence>
+            {progress > 0.85 && venues[activeIdx + 1] && (
+              <motion.div
+                key={`upnext-${activeIdx}`}
+                initial={{ x: 60, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: 60, opacity: 0 }}
+                transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
+                className="absolute z-30"
+                style={{
+                  right: 16,
+                  bottom: "calc(env(safe-area-inset-bottom, 0px) + 108px)",
+                }}
+              >
+                <MobileUpNextCard
+                  venue={venues[activeIdx + 1]}
+                  onClick={scrollToNext}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
 
 
 
@@ -143,6 +233,7 @@ export default function MobileReels({
                         onWishlist={onWishlist}
                         onCompare={onCompare}
                         active={idx === activeIdx}
+                        onProgress={idx === activeIdx ? setProgress : undefined}
                       />
                     ) : (
                       /* Lightweight placeholder while not in render window */

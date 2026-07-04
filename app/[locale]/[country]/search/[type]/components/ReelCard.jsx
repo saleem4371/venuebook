@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useEffect, useCallback } from "react";
-import { Heart, GitCompare, MapPin, Star, Play, Volume2, VolumeX, ChevronRight } from "lucide-react";
+import { Heart, GitCompare, Share2, MapPin, Star, Play, Volume2, VolumeX, ChevronRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { CATEGORY_TINTS } from "@/config/categoryConfig";
 import { getFallbackVideoUrl } from "../data/demoReelVideos";
@@ -74,6 +74,7 @@ export default function ReelCard({
   active, compact = false,
   controlledMuted,
   onMuteChange,
+  onProgress,
 }) {
   const router    = useRouter();
   const videoRef  = useRef(null);
@@ -154,6 +155,23 @@ export default function ReelCard({
   const handleWishlist = (e) => { e.stopPropagation(); onWishlist?.(venue); };
   const handleCompare  = (e) => { e.stopPropagation(); onCompare?.(venue, !isCompared); };
 
+  const handleShare = useCallback((e) => {
+    e.stopPropagation();
+    const url = typeof window !== "undefined"
+      ? `${window.location.origin}/${locale}/${country}/search/${category}/${venue.childVenueId}`
+      : "";
+    if (navigator.share) {
+      navigator.share({ title: venue.title || venue.name || "VenueBook", url }).catch(() => {});
+    } else {
+      navigator.clipboard?.writeText(url).catch(() => {});
+    }
+  }, [locale, country, category, venue]);
+
+  const handleTimeUpdate = useCallback(() => {
+    const el = videoRef.current;
+    if (el?.duration > 0) onProgress?.(el.currentTime / el.duration);
+  }, [onProgress]);
+
   // ── video event handlers ──────────────────────────────────────
   const handleCanPlay   = () => setVideoReady(true);
   const handleLoadedData = () => setVideoReady(true); // belt-and-suspenders
@@ -212,6 +230,7 @@ export default function ReelCard({
             onCanPlay={handleCanPlay}
             onLoadedData={handleLoadedData}
             onError={handleVideoError}
+            onTimeUpdate={handleTimeUpdate}
           />
         </>
       ) : cover ? (
@@ -272,6 +291,11 @@ export default function ReelCard({
           aria-label={isCompared ? "Remove from Compare" : "Compare Property"}
           className="hover:scale-105 active:scale-90 transition-transform">
           <GitCompare size={16} strokeWidth={2} className="text-white" />
+        </button>
+        <button onClick={handleShare} style={BTN}
+          title="Share Property" aria-label="Share Property"
+          className="hover:scale-105 active:scale-90 transition-transform">
+          <Share2 size={15} strokeWidth={2} className="text-white" />
         </button>
         {/* Mute — always visible when video */}
         {videoUrl && (

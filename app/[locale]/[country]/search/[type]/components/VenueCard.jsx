@@ -602,7 +602,7 @@ const VenueCard = ({
           {showParentSlot && parentName ? (
             parentId ? (
               <Link
-                href={`/${locale || "en"}/${country || "in"}/venue/${parentId}`}
+                href={`/${locale || "en"}/${country || "in"}/venue/${parentId}?from=${activeCategory}`}
                 onClick={(e) => e.stopPropagation()}
                 className="inline-flex items-center gap-1 text-xs text-violet-500 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 hover:underline truncate -mt-0.5 font-medium w-fit max-w-full"
               >

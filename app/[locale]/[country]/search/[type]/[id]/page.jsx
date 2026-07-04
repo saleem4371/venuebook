@@ -2,9 +2,11 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
+import Link from "next/link";
 import { AnimatePresence } from "framer-motion";
 import { MapPin, Building2, ChevronRight, Users, UtensilsCrossed, BedDouble, Bath, Star } from "lucide-react";
 
+import Breadcrumb from "../../../components/Breadcrumb";
 import Gallery from "../components/listing/Gallery";
 import BookingCard from "../components/listing/BookingCard";
 import HeroHighlights from "../components/listing/HeroHighlights";
@@ -13,6 +15,7 @@ import PremiumCalendar from "../components/listing/PremiumCalendar";
 import SocialProofHub from "../components/listing/SocialProofHub";
 import NearbyAttractions from "../components/listing/NearbyAttractions";
 import AmenitiesGrid from "../components/listing/AmenitiesGrid";
+import StayInformation from "../components/listing/StayInformation";
 import PhotoTourOverlay from "../components/listing/PhotoTourOverlay";
 import { getCategoryColors, normalizeCategory } from "../utils/categoryConfig";
 
@@ -58,9 +61,19 @@ function PropertyMeta({ category }) {
 }
 
 // ─── Main page ────────────────────────────────────────────────────────────────
+// Demo estate this listing belongs to — see the estate public page's own
+// data file (app/[locale]/[country]/venue/[parentId]/data/estateData.js)
+// for why this is a hardcoded id rather than a live parentId: every public
+// page in this app (this one included) is still demo-data-only, no
+// backend endpoint exists yet to resolve a listing's real parent estate.
+const DEMO_PARENT_ID = "monappa-estates";
+const PARENT_ESTATE_NAME = "Monappa Estates";
+
 export default function ListingPage() {
   const params = useParams();
   const category = params?.type ?? "venues";
+  const locale = params?.locale ?? "en";
+  const country = params?.country ?? "in";
   const catKey = normalizeCategory(category);
   const colors = getCategoryColors(category);
 
@@ -73,6 +86,9 @@ export default function ListingPage() {
   const [headerH, setHeaderH] = useState(57);
   // Ref keeps the scroll handler up-to-date without re-adding the listener.
   const scrollOffsetRef = useRef(57 + 44 + 8); // header + section-nav + gap
+  // Keep a ref to sections so the scroll handler always reads the latest array
+  // (avoids stale-closure issues when sections changes based on catKey)
+  const sectionsRef = useRef([]);
   const [calendarRange, setCalendarRange] = useState({ start: null, end: null });
   const [venueSelection, setVenueSelection] = useState({ date: null, shift: null, shiftLabel: null, shiftTime: null });
   const [calendarResetKey,    setCalendarResetKey]    = useState(0);
@@ -130,16 +146,25 @@ export default function ListingPage() {
   ];
 
   // Section tab IDs — in render order
-  const sections = ["photos", "highlights", "calendar", "amenities", "reviews", "location"];
+  const sections = catKey === "farmstays"
+    ? ["photos", "highlights", "calendar", "amenities", "sleeping", "rules", "arrival", "facilities", "reviews", "location"]
+    : ["photos", "highlights", "calendar", "amenities", "reviews", "location"];
 
   const TAB_LABELS = {
-    photos: "Photos",
+    photos:     "Photos",
     highlights: catKey === "venues" ? "Facilities" : "Highlights",
-    calendar: catKey === "venues" ? "Availability" : "Dates",
-    amenities: "Amenities",
-    reviews: "Reviews",
-    location: "Location",
+    calendar:   catKey === "venues" ? "Availability" : "Dates",
+    amenities:  "Amenities",
+    sleeping:   "Rooms",
+    rules:      "Rules",
+    arrival:    "Arrival",
+    facilities: "Facilities",
+    reviews:    "Reviews",
+    location:   "Location",
   };
+
+  // Sync ref on every render so the scroll handler always sees the current list
+  sectionsRef.current = sections;
 
   // ── Measure actual header height; update offset ref whenever it changes ─────
   useEffect(() => {
@@ -159,27 +184,45 @@ export default function ListingPage() {
     return () => ro.disconnect();
   }, []);
 
+  // ── Venue: smooth-scroll to shift panel after a date is picked ──────────────
+  // Fires only on null→date transition (not on shift changes) so it doesn't
+  // fight the user once they've already found the panel.
+  const venueDateStr = venueSelection?.date?.toISOString().split("T")[0] ?? null;
+  useEffect(() => {
+    if (!venueDateStr || venueSelection?.shiftLabel) return; // no date, or shift already done
+    const t = setTimeout(() => {
+      const el = document.getElementById("shift-panel");
+      if (!el) return;
+      const hdr = document.querySelector("header");
+      const nav = document.getElementById("section-nav");
+      const OFFSET = (hdr?.offsetHeight ?? 57) + (nav?.offsetHeight ?? 44) + 8;
+      const top = el.getBoundingClientRect().top + window.scrollY - OFFSET;
+      window.scrollTo({ top, behavior: "smooth" });
+    }, 200); // brief delay lets the shift panel animate in first
+    return () => clearTimeout(t);
+  }, [venueDateStr]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Scroll: show/hide tabs + track active section ─────────────────────────
-  // Uses a ref for the offset so the handler never closes over stale state.
+  // Both scrollOffsetRef and sectionsRef are used so the handler never closes
+  // over stale values — safe to keep deps array empty.
   useEffect(() => {
     const onScroll = () => {
       const scrollY = window.scrollY;
-      // Show tabs once the gallery is fully scrolled past
       setShowTabs(scrollY > 150);
 
-      // Reverse-iterate: deepest section whose top has reached the sticky nav wins
       const offset = scrollOffsetRef.current;
-      for (let i = sections.length - 1; i >= 0; i--) {
-        const el = document.getElementById(sections[i]);
+      const list   = sectionsRef.current;
+      for (let i = list.length - 1; i >= 0; i--) {
+        const el = document.getElementById(list[i]);
         if (el && el.getBoundingClientRect().top <= offset + 20) {
-          setActive(sections[i]);
+          setActive(list[i]);
           break;
         }
       }
     };
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, []); // intentionally empty — offset read via ref, sections is stable
+  }, []);
 
   return (
     <div className="flex flex-col relative bg-white dark:bg-gray-950 min-h-screen">
@@ -215,13 +258,13 @@ export default function ListingPage() {
               <button
                 key={tab}
                 onClick={() => {
+                  setActive(tab);
                   const el = document.getElementById(tab);
                   if (!el) return;
-                  // Offset by header + nav height so the section heading is fully visible
                   const top = el.getBoundingClientRect().top + window.scrollY - scrollOffsetRef.current;
                   window.scrollTo({ top, behavior: "smooth" });
                 }}
-                className={`pb-1 whitespace-nowrap transition-colors duration-150 ${
+                className={`pb-1 whitespace-nowrap transition-colors duration-150 focus:outline-none flex-none ${
                   active === tab
                     ? `font-semibold ${colors.tabTextActive} border-b-2 ${colors.tabBorderColor}`
                     : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
@@ -236,8 +279,25 @@ export default function ListingPage() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 w-full md:pt-6 lg:pt-6 xl:pt-6">
 
+        {/* ── BREADCRUMB ── */}
+        <Breadcrumb
+          className="pt-3 pb-1"
+          items={[
+            { label: "Home", href: `/${locale}/${country}/home` },
+            { label: catKey === "venues" ? "Venues" : "Farmstays", href: `/${locale}/${country}/search/${category}` },
+            { label: PARENT_ESTATE_NAME, href: `/${locale}/${country}/venue/${DEMO_PARENT_ID}?from=${catKey}` },
+            { label: catKey === "venues" ? "Monappa Heritage Convention Hall" : "Riverside Farmstay — Deenapani Estate" },
+          ]}
+        />
+
         {/* ── GALLERY ── */}
-        <div id="photos" className="md:pt-4 pb-2">
+        {/* On mobile: pad by the measured header height so gallery starts flush below it.
+            On md+: Tailwind md:pt-4 is overridden by inline style (57px ≈ pt-4 difference is fine). */}
+        <div
+          id="photos"
+          className="pb-2"
+          style={{ paddingTop: "14px" }}
+        >
           <Gallery images={images} openTour={() => setOpenTour(true)} />
         </div>
 
@@ -294,8 +354,8 @@ export default function ListingPage() {
               </div>
 
               {/* ── RIGHT: Parent Property Identity Block ── */}
-              <a
-                href="#"
+              <Link
+                href={`/${locale}/${country}/venue/${DEMO_PARENT_ID}?from=${catKey}`}
                 className="flex-none flex items-center md:flex-col md:items-center gap-3 md:gap-3 px-5 py-4 md:px-4 md:py-5 rounded-2xl border border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-900/60 hover:bg-white dark:hover:bg-gray-900 hover:shadow-md hover:border-gray-200 dark:hover:border-gray-700 transition-all duration-200 w-full md:w-52 lg:w-48 xl:w-52 group"
               >
                 {/* Logo */}
@@ -307,13 +367,13 @@ export default function ListingPage() {
                     Part of
                   </p>
                   <p className="font-semibold text-[11px] sm:text-xs md:text-sm text-gray-900 dark:text-white leading-snug">
-                    {catKey === "venues" ? "Monappa Estates Group" : "Deenapani Estate Collection"}
+                    {PARENT_ESTATE_NAME}
                   </p>
                   <p className={`text-[11px] sm:text-xs mt-2 flex items-center md:justify-center gap-0.5 font-medium ${colors.accent} group-hover:gap-1.5 transition-all`}>
                     View Parent Property <ChevronRight size={11} />
                   </p>
                 </div>
-              </a>
+              </Link>
 
             </div>
 
@@ -362,11 +422,12 @@ export default function ListingPage() {
 
           {/* ════════════ RIGHT COLUMN ════════════ */}
           <div className="hidden lg:block">
-            {/* top-[112px] = 56px header + 44px section tabs + 12px breathing room */}
-            <div className="sticky top-[112px]">
+            {/* top = measured header height + 44px section nav + 12px breathing room */}
+            <div className="sticky" style={{ top: `${headerH + 44 + 12}px` }}>
               <BookingCard
                 category={category}
                 propertyName={propertyName}
+                capacity={1000}
                 calendarRange={calendarRange}
                 venueSelection={venueSelection}
                 onClearVenueSelection={clearVenueSelection}
@@ -380,6 +441,9 @@ export default function ListingPage() {
         </div>
 
         {/* ════════════ FULL-WIDTH SECTIONS (below 65/35 grid) ════════════ */}
+
+        {/* Stay Information — farmstay only; between calendar/amenities and reviews */}
+        <StayInformation category={category} />
 
         {/* Reviews — full width, above map */}
         <div id="reviews" className="mt-8">
@@ -426,6 +490,7 @@ export default function ListingPage() {
         category={category}
         mobileOnly
         propertyName={propertyName}
+        capacity={1000}
         calendarRange={calendarRange}
         venueSelection={venueSelection}
         onClearVenueSelection={clearVenueSelection}
@@ -437,7 +502,7 @@ export default function ListingPage() {
       {/* Photo tour overlay */}
       <AnimatePresence>
         {openTour && (
-          <PhotoTourOverlay key="photo-tour" images={images} onClose={() => setOpenTour(false)} />
+          <PhotoTourOverlay key="photo-tour" images={images} category={category} onClose={() => setOpenTour(false)} />
         )}
       </AnimatePresence>
     </div>

@@ -54,16 +54,26 @@ const HIGHLIGHTS = {
     { Icon: MapPin,          title: "Prime City Location",    desc: "Minutes from major transit hubs" },
   ],
   farmstays: [
-    { Icon: TreePine,        title: "Entire Estate",          desc: "Exclusive private property for your group" },
-    { Icon: Waves,           title: "Private Pool",           desc: "Infinity pool with valley views" },
-    { Icon: PawPrint,        title: "Pet Friendly",           desc: "Welcome your furry companions" },
-    { Icon: Flame,           title: "Bonfire Area",           desc: "Nightly bonfire under the stars" },
-    { Icon: Leaf,            title: "Organic Plantation",     desc: "Fresh-from-the-farm produce daily" },
-    { Icon: Sunrise,         title: "Sunrise View",           desc: "Panoramic sunrise vistas from the estate" },
-    { Icon: MapPin,          title: "Plantation Walks",       desc: "Guided coffee & spice trails" },
-    { Icon: Coffee,          title: "Home Cooked Food",       desc: "Traditional estate meals, local flavours" },
-    { Icon: Droplets,        title: "Riverside Access",       desc: "Private access to the river" },
-    { Icon: Mountain,        title: "Nature Trails",          desc: "Explore the estate on foot" },
+    { Icon: TreePine,        title: "Entire Estate",             desc: "Exclusive private property for your group" },
+    { Icon: Waves,           title: "Private Pool",              desc: "Infinity pool with valley views" },
+    { Icon: PawPrint,        title: "Pet Friendly",              desc: "Welcome your furry companions" },
+    { Icon: Flame,           title: "Bonfire Area",              desc: "Nightly bonfire under the stars" },
+    { Icon: Leaf,            title: "Organic Plantation",        desc: "Fresh-from-the-farm produce daily" },
+    { Icon: Sunrise,         title: "Sunrise View",              desc: "Panoramic sunrise vistas from the estate" },
+    { Icon: MapPin,          title: "Plantation Walks",          desc: "Guided coffee & spice trails" },
+    { Icon: Coffee,          title: "Home Cooked Food",          desc: "Traditional estate meals, local flavours" },
+    { Icon: Droplets,        title: "Riverside Access",          desc: "Private access to the river" },
+    { Icon: Mountain,        title: "Nature Trails",             desc: "Explore the estate on foot" },
+    { Icon: TreePine,        title: "Private Coffee Plantation", desc: "Walk through acres of Arabica and Robusta at your own pace, any time of day." },
+    { Icon: Sunrise,         title: "Sunrise Deck",              desc: "A dedicated deck with 180° valley views. Magical — especially at 6 AM." },
+    { Icon: Leaf,            title: "Guided Plantation Walk",    desc: "Host-guided trails through coffee, black pepper and areca nut." },
+    { Icon: Coffee,          title: "Farm Breakfast",            desc: "Wake up to a breakfast made from freshly harvested estate produce." },
+    { Icon: Flame,           title: "Bonfire Under the Stars",   desc: "Nightly bonfire with storytelling, music and hot chai around the fire." },
+    { Icon: Sparkles,        title: "Organic Produce",           desc: "Seasonal fruits, herbs and vegetables from the estate kitchen garden." },
+    { Icon: PawPrint,        title: "Pet Friendly Estate",       desc: "One of the few farmstays that genuinely welcomes dogs and cats with open arms." },
+    { Icon: Waves,           title: "Infinity Pool",             desc: "A calm pool overlooking paddy fields and forested hills. No crowds, ever." },
+    { Icon: Droplets,        title: "Private Lake",              desc: "Fishing and kayaking available at your own exclusive lakeside." },
+    { Icon: Mountain,        title: "River Access",              desc: "A 10-minute plantation walk leads to a secluded private river bend." },
   ],
   studios: [
     { Icon: Camera,          title: "Cyclorama Wall",         desc: "Professional seamless backdrop" },
@@ -107,8 +117,8 @@ const HIGHLIGHTS = {
   ],
 };
 
-// Show 8 initially; "+N More" reveals the rest
-const SHOW_INITIAL = 8;
+// Show 4 initially; "N More" reveals the rest
+const SHOW_INITIAL = 4;
 
 // ─── Single highlight card ────────────────────────────────────────────────────
 function HighlightCard({ Icon, title, desc, hoverBorder, iconBg }) {
@@ -176,13 +186,13 @@ export default function HeroHighlights({ category }) {
       {remaining > 0 && (
         <button
           onClick={() => setExpanded((v) => !v)}
-          className={`mt-4 flex items-center gap-1.5 text-sm font-medium border rounded-xl px-4 py-2.5 transition-colors ${moreBtn}`}
+          className="mt-4 flex items-center gap-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
         >
+          {expanded ? "Show Less" : `Show all ${highlights.length} Highlights`}
           <ChevronDown
             size={14}
             className={`transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
           />
-          {expanded ? "Show Less" : `+${remaining} More Highlights`}
         </button>
       )}
 

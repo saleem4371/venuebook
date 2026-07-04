@@ -3,9 +3,10 @@
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Building2, CheckCircle2, ChevronDown, Clock,
-  Headphones, Mail, Phone, Tag, TreePine, User, Users, X, Zap,
+  Headphones, Info, Mail, Phone, Search, Tag, TreePine, User, Users, X, Zap,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useParams, useRouter } from "next/navigation";
 import { getCategoryColors, normalizeCategory, getDefaultCTA } from "../../utils/categoryConfig";
 import GuestPicker from "@/app/[locale]/[country]/home/components/GuestPicker";
@@ -112,48 +113,170 @@ function scrollToCalendar() {
 }
 
 // ─── Custom event type dropdown ───────────────────────────────────────────────
-function EventTypeDropdown({ value, onChange, options, colors }) {
-  const [open, setOpen] = useState(false);
+function EventTypeDropdown({ value, onChange, options, colors, open, onOpenChange }) {
+  const [search, setSearch] = useState("");
+  const showSearch = options.length > 5;
+  const filtered = showSearch && search.trim()
+    ? options.filter((o) => o.toLowerCase().includes(search.toLowerCase()))
+    : options;
+
+  // Reset search whenever dropdown closes
+  useEffect(() => { if (!open) setSearch(""); }, [open]);
+
   return (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center justify-between font-medium text-gray-800 dark:text-gray-200 focus:outline-none"
-      >
-        <span>{value}</span>
+    <>
+      <div className="flex items-center justify-between pointer-events-none">
+        <span className={`font-medium text-sm leading-snug ${value ? "text-gray-800 dark:text-gray-200" : "text-gray-400 dark:text-gray-600"}`}>
+          {value ?? "Select event type"}
+        </span>
         <ChevronDown
           size={14}
-          className={`text-gray-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+          className={`text-gray-400 transition-transform duration-200 flex-none ${open ? "rotate-180" : ""}`}
         />
-      </button>
+      </div>
       <AnimatePresence>
         {open && (
           <>
-            <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+            {/* Backdrop — stopPropagation prevents it from bubbling to the field wrapper toggle */}
+            <div
+              className="fixed inset-0 z-40"
+              onClick={(e) => { e.stopPropagation(); onOpenChange(false); }}
+            />
             <motion.div
               initial={{ opacity: 0, y: -6, scale: 0.97 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -6, scale: 0.97 }}
               transition={{ duration: 0.15 }}
-              className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-50 overflow-hidden max-h-52 overflow-y-auto"
+              className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-50 overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
             >
-              {options.map((opt) => (
-                <button
-                  key={opt}
-                  type="button"
-                  onClick={() => { onChange(opt); setOpen(false); }}
-                  className={`w-full text-left px-3.5 py-2.5 text-sm transition-colors
-                    ${value === opt
-                      ? `${colors.light} ${colors.accentBold} font-semibold`
-                      : "hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"
-                    }`}
-                >
-                  {opt}
-                </button>
-              ))}
+              {/* Search — shown when list has more than 5 items */}
+              {showSearch && (
+                <div className="px-3 pt-2.5 pb-2 border-b border-gray-100 dark:border-gray-800">
+                  <div className="relative">
+                    <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    <input
+                      type="text"
+                      placeholder="Search event type…"
+                      value={search}
+                      autoFocus
+                      onChange={(e) => setSearch(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="w-full pl-7 pr-3 py-1.5 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:border-gray-300 dark:focus:border-gray-600 transition-colors"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* List */}
+              <div className="relative max-h-44 overflow-y-scroll [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-gray-100 dark:[&::-webkit-scrollbar-track]:bg-gray-800 [&::-webkit-scrollbar-thumb]:bg-gray-400 dark:[&::-webkit-scrollbar-thumb]:bg-gray-500 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border [&::-webkit-scrollbar-thumb]:border-gray-100 dark:[&::-webkit-scrollbar-thumb]:border-gray-800">
+                {filtered.length > 0 ? filtered.map((opt) => (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); onChange(opt); onOpenChange(false); }}
+                    className={`w-full text-left px-3 py-2.5 text-sm transition-colors
+                      ${value === opt
+                        ? `${colors.light} ${colors.accentBold} font-semibold`
+                        : "hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"
+                      }`}
+                  >
+                    {opt}
+                  </button>
+                )) : (
+                  <>
+                    <p className="px-3 pt-3 pb-1 text-xs text-gray-400 text-center">
+                      No match for &ldquo;{search}&rdquo;
+                    </p>
+                    {options.includes("Other") && (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); onChange("Other"); onOpenChange(false); }}
+                        className={`w-full text-left px-3 py-2.5 text-sm transition-colors
+                          ${value === "Other"
+                            ? `${colors.light} ${colors.accentBold} font-semibold`
+                            : "hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"
+                          }`}
+                      >
+                        Other
+                      </button>
+                    )}
+                  </>
+                )}
+
+                {/* Scroll fade hint */}
+                {filtered.length > 4 && (
+                  <div className="sticky bottom-0 left-0 right-0 h-5 bg-gradient-to-t from-white dark:from-gray-900 to-transparent pointer-events-none" />
+                )}
+              </div>
             </motion.div>
           </>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
+
+// ─── PAX info tooltip ─────────────────────────────────────────────────────────
+function PaxTooltip({ iconClassName }) {
+  const [open,  setOpen]    = useState(false);
+  const containerRef        = useRef(null);
+  const hideTimerRef        = useRef(null);
+
+  const show = () => { clearTimeout(hideTimerRef.current); setOpen(true);  };
+  const hide = () => { hideTimerRef.current = setTimeout(() => setOpen(false), 80); };
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  // Clean up timer on unmount
+  useEffect(() => () => clearTimeout(hideTimerRef.current), []);
+
+  return (
+    <div ref={containerRef} className="relative inline-flex items-center">
+      <button
+        type="button"
+        aria-label="What is PAX?"
+        aria-expanded={open}
+        onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
+        onMouseEnter={show}
+        onMouseLeave={hide}
+        className={iconClassName ?? "w-3.5 h-3.5 rounded-full border border-gray-300 dark:border-gray-600 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:border-gray-500 hover:text-gray-600 dark:hover:border-gray-400 dark:hover:text-gray-300 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-violet-400 focus-visible:ring-offset-1"}
+      >
+        <Info size={iconClassName ? 10 : 8} strokeWidth={2.5} />
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: 4, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 4, scale: 0.97 }}
+            transition={{ duration: 0.15 }}
+            onMouseEnter={show}
+            onMouseLeave={hide}
+            onClick={(e) => e.stopPropagation()}
+            className="absolute top-full right-0 mt-2 w-56 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-[60] p-3.5"
+          >
+            {/* Upward caret arrow */}
+            <div className="absolute -top-[5px] right-2.5 w-2.5 h-2.5 bg-white dark:bg-gray-900 border-t border-l border-gray-200 dark:border-gray-700 rotate-45" />
+            <p className="text-[11px] font-semibold text-gray-800 dark:text-gray-100 mb-1.5">What is PAX?</p>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed">
+              PAX (Passengers/Persons) refers to bookings where pricing is based on
+              the number of attendees rather than reserving the venue directly.
+            </p>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed mt-1.5">
+              Choose PAX if you want a customised quotation based on your guest count
+              and event requirements.
+            </p>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>
@@ -242,38 +365,91 @@ function TrustBadges({ badges }) {
 }
 
 // ─── Venue card ───────────────────────────────────────────────────────────────
-function VenueCard({ meta, gradient, colors, onAction, venueSelection, guestValues, setGuestValues, onScrollToCalendar, onClearVenueSelection, onClearShift }) {
-  const [eventType, setEventType] = useState("Wedding");
-  const ctaButtons = getDefaultCTA("venues");
+function VenueCard({ meta, gradient, colors, onAction, venueSelection, guestValues, setGuestValues, onScrollToCalendar, onClearVenueSelection, onClearShift, capacity }) {
+  const [eventType,       setEventType]     = useState(null);
+  const [eventTypeOpen,   setEventTypeOpen] = useState(false);
+  const [showGuestPicker, setShowGuestPicker] = useState(false);
+  const [bookingMode,     setBookingMode]   = useState("venue"); // "venue" | "pax"
+
   const { date, shiftLabel, shiftTime } = venueSelection ?? {};
+  const hasDateAndShift = Boolean(date && shiftLabel);
+  const guestCount      = guestValues?.guests;
+
+  // Both modes reveal Event Type + Guests after date + shift are selected
+  const detailsRevealed = hasDateAndShift;
+
+  // Both modes require all four fields; only the CTA action differs
+  const isComplete = Boolean(date && shiftLabel && eventType && guestCount);
 
   return (
-    <div className="space-y-4">
-      {/* Price */}
-      <div className="flex items-start justify-between">
+    <div className="space-y-3">
+
+      {/* Price (left) + Badge + Toggle stacked (right) */}
+      <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">₹20,00,000</p>
           <p className="text-xs text-gray-400 mt-0.5">{meta.priceLabel}</p>
         </div>
-        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${meta.badge.bg}`}>
-          {meta.badge.label}
-        </span>
+
+        <div className="flex flex-col items-end gap-2 flex-none">
+          {/* Badge with PAX info tooltip */}
+          <div className={`inline-flex items-center gap-0.5 text-xs font-semibold px-2.5 py-1 rounded-full ${meta.badge.bg}`}>
+            {meta.badge.label}
+            <PaxTooltip
+              iconClassName="flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity focus:outline-none focus-visible:ring-1 focus-visible:ring-current focus-visible:ring-offset-1"
+            />
+          </div>
+
+          {/* Compact Booking Mode Toggle */}
+          <div
+            className="relative flex items-center bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full p-0.5 gap-0.5"
+            role="tablist"
+          >
+            {[
+              { id: "venue", label: "Venue" },
+              { id: "pax",   label: "PAX"   },
+            ].map(({ id, label }) => (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={bookingMode === id}
+                onClick={() => setBookingMode(id)}
+                className="relative px-2.5 py-1 rounded-full text-xs font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-violet-400 whitespace-nowrap"
+              >
+                {bookingMode === id && (
+                  <motion.div
+                    layoutId="venue-mode-bg"
+                    className={`absolute inset-0 rounded-full bg-gradient-to-r ${gradient} shadow-sm`}
+                    transition={{ duration: 0.22, ease: [0.32, 0.72, 0, 1] }}
+                  />
+                )}
+                <span className={`relative z-10 transition-colors duration-200 ${bookingMode === id ? "text-white" : "text-gray-500 dark:text-gray-400"}`}>
+                  {label}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
-      {/* Selection fields */}
+      {/* ── Selection fields — identical for both modes ── */}
       <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-visible text-sm">
 
-        {/* Event Date + Time Slot — clicking scrolls to calendar */}
-        <div className="border-b border-gray-200 dark:border-gray-700 grid grid-cols-2 divide-x divide-gray-200 dark:divide-gray-700">
+        {/* Event Date + Time Slot — always 2-column */}
+        <div className={`grid grid-cols-2 divide-x divide-gray-200 dark:divide-gray-700 ${detailsRevealed ? "border-b border-gray-200 dark:border-gray-700" : ""}`}>
+
+          {/* Event Date */}
           <div
-            role="button"
-            tabIndex={0}
-            onClick={onScrollToCalendar}
+            role="button" tabIndex={0} onClick={onScrollToCalendar}
             className="relative p-3 text-left hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors rounded-tl-xl cursor-pointer"
           >
-            <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">Event Date</p>
+            <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1 flex items-center gap-1">
+              Event Date
+              {date && <CheckCircle2 size={9} className="text-emerald-500 flex-none" />}
+            </p>
             <p className={`font-medium text-xs sm:text-sm leading-snug ${date ? "text-gray-800 dark:text-gray-200 pr-5" : "text-gray-400 dark:text-gray-600"}`}>
-              {date ? fmtDate(date) : "Select on calendar"}
+              {date ? fmtDate(date) : "Select date"}
             </p>
             {date && onClearVenueSelection && (
               <button
@@ -285,15 +461,18 @@ function VenueCard({ meta, gradient, colors, onAction, venueSelection, guestValu
               </button>
             )}
           </div>
+
+          {/* Time Slot — shown in both modes */}
           <div
-            role="button"
-            tabIndex={0}
-            onClick={onScrollToCalendar}
+            role="button" tabIndex={0} onClick={onScrollToCalendar}
             className="relative p-3 text-left hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors rounded-tr-xl cursor-pointer"
           >
-            <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">Time Slot</p>
+            <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1 flex items-center gap-1">
+              Time Slot
+              {shiftLabel && <CheckCircle2 size={9} className="text-emerald-500 flex-none" />}
+            </p>
             <p className={`font-medium text-xs sm:text-sm leading-snug ${shiftLabel ? "text-gray-800 dark:text-gray-200 pr-5" : "text-gray-400 dark:text-gray-600"}`}>
-              {shiftLabel ?? "—"}
+              {shiftLabel ?? "Select slot"}
               {shiftTime && <span className="block text-[10px] text-gray-400 font-normal mt-0.5">{shiftTime}</span>}
             </p>
             {shiftLabel && onClearShift && (
@@ -308,32 +487,126 @@ function VenueCard({ meta, gradient, colors, onAction, venueSelection, guestValu
           </div>
         </div>
 
-        {/* Event Type */}
-        <div className="p-3 border-b border-gray-200 dark:border-gray-700 relative">
-          <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">Event Type</p>
-          <EventTypeDropdown value={eventType} onChange={setEventType} options={meta.eventTypes} colors={colors} />
-        </div>
+        {/* Event Type + Guests — revealed after date+shift */}
+        <AnimatePresence>
+          {detailsRevealed && (
+            <motion.div
+              key="venue-details"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18 }}
+            >
+              {/* Event Type */}
+              <div
+                role="button" tabIndex={0}
+                onClick={() => setEventTypeOpen((o) => !o)}
+                className="p-3 border-b border-gray-200 dark:border-gray-700 relative cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+              >
+                <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">Event Type</p>
+                <EventTypeDropdown
+                  value={eventType}
+                  onChange={setEventType}
+                  options={meta.eventTypes}
+                  colors={colors}
+                  open={eventTypeOpen}
+                  onOpenChange={setEventTypeOpen}
+                />
+              </div>
 
-        {/* Guest Capacity — unified GuestPicker (same as search bar) */}
-        <div className="p-3 relative">
-          <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">Guest Capacity</p>
-          <GuestPicker
-            type="guests"
-            lightMode
-            defaultValue={200}
-            textClass="font-medium text-gray-800 dark:text-gray-200 text-sm"
-            chevronClass="text-gray-400 hover:text-gray-600 dark:text-white/50"
-            onChange={setGuestValues}
-          />
-        </div>
+              {/* Guest Capacity (Venue) / Expected Guests (PAX) */}
+              <div
+                role="button" tabIndex={0}
+                onClick={() => {
+                  if (!showGuestPicker && !guestValues) {
+                    setShowGuestPicker(true);
+                    setGuestValues({ guests: 50 });
+                  }
+                }}
+                className={`p-3 relative rounded-b-xl transition-colors ${!showGuestPicker && !guestValues ? "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50" : ""}`}
+              >
+                <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1 flex items-center gap-1">
+                  {bookingMode === "venue" ? "Guest Capacity" : "Expected Guests"}
+                  {guestCount && <CheckCircle2 size={9} className="text-emerald-500 flex-none" />}
+                </p>
+                {(showGuestPicker || guestValues) ? (
+                  <GuestPicker
+                    type="guests"
+                    lightMode
+                    step={50}
+                    maxCapacity={capacity}
+                    defaultValue={guestValues?.guests ?? 50}
+                    textClass="font-medium text-gray-800 dark:text-gray-200 text-sm"
+                    chevronClass="text-gray-400 hover:text-gray-600 dark:text-white/50"
+                    onChange={setGuestValues}
+                  />
+                ) : (
+                  <span className="text-sm font-medium text-gray-400 dark:text-gray-600">
+                    {bookingMode === "venue" ? "Select guest count" : "Estimated attendees"}
+                  </span>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-      {/* CTAs */}
-      <DynamicCTA
-        buttons={ctaButtons}
-        gradient={gradient}
-        onAction={(t) => onAction({ eventType, type: t, guestCount: guestValues?.guests ?? 200 })}
-      />
+      {/* ── CTA Section ── */}
+      <AnimatePresence mode="wait">
+        {!isComplete ? (
+          /* Not complete — Check Availability */
+          <motion.button
+            key="check-avail"
+            onClick={onScrollToCalendar}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="w-full bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 py-3 rounded-xl font-semibold text-sm hover:bg-gray-200 dark:hover:bg-gray-700 active:scale-[0.98] transition-all"
+          >
+            Check Availability
+          </motion.button>
+
+        ) : bookingMode === "venue" ? (
+          /* Venue Booking — Reserve | Book Now | Enquire on one row */
+          <motion.div
+            key="venue-ctas"
+            initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.18 }}
+          >
+            <div className="flex items-stretch gap-2">
+              <button
+                onClick={() => onAction({ eventType, type: "reserve", guestCount })}
+                className={`flex-1 py-3 rounded-xl font-semibold text-sm ${colors.pill} hover:opacity-80 active:scale-[0.98] transition-all`}
+              >
+                Reserve
+              </button>
+              <button
+                onClick={() => onAction({ eventType, type: "book", guestCount })}
+                className={`flex-[1.4] py-3 rounded-xl font-bold text-sm bg-gradient-to-r ${gradient} text-white shadow-md hover:opacity-90 active:scale-[0.98] transition-all`}
+              >
+                Book Now
+              </button>
+              <button
+                onClick={() => onAction({ eventType, type: "enquiry", guestCount })}
+                className="flex-1 py-3 rounded-xl font-medium text-sm border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 active:scale-[0.98] transition-all"
+              >
+                Enquire
+              </button>
+            </div>
+          </motion.div>
+
+        ) : (
+          /* PAX Enquiry — single full-width CTA */
+          <motion.button
+            key="pax-cta"
+            onClick={() => onAction({ eventType, type: "paxEnquiry", guestCount })}
+            initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.18 }}
+            className={`w-full bg-gradient-to-r ${gradient} text-white py-3.5 rounded-xl font-bold text-sm shadow-lg hover:opacity-90 active:scale-[0.98] transition-all`}
+          >
+            PAX Enquiry
+          </motion.button>
+        )}
+      </AnimatePresence>
 
       {/* Trust */}
       <TrustBadges badges={meta.trustBadges} />
@@ -342,10 +615,16 @@ function VenueCard({ meta, gradient, colors, onAction, venueSelection, guestValu
 }
 
 // ─── Reserve card (farmstay / other) ─────────────────────────────────────────
-function ReserveCard({ meta, gradient, colors, guestValues, setGuestValues, guestType, catKey, onAction, calendarRange, onScrollToCalendar, onClearCalendarRange, onClearCheckout }) {
+function ReserveCard({ meta, gradient, colors, guestValues, setGuestValues, guestType, catKey, onAction, calendarRange, onScrollToCalendar, onClearCalendarRange, onClearCheckout, highlightGuests }) {
+  const [showGuestPicker, setShowGuestPicker] = useState(false);
   const ctaButtons = getDefaultCTA(catKey);
   const { start, end } = calendarRange ?? {};
   const nights = start && end ? Math.round((end - start) / 86400000) : 0;
+
+  const hasRange = Boolean(start && end);
+
+  // Farmstay: dates alone unlock the CTAs — guest count is bonus context
+  const isComplete = hasRange;
 
   return (
     <div className="space-y-4">
@@ -368,15 +647,16 @@ function ReserveCard({ meta, gradient, colors, guestValues, setGuestValues, gues
       {/* Dates + Guests */}
       <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-visible text-sm">
 
-        {/* Check-in + Checkout — clicking scrolls to calendar */}
-        <div className="grid grid-cols-2 border-b border-gray-200 dark:border-gray-700 divide-x divide-gray-200 dark:divide-gray-700">
+        {/* Check-in + Checkout — always visible */}
+        <div className={`grid grid-cols-2 divide-x divide-gray-200 dark:divide-gray-700 ${hasRange ? "border-b border-gray-200 dark:border-gray-700" : ""}`}>
           <div
-            role="button"
-            tabIndex={0}
-            onClick={onScrollToCalendar}
+            role="button" tabIndex={0} onClick={onScrollToCalendar}
             className="relative p-3 text-left hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors rounded-tl-xl cursor-pointer"
           >
-            <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-0.5">Check-in</p>
+            <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-0.5 flex items-center gap-1">
+              Check-in
+              {start && <CheckCircle2 size={9} className="text-emerald-500 flex-none" />}
+            </p>
             <p className={`font-medium text-xs sm:text-sm ${start ? "text-gray-800 dark:text-gray-200 pr-5" : "text-gray-400 dark:text-gray-600"}`}>
               {fmtDate(start) ?? "Select date"}
             </p>
@@ -391,12 +671,13 @@ function ReserveCard({ meta, gradient, colors, guestValues, setGuestValues, gues
             )}
           </div>
           <div
-            role="button"
-            tabIndex={0}
-            onClick={onScrollToCalendar}
+            role="button" tabIndex={0} onClick={onScrollToCalendar}
             className="relative p-3 text-left hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors rounded-tr-xl cursor-pointer"
           >
-            <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-0.5">Checkout</p>
+            <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-0.5 flex items-center gap-1">
+              Checkout
+              {end && <CheckCircle2 size={9} className="text-emerald-500 flex-none" />}
+            </p>
             <p className={`font-medium text-xs sm:text-sm ${end ? "text-gray-800 dark:text-gray-200 pr-5" : "text-gray-400 dark:text-gray-600"}`}>
               {fmtDate(end) ?? "Select date"}
             </p>
@@ -412,30 +693,90 @@ function ReserveCard({ meta, gradient, colors, guestValues, setGuestValues, gues
           </div>
         </div>
 
-        {/* Guests — unified GuestPicker (Adults / Children / Infants / Pets) */}
-        <div className="p-3 relative">
-          <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-0.5">Guests</p>
-          <GuestPicker
-            type={guestType}
-            lightMode
-            defaultValue={2}
-            textClass="font-medium text-gray-800 dark:text-gray-200 text-sm"
-            chevronClass="text-gray-400 hover:text-gray-600 dark:text-white/50"
-            onChange={setGuestValues}
-          />
-        </div>
+        {/* Guests — revealed once dates are set; subtly highlighted on auto-open */}
+        <AnimatePresence>
+          {hasRange && (
+            <motion.div
+              key="guests-row"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18 }}
+            >
+              <div
+                role="button" tabIndex={0}
+                onClick={() => { if (!showGuestPicker && !guestValues) setShowGuestPicker(true); }}
+                className={`p-3 relative rounded-b-xl transition-all duration-500
+                  ${highlightGuests && !showGuestPicker && !guestValues ? "ring-2 ring-inset ring-emerald-400/50 bg-emerald-50/40 dark:bg-emerald-900/10" : ""}
+                  ${!showGuestPicker && !guestValues ? "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50" : ""}`}
+              >
+                <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-0.5">Guests</p>
+                {(showGuestPicker || guestValues) ? (
+                  <GuestPicker
+                    type={guestType}
+                    lightMode
+                    defaultValue={1}
+                    textClass="font-medium text-gray-800 dark:text-gray-200 text-sm"
+                    chevronClass="text-gray-400 hover:text-gray-600 dark:text-white/50"
+                    onChange={setGuestValues}
+                  />
+                ) : (
+                  <span className="text-sm font-medium text-gray-400 dark:text-gray-600">
+                    Who's coming?
+                  </span>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-      {/* CTAs */}
-      <DynamicCTA
-        buttons={ctaButtons}
-        gradient={gradient}
-        onAction={(t) => onAction({ guestValues, type: t })}
-      />
+      {/* Nights breakdown — visible once range is set */}
+      <AnimatePresence>
+        {nights > 0 && (
+          <motion.div
+            key="nights-summary"
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 4 }}
+            transition={{ duration: 0.18 }}
+            className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/40 rounded-xl px-3.5 py-2.5"
+          >
+            <span>₹19,181 × {nights} night{nights > 1 ? "s" : ""}</span>
+            <span className="font-semibold text-gray-700 dark:text-gray-300">
+              ₹{(19181 * nights).toLocaleString("en-IN")}
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {meta.priceNote && (
-        <p className="text-center text-xs text-gray-400 dark:text-gray-500">{meta.priceNote}</p>
-      )}
+      {/* Binary CTA — Check Availability until dates complete, then vendor CTAs */}
+      <AnimatePresence mode="wait">
+        {!isComplete ? (
+          <motion.button
+            key="check-avail"
+            onClick={onScrollToCalendar}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="w-full bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 py-3.5 rounded-xl font-semibold text-sm hover:bg-gray-200 dark:hover:bg-gray-700 active:scale-[0.98] transition-all"
+          >
+            Check Availability
+          </motion.button>
+        ) : (
+          <motion.div
+            key="stay-ctas"
+            initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.18 }}
+            className="space-y-3"
+          >
+            <DynamicCTA
+              buttons={ctaButtons}
+              gradient={gradient}
+              onAction={(t) => onAction({ guestValues, type: t })}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Trust */}
       <TrustBadges badges={meta.trustBadges} />
@@ -448,6 +789,18 @@ function EnquiryModal({ isOpen, onClose, gradient, propertyName }) {
   const [form, setForm] = useState({ name: "", email: "", phone: "" });
   const [submitted, setSubmitted] = useState(false);
   const [errors, setErrors] = useState({});
+  const [mounted, setMounted] = useState(false);
+
+  // Mount guard — createPortal requires document to be available
+  useEffect(() => { setMounted(true); }, []);
+
+  // Scroll lock — prevent background scroll while modal is open
+  useEffect(() => {
+    if (!isOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, [isOpen]);
 
   function validate() {
     const e = {};
@@ -471,15 +824,18 @@ function EnquiryModal({ isOpen, onClose, gradient, propertyName }) {
     onClose();
   }
 
-  return (
+  if (!mounted) return null;
+
+  // Portal to document.body — escapes any parent stacking context or transform
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop */}
+          {/* Full-screen backdrop */}
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             onClick={handleClose}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[200]"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9998]"
           />
 
           {/* Panel */}
@@ -488,7 +844,7 @@ function EnquiryModal({ isOpen, onClose, gradient, propertyName }) {
             animate={{ opacity: 1, scale: 1,    y: 0  }}
             exit={{    opacity: 0, scale: 0.96, y: 16 }}
             transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
-            className="fixed inset-x-4 top-1/2 -translate-y-1/2 md:inset-x-auto md:left-1/2 md:-translate-x-1/2 md:w-[440px] bg-white dark:bg-gray-900 rounded-2xl shadow-2xl z-[201] overflow-hidden"
+            className="fixed inset-x-4 top-1/2 -translate-y-1/2 md:inset-x-auto md:left-1/2 md:-translate-x-1/2 md:w-[440px] bg-white dark:bg-gray-900 rounded-2xl shadow-2xl z-[9999] overflow-hidden"
           >
             {/* Header */}
             <div className={`bg-gradient-to-r ${gradient} px-5 py-4`}>
@@ -603,7 +959,8 @@ function EnquiryModal({ isOpen, onClose, gradient, propertyName }) {
           </motion.div>
         </>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }
 
@@ -612,6 +969,7 @@ export default function BookingCard({
   category = "venues",
   mobileOnly = false,
   propertyName,
+  capacity,
   calendarRange,
   venueSelection,
   onClearVenueSelection,
@@ -627,17 +985,11 @@ export default function BookingCard({
   const isFarmstay = catKey === "farmstays";
   const guestType  = isFarmstay ? "guests_detailed" : "guests";
 
-  // Guest state — object matching GuestPicker output shape
-  const [guestValues, setGuestValues] = useState(() =>
-    isFarmstay
-      ? { adults: 2, children: 0, infants: 0, pets: 0 }
-      : { guests: 200 }
-  );
+  // Guest state — null until user explicitly selects (no pre-filled defaults)
+  const [guestValues, setGuestValues] = useState(null);
   const [openSheet, setOpenSheet] = useState(false);
   const [enquiryOpen, setEnquiryOpen] = useState(false);
-  // When true the sheet is intentionally hidden so the calendar has full screen.
-  // Auto-resets to false once selection is complete.
-  const [isSelectingDate, setIsSelectingDate] = useState(false);
+  const [highlightGuests, setHighlightGuests] = useState(false);
 
   const router = useRouter();
   const params = useParams();
@@ -647,30 +999,47 @@ export default function BookingCard({
 
   const CardIcon = meta.icon;
 
+  // ── Booking completeness (single source of truth for CTA state) ──────────────
+  // Farmstay: check-in + checkout sufficient
+  // Venue:    date + shift + explicit guest count all required
+  const isBookingComplete = isFarmstay
+    ? Boolean(calendarRange?.start && calendarRange?.end)
+    : Boolean(venueSelection?.date && venueSelection?.shiftLabel && guestValues?.guests);
+
+  const ctaButtons = getDefaultCTA(catKey);
+
+  // ── Auto-open sheet whenever booking selection transitions none → valid ────────
+  // Fires regardless of where the selection came from (sheet, direct calendar,
+  // any other component). Uses a ref to track previous state so only the
+  // false→true transition triggers the open.
+  const prevHasSelectionRef = useRef(false);
+  useEffect(() => {
+    if (!mobileOnly) return;
+    // Never auto-open on desktop/tablet — the sticky sidebar handles it there
+    if (typeof window !== "undefined" && window.innerWidth >= 768) return;
+    const nowHasSelection = isFarmstay
+      ? Boolean(calendarRange?.start && calendarRange?.end)
+      : Boolean(venueSelection?.date && venueSelection?.shiftLabel);
+    if (nowHasSelection && !prevHasSelectionRef.current) {
+      setOpenSheet(true);
+      // Farmstay: briefly highlight the guests field to guide the next step
+      if (isFarmstay) setHighlightGuests(true);
+    }
+    prevHasSelectionRef.current = nowHasSelection;
+  }, [calendarRange, venueSelection, mobileOnly, isFarmstay]);
+
+  // Auto-clear guest highlight after 1.8 s
+  useEffect(() => {
+    if (!highlightGuests) return;
+    const t = setTimeout(() => setHighlightGuests(false), 1800);
+    return () => clearTimeout(t);
+  }, [highlightGuests]);
+
   const onScrollToCalendar = () => {
     scrollToCalendar();
     // Mobile: collapse the sheet so the calendar has the full viewport.
-    // Desktop is unaffected (mobileOnly is false there).
-    if (mobileOnly) {
-      setOpenSheet(false);
-      setIsSelectingDate(true);
-    }
+    if (mobileOnly) setOpenSheet(false);
   };
-
-  // Auto-restore the mobile sheet the moment selection is complete.
-  //   Venue  → needs both a date AND a time slot (shiftLabel)
-  //   Stay   → needs both check-in AND check-out (calendarRange.end)
-  useEffect(() => {
-    if (!mobileOnly || !isSelectingDate) return;
-    const done =
-      meta.mode === "enquiry"
-        ? Boolean(venueSelection?.shiftLabel)
-        : Boolean(calendarRange?.end);
-    if (done) {
-      setIsSelectingDate(false);
-      setOpenSheet(true);
-    }
-  }, [venueSelection, calendarRange, isSelectingDate, mobileOnly, meta.mode]);
 
   const handleAction = (data) => {
     const type = data.type ?? "";
@@ -715,6 +1084,7 @@ export default function BookingCard({
           onScrollToCalendar={onScrollToCalendar}
           onClearVenueSelection={onClearVenueSelection}
           onClearShift={onClearShift}
+          capacity={capacity}
         />
       : <ReserveCard
           meta={meta}
@@ -729,6 +1099,7 @@ export default function BookingCard({
           onScrollToCalendar={onScrollToCalendar}
           onClearCalendarRange={onClearCalendarRange}
           onClearCheckout={onClearCheckout}
+          highlightGuests={highlightGuests}
         />;
 
   const headerLabel = meta.mode === "enquiry"
@@ -765,43 +1136,69 @@ export default function BookingCard({
       {mobileOnly && (
         <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-950 border-t border-gray-100 dark:border-gray-800 px-4 py-3 z-40 shadow-[0_-4px_24px_rgba(0,0,0,0.08)]">
           <div className="flex items-center gap-3">
-            {/* Price summary — tapping opens / restores the full booking sheet */}
+            {/* Info summary — tapping opens the full booking sheet */}
             <button
-              onClick={() => { setOpenSheet(true); setIsSelectingDate(false); }}
+              onClick={() => setOpenSheet(true)}
               className="flex-1 text-left min-w-0"
             >
               <p className="font-bold text-gray-900 dark:text-white text-base leading-tight">
-                {catKey === "venues" ? "₹20,00,000" : "₹19,181"}
+                {isFarmstay ? "₹19,181" : "₹20,00,000"}
               </p>
-              <p className="text-xs text-gray-400 underline underline-offset-2 mt-0.5">
-                {catKey === "venues" ? "Starting price" : "per night · tap to edit"}
+              <p className="text-xs text-gray-400 mt-0.5 truncate">
+                {isFarmstay
+                  ? (calendarRange?.start && calendarRange?.end
+                      ? `${fmtDate(calendarRange.start)} – ${fmtDate(calendarRange.end)}`
+                      : "Select dates to see pricing")
+                  : (venueSelection?.date
+                      ? `${fmtDate(venueSelection.date)}${venueSelection?.shiftLabel ? ` · ${venueSelection.shiftLabel}` : ""}`
+                      : "Starting price")}
               </p>
             </button>
 
-            {/* Primary CTA buttons */}
-            {catKey === "venues" ? (
-              <div className="flex items-center gap-2 flex-none">
-                <button
-                  onClick={() => router.push(`/${locale}/${country}/checkout/${catKey}/${propertyId}`)}
-                  className="border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 py-2.5 px-4 rounded-xl text-sm font-semibold hover:bg-gray-50 dark:hover:bg-gray-800 transition-all active:scale-[0.97]"
+            {/* Progressive CTA — mirrors booking card state exactly */}
+            <AnimatePresence mode="wait">
+              {!isBookingComplete ? (
+                <motion.button
+                  key="bar-check"
+                  onClick={() => { scrollToCalendar(); setOpenSheet(false); }}
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="flex-none bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 py-2.5 px-4 rounded-xl text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 active:scale-[0.97] transition-all"
                 >
-                  Reserve
-                </button>
-                <button
-                  onClick={() => { setOpenSheet(true); setIsSelectingDate(false); }}
-                  className={`bg-gradient-to-r ${gradient} text-white py-2.5 px-5 rounded-xl text-sm font-semibold shadow-md hover:opacity-90 active:scale-[0.97] transition-all`}
+                  Check Availability
+                </motion.button>
+              ) : catKey === "venues" ? (
+                <motion.div
+                  key="bar-venue-ctas"
+                  className="flex items-center gap-2 flex-none"
+                  initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -8 }}
+                  transition={{ duration: 0.18 }}
                 >
-                  Book
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => router.push(`/${locale}/${country}/checkout/${catKey}/${propertyId}`)}
-                className={`bg-gradient-to-r ${gradient} text-white px-6 py-2.5 rounded-xl text-sm font-semibold shadow-md hover:opacity-90 active:scale-[0.97] transition-all flex-none`}
-              >
-                Reserve
-              </button>
-            )}
+                  <button
+                    onClick={() => handleAction({ type: "reserve" })}
+                    className="border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 py-2.5 px-4 rounded-xl text-sm font-semibold hover:bg-gray-50 dark:hover:bg-gray-800 transition-all active:scale-[0.97]"
+                  >
+                    Reserve
+                  </button>
+                  <button
+                    onClick={() => handleAction({ type: "book" })}
+                    className={`bg-gradient-to-r ${gradient} text-white py-2.5 px-5 rounded-xl text-sm font-semibold shadow-md hover:opacity-90 active:scale-[0.97] transition-all`}
+                  >
+                    Book
+                  </button>
+                </motion.div>
+              ) : (
+                <motion.button
+                  key="bar-reserve"
+                  onClick={() => handleAction({ type: ctaButtons[0] })}
+                  initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -8 }}
+                  transition={{ duration: 0.18 }}
+                  className={`flex-none bg-gradient-to-r ${gradient} text-white px-6 py-2.5 rounded-xl text-sm font-semibold shadow-md hover:opacity-90 active:scale-[0.97] transition-all`}
+                >
+                  {CTA_LABELS[ctaButtons[0]] ?? "Reserve"}
+                </motion.button>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       )}
@@ -814,14 +1211,14 @@ export default function BookingCard({
         propertyName={propertyName}
       />
 
-      {/* ── MOBILE BOTTOM SHEET ── */}
+      {/* ── MOBILE BOTTOM SHEET — mobile only, never on desktop ── */}
       <AnimatePresence>
-        {openSheet && (
+        {mobileOnly && openSheet && typeof window !== "undefined" && window.innerWidth < 768 && (
           <>
             <motion.div
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              onClick={() => { setOpenSheet(false); setIsSelectingDate(false); }}
+              onClick={() => setOpenSheet(false)}
               className="fixed inset-0 bg-black/50 z-[100]"
             />
             <motion.div
@@ -838,7 +1235,7 @@ export default function BookingCard({
                   <h2 className="font-semibold text-gray-800 dark:text-white truncate">{headerLabel}</h2>
                 </div>
                 <button
-                  onClick={() => { setOpenSheet(false); setIsSelectingDate(false); }}
+                  onClick={() => setOpenSheet(false)}
                   className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition flex-none ml-2"
                 >
                   <X size={18} className="text-gray-500" />

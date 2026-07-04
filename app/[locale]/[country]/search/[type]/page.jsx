@@ -11,8 +11,7 @@ import VenueCard         from "./components/VenueCard";
 import FilterDrawer      from "./components/FilterDrawer";
 import WishlistPopup     from "./components/WishlistPopup";
 import FilterRow         from "./components/FilterRow";
-import ReelsPanel        from "./components/ReelsPanel";
-import MobileReels       from "./components/MobileReels";
+import DesktopReelPanel  from "./components/DesktopReelPanel";
 import { DEFAULT_FILTERS } from "./components/FilterDrawer";
 import ListingsSearchBar from "./components/ListingsSearchBar";
 import { getDemoVideoUrl } from "./data/demoReelVideos";
@@ -21,6 +20,7 @@ import { useCategory }          from "@/context/CategoryContext";
 import { useUI }                from "@/context/UIContext";
 import { useAuth }              from "@/context/AuthContext";
 import { usePreferredLocation } from "@/hooks/usePreferredLocation";
+import { useMobileReels }       from "@/context/MobileReelsContext";
 import { getStaticVenues }      from "./data/staticVenues";
 
 import {
@@ -89,8 +89,9 @@ export default function SearchPage() {
   const { locale, country } = useParams();
   const searchParams        = useSearchParams();
 
-  const { showMap, setShowMap, showReels, setShowReels, filterOpen, setFilterOpen, setLoginOpen } = useUI();
+  const { showMap, setShowMap, filterOpen, setFilterOpen, setLoginOpen } = useUI();
   const { activeCategory } = useCategory();
+  const { openReels, registerSource, unregisterSource } = useMobileReels();
 
   /* ── data ──────────────────────────────────────────────────── */
   const [hoverVenue,       setHoverVenue]       = useState(null);
@@ -106,7 +107,8 @@ export default function SearchPage() {
   const [showComparePanel, setShowComparePanel]  = useState(false);
   const [fabVisible,       setFabVisible]        = useState(true);
   const [isMobileWidth,    setIsMobileWidth]     = useState(false);
-  const fabLastScroll = useRef(0);
+  const fabLastScroll  = useRef(0);
+  const hasAutoOpened  = useRef(false);
   const [selectedCategory, setSelectedCategory]  = useState(null);
   const [mapBounds,        setMapBounds]         = useState(null);
   const [mapResetKey,      setMapResetKey]       = useState(0);
@@ -175,6 +177,51 @@ export default function SearchPage() {
     })),
     [displayCards, activeCategory],
   );
+
+  /* ── Register this page's venue list as the global reels source ──────────
+     GlobalReelsBridge in ClientLayout will call getActiveSource() when the
+     user taps the Reels nav item from this page.  We re-register whenever
+     the venue list, category, or user data changes so the source is always
+     fresh.  Cleanup unregisters on unmount so no stale source persists.   */
+  useEffect(() => {
+    if (!reelVenues.length) return;
+    registerSource(() => ({
+      venues:     reelVenues,
+      category:   activeCategory,
+      locale,
+      country,
+      wishlist,
+      compares,
+      onWishlist: setWishlistVenue,
+      onCompare:  handleCompare,
+    }));
+    return () => unregisterSource();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reelVenues, activeCategory, locale, country, wishlist, compares]);
+
+  /* ── Auto-open reels when navigated here with ?openReels=1 ───────────────
+     GlobalReelsBridge pushes to this URL when no source is registered on
+     the origin page (e.g. home, wishlist).  We open reels once the venue
+     list has finished loading.  hasAutoOpened prevents double-firing.     */
+  useEffect(() => {
+    if (
+      searchParams.get("openReels") !== "1" ||
+      hasAutoOpened.current ||
+      !reelVenues.length
+    ) return;
+    hasAutoOpened.current = true;
+    openReels({
+      venues:     reelVenues,
+      category:   activeCategory,
+      locale,
+      country,
+      wishlist,
+      compares,
+      onWishlist: setWishlistVenue,
+      onCompare:  handleCompare,
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reelVenues.length]);
 
   /* ── Pagination ───────────────────────────────────────────────── */
   const PAGE_SIZE = 12;
@@ -446,10 +493,10 @@ export default function SearchPage() {
         </div>
 
         {/* ── RIGHT: Map / Reels panel (40%) — desktop only ─────── */}
-        <div className="hidden lg:block w-[40%] flex-shrink-0">
+        <div className="hidden lg:block w-[40%] flex-shrink-0 border-l border-gray-200 dark:border-gray-800">
           {/* Map ↔ Reels toggle — top of right column, no gap */}
           <div
-            className="sticky z-[29] bg-white dark:bg-gray-950 border-b border-l border-gray-100 dark:border-gray-800 flex items-center px-3"
+            className="sticky z-[29] bg-gray-50 dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 flex items-center px-3"
             style={{ top: MAP_TOP, height: 56 }}
           >
             {/* Segmented toggle */}
@@ -509,10 +556,10 @@ export default function SearchPage() {
               />
             </div>
 
-            {/* Reels panel — mounted only when active */}
+            {/* Desktop reel panel — browser grid → expand single 9:16 reel */}
             {viewMode === "reels" && (
               <div className="absolute inset-0 overflow-hidden">
-                <ReelsPanel
+                <DesktopReelPanel
                   venues={reelVenues}
                   category={activeCategory}
                   locale={locale}
@@ -706,20 +753,6 @@ export default function SearchPage() {
       </AnimatePresence>
 
 
-      {/* ── Mobile Reels overlay ────────────────────────────────── */}
-      <MobileReels
-        open={showReels}
-        onClose={() => setShowReels(false)}
-        venues={displayCards}
-        category={activeCategory}
-        locale={locale}
-        country={country}
-        wishlist={wishlist}
-        compares={compares}
-        onWishlist={setWishlistVenue}
-        onCompare={handleCompare}
-      />
-
       {/* ── Filter drawer ────────────────────────────────────────── */}
       <FilterDrawer
         open={filterOpen}
@@ -728,6 +761,7 @@ export default function SearchPage() {
         filters={filters}
         setFilters={setFilters}
       />
+
     </div>
   );
 }
