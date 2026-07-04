@@ -20,6 +20,7 @@ import { ShieldAlert, ShieldX, Clock } from "lucide-react";
 import { kyc_status } from "@/services/kyc.service";
 import { useAuth }    from "@/context/AuthContext";
 
+import { useVendorCategory } from "@/context/VendorCategoryContext";
 /* ── Per-status design tokens ───────────────────────────────────────── */
 const STATUS = {
   pending: {
@@ -49,16 +50,18 @@ const STATUS = {
   },
 };
 
-export default function KycStatusChip({ onClick }) {
+export default function KycStatusChip({ onClick ,kycState , setKycState}) {
   const { user }              = useAuth();
-  const [kycState, setKycState] = useState(null);
+ 
+
+   const { activeCategory } = useVendorCategory();
 
   /* Border glow keyframe — injected once per mount */
   const glowStyle = "@keyframes vb-kyc-glow { 0%,100%{box-shadow:0 0 0 0px rgba(245,158,11,0.45)} 50%{box-shadow:0 0 0 3.5px rgba(245,158,11,0)} }";
 
   /* Fetch KYC status */
   useEffect(() => {
-    if (!user) return;
+    if (!activeCategory) return;
     const doFetch = async () => {
       try {
         const res = await kyc_status();
@@ -68,7 +71,7 @@ export default function KycStatusChip({ onClick }) {
       }
     };
     doFetch();
-  }, [user]);
+  }, [activeCategory]);
 
   if (!kycState) return null;
 

@@ -70,7 +70,7 @@ const certAnim = {
 /* ════════════════════════════════════════════════════════════════════
    ROOT MODAL COMPONENT
 ════════════════════════════════════════════════════════════════════ */
-export default function KYCModal({ open, setOpen , kycData }) {
+export default function KYCModal({ open, setOpen , kycData ,kycStatus}) {
   const [step,      setStep]      = useState(0);
   const [dir,       setDir]       = useState(1);
   const [submitted, setSubmitted] = useState(false);
@@ -87,23 +87,27 @@ export default function KYCModal({ open, setOpen , kycData }) {
 
 
   /* ── Restore from localStorage ─────────────────────────────────── */
-  // useEffect(() => {
-  //   if (!open) return;
-  //   try {
-  //     const s = JSON.parse(localStorage.getItem(KYC_KEY) || "{}");
-  //     if (s.category)    setCategory(s.category);
-  //     if (s.panData)     setPanData(s.panData);
-  //     if (s.aadhaarData) setAadhaarData(s.aadhaarData);
-  //     if (s.bankData)    setBankData(s.bankData);
-  //     if (s.docData)     setDocData(s.docData);
-  //     if (s.step > 0)    setStep(s.step);
-  //   } catch { /* noop */ }
-  // }, [open]);
+
 
 useEffect(() => {
   if (!open || !kycData) return;
 
+  // Pending = start completely fresh. Wipe any cached draft and
+  // reset all step state instead of prefilling from kycData.
+  if (kycStatus?.kyc_status === "pending") {
+    localStorage.removeItem(KYC_KEY);
+    setCategory(null);
+    setPanData(null);
+    setAadhaarData(null);
+    setBankData(null);
+    setDocData(null);
+    setStep(0);
+    return;
+  }
+
   try {
+
+    setSubmitted(true);
     // ---------------- PAN ----------------
     if (kycData.pan) {
       const panDetails =
@@ -182,11 +186,12 @@ useEffect(() => {
   } catch (err) {
     console.error("KYC Parse Error:", err);
   }
-}, [open, kycData]);
+}, [open, kycData, kycStatus]);
 
   /* ── Persist to localStorage ───────────────────────────────────── */
 useEffect(() => {
   if (!open) return;
+ 
 
   try {
     localStorage.setItem(
@@ -218,31 +223,13 @@ useEffect(() => {
   bankData,
   docData,
   step,
+  kycStatus,
 ]);
   /* ── Pre-fill from backend if already verified ──────────────────── */
-  // useEffect(() => {
-  //   if (!open) return;
-  //   each_kyc_status().then(res => {
-  //     const d = res?.data;
-  //     if (!d) return;
-  //     if (d?.pan?.status === "verified" && !panData)
-  //       setPanData({ pan_number:d.pan.document_number, company_name:d.pan.company_name,
-  //         status:"Active", business_category:d.pan.business_category,
-  //         registered_address:d.pan.registered_address, fromBackend:true });
-  //     if (d?.aadhaar?.status === "verified" && !aadhaarData)
-  //       setAadhaarData({ full_name:d.aadhaar.name, dob:d.aadhaar.dob, gender:d.aadhaar.gender,
-  //         address:d.aadhaar.address,
-  //         aadhaar_number:d.aadhaar.masked_number ?? "XXXX XXXX XXXX", fromBackend:true });
-  //     if (d?.bank?.status === "verified" && !bankData)
-  //       setBankData({ account_holder:d.bank.account_holder_name, bank_name:d.bank.bank_name,
-  //         branch:d.bank.branch,
-  //         account_masked:"xxxx xxxx "+d.bank.account_number?.slice(-4),
-  //         ifsc:d.bank.ifsc, status:"Verified", fromBackend:true });
-  //   }).catch(() => {});
-  // // eslint-disable-next-line react-hooks/exhaustive-deps
-  // }, [open]);
+
 useEffect(() => {
     if (!open || !kycData) return;
+    if (kycStatus?.kyc_status === "pending") return;
 
     if (kycData?.pan?.status === "verified") {
       setPanData({
@@ -279,7 +266,7 @@ useEffect(() => {
         fromBackend: true,
       });
     }
-  }, [open, kycData]);
+  }, [open, kycData, kycStatus]);
   /* ── Guard: step ≥1 requires category ──────────────────────────── */
   useEffect(() => {
     if (!open) return;
@@ -846,27 +833,6 @@ function Step1PAN({ panData,docData, setPanData ,setDocData, category}) {
     );
   }
 
-  // const handleVerify = async () => {
-  //   const val = pan.trim().toUpperCase();
-  //   if (!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(val)) {
-  //     setError("Enter a valid 10-character PAN (e.g. ABCDE1234F)");
-  //     return;
-  //   }
-  //   setError("");
-  //   try {
-  //     setPhase("verifying");
-  //     const param = {
-  //       category:category,
-  //       pan:val
-  //     }
-  //     const data = await verifyPAN(param);
-  //     setPanData(data);
-  //     setPhase("verified");
-  //   } catch(e) {
-  //     setError(e.message || "Verification failed. Please try again.");
-  //     setPhase("idle");
-  //   }
-  // };
 const handleVerify = async () => {
   const val = pan.trim().toUpperCase();
 

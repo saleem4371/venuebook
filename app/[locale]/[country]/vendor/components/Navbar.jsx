@@ -8,7 +8,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import lightLogo from "@/assets/logo.svg";
 import darkLogo from "@/assets/logo.png";
 
-import { each_kyc_status , suscription_detail } from "@/services/kyc.service";
+import { each_kyc_status , suscription_detail , kyc_status } from "@/services/kyc.service";
 
 
 import { useVendorCategory } from "@/context/VendorCategoryContext";
@@ -424,6 +424,7 @@ export default function PremiumNavbar() {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [logoutLoading,   setLogoutLoading]   = useState(false);
   const [kycStatus,       setKycStatus]       = useState("pending"); // wire to API/session later
+   const [kycState, setKycState] = useState(null);
   const [kycOpen,         setKycOpen]         = useState(false);
   const [mounted,         setMounted]         = useState(false);
   const [switchLoading,   setSwitchLoading]   = useState(false);
@@ -493,18 +494,23 @@ const { status } = useSocket();
 
 
 useEffect(() => {
-  if (!open) return;
-  const fetchKycStatus = async () => {
+  //if (!activeCategory) return;
+
+ 
+  fetchKycStatus();
+}, [activeCategory]);
+
+ const fetchKycStatus = async () => {
     try {
-      const res = await each_kyc_status();
-      setKycData(res?.data || null);
+      const res = await each_kyc_status(activeCategory);
+      setKycData(res?.data ?? null); 
+      
+  
     } catch (err) {
       console.error(err);
       setKycData(null);
     }
   };
-  fetchKycStatus();
-}, [open]);
 
 
 useEffect(() => {
@@ -555,7 +561,7 @@ setSubscriptionData(subscription.data[0])
 
           <div className="flex items-center gap-1.5 lg:gap-2">
             {/* ── KYC status (independent badge) ─────────────────── */}
-            <KycStatusChip onClick={() => setKycOpen(true)} />
+            <KycStatusChip onClick={() => setKycOpen(true)} kycState={kycState} setKycState={setKycState} />
 
             {/* ── Switch to Customer — only visible on desktop (1024px+)
                 At tablet (768–1024px) it moves into the profile dropdown ── */}
@@ -654,7 +660,7 @@ setSubscriptionData(subscription.data[0])
           */}
           <div className="flex items-center gap-1 flex-nowrap min-w-0">
             {/* KYC chip — compact on xs (icon only), adds "KYC" from sm */}
-            <KycStatusChip onClick={() => setKycOpen(true)} />
+            <KycStatusChip onClick={() => setKycOpen(true)} kycState={kycState} setKycState={setKycState}/>
 
             {/* Theme toggle */}
             <button
@@ -699,7 +705,7 @@ setSubscriptionData(subscription.data[0])
         onClose={() => setRegionOpen(false)}
       />
 
-      <KYCModal open={kycOpen} setOpen={setKycOpen}  kycData={kycData} />
+      <KYCModal open={kycOpen} setOpen={setKycOpen}  kycData={kycData}  kycStatus={kycState} />
 
       {/* Shared logout confirmation modal */}
       <LogoutConfirmationModal
