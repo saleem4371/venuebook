@@ -59,7 +59,7 @@ function summarize(type, values) {
  *  allowInput=false → count shown wider, no text entry
  *  lightMode=true   → dark text for light backgrounds (mobile sheet)
  */
-function StepRow({ field, value, onChange, allowInput = false, lightMode = false }) {
+function StepRow({ field, value, onChange, step = 1, allowInput = false, lightMode = false }) {
   const [editing, setEditing] = useState(false);
   const [draft,   setDraft]   = useState("");
   const inputRef              = useRef(null);
@@ -67,6 +67,18 @@ function StepRow({ field, value, onChange, allowInput = false, lightMode = false
   const atMin = value <= field.min;
   const atMax = value >= field.max;
   const clamp = (v) => Math.max(field.min, Math.min(field.max, v));
+
+  // Snap to step multiples when step > 1
+  const decrement = () => {
+    if (step <= 1) { onChange(clamp(value - 1)); return; }
+    const prev = Math.floor((value - 0.001) / step) * step;
+    onChange(Math.max(field.min, prev));
+  };
+  const increment = () => {
+    if (step <= 1) { onChange(clamp(value + 1)); return; }
+    const next = Math.ceil((value + 0.001) / step) * step;
+    onChange(Math.min(field.max, next));
+  };
 
   const startEdit = () => {
     setDraft(String(value));
@@ -97,7 +109,7 @@ function StepRow({ field, value, onChange, allowInput = false, lightMode = false
         {/* Decrement */}
         <button
           type="button"
-          onClick={() => onChange(clamp(value - 1))}
+          onClick={decrement}
           disabled={atMin}
           className={`w-8 h-8 rounded-full border flex items-center justify-center disabled:opacity-25 active:scale-90 transition-all ${btnClass}`}
           aria-label={`Decrease ${field.label}`}
@@ -119,7 +131,7 @@ function StepRow({ field, value, onChange, allowInput = false, lightMode = false
               if (e.key === "Enter")  { e.preventDefault(); commitEdit(); }
               if (e.key === "Escape") { setEditing(false); }
             }}
-            className="w-14 text-center bg-white/10 border border-white/30 rounded-lg text-white text-sm font-bold tabular-nums outline-none py-0.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            className={`w-14 text-center rounded-lg text-sm font-bold tabular-nums outline-none py-0.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${lightMode ? "bg-gray-100 dark:bg-white/10 border border-gray-300 dark:border-white/30 text-gray-800 dark:text-white focus:border-gray-400 dark:focus:border-white/60" : "bg-white/10 border border-white/30 text-white focus:border-white/60"}`}
           />
         ) : allowInput ? (
           <button
@@ -139,7 +151,7 @@ function StepRow({ field, value, onChange, allowInput = false, lightMode = false
         {/* Increment */}
         <button
           type="button"
-          onClick={() => onChange(clamp(value + 1))}
+          onClick={increment}
           disabled={atMax}
           className={`w-8 h-8 rounded-full border flex items-center justify-center disabled:opacity-25 active:scale-90 transition-all ${btnClass}`}
           aria-label={`Increase ${field.label}`}
@@ -172,6 +184,10 @@ export default function GuestPicker({
    * Number: seeds the primary counter (guests / attendees / adults).
    */
   defaultValue,
+  /** Step size for +/− buttons (default 1). Step > 1 snaps to multiples of step. */
+  step        = 1,
+  /** Override the field's max (e.g. venue's declared guest capacity). */
+  maxCapacity,
 }) {
   const [open, setOpen] = useState(false);
   const [values, setValues] = useState(() => {
@@ -186,7 +202,13 @@ export default function GuestPicker({
   });
   const [hasInteracted, setHasInteracted] = useState(Number(defaultValue) > 0);
   const ref    = useRef(null);
-  const fields = GUEST_CONFIGS[type] ?? GUEST_CONFIGS.guests;
+  // Derive fields with capacity / step overrides
+  const fields = (GUEST_CONFIGS[type] ?? GUEST_CONFIGS.guests).map((f) => ({
+    ...f,
+    max: maxCapacity != null ? maxCapacity : f.max,
+    // When step > 1, effective min is the step value (e.g. 50 for venue pax)
+    min: step > 1 ? Math.max(f.min, step) : f.min,
+  }));
   const allowInput = type === "guests";
 
   /* No type-reset effect needed — GuestPicker is always keyed by
@@ -224,6 +246,7 @@ export default function GuestPicker({
             field={field}
             value={values[field.id] ?? field.min}
             onChange={(v) => handleChange(field.id, v)}
+            step={step}
             allowInput={allowInput}
             lightMode
           />
@@ -291,6 +314,7 @@ export default function GuestPicker({
                 field={field}
                 value={values[field.id] ?? field.min}
                 onChange={(v) => handleChange(field.id, v)}
+                step={step}
                 allowInput={allowInput}
                 lightMode={lightMode}
               />
