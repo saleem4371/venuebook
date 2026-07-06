@@ -97,6 +97,10 @@ export default function ClientLayout({ children }) {
   // Listing detail page: /search/[type]/[id] — has two segments after /search/
   const isListingDetailPage = /\/search\/[^/]+\/[^/]+/.test(pathname);
 
+  // Estate/Destination page: /venue/[parentId] — its own hero owns this
+  // space, so the floating category pill/FAB shouldn't overlay it.
+  const isVenueParentPage = /\/venue\/[^/]+\/?$/.test(pathname);
+
   /*
    * fabBreakpoint controls when CategoryNavigator switches from the
    * desktop pill to the floating circular FAB + bottom-sheet:
@@ -133,7 +137,7 @@ export default function ClientLayout({ children }) {
             <MobileReelsProvider>
 
               {!hideChrome && <Navbar />}
-              {!hideChrome && !isListingDetailPage && (
+              {!hideChrome && !isListingDetailPage && !isVenueParentPage && (
                 <CategoryNavigator
                   loadData={loadData}
                   fabBreakpoint={fabBreakpoint}

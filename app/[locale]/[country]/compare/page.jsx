@@ -1,278 +1,200 @@
 "use client";
 
-import { useState } from "react";
-import { X, Plus, Star, MapPin, CheckCircle2 } from "lucide-react";
+/**
+ * Compare Page — premium, editorial property-comparison experience.
+ *
+ * Rebuilt from scratch per design brief: the previous version was a
+ * single spreadsheet-style <table> — nothing from it is reused here,
+ * it only informed which data points needed to be covered. Layout order:
+ *   Hero → Category Selector → Sticky Compare Bar → Quick Compare Summary →
+ *   Comparison Cards → Detailed Comparison Sections (Venue | Farmstay) →
+ *   Recommendation
+ *
+ * Wired to the real backend (UserCompare / removeCompareAPI / wishlist)
+ * via useCompareList — see that hook for the documented assumptions
+ * about the (currently unverified) API response shape.
+ *
+ * Category handling: this page reads the SAME global CategoryContext used
+ * across every listing page (useCategory) and reuses the site's universal
+ * CategoryNavigator (the floating pill/FAB in the global nav) to switch
+ * categories — no bespoke switcher lives on this page. Its z-index was
+ * bumped (z-30 -> z-40 in CategoryNavigator.jsx) so it always renders above
+ * this page's own sticky comparison bar instead of colliding/blurring with
+ * it. Properties are always filtered to a single category — mixed-category
+ * comparisons are never rendered.
+ */
+
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useParams } from "next/navigation";
+
+import { useCategory } from "@/context/CategoryContext";
+import { CATEGORY_ORDER } from "@/config/categoryConfig";
+import { useCompareList } from "./hooks/useCompareList";
+import { detectExperience } from "./data/compareSchema";
+
+import EmptyState from "./components/EmptyState";
+import CompareHero from "./components/CompareHero";
+import CategorySwitchNotice from "./components/CategorySwitchNotice";
+import StickyCompareBar from "./components/StickyCompareBar";
+import QuickCompareSummary from "./components/QuickCompareSummary";
+import ComparisonCards from "./components/ComparisonCards";
+import VenueComparisonExperience from "./components/VenueComparisonExperience";
+import FarmstayComparisonExperience from "./components/FarmstayComparisonExperience";
+import StudioComparisonExperience from "./components/StudioComparisonExperience";
+import WorkspaceComparisonExperience from "./components/WorkspaceComparisonExperience";
+import RentalComparisonExperience from "./components/RentalComparisonExperience";
+
+// One comparison experience per category — never shared sections/wording.
+const EXPERIENCE_COMPONENTS = {
+  farmstay: FarmstayComparisonExperience,
+  studio: StudioComparisonExperience,
+  workspace: WorkspaceComparisonExperience,
+  rental: RentalComparisonExperience,
+  venue: VenueComparisonExperience,
+};
+
+function todayISO() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function PageSkeleton() {
+  return (
+    // pt-16 / md:pt-[72px] mirrors the fixed Navbar's real height (h-[64px] / md:h-[72px], z-50)
+    // so skeleton content never renders underneath it either.
+    <div className="pt-16 md:pt-[72px] min-h-screen bg-white dark:bg-gray-950">
+      <div className="max-w-[1400px] mx-auto px-4 lg:px-8 py-8 animate-pulse">
+        <div className="h-8 w-64 bg-gray-200 dark:bg-gray-800 rounded-full mb-4" />
+        <div className="h-4 w-96 bg-gray-100 dark:bg-gray-800/70 rounded-full mb-12" />
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="h-80 rounded-3xl bg-gray-100 dark:bg-gray-800/70" />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function ComparePage() {
-  const [venues, setVenues] = useState([
-    {
-      id: 1,
-      name: "Royal Palace",
-      price: 250000,
-      rating: 4.9,
-      location: "Bijapur",
-      capacity: 500,
-      image:
-        "https://images.unsplash.com/photo-1519167758481-83f550bb49b3",
-    },
-    {
-      id: 2,
-      name: "Grand Hall",
-      price: 180000,
-      rating: 4.7,
-      location: "Hubli",
-      capacity: 350,
-      image:
-        "https://images.unsplash.com/photo-1469371670807-013ccf25f16a",
-    },
-    {
-      id: 3,
-      name: "Luxury Garden",
-      price: 320000,
-      rating: 4.8,
-      location: "Bangalore",
-      capacity: 700,
-      image:
-        "https://images.unsplash.com/photo-1517457373958-b7bdd4587205",
-    },
-  ]);
+  const { locale, country } = useParams();
+  const { properties, loading, add, remove, toggleWishlist, wishlistIds } = useCompareList();
+  const { activeCategory, setActiveCategory } = useCategory();
 
-  const bestPrice = Math.min(...venues.map((v) => v.price));
-  const bestRating = Math.max(...venues.map((v) => v.rating));
+  const [selectedDate, setSelectedDate] = useState(todayISO());
+  const [selectedShift, setSelectedShift] = useState("day");
+
+  // Tracks an explicit category choice made anywhere on the site (the
+  // universal category switcher in the global nav), separate from the
+  // "jump to whichever category has items" fallback below. Needed so
+  // picking an empty category is always honored here (shows that
+  // category's own empty state) instead of being silently overridden —
+  // that fallback should only ever apply on first load.
+  const [manualCategory, setManualCategory] = useState(null);
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) { isFirstRender.current = false; return; }
+    setManualCategory(activeCategory);
+  }, [activeCategory]);
+
+  // How many saved-for-compare properties exist per category. Independent
+  // comparison workspaces: switching categories only changes what's
+  // *displayed* — every category's saved items live untouched in
+  // `properties` the whole time, so nothing is ever lost or reset.
+  const categoryCounts = useMemo(() => {
+    const counts = {};
+    properties.forEach((p) => { counts[p.category] = (counts[p.category] || 0) + 1; });
+    return counts;
+  }, [properties]);
+
+  const availableCategories = useMemo(
+    () => CATEGORY_ORDER.filter((id) => (categoryCounts[id] || 0) > 0),
+    [categoryCounts]
+  );
+
+  // Never silently mix categories: if the site-wide active category has
+  // nothing saved for compare (and the user hasn't explicitly chosen it
+  // here), fall back to whichever category the user actually has
+  // properties in. An explicit in-page choice (manualCategory) always wins.
+  const focusedCategory = manualCategory
+    ?? ((categoryCounts[activeCategory] || 0) > 0 ? activeCategory : (availableCategories[0] || activeCategory));
+
+  const handleCategorySwitch = (id) => { setActiveCategory(id); setManualCategory(id); };
+
+  const displayedProperties = useMemo(
+    () => properties.filter((p) => p.category === focusedCategory),
+    [properties, focusedCategory]
+  );
+
+  const experience = detectExperience(focusedCategory);
+  const ExperienceComponent = EXPERIENCE_COMPONENTS[experience] || VenueComparisonExperience;
+
+  if (loading) return <PageSkeleton />;
+
+  // Nothing saved anywhere — the real empty state.
+  if (properties.length === 0) {
+    return (
+      <div className="pt-16 md:pt-[72px] min-h-screen bg-white dark:bg-gray-950">
+        <EmptyState locale={locale} country={country} />
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-[#f6f7fb] pt-24">
+    // pt-16 / md:pt-[72px]: exact match for the fixed Navbar height so the
+    // hero title is never hidden underneath it (same convention as
+    // search/[type]/page.jsx).
+    <div className="pt-16 md:pt-[72px] min-h-screen bg-white dark:bg-gray-950 pb-20">
+      {/* Category switching now happens through the site's universal
+          category switcher in the global nav (CategoryNavigator) — no
+          bespoke switcher on this page. */}
+      <CompareHero count={displayedProperties.length} />
 
-      <div className="max-w-[1500px] mx-auto px-4 lg:px-8 py-10">
+      {/* Per spec: never show an empty/short comparison table — a category
+          with 0 or 1 saved items gets a dedicated notice instead. */}
+      {displayedProperties.length < 2 ? (
+        <CategorySwitchNotice
+          category={focusedCategory}
+          count={displayedProperties.length}
+          otherCategories={availableCategories.filter((id) => id !== focusedCategory)}
+          onSwitch={handleCategorySwitch}
+          onAdd={add}
+          excludeIds={new Set(displayedProperties.map((p) => p.childVenueId))}
+          locale={locale}
+          country={country}
+        />
+      ) : (
+        <>
+          <StickyCompareBar
+            properties={displayedProperties}
+            onRemove={remove}
+            experience={experience}
+            selectedDate={selectedDate}
+            setSelectedDate={setSelectedDate}
+            selectedShift={selectedShift}
+            setSelectedShift={setSelectedShift}
+          />
 
-        {/* HEADER */}
-        <div className="mb-10">
-          <h1 className="text-[34px] font-semibold tracking-tight text-zinc-900">
-            Compare Venues
-          </h1>
+          <QuickCompareSummary properties={displayedProperties} experience={experience} />
 
-          <p className="text-[13px] text-zinc-500 mt-2">
-            Compare up to 4 venues and choose the best option
-          </p>
-        </div>
+          <ComparisonCards
+            properties={displayedProperties}
+            onRemove={remove}
+            onWishlistToggle={toggleWishlist}
+            wishlistIds={wishlistIds}
+            onAdd={add}
+            category={focusedCategory}
+            country={country}
+          />
 
-        {/* TOP CARDS */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
-
-          {venues.map((v) => (
-            <div
-              key={v.id}
-              className="
-              bg-white
-              border border-zinc-200
-              rounded-3xl
-              overflow-hidden
-              shadow-sm
-              hover:shadow-xl
-              transition-all
-              group
-            "
-            >
-
-              {/* IMAGE */}
-              <div className="relative h-44 overflow-hidden">
-
-                <img
-                  src={v.image}
-                  className="w-full h-full object-cover group-hover:scale-105 transition"
-                />
-
-                <button className="absolute top-3 right-3 w-9 h-9 bg-white rounded-full flex items-center justify-center shadow">
-                  <X size={16} />
-                </button>
-
-                {/* BEST BADGE */}
-                {v.price === bestPrice && (
-                  <div className="absolute bottom-3 left-3 bg-green-600 text-white text-[11px] px-3 py-1 rounded-full">
-                    Best Price
-                  </div>
-                )}
-              </div>
-
-              {/* CONTENT */}
-              <div className="p-5">
-
-                <h2 className="text-[16px] font-semibold text-zinc-900">
-                  {v.name}
-                </h2>
-
-                <div className="flex items-center gap-2 text-[12px] text-zinc-500 mt-1">
-                  <MapPin size={12} />
-                  {v.location}
-                </div>
-
-                <div className="flex items-center justify-between mt-4">
-
-                  <div>
-                    <p className="text-[11px] text-zinc-400">Price</p>
-                    <p className="text-[15px] font-semibold">
-                      ₹{v.price.toLocaleString()}
-                    </p>
-                  </div>
-
-                  <div className="text-right">
-                    <p className="text-[11px] text-zinc-400">Rating</p>
-                    <div className="flex items-center gap-1 text-amber-600 font-medium text-[13px]">
-                      <Star size={14} className="fill-amber-500" />
-                      {v.rating}
-                    </div>
-                  </div>
-                </div>
-
-              </div>
-            </div>
-          ))}
-
-          {/* EMPTY SLOT */}
-          {Array.from({ length: 4 - venues.length }).map((_, i) => (
-            <div
-              key={i}
-              className="
-              border-2 border-dashed border-zinc-300
-              rounded-3xl
-              h-[260px]
-              flex flex-col items-center justify-center
-              bg-white
-              hover:bg-zinc-50
-              transition
-            "
-            >
-              <Plus className="text-zinc-400" />
-              <p className="text-[13px] text-zinc-500 mt-2">
-                Add Venue
-              </p>
-            </div>
-          ))}
-        </div>
-
-        {/* COMPARISON TABLE */}
-        <div className="mt-10 bg-white border border-zinc-200 rounded-3xl overflow-hidden shadow-sm">
-
-          {/* HEADER */}
-          <div className="p-6 border-b bg-zinc-50">
-            <h2 className="text-[18px] font-semibold text-zinc-900">
-              Detailed Comparison
-            </h2>
-            <p className="text-[12px] text-zinc-500 mt-1">
-              Compare features side by side
-            </p>
-          </div>
-
-          <div className="overflow-x-auto">
-
-            <table className="w-full text-sm">
-
-              <thead className="sticky top-0 bg-white border-b">
-
-                <tr>
-                  <th className="p-4 text-left text-zinc-500">
-                    Features
-                  </th>
-
-                  {venues.map((v) => (
-                    <th key={v.id} className="p-4 text-left">
-                      <div className="text-[14px] font-semibold text-zinc-900">
-                        {v.name}
-                      </div>
-                    </th>
-                  ))}
-                </tr>
-
-              </thead>
-
-              <tbody className="text-[13px]">
-
-                {/* PRICE */}
-                <tr className="border-t">
-                  <td className="p-4 text-zinc-500">Price</td>
-
-                  {venues.map((v) => (
-                    <td key={v.id} className="p-4 font-medium">
-                      <span
-                        className={
-                          v.price === bestPrice
-                            ? "text-green-600 font-semibold"
-                            : ""
-                        }
-                      >
-                        ₹{v.price.toLocaleString()}
-                      </span>
-                    </td>
-                  ))}
-                </tr>
-
-                {/* RATING */}
-                <tr className="border-t">
-                  <td className="p-4 text-zinc-500">Rating</td>
-
-                  {venues.map((v) => (
-                    <td key={v.id} className="p-4">
-                      <div className="flex items-center gap-1">
-                        <Star size={14} className="text-amber-500 fill-amber-500" />
-                        <span
-                          className={
-                            v.rating === bestRating
-                              ? "text-green-600 font-semibold"
-                              : ""
-                          }
-                        >
-                          {v.rating}
-                        </span>
-                      </div>
-                    </td>
-                  ))}
-                </tr>
-
-                {/* LOCATION */}
-                <tr className="border-t">
-                  <td className="p-4 text-zinc-500">Location</td>
-                  {venues.map((v) => (
-                    <td key={v.id} className="p-4">
-                      {v.location}
-                    </td>
-                  ))}
-                </tr>
-
-                {/* CAPACITY */}
-                <tr className="border-t">
-                  <td className="p-4 text-zinc-500">Capacity</td>
-                  {venues.map((v) => (
-                    <td key={v.id} className="p-4">
-                      {v.capacity} Guests
-                    </td>
-                  ))}
-                </tr>
-
-                {/* RECOMMENDED */}
-                <tr className="border-t">
-                  <td className="p-4 text-zinc-500">Recommendation</td>
-
-                  {venues.map((v) => (
-                    <td key={v.id} className="p-4">
-                      {v.price === bestPrice && v.rating === bestRating ? (
-                        <span className="inline-flex items-center gap-1 text-green-600 font-semibold">
-                          <CheckCircle2 size={14} />
-                          Best Choice
-                        </span>
-                      ) : (
-                        <span className="text-zinc-400">—</span>
-                      )}
-                    </td>
-                  ))}
-                </tr>
-
-              </tbody>
-            </table>
-
-          </div>
-        </div>
-
-      </div>
+          <ExperienceComponent
+            properties={displayedProperties}
+            selectedDate={selectedDate}
+            selectedShift={selectedShift}
+            locale={locale}
+            country={country}
+          />
+        </>
+      )}
     </div>
   );
 }
