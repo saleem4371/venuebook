@@ -247,27 +247,59 @@ console.log(mediaMap)
     setMediaMap(map);
   }, [loadData]);
 
-    const handleSearch = () => {
+const handleSearch = () => {
   const params = new URLSearchParams();
 
   Object.entries(searchData).forEach(([key, value]) => {
-    if (value === null || value === undefined || value === "") return;
+    if (value == null || value === "") return;
 
+    // Date
     if (value instanceof Date) {
-      // Use LOCAL date components — toISOString() converts to UTC and shifts
-      // the date by -1 day in timezones ahead of UTC (e.g. IST = UTC+5:30)
       const y = value.getFullYear();
       const m = String(value.getMonth() + 1).padStart(2, "0");
       const d = String(value.getDate()).padStart(2, "0");
+
       params.set(key, `${y}-${m}-${d}`);
-    } else if (typeof value === "object") {
-      // Guest picker returns { guests: N } or { adults: A, children: C, ... }
-      // Sum all numeric fields into a single total
-      const total = Object.values(value).reduce((sum, n) => sum + Number(n || 0), 0);
-      if (total > 0) params.set(key, String(total));
-    } else {
-      params.set(key, String(value));
+      return;
     }
+
+    // Location
+   if (key === "location") {
+  if (typeof value === "object") {
+    params.set("location", value.city || value.address || "");
+
+    if (value.lat) params.set("lat", value.lat);
+    if (value.lng) params.set("lng", value.lng);
+
+    if (value.bounds) {
+      params.set("north", value.bounds.north);
+      params.set("south", value.bounds.south);
+      params.set("east", value.bounds.east);
+      params.set("west", value.bounds.west);
+    }
+  } else {
+    params.set("location", value);
+  }
+  return;
+}
+    // Guests
+    if (key === "guests") {
+      if (typeof value === "object") {
+        const total = Object.values(value).reduce(
+          (sum, n) => sum + Number(n || 0),
+          0
+        );
+
+        if (total > 0) {
+          params.set("guests", String(total));
+        }
+      } else {
+        params.set("guests", String(value));
+      }
+      return;
+    }
+
+    params.set(key, String(value));
   });
 
   router.push(

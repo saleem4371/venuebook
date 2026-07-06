@@ -136,6 +136,29 @@ function removeRecent(city, countryCode) {
   } catch { return []; }
 }
 
+/* ── FIX: extract the actual CITY from Places address_components ──────────
+   Previously `city` was set to `place.name`, which is the specific place
+   the user clicked (e.g. "Bangalore Palace", "Phoenix MarketCity") — not
+   the city it's in. That polluted both the input box text and whatever
+   gets saved to recents / sent to onSelectProp.
+   This walks address_components in priority order (locality first, then
+   broader admin levels) and falls back to place.name only if nothing
+   usable is found (e.g. for a bare city-level prediction). ─────────────── */
+function extractCity(components) {
+  if (!Array.isArray(components) || components.length === 0) return null;
+  const findByType = (type) =>
+    components.find((c) => Array.isArray(c.types) && c.types.includes(type))?.long_name;
+
+  return (
+    findByType("locality") ||
+    findByType("postal_town") ||
+    findByType("administrative_area_level_2") ||
+    findByType("sublocality") ||
+    findByType("administrative_area_level_1") ||
+    null
+  );
+}
+
 /* ── Shared suggestion list (popup + inline) ─────────────────── */
 function SuggestionList({ query, google, recents, setRecents, popular, tint, onSelect, light = false, countryCode = "in" }) {
   const tintHex = tint?.hex ?? "#7c3aed";
@@ -170,7 +193,7 @@ function SuggestionList({ query, google, recents, setRecents, popular, tint, onS
           <button
             key={place.place_id}
             type="button"
-            onClick={() => onSelect(place.description)}
+            onClick={() => onSelect(place)}
             className={`w-full flex items-start gap-3 px-3 py-2.5 rounded-xl ${hoverCls} transition text-start group`}
           >
             <div className={`shrink-0 mt-0.5 p-1.5 rounded-lg ${iconBg} transition`}>
@@ -326,25 +349,249 @@ export default function LocationAutoComplete({
     return () => document.removeEventListener("mousedown", handler);
   }, [show, inline]);
 
-  const handleSelect = (city) => {
-    setQuery(city);
-    saveRecent(city, countryCode);
-    setRecents(loadRecent(countryCode));
-    setShow(false);
-    onSelectProp?.(city);
-    /* Advance focus to next search field (e.g. date picker) */
-    if (onNext) setTimeout(onNext, 60);
+  const placesServiceRef = useRef(null);
+
+  // FIX: previously this was only created once, in a mount-effect with an
+  // empty dependency array. If window.google wasn't loaded yet at the exact
+  // moment this component mounted (very common — the Maps script usually
+  // resolves asynchronously, after first render), placesServiceRef.current
+  // stayed null FOREVER, since the effect never re-ran. handleSelect would
+  // then silently bail out (`if (!placesServiceRef.current) return;`),
+  // getDetails() never ran, and onSelectProp never fired — so the parent's
+  // lat/lng/bounds just stayed at their initial null values, which is
+  // exactly the symptom being reported.
+  //
+  // Creating it lazily, on demand, at the moment we actually need it means
+  // it self-heals: even if Maps loaded late, by the time the user has typed
+  // 2+ characters and clicked a suggestion, window.google is virtually
+  // guaranteed to be ready.
+  const getPlacesService = () => {
+    if (typeof window === "undefined" || !window.google?.maps?.places) {
+      return null;
+    }
+    if (!placesServiceRef.current) {
+      const div = document.createElement("div");
+      placesServiceRef.current = new window.google.maps.places.PlacesService(div);
+    }
+    return placesServiceRef.current;
+  };
+
+  // FIX: Recent-search and Popular-destination picks are plain strings
+  // (e.g. "Bengaluru") with no coordinates attached. The old code just
+  // shipped { lat: null, lng: null, bounds: null } for these unconditionally
+  // — it never actually looked anything up. This geocodes the city name
+  // (restricted to the active country) so these selections resolve real
+  // coordinates too, same as a typed/autocompleted selection does.
+  const geocoderRef = useRef(null);
+  const getGeocoder = () => {
+    if (typeof window === "undefined" || !window.google?.maps) return null;
+    if (!geocoderRef.current) {
+      geocoderRef.current = new window.google.maps.Geocoder();
+    }
+    return geocoderRef.current;
+  };
+
+  const geocodeCity = (cityStr, country) =>
+    new Promise((resolve) => {
+      const geocoder = getGeocoder();
+      if (!geocoder) { resolve(null); return; }
+
+      geocoder.geocode(
+        { address: cityStr, componentRestrictions: { country: country || "in" } },
+        (results, status) => {
+          if (status !== window.google.maps.GeocoderStatus.OK || !results?.[0]) {
+            resolve(null);
+            return;
+          }
+
+          const res = results[0];
+          const location = res.geometry.location;
+          const viewport = res.geometry.viewport;
+
+          let bounds = null;
+          if (viewport) {
+            const ne = viewport.getNorthEast();
+            const sw = viewport.getSouthWest();
+            bounds = { north: ne.lat(), east: ne.lng(), south: sw.lat(), west: sw.lng() };
+          }
+
+          resolve({
+            address: res.formatted_address || cityStr,
+            lat: location.lat(),
+            lng: location.lng(),
+            bounds,
+          });
+        }
+      );
+    });
+
+  const handleSelect = async (item) => {
+    // Recent / Popular — plain city string, needs geocoding for coordinates
+    if (typeof item === "string") {
+      setQuery(item);
+
+      saveRecent(item, countryCode);
+      setRecents(loadRecent(countryCode));
+      setShow(false);
+
+      // Resolve immediately with what we know; onSelectProp gets called
+      // again below once geocoding resolves, so consumers that only care
+      // about the city name still work instantly, and lat/lng/bounds
+      // arrive a beat later instead of being permanently null.
+      onSelectProp?.({
+        city: item,
+        address: item,
+        lat: null,
+        lng: null,
+        bounds: null,
+      });
+
+      if (onNext) setTimeout(onNext, 60);
+
+      const geo = await geocodeCity(item, countryCode);
+      if (geo) {
+        onSelectProp?.({
+          city: item,
+          address: geo.address,
+          lat: geo.lat,
+          lng: geo.lng,
+          bounds: geo.bounds,
+        });
+      }
+      return;
+    }
+
+    // Google prediction — resolve full details (coords, bounds, real city name)
+    // FIX: show the short "main text" immediately instead of the full
+    // "City, State, Country" description, so the box doesn't flash the
+    // long string while getDetails() is resolving.
+    setQuery(item.structured_formatting?.main_text ?? item.description);
+
+    const service = getPlacesService();
+    if (!service) {
+      // Maps script genuinely isn't loaded — nothing we can resolve yet.
+      // Logged so this is visible in dev instead of silently vanishing.
+      console.warn("[LocationAutoComplete] Google Maps Places API not ready — could not resolve lat/lng/bounds for selection.");
+      return;
+    }
+
+    service.getDetails(
+      {
+        placeId: item.place_id,
+        fields: [
+          "name",
+          "formatted_address",
+          "geometry",
+          "address_components",
+          "types",
+        ],
+      },
+      (place, status) => {
+        if (
+          status !== window.google.maps.places.PlacesServiceStatus.OK ||
+          !place ||
+          !place.geometry
+        ) {
+          return;
+        }
+
+        const location = place.geometry.location;
+        const viewport = place.geometry.viewport;
+
+        let bounds = null;
+
+        if (viewport) {
+          const ne = viewport.getNorthEast();
+          const sw = viewport.getSouthWest();
+
+          bounds = {
+            north: ne.lat(),
+            east: ne.lng(),
+            south: sw.lat(),
+            west: sw.lng(),
+          };
+        }
+
+        // FIX: derive the real city (locality) from address_components
+        // instead of using place.name, which is the specific establishment
+        // the user picked (e.g. "Bangalore Palace") rather than its city.
+        const cityName = extractCity(place.address_components) || place.name;
+
+        const result = {
+          placeId: item.place_id,
+
+          city: cityName,
+          address: place.formatted_address,
+
+          lat: location.lat(),
+          lng: location.lng(),
+
+          bounds,
+
+          types: place.types ?? [],
+          components: place.address_components ?? [],
+        };
+
+        // FIX: the input box previously kept showing the long
+        // "City, State, Country" description forever — this corrects it
+        // to the clean city name once details resolve.
+        setQuery(cityName);
+
+        saveRecent(cityName, countryCode);
+        setRecents(loadRecent(countryCode));
+        setShow(false);
+
+        onSelectProp?.(result);
+
+        if (onNext) {
+          setTimeout(onNext, 60);
+        }
+      }
+    );
   };
 
   const tintBorder = tint?.border ?? "rgba(255,255,255,0.15)";
   const tintGlow   = tint?.glow   ?? "0 0 24px rgba(255,255,255,0.05)";
+
+  // FIX: previously `defaultValue` was only read once via
+  // useState(defaultValue || ""), so if the parent updated `defaultValue`
+  // later (reset a search, programmatically set a city, etc.) the input
+  // just silently kept showing whatever was last typed/selected — it never
+  // picked up the new external value. This keeps it in sync.
+  useEffect(() => {
+  if (!defaultValue) {
+    setQuery("");
+  } else if (typeof defaultValue === "string") {
+    setQuery(defaultValue);
+  } else {
+    setQuery(
+      defaultValue.city ||
+      defaultValue.address ||
+      ""
+    );
+  }
+}, [defaultValue]);
 
   const inputEl = (
     <div className="flex items-center gap-2">
       <input
         ref={inputRef}
         value={query}
-        onChange={(e) => { setQuery(e.target.value); if (!inline) setShow(true); }}
+        onChange={(e) => {
+          const val = e.target.value;
+          setQuery(val);
+          if (!inline) setShow(true);
+
+          // FIX: previously typing never told the parent anything — only
+          // clicking a suggestion or the ✕ button did. That meant manually
+          // backspacing the field to empty left the box blank while the
+          // parent still held the last *selected* city/lat/lng/bounds,
+          // out of sync with what's visibly in the input. Only notify on
+          // the empty case (free-typed partial text isn't a "selection"
+          // yet — that still only happens on pick), matching what the ✕
+          // button already does.
+          if (val === "") onSelectProp?.("");
+        }}
         onFocus={() => !inline && setShow(true)}
         placeholder={placeholder ?? "Search city or area"}
         className={`bg-transparent outline-none w-full text-sm ${placeholderClass ?? "placeholder-white/35"} ${textClass ?? "text-white"}`}
