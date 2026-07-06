@@ -111,7 +111,6 @@ const INDIA_VENUES = [
     reviewCount: 124,
     featured: true,
     images: img("venues", 0),
-     videoUrl: "https://vb-venue-images.s3.eu-north-1.amazonaws.com/reels/WhatsApp+Video+2026-07-04+at+12.19.10+PM.mp4",
   },
   {
     childVenueId: "sv-in-v-2",
@@ -131,7 +130,7 @@ const INDIA_VENUES = [
     reviewCount: 211,
     featured: true,
     images: img("venues", 1),
-    videoUrl: "https://vb-venue-images.s3.eu-north-1.amazonaws.com/reels/WhatsApp+Video+2026-07-04+at+12.19.10+PM.mp4",
+    videoUrl: "https://vb-venue-images.s3.eu-north-1.amazonaws.com/vb_video/video.mp4",
   },
   {
     childVenueId: "sv-in-v-3",
@@ -151,7 +150,7 @@ const INDIA_VENUES = [
     reviewCount: 89,
     suggested: true,
     images: img("venues", 2),
-    videoUrl: "https://vb-venue-images.s3.eu-north-1.amazonaws.com/reels/WhatsApp+Video+2026-07-04+at+12.19.06+PM.mp4",
+    videoUrl: "https://vb-venue-images.s3.eu-north-1.amazonaws.com/vb_video/HomePage+(1).mp4",
   },
   {
     childVenueId: "sv-in-v-4",
@@ -171,7 +170,6 @@ const INDIA_VENUES = [
     reviewCount: 156,
     featured: true,
     images: img("venues", 3),
-    videoUrl: "https://vb-venue-images.s3.eu-north-1.amazonaws.com/reels/WhatsApp+Video+2026-07-04+at+12.19.06+PM.mp4",
   },
   {
     childVenueId: "sv-in-v-5",
@@ -190,7 +188,6 @@ const INDIA_VENUES = [
     rating: 4.8,
     reviewCount: 203,
     images: img("venues", 4),
-    videoUrl: "https://vb-venue-images.s3.eu-north-1.amazonaws.com/reels/WhatsApp+Video+2026-07-04+at+12.19.06+PM.mp4",
   },
   {
     childVenueId: "sv-in-v-6",
@@ -209,7 +206,6 @@ const INDIA_VENUES = [
     rating: 4.7,
     reviewCount: 98,
     images: img("venues", 5),
-    videoUrl: "https://vb-venue-images.s3.eu-north-1.amazonaws.com/reels/WhatsApp+Video+2026-07-04+at+12.19.02+PM.mp4",
   },
   {
     childVenueId: "sv-in-v-7",
@@ -228,7 +224,6 @@ const INDIA_VENUES = [
     rating: 4.6,
     reviewCount: 77,
     images: img("venues", 6),
-    videoUrl: "https://vb-venue-images.s3.eu-north-1.amazonaws.com/reels/WhatsApp+Video+2026-07-04+at+12.19.02+PM.mp4",
   },
   {
     childVenueId: "sv-in-v-8",
@@ -248,7 +243,6 @@ const INDIA_VENUES = [
     reviewCount: 64,
     featured: true,
     images: img("venues", 7),
-      videoUrl: "https://vb-venue-images.s3.eu-north-1.amazonaws.com/reels/WhatsApp+Video+2026-07-04+at+12.19.02+PM.mp4",
   },
   {
     childVenueId: "sv-in-v-9",
@@ -267,7 +261,6 @@ const INDIA_VENUES = [
     rating: 4.7,
     reviewCount: 82,
     images: img("venues", 8),
-      videoUrl: "https://vb-venue-images.s3.eu-north-1.amazonaws.com/reels/WhatsApp+Video+2026-07-04+at+12.19.02+PM.mp4",
   },
   {
     childVenueId: "sv-in-v-10",
@@ -287,7 +280,6 @@ const INDIA_VENUES = [
     reviewCount: 115,
     suggested: true,
     images: img("venues", 9),
-      videoUrl: "https://vb-venue-images.s3.eu-north-1.amazonaws.com/reels/WhatsApp+Video+2026-07-04+at+12.19.00+PM.mp4",
   },
   {
     childVenueId: "sv-in-v-11",
@@ -306,7 +298,6 @@ const INDIA_VENUES = [
     rating: 4.5,
     reviewCount: 59,
     images: img("venues", 0),
-    videoUrl: "https://vb-venue-images.s3.eu-north-1.amazonaws.com/reels/WhatsApp+Video+2026-07-04+at+12.19.00+PM.mp4",
   },
   {
     childVenueId: "sv-in-v-12",
@@ -325,7 +316,6 @@ const INDIA_VENUES = [
     rating: 4.9,
     reviewCount: 91,
     images: img("venues", 1),
-    videoUrl: "https://vb-venue-images.s3.eu-north-1.amazonaws.com/reels/WhatsApp+Video+2026-07-04+at+12.19.00+PM.mp4",
   },
   {
     childVenueId: "sv-in-v-13",
