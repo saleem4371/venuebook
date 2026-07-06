@@ -21,7 +21,7 @@
  * They live in <FilterRow /> above this component.
  */
 
-import { useState } from "react";
+import { useState, useRef , useEffect} from "react";
 import { MagnifyingGlassIcon } from "@heroicons/react/24/solid";
 
 import LocationAutoComplete from "@/app/[locale]/[country]/home/components/LocationAutoComplete";
@@ -88,7 +88,8 @@ function parseDateParam(str) {
   return new Date(y, m - 1, d);
 }
 
-export default function ListingsSearchBar({ onSearch, countryCode = "in", defaultValues = {} }) {
+export default function ListingsSearchBar({ 
+  onSearch, countryCode = "in", defaultValues = {}, isSearching = false }) {
   const { activeCategory } = useCategory();
   const tint   = CATEGORY_TINTS[activeCategory] ?? CATEGORY_TINTS.venues;
   const fields = SEARCH_CONFIG[activeCategory] ?? SEARCH_CONFIG.venues;
@@ -105,9 +106,33 @@ export default function ListingsSearchBar({ onSearch, countryCode = "in", defaul
   const [searchData,  setSearchData]  = useState({ location: defaultValues.location || "" });
   const [sheetOpen,   setSheetOpen]   = useState(false);
 
-  const handleSearch = () => onSearch?.({ ...searchData, dates });
+  // const handleSearch = () => onSearch?.({ ...searchData, dates });
 
-  /* ── DESKTOP bar ───────────────────────────────────────────── */
+  const [clicking, setClicking] = useState(false);
+  const lastPayloadRef = useRef(null);
+  const clickTimerRef  = useRef(null);
+
+  const busy = isSearching || clicking;
+
+  const handleSearch = () => {
+    if (busy) return; 
+
+    const payload = JSON.stringify({ ...searchData, dates });
+
+    if (payload === lastPayloadRef.current) return;
+
+    lastPayloadRef.current = payload;
+    setClicking(true);
+
+    onSearch?.({ ...searchData, dates });
+
+    clearTimeout(clickTimerRef.current);
+    clickTimerRef.current = setTimeout(() => setClicking(false), 800);
+  };
+
+  useEffect(() => () => clearTimeout(clickTimerRef.current), []);
+
+   /* ── DESKTOP bar ───────────────────────────────────────────── */
   return (
     <>
       <div className="hidden md:flex items-stretch bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm overflow-visible mx-4 mt-2.5 mb-2">
@@ -122,6 +147,7 @@ export default function ListingsSearchBar({ onSearch, countryCode = "in", defaul
             dateValue={dates[field.id] ?? null}
             onDateChange={(v) => setDates((p) => ({ ...p, [field.id]: v }))}
             setSearchData={setSearchData}
+            searchData={searchData}
             countryCode={countryCode}
             defaultLocation={field.type === "location" ? (defaultValues.location || "") : ""}
             defaultGuests={field.type === "guests"   ? (defaultValues.guests   || "")  : ""}
@@ -132,11 +158,22 @@ export default function ListingsSearchBar({ onSearch, countryCode = "in", defaul
         <div className="flex items-center px-2.5 py-1.5">
           <button
             onClick={handleSearch}
-            className="flex items-center gap-1.5 font-semibold text-sm px-4 py-2 rounded-lg hover:opacity-90 active:scale-95 transition-all whitespace-nowrap text-white"
+            disabled={busy}
+            className={[
+              "flex items-center gap-1.5 font-semibold text-sm px-4 py-2 rounded-lg transition-all whitespace-nowrap text-white",
+              busy ? "opacity-70 cursor-not-allowed" : "hover:opacity-90 active:scale-95",
+            ].join(" ")}
             style={{ background: tint.hex, boxShadow: tint.activeGlow }}
           >
-            <MagnifyingGlassIcon className="w-4 h-4" />
-            Search
+            {busy ? (
+              <span
+                className="w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin"
+                aria-hidden="true"
+              />
+            ) : (
+              <MagnifyingGlassIcon className="w-4 h-4" />
+            )}
+            {busy ? "Searching…" : "Search"}
           </button>
         </div>
       </div>
@@ -144,7 +181,8 @@ export default function ListingsSearchBar({ onSearch, countryCode = "in", defaul
       {/* ── MOBILE compact trigger → MobileSearchSheet ─────────── */}
       <button
         onClick={() => setSheetOpen(true)}
-        className="md:hidden mx-4 mt-3 mb-0 w-[calc(100%-2rem)] flex items-center justify-between border text-left rounded-xl px-4 py-3.5 transition active:scale-[0.98] bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 shadow-sm hover:border-gray-300 dark:hover:border-gray-600"
+        disabled={busy}
+        className="md:hidden mx-4 mt-3 mb-0 w-[calc(100%-2rem)] flex items-center justify-between border text-left rounded-xl px-4 py-3.5 transition active:scale-[0.98] bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 shadow-sm hover:border-gray-300 dark:hover:border-gray-600 disabled:opacity-70"
       >
         <div className="flex flex-col items-start gap-0.5">
           <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-white/40">
@@ -155,11 +193,14 @@ export default function ListingsSearchBar({ onSearch, countryCode = "in", defaul
           </span>
         </div>
         <div className="p-2 rounded-lg text-white" style={{ background: tint.hex }}>
-          <MagnifyingGlassIcon className="w-4 h-4" />
+          {busy ? (
+            <span className="w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin block" />
+          ) : (
+            <MagnifyingGlassIcon className="w-4 h-4" />
+          )}
         </div>
       </button>
 
-      {/* Same MobileSearchSheet used on homepage */}
       <MobileSearchSheet open={sheetOpen} setOpen={setSheetOpen} />
     </>
   );
@@ -169,7 +210,7 @@ export default function ListingsSearchBar({ onSearch, countryCode = "in", defaul
    Mirrors HeroSection's SearchField exactly.
    Container colors adapted for white page; picker components unchanged.
    ────────────────────────────────────────────────────────────────── */
-function SearchField({ field, tint, category, isLast, dateValue, onDateChange, setSearchData, countryCode, defaultLocation = "", defaultGuests = "" }) {
+function SearchField({ field, tint, category, isLast, dateValue, onDateChange,searchData, setSearchData, countryCode, defaultLocation = "", defaultGuests = "" }) {
   return (
     <div
       className={[
@@ -192,7 +233,7 @@ function SearchField({ field, tint, category, isLast, dateValue, onDateChange, s
           clearClass={CLEAR_CLS}
           lightDropdown={true}
           countryCode={countryCode}
-          defaultValue={defaultLocation}
+          defaultValue={searchData.location?.city}
           onSelect={(value) => setSearchData((p) => ({ ...p, location: value }))}
         />
       )}

@@ -31,7 +31,11 @@ import { CATEGORY_TINTS } from "@/config/categoryConfig";
 const BASE_URL = process.env.NEXT_PUBLIC_AWS_BUCKET_URL ?? "";
 
 function getVenueCover(venue) {
-  const img = (venue?.images ?? [])[0];
+  const img =  typeof venue?.images?.[0] === "string"
+      ? venue.images[0]
+      : venue?.images?.[0]?.image ?? "";//(venue?.images ?? [])[0];
+
+  
   if (!img) return null;
   return typeof img === "string"
     ? (img.startsWith("http") ? img : `${BASE_URL}/${img}`)
@@ -46,27 +50,131 @@ function formatINR(n) {
 }
 
 /* ─── Browser grid card ───────────────────────────────────────────────────── */
+// function BrowserCard({ venue, onClick }) {
+//   const videoRef       = useRef(null);
+//   const [hover, setHover]       = useState(false);
+//   const [vidReady, setVidReady] = useState(false);
+
+//   const cover    = getVenueCover(venue);
+//   const videoUrl = venue.videoUrl || venue.video_url || venue.coverVideo || null;
+//   const price    = venue.minPrice || venue.basePrice || venue.price;
+//   const location = [venue.city, venue.state].filter(Boolean).join(" · ") || venue.location || "";
+
+//   // Play/pause on hover
+//   useEffect(() => {
+//     const el = videoRef.current;
+//     if (!el) return;
+//     if (hover) {
+//       el.play().catch(() => {});
+//     } else {
+//       el.pause();
+//       el.currentTime = 0;
+//     }
+//   }, [hover]);
+
+//   return (
+//     <div
+//       onClick={onClick}
+//       onMouseEnter={() => setHover(true)}
+//       onMouseLeave={() => setHover(false)}
+//       className="relative overflow-hidden rounded-xl cursor-pointer select-none"
+//       style={{
+//         aspectRatio: "9/16",
+//         backgroundColor: "#111",
+//         transform:  hover ? "scale(1.025)" : "scale(1)",
+//         boxShadow:  hover
+//           ? "0 14px 40px rgba(0,0,0,0.55), 0 4px 12px rgba(0,0,0,0.3)"
+//           : "0 4px 14px rgba(0,0,0,0.28), 0 1px 4px rgba(0,0,0,0.14)",
+//         transition: "transform 0.22s ease, box-shadow 0.22s ease",
+//         willChange: "transform",
+//       }}
+//     >
+//       {/* Cover thumbnail */}
+//       {cover && (
+//         <img
+//           src={cover}
+//           alt={venue.title || venue.venueName || "Property"}
+//           className="absolute inset-0 w-full h-full object-cover"
+//           loading="lazy"
+//           style={{ opacity: hover && vidReady ? 0 : 1, transition: "opacity 0.3s" }}
+//         />
+//       )}
+
+//       {/* Video — always mounted so it survives re-renders; preload=none avoids bandwidth waste */}
+//       {videoUrl || videoUrl != 0&& (
+//         <video
+//           ref={videoRef}
+//           src={videoUrl}
+//           className="absolute inset-0 w-full h-full object-cover"
+//           style={{ opacity: vidReady ? 1 : 0, transition: "opacity 0.3s" }}
+//           muted
+//           loop
+//           playsInline
+//           preload="none"
+//           onCanPlay={() => setVidReady(true)}
+//         />
+//       )}
+
+//       {/* Bottom gradient */}
+//       <div
+//         className="absolute inset-x-0 bottom-0 pointer-events-none"
+//         style={{ height: "58%", background: "linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 55%, transparent 100%)" }}
+//       />
+
+//       {/* Property info */}
+//       <div className="absolute bottom-0 inset-x-0 pointer-events-none" style={{ padding: "0 10px 10px" }}>
+//         <p className="text-white font-bold leading-tight truncate" style={{ fontSize: 11 }}>
+//           {venue.title || venue.venueName || "Property"}
+//         </p>
+//         {location && (
+//           <p className="text-white/50 truncate mt-0.5" style={{ fontSize: 9 }}>{location}</p>
+//         )}
+//         {price && (
+//           <p className="text-white font-bold mt-0.5" style={{ fontSize: 10 }}>{formatINR(price)}</p>
+//         )}
+//       </div>
+//     </div>
+//   );
+// }
 function BrowserCard({ venue, onClick }) {
-  const videoRef       = useRef(null);
-  const [hover, setHover]       = useState(false);
+  const videoRef = useRef(null);
+  const [hover, setHover] = useState(false);
   const [vidReady, setVidReady] = useState(false);
 
-  const cover    = getVenueCover(venue);
-  const videoUrl = venue.videoUrl || venue.video_url || venue.coverVideo || null;
-  const price    = venue.minPrice || venue.basePrice || venue.price;
-  const location = [venue.city, venue.state].filter(Boolean).join(" · ") || venue.location || "";
+  const cover = getVenueCover(venue);
 
-  // Play/pause on hover
+  const videoUrl =
+  venue.videoUrl ?? venue.video_url ?? venue.coverVideo;
+
+const hasVideo =
+  videoUrl !== 0 &&
+  videoUrl !== "0" &&
+  videoUrl !== null &&
+  videoUrl !== undefined &&
+  videoUrl !== "";
+
+if (!hasVideo) {
+  return null;
+}
+
+  const price = venue.minPrice || venue.basePrice || venue.price;
+
+  const location =
+    [venue.city, venue.state].filter(Boolean).join(" · ") ||
+    venue.location ||
+    "";
+
   useEffect(() => {
     const el = videoRef.current;
-    if (!el) return;
+    if (!el || !hasVideo) return;
+
     if (hover) {
       el.play().catch(() => {});
     } else {
       el.pause();
       el.currentTime = 0;
     }
-  }, [hover]);
+  }, [hover, hasVideo]);
 
   return (
     <div
@@ -77,32 +185,36 @@ function BrowserCard({ venue, onClick }) {
       style={{
         aspectRatio: "9/16",
         backgroundColor: "#111",
-        transform:  hover ? "scale(1.025)" : "scale(1)",
-        boxShadow:  hover
+        transform: hover ? "scale(1.025)" : "scale(1)",
+        boxShadow: hover
           ? "0 14px 40px rgba(0,0,0,0.55), 0 4px 12px rgba(0,0,0,0.3)"
           : "0 4px 14px rgba(0,0,0,0.28), 0 1px 4px rgba(0,0,0,0.14)",
         transition: "transform 0.22s ease, box-shadow 0.22s ease",
         willChange: "transform",
       }}
     >
-      {/* Cover thumbnail */}
       {cover && (
         <img
           src={cover}
-          alt={venue.title || venue.name || "Property"}
+          alt={venue.title || venue.venueName || "Property"}
           className="absolute inset-0 w-full h-full object-cover"
           loading="lazy"
-          style={{ opacity: hover && vidReady ? 0 : 1, transition: "opacity 0.3s" }}
+          style={{
+            opacity: hover && hasVideo && vidReady ? 0 : 1,
+            transition: "opacity 0.3s",
+          }}
         />
       )}
 
-      {/* Video — always mounted so it survives re-renders; preload=none avoids bandwidth waste */}
-      {videoUrl && (
+      {hasVideo && (
         <video
           ref={videoRef}
           src={videoUrl}
           className="absolute inset-0 w-full h-full object-cover"
-          style={{ opacity: vidReady ? 1 : 0, transition: "opacity 0.3s" }}
+          style={{
+            opacity: vidReady ? 1 : 0,
+            transition: "opacity 0.3s",
+          }}
           muted
           loop
           playsInline
@@ -111,22 +223,42 @@ function BrowserCard({ venue, onClick }) {
         />
       )}
 
-      {/* Bottom gradient */}
       <div
         className="absolute inset-x-0 bottom-0 pointer-events-none"
-        style={{ height: "58%", background: "linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 55%, transparent 100%)" }}
+        style={{
+          height: "58%",
+          background:
+            "linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 55%, transparent 100%)",
+        }}
       />
 
-      {/* Property info */}
-      <div className="absolute bottom-0 inset-x-0 pointer-events-none" style={{ padding: "0 10px 10px" }}>
-        <p className="text-white font-bold leading-tight truncate" style={{ fontSize: 11 }}>
-          {venue.title || venue.name || "Property"}
+      <div
+        className="absolute bottom-0 inset-x-0 pointer-events-none"
+        style={{ padding: "0 10px 10px" }}
+      >
+        <p
+          className="text-white font-bold leading-tight truncate"
+          style={{ fontSize: 11 }}
+        >
+          {venue.title || venue.venueName || "Property"}
         </p>
+
         {location && (
-          <p className="text-white/50 truncate mt-0.5" style={{ fontSize: 9 }}>{location}</p>
+          <p
+            className="text-white/50 truncate mt-0.5"
+            style={{ fontSize: 9 }}
+          >
+            {location}
+          </p>
         )}
+
         {price && (
-          <p className="text-white font-bold mt-0.5" style={{ fontSize: 10 }}>{formatINR(price)}</p>
+          <p
+            className="text-white font-bold mt-0.5"
+            style={{ fontSize: 10 }}
+          >
+            {formatINR(price)}
+          </p>
         )}
       </div>
     </div>
@@ -172,7 +304,7 @@ function UpNextCard({ venue, onClick }) {
       <div style={{ padding: "8px 10px 10px" }}>
         <p style={{ fontSize: 10, fontWeight: 700, color: "#fff", lineHeight: 1.35,
           overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
-          {venue.title || venue.name}
+          {venue.title || venue.venueName}
         </p>
         {price && (
           <p style={{ fontSize: 9, fontWeight: 600, color: "rgba(255,255,255,0.6)", marginTop: 3 }}>
@@ -440,6 +572,7 @@ export default function DesktopReelPanel({
                     compact={false}
                     onProgress={setProgress}
                   />
+
                 </motion.div>
               </AnimatePresence>
             </div>

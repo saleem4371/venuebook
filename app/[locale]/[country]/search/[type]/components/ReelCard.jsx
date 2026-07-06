@@ -103,7 +103,21 @@ export default function ReelCard({
                           : (i?.image || i?.url || "")
   ).filter(Boolean);
   const cover      = images[0] ?? null;
-  const videoUrl   = venue.videoUrl || venue.video_url || venue.coverVideo || null;
+  //const videoUrl   = venue.videoUrl || venue.video_url || venue.coverVideo || null;
+
+    const videoUrl =
+  venue.videoUrl ?? venue.video_url ?? venue.coverVideo;
+
+const hasVideo =
+  videoUrl !== 0 &&
+  videoUrl !== "0" &&
+  videoUrl !== null &&
+  videoUrl !== undefined &&
+  videoUrl !== "";
+
+if (!hasVideo) {
+  return null;
+}
   const parentName = venue.parentVenueName || venue.parent_venue_name || venue.parentName;
   const chips      = getChips(venue, category);
 
@@ -161,7 +175,7 @@ export default function ReelCard({
       ? `${window.location.origin}/${locale}/${country}/search/${category}/${venue.childVenueId}`
       : "";
     if (navigator.share) {
-      navigator.share({ title: venue.title || venue.name || "VenueBook", url }).catch(() => {});
+      navigator.share({ title: venue.title || venue.venueName || "VenueBook", url }).catch(() => {});
     } else {
       navigator.clipboard?.writeText(url).catch(() => {});
     }
@@ -236,7 +250,7 @@ export default function ReelCard({
       ) : cover ? (
         <img
           src={cover}
-          alt={venue.title || venue.name || "Property"}
+          alt={venue.title || venue.venueName || "Property"}
           className={[
             "absolute inset-0 w-full h-full object-cover transition-opacity duration-500",
             active ? "reel-kenburns" : "",
@@ -323,7 +337,7 @@ export default function ReelCard({
         <button onClick={navigateToProperty}
           className={["font-bold text-white leading-tight mb-0.5 text-left pointer-events-auto hover:underline underline-offset-2",
             compact ? "text-[14px]" : "text-[18px]"].join(" ")}>
-          {venue.title || venue.name || "Property"}
+          {venue.title || venue.venueName || "Property"} 
         </button>
 
         {parentName && (

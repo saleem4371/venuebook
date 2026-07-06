@@ -19,7 +19,7 @@ export default function WishlistPopup({
   user,
   onClose,
 }) {
-  const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+  const BASE_URL = process.env.NEXT_PUBLIC_AWS_BUCKET_URL;
 
   const { setLoginOpen } = useUI();
 
@@ -134,7 +134,7 @@ export default function WishlistPopup({
         >
           {/* HEADER */}
           <div className="mb-4">
-            <h2 className="text-xl font-semibold">Save to wishlist</h2>
+            <h2 className="text-xl font-semibold">Save to Collection</h2>
             <p className="text-sm text-gray-500">
               Choose a category to save this venue
             </p>
@@ -161,7 +161,7 @@ export default function WishlistPopup({
                   src={
                     cat.category_image
                       ? `${BASE_URL}/${cat.category_image}`
-                      : "https://via.placeholder.com/300"
+                      : "https://upload.wikimedia.org/wikipedia/commons/1/14/No_Image_Available.jpg"
                   }
                   className="h-full w-full object-cover"
                 />

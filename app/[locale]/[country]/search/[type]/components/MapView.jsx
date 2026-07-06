@@ -7,7 +7,7 @@ import {
   OverlayView,
   useJsApiLoader,
 } from "@react-google-maps/api";
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { X, Star, MapPin } from "lucide-react";
 
 const containerStyle = {
@@ -16,15 +16,23 @@ const containerStyle = {
 };
 
 // ---------------- COUNTRY CONFIG ----------------
+// NOTE: `iso` is the ISO 3166-1 alpha-2 code required by Google's
+// Geocoder `componentRestrictions.country` field. This MUST be a 2-letter
+// country code (e.g. "in", "ae", "gb") — NOT a full country/city name like
+// "India" or "London". Passing full names here was the root cause of
+// geocoding silently failing (Google returns ZERO_RESULTS for invalid
+// country restriction values).
 const countryConfig = {
   india: {
     name: "India",
+    iso: "in",
     center: { lat: 20.5937, lng: 78.9629 },
     zoom: 5,
     bounds: { north: 35.5, south: 6.5, west: 68, east: 97.5 },
   },
   dubai: {
     name: "Dubai",
+    iso: "ae",
     center: { lat: 24.4, lng: 54.0 },
     zoom: 8,
     /* west 51.5° clips Qatar; strictBounds ensures viewport never shows outside this box */
@@ -33,24 +41,28 @@ const countryConfig = {
   },
   saudi: {
     name: "Saudi Arabia",
+    iso: "sa",
     center: { lat: 23.8859, lng: 45.0792 },
     zoom: 5,
     bounds: { north: 32.0, south: 16.0, west: 34.0, east: 56.0 },
   },
   london: {
     name: "London",
+    iso: "gb",
     center: { lat: 51.5074, lng: -0.1278 },
     zoom: 10,
     bounds: { north: 51.7, south: 51.3, west: -0.5, east: 0.3 },
   },
   usa: {
     name: "USA",
+    iso: "us",
     center: { lat: 37.0902, lng: -95.7129 },
     zoom: 4,
     bounds: { north: 49, south: 24, west: -125, east: -66 },
   },
   france: {
     name: "France",
+    iso: "fr",
     center: { lat: 46.2276, lng: 2.2137 },
     zoom: 5,
     bounds: { north: 51, south: 41, west: -5, east: 9 },
@@ -62,9 +74,14 @@ const countryConfig = {
 function getVenueCoords(v) {
   const lat = v?.lat ?? v?.latitude ?? v?.location_lat;
   const lng = v?.lng ?? v?.longitude ?? v?.lon ?? v?.location_lng ?? v?.location_long;
-  if (!lat || !lng) return null;
+  // Use nullish/blank checks rather than falsy checks so a valid
+  // coordinate of exactly 0 (equator / prime meridian) isn't discarded.
+  if (lat === null || lat === undefined || lat === "" || lng === null || lng === undefined || lng === "") {
+    return null;
+  }
   const latN = Number(lat), lngN = Number(lng);
-  return latN && lngN ? { lat: latN, lng: lngN } : null;
+  if (Number.isNaN(latN) || Number.isNaN(lngN)) return null;
+  return { lat: latN, lng: lngN };
 }
 
 /** Returns the best available price number or null */
@@ -161,12 +178,8 @@ function getCategoryIcon(cat, color, cx, cy) {
 }
 
 // ---------------- CUSTOM CLUSTER STYLES ----------------
-// @react-google-maps/api MarkerClusterer uses the legacy `styles` array API.
-// Each entry controls one tier of cluster sizes (1-9, 10-99, 100-999 …).
-// The SVG provides the circle background; `textColor`/`textSize` control the overlaid count.
 const _mkClusterStyle = (size) => {
   const half = size / 2;
-  // Clean dark circle with crisp white ring — no shadow
   const svg  = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}"><circle cx="${half}" cy="${half}" r="${half - 1}" fill="#111827" stroke="#fff" stroke-width="2.5"/></svg>`;
   return {
     url:        "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg),
@@ -178,10 +191,9 @@ const _mkClusterStyle = (size) => {
     fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif",
   };
 };
-// Five tiers matching the default MarkerClusterer breakpoints
+// Module-level constant — created once, never recreated on render.
 const CLUSTER_STYLES = [44, 50, 56, 62, 68].map(_mkClusterStyle);
 
-// Returns the pixel size for a given cluster count (matches the 5-tier CLUSTER_STYLES above)
 function getClusterPx(count) {
   if (count < 10)   return 44;
   if (count < 100)  return 50;
@@ -191,25 +203,14 @@ function getClusterPx(count) {
 }
 
 // ---------------- MARKER ICON BUILDER ----------------
-// Markers:
-//   No-price  → colored teardrop pin (category color) + white inner circle + category icon
-//   Has-price → clean white capsule pill, no caret (Airbnb ₹15,406 style)
-//
-// Hover (non-selected only): 1.12× scaledSize — anchor stays at tip/bottom so the
-// geographic position never shifts. SVG content is identical; only rendered size changes.
 function buildMarkerIcon(venue, isSelected, isMapHovered, category) {
   const price    = getVenuePrice(venue);
   const label    = formatMarkerPrice(price);
-  // normalizeCatKey handles both plural API slugs ("venues","farmstays") and singular/mixed forms
   const catKey   = normalizeCatKey(category || venue?.category || venue?.type);
   const catColor = getCategoryColor(catKey);
-  // Only scale non-selected markers on hover — selected marker anchor must stay
-  // fixed so the popup OverlayView position doesn't shift.
   const isHov = isMapHovered && !isSelected;
 
   if (!label) {
-    // ── Teardrop map-pin: colored body + white circle + category icon ──
-    // SVG canvas: 36 × 50. Circle center: (18, 16) r=14. Tip: (18, 49).
     const pinColor  = isSelected ? "#111827" : catColor;
     const iconColor = isSelected ? "#7c3aed" : catColor;
     const pinPath   = `M18,2 C10,2 4,8 4,16 C4,24 10,34 18,49 C26,34 32,24 32,16 C32,8 26,2 18,2 Z`;
@@ -223,7 +224,6 @@ function buildMarkerIcon(venue, isSelected, isMapHovered, category) {
       `${icon}` +
       `</svg>`
     );
-    // Hover: 36×50 → 40×56 (1.12×). Anchor ratio preserved: tip at 98% of height.
     const sw = isHov ? 40 : 36;
     const sh = isHov ? 56 : 50;
     return {
@@ -233,7 +233,6 @@ function buildMarkerIcon(venue, isSelected, isMapHovered, category) {
     };
   }
 
-  // ── Price pill: clean capsule, no caret ──
   const bg    = isSelected ? "#111827" : "#ffffff";
   const textC = isSelected ? "#ffffff" : "#111827";
   const fs    = label.length > 10 ? 10 : label.length > 8 ? 11 : 12;
@@ -250,8 +249,6 @@ function buildMarkerIcon(venue, isSelected, isMapHovered, category) {
     `<text x="${cx}" y="${h / 2 + 0.5}" dominant-baseline="middle" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif" font-size="${fs}" fill="${textC}" font-weight="700" letter-spacing="-0.3">${label}</text>` +
     `</svg>`
   );
-  // Hover: scale rendered size 1.12×; anchor stays at bottom-center so pill
-  // grows upward/outward from its geographic point — no position jump.
   const sw = isHov ? Math.round(w * 1.12) : w;
   const sh = isHov ? Math.round(totalH * 1.12) : totalH;
   return {
@@ -269,28 +266,68 @@ const MapSkeleton = () => (
 );
 
 // ---------------- GEOCODE HELPER ----------------
-function geocodeLabel(label, callback) {
+/**
+ * Geocodes a free-text label, scoped to a country.
+ *
+ * @param {string} label - the place text to search for
+ * @param {{name: string, iso: string}} countryCfg - the selected country's
+ *   config object. `iso` MUST be a 2-letter ISO 3166-1 alpha-2 code
+ *   (e.g. "in", "ae", "gb") because that's what Google's
+ *   componentRestrictions.country field requires. Passing the full
+ *   country/city name here (e.g. "India", "London") causes Google to
+ *   return ZERO_RESULTS for almost every query.
+ * @param {(pos: {lat: number, lng: number}) => void} callback
+ */
+function geocodeLabel(label, countryCfg, callback) {
   if (typeof window === "undefined") return;
+  if (!countryCfg?.iso) return;
 
   const attempt = () => {
     if (!window.google?.maps?.Geocoder) return false;
+
     const geocoder = new window.google.maps.Geocoder();
-    geocoder.geocode({ address: label }, (results, status) => {
-      if (status === "OK" && results[0]) {
-        const pos = results[0].geometry.location;
-        callback({ lat: pos.lat(), lng: pos.lng() });
+
+    geocoder.geocode(
+      {
+        address: `${label}, ${countryCfg.name}`,
+        componentRestrictions: {
+          country: countryCfg.iso.toLowerCase(),
+        },
+      },
+      (results, status) => {
+        if (status === "OK" && results?.length) {
+          const pos = results[0].geometry.location;
+          callback({
+            lat: pos.lat(),
+            lng: pos.lng(),
+          });
+        }
       }
-    });
+    );
+
     return true;
   };
 
-  // If Maps API not yet available, retry up to 5× at 300ms intervals
   if (!attempt()) {
     let tries = 0;
+
     const timer = setInterval(() => {
       if (attempt() || ++tries >= 5) clearInterval(timer);
     }, 300);
   }
+}
+
+// ---------------- NAVIGATION HELPER ----------------
+// Prevents repeated panTo/setZoom calls (and the idle events they trigger)
+// when an effect re-runs due to prop-reference churn but the actual
+// target lat/lng/zoom hasn't changed.
+function sameNavTarget(a, b) {
+  if (!a || !b) return false;
+  return (
+    Math.abs(a.lat - b.lat) < 1e-6 &&
+    Math.abs(a.lng - b.lng) < 1e-6 &&
+    a.zoom === b.zoom
+  );
 }
 
 // ---------------- MAPVIEW COMPONENT ----------------
@@ -298,60 +335,38 @@ export default function MapView({
   venues = [],
   hoverVenue = null,
   country = "india",
-  /** Active category slug ("venue", "farmstay", "studio", etc.) — drives pin color + icon */
   category = "venue",
-  /** Show skeleton price-pill markers while API data is loading */
   isLoading = false,
   onBoundsChange,
-  /** { label: string, lat?: number, lng?: number } — from preferences modal */
   preferredLocation = null,
-  /** string — city/area from the search bar (highest map priority) */
   searchLocationLabel = null,
-  /** Called when a map marker is clicked — receives the venue object */
   onVenueClick = null,
-  /**
-   * Called whenever the set of map-visible venues changes.
-   * Receives the filtered array — only venues that have valid coords AND
-   * fall inside the current map viewport. Use this to sync the card list.
-   */
   onVisibleVenuesChange = null,
-  /** Called when hovering a cluster icon on the map — receives array of venueIds in that cluster */
   onMapClusterHover = null,
-  /** Called when hovering/leaving an individual marker on the map — receives venueId or null */
   onMapMarkerHover = null,
-  /** Increment to programmatically reset map to country default center/zoom */
   resetKey = 0,
 }) {
+
   const mapRef = useRef(null);
-  // HTML OverlayView used for cluster hover gradient highlight (replaces imperative Marker approach).
   const clusterOvRef = useRef(null);
-  // Maps google.maps.Marker instance → venueId for reliable cluster membership lookup.
   const markerVenueMapRef = useRef(new Map());
-  // Suppresses onIdle processing while a cluster-click fitBounds animation is running.
-  // Without this, onIdle fires mid-animation → setVisibleVenues → re-render → re-cluster,
-  // which interrupts the animation and lands on a wrong location.
   const clusterZoomingRef = useRef(false);
 
-  /* mapInstance tracks when the Google Map object is ready.
-     The unified center effect depends on this — not on isLoaded —
-     so it only runs after onLoad fires (avoiding the timing bug where
-     isLoaded becomes true before mapRef.current is set). */
-  const [mapInstance, setMapInstance] = useState(null);
+  // Tracks the last lat/lng/zoom we imperatively navigated to.
+  // This is what actually breaks the re-render → re-navigate → idle loop.
+  const lastNavTargetRef = useRef(null);
 
+  const [mapInstance, setMapInstance] = useState(null);
   const [mapBounds, setMapBounds] = useState(null);
   const [visibleVenues, setVisibleVenues] = useState(venues);
   const [hoveredVenueId, setHoveredVenueId] = useState(null);
-  // Tracks which marker the mouse is physically over (pin hover, separate from card hover)
   const [mapHoveredId, setMapHoveredId] = useState(null);
-  // Cluster positions + member marker coords — populated by onClusteringEnd
   const [clusterData, setClusterData] = useState([]);
   const [selected, setSelected] = useState(null);
-  // Stable reference — prevents OverlayView from recalculating position on unrelated re-renders
   const popupCoords = useMemo(() => selected ? getVenueCoords(selected) : null, [selected]);
-  /* Geocoded coords for searchLocationLabel — resolved as soon as Maps API loads */
   const [geocodedCenter, setGeocodedCenter] = useState(null);
-  /* Mobile breakpoint — drives bottom-sheet vs inline popup */
   const [isMobile, setIsMobile] = useState(false);
+
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
     check();
@@ -361,8 +376,15 @@ export default function MapView({
 
   // ---------------- SAFE COUNTRY KEY ----------------
   const countryKey = String(country || "india").toLowerCase();
-  const selectedCountryConfig =
-    countryConfig[countryKey] || countryConfig["india"];
+  // Memoized: only produces a new object reference when countryKey actually
+  // changes, instead of on every render (was previously a plain const,
+  // which is *usually* stable, but memoizing makes the invariant explicit
+  // and cheap to verify — this object feeds two effects and the options
+  // object below, so its identity matters).
+  const selectedCountryConfig = useMemo(
+    () => countryConfig[countryKey] || countryConfig["india"],
+    [countryKey]
+  );
 
   // ---------------- GOOGLE MAPS LOADER ----------------
   const { isLoaded } = useJsApiLoader({
@@ -370,15 +392,39 @@ export default function MapView({
     libraries: ["places"],
   });
 
-  /* ── EARLY GEOCODE: resolve coords as soon as Maps API is ready ──
-     This runs BEFORE the GoogleMap component mounts, so we get the
-     correct coordinates to pass as the initial `center` prop — removing
-     the jarring country-center → searched-location pan on first load. */
+  /* ── EARLY GEOCODE ── */
   useEffect(() => {
     if (!isLoaded) return;
     if (!searchLocationLabel) { setGeocodedCenter(null); return; }
-    geocodeLabel(searchLocationLabel, (pos) => setGeocodedCenter(pos));
-  }, [isLoaded, searchLocationLabel]);
+    geocodeLabel(
+      searchLocationLabel,
+      selectedCountryConfig,
+      (pos) => {
+        setGeocodedCenter(pos);
+      }
+    );
+    // `selectedCountryConfig` is included so switching countries while a
+    // search label is present re-geocodes against the new country instead
+    // of silently reusing a stale restriction.
+  }, [isLoaded, searchLocationLabel, selectedCountryConfig]);
+
+  // Captured once — the controlled center/zoom props on <GoogleMap> are only
+  // used for the very first paint. All navigation after mount happens
+  // imperatively via navigateTo(), never by changing these props again.
+  // This removes the second writer that was fighting with panTo/setZoom.
+  const initialCenterRef = useRef(geocodedCenter ?? selectedCountryConfig.center);
+  const initialZoomRef   = useRef(geocodedCenter ? 12 : selectedCountryConfig.zoom);
+
+  useEffect(() => {
+    // Only used to update the *first* real position once geocoding
+    // resolves shortly after mount and before the map has meaningfully
+    // settled anywhere else. Subsequent changes go through navigateTo.
+    if (geocodedCenter && !mapInstance) {
+      initialCenterRef.current = geocodedCenter;
+      initialZoomRef.current = 12;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [geocodedCenter, mapInstance]);
 
   useEffect(() => {
     // Only venues with valid coords can appear on the map
@@ -402,80 +448,113 @@ export default function MapView({
     onVisibleVenuesChange?.(filtered);
   }, [venues, mapBounds]);
 
-  // Reset map when resetKey changes — mirrors the same priority as UNIFIED CENTER PRIORITY:
-  // searched location → preferred/regional location → country default
+  // Idempotent imperative navigation — the loop-breaker.
+  // If the resolved target (lat/lng/zoom) is unchanged from the last
+  // navigation, this is a no-op, even if the calling effect re-ran because
+  // of unrelated prop-reference churn (e.g. a new-but-equal preferredLocation
+  // object from the parent). No panTo/setZoom call means no extra `idle`.
+  const navigateTo = useCallback((map, lat, lng, zoom) => {
+    if (!map) return;
+
+    const target = { lat, lng, zoom };
+
+    if (sameNavTarget(lastNavTargetRef.current, target)) return;
+
+    lastNavTargetRef.current = target;
+
+    map.panTo({ lat, lng });
+    map.setZoom(zoom);
+  }, []);
+
+  // Reset map when resetKey changes — explicit user action, always navigates.
   useEffect(() => {
     if (!mapInstance || resetKey === 0) return;
 
     if (geocodedCenter) {
-      mapInstance.panTo(geocodedCenter);
-      mapInstance.setZoom(12);
+      navigateTo(mapInstance, geocodedCenter.lat, geocodedCenter.lng, 12);
     } else if (searchLocationLabel) {
-      geocodeLabel(searchLocationLabel, (pos) => {
-        mapInstance.panTo(pos);
-        mapInstance.setZoom(12);
-      });
+      geocodeLabel(
+        searchLocationLabel,
+        selectedCountryConfig,
+        (pos) => {
+          setGeocodedCenter(pos);
+          navigateTo(mapInstance, pos.lat, pos.lng, 12);
+        }
+      );
     } else if (preferredLocation?.lat && preferredLocation?.lng) {
-      mapInstance.panTo({ lat: preferredLocation.lat, lng: preferredLocation.lng });
-      mapInstance.setZoom(11);
+      navigateTo(mapInstance, preferredLocation.lat, preferredLocation.lng, 11);
     } else if (preferredLocation?.label) {
-      geocodeLabel(preferredLocation.label, (pos) => {
-        mapInstance.panTo(pos);
-        mapInstance.setZoom(11);
+      // FIX: previously called as geocodeLabel(label, callback) — missing
+      // the country config arg entirely, which crashed inside geocodeLabel
+      // (countryCfg.iso was actually the callback function).
+      geocodeLabel(preferredLocation.label, selectedCountryConfig, (pos) => {
+        navigateTo(mapInstance, pos.lat, pos.lng, 11);
       });
     } else {
-      mapInstance.panTo(selectedCountryConfig.center);
-      mapInstance.setZoom(selectedCountryConfig.zoom);
+      navigateTo(
+        mapInstance,
+        selectedCountryConfig.center.lat,
+        selectedCountryConfig.center.lng,
+        selectedCountryConfig.zoom
+      );
     }
-  }, [resetKey, mapInstance]); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resetKey, mapInstance]);
 
   // ---------------- UNIFIED CENTER PRIORITY ----------------
-  // Runs after mapInstance is set. geocodedCenter is already resolved
-  // (from the early-geocode effect above), so no async call needed here.
-  // Priority: geocodedCenter (from searchLocationLabel) > preferredLocation > country default
+  // Priority: geocodedCenter (from searchLocationLabel) > preferredLocation > country default.
+  // This effect may re-run purely because of prop-reference churn from the
+  // parent (e.g. preferredLocation being recreated with the same values on
+  // every SearchPage re-render). navigateTo() makes that harmless: it only
+  // touches the map when the actual target changed.
   useEffect(() => {
     if (!mapInstance) return;
 
-    // 1 — Pre-resolved search location (no extra geocode round-trip)
     if (geocodedCenter) {
-      mapInstance.panTo(geocodedCenter);
-      mapInstance.setZoom(12);
+      navigateTo(mapInstance, geocodedCenter.lat, geocodedCenter.lng, 12);
       return;
     }
 
-    // 1b — searchLocationLabel exists but geocoding not done yet (fallback)
     if (searchLocationLabel && !geocodedCenter) {
-      geocodeLabel(searchLocationLabel, (pos) => {
-        setGeocodedCenter(pos);
-        mapInstance.panTo(pos);
-        mapInstance.setZoom(12);
-      });
+      geocodeLabel(
+        searchLocationLabel,
+        selectedCountryConfig,
+        (pos) => {
+          setGeocodedCenter(pos);
+          navigateTo(mapInstance, pos.lat, pos.lng, 12);
+        }
+      );
       return;
     }
 
-    // 2 — Preferred location from preferences modal
     if (preferredLocation) {
       if (preferredLocation.lat && preferredLocation.lng) {
-        mapInstance.panTo({ lat: preferredLocation.lat, lng: preferredLocation.lng });
-        mapInstance.setZoom(11);
+        navigateTo(mapInstance, preferredLocation.lat, preferredLocation.lng, 11);
       } else if (preferredLocation.label) {
-        geocodeLabel(preferredLocation.label, (pos) => {
-          mapInstance.panTo(pos);
-          mapInstance.setZoom(11);
-        });
+        geocodeLabel(
+          preferredLocation.label,
+          selectedCountryConfig,
+          (pos) => {
+            navigateTo(mapInstance, pos.lat, pos.lng, 11);
+          }
+        );
       }
       return;
     }
 
-    // 3 — Country default (also handles region switch)
-    mapInstance.panTo(selectedCountryConfig.center);
-    mapInstance.setZoom(selectedCountryConfig.zoom);
+    navigateTo(
+      mapInstance,
+      selectedCountryConfig.center.lat,
+      selectedCountryConfig.center.lng,
+      selectedCountryConfig.zoom
+    );
   }, [
     geocodedCenter,
     searchLocationLabel,
     preferredLocation,
     selectedCountryConfig,
     mapInstance,
+    navigateTo,
   ]);
 
   useEffect(() => {
@@ -484,28 +563,16 @@ export default function MapView({
       setHoveredVenueId(null);
       return;
     }
-    // Only highlight the marker — do NOT pan the map.
-    // Panning on card hover causes onIdle → onBoundsChange → full re-render lag.
     setHoveredVenueId(venueId);
   }, [hoverVenue]);
 
-  // ── These must stay ABOVE the early return so hook order is always stable ──
-
-  // When a card is hovered, find which cluster (if any) contains that venue.
-  // useMemo (not a plain IIFE) so the reference only changes when deps change —
-  // this lets useEffect([hoveredCluster]) detect the case where hoveredVenueId is
-  // already set and clusterData freshens up after onClusteringEnd fires.
   const hoveredCluster = useMemo(() => {
     if (!hoveredVenueId || !clusterData.length) return null;
     return clusterData.find((cl) => cl.venueIds.includes(hoveredVenueId)) ?? null;
   }, [hoveredVenueId, clusterData]);
 
-  // Drive the CSS-animated gradient OverlayView from hoveredCluster.
-  // HTML overlay gives us linear-gradient, box-shadow glow, and CSS scale transition —
-  // none of which are possible with an SVG data-URI Marker icon.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    // Tear down any existing overlay first
     if (clusterOvRef.current) {
       clusterOvRef.current.setMap(null);
       clusterOvRef.current = null;
@@ -539,7 +606,6 @@ export default function MapView({
         border:          "2.5px solid rgba(255,255,255,0.4)",
         pointerEvents:   "none",
         userSelect:      "none",
-        // Start hidden+small — CSS transition animates to final state
         transform:       "translate(-50%, -50%) scale(0.8)",
         opacity:         "0",
         transition:      "transform 260ms cubic-bezier(0.34,1.56,0.64,1), opacity 200ms ease",
@@ -547,7 +613,6 @@ export default function MapView({
       });
       div.textContent = String(size);
       this.getPanes().floatPane.appendChild(div);
-      // Double rAF ensures the transition fires (single rAF can batch with initial paint)
       requestAnimationFrame(() =>
         requestAnimationFrame(() => {
           if (!div) return;
@@ -585,11 +650,181 @@ export default function MapView({
     };
   }, [hoveredCluster]);
 
+  const lastBoundsRef = useRef(null);
+
+  // Stable options object — a new reference here forces @react-google-maps/api
+  // to call map.setOptions() on every render, which can itself perturb the
+  // viewport (e.g. re-applying `restriction`). Memoizing means setOptions
+  // only fires when the country/bounds genuinely change.
+  const mapOptions = useMemo(() => ({
+    mapTypeControl: false,
+    streetViewControl: false,
+    fullscreenControl: false,
+    clickableIcons: false,
+    gestureHandling: "greedy",
+    zoomControl: true,
+    restriction: {
+      latLngBounds: selectedCountryConfig.bounds,
+      strictBounds: selectedCountryConfig.strictBounds ?? false,
+    },
+  }), [selectedCountryConfig]);
+
+  // Stable onIdle — passing an inline arrow function to <GoogleMap> means the
+  // wrapper tears down and re-attaches the idle listener on every render.
+  // useCallback keeps the same function reference across renders (deps only
+  // change on real prop changes), so the listener is attached once.
+  const handleIdle = useCallback(() => {
+    if (clusterZoomingRef.current) return;
+    if (!mapRef.current) return;
+
+    const bounds = mapRef.current.getBounds();
+    if (!bounds) return;
+
+    const ne = bounds.getNorthEast();
+    const sw = bounds.getSouthWest();
+
+    const mapData = {
+      north: Number(ne.lat().toFixed(6)),
+      east: Number(ne.lng().toFixed(6)),
+      south: Number(sw.lat().toFixed(6)),
+      west: Number(sw.lng().toFixed(6)),
+    };
+
+    const prev = lastBoundsRef.current;
+    if (
+      prev &&
+      prev.north === mapData.north &&
+      prev.east === mapData.east &&
+      prev.south === mapData.south &&
+      prev.west === mapData.west
+    ) {
+      return;
+    }
+
+    lastBoundsRef.current = mapData;
+    onBoundsChange?.(mapData);
+
+    const filtered = venues.filter((venue) => {
+      const c = getVenueCoords(venue);
+      if (!c) return false;
+      return (
+        c.lat <= mapData.north &&
+        c.lat >= mapData.south &&
+        c.lng <= mapData.east &&
+        c.lng >= mapData.west
+      );
+    });
+
+    setVisibleVenues(filtered);
+    onVisibleVenuesChange?.(filtered);
+  }, [venues, onBoundsChange, onVisibleVenuesChange]);
+
+  const handleClusterMouseOver = useCallback((cluster) => {
+    if (!cluster?.getMarkers) return;
+    const ids = cluster.getMarkers()
+      .map((m) => markerVenueMapRef.current.get(m))
+      .filter(Boolean);
+    if (ids.length) onMapClusterHover?.(ids);
+  }, [onMapClusterHover]);
+
+  const handleClusterMouseOut = useCallback(() => {
+    onMapClusterHover?.([]);
+  }, [onMapClusterHover]);
+
+  const handleClusteringEnd = useCallback((mc) => {
+    const data = mc.getClusters()
+      .filter((c) => c.getSize() > 1)
+      .map((c) => {
+        const center = c.getCenter();
+        if (!center) return null;
+        return {
+          position: { lat: center.lat(), lng: center.lng() },
+          size: c.getSize(),
+          venueIds: c.getMarkers()
+            .map((m) => markerVenueMapRef.current.get(m))
+            .filter(Boolean),
+        };
+      })
+      .filter(Boolean);
+    setClusterData(data);
+  }, []);
+
+  const handleClusterClick = useCallback((cluster) => {
+    if (!mapRef.current) return;
+    const clusterMarkers = cluster?.getMarkers?.();
+    if (!clusterMarkers?.length) return;
+
+    const currentZoom = mapRef.current.getZoom() ?? 0;
+
+    const bounds = new window.google.maps.LatLngBounds();
+    let validCount = 0;
+    clusterMarkers.forEach((m) => {
+      const vid    = markerVenueMapRef.current.get(m);
+      const vn     = vid ? venues.find((v) => (v.childVenueId || v.id || v._id) === vid) : null;
+      const coords = vn ? getVenueCoords(vn) : null;
+      if (coords) {
+        bounds.extend(new window.google.maps.LatLng(coords.lat, coords.lng));
+        validCount++;
+      } else {
+        const p = m.getPosition();
+        if (p) { bounds.extend(p); validCount++; }
+      }
+    });
+    if (!validCount) return;
+
+    const boundsCenter = bounds.getCenter();
+
+    const ne = bounds.getNorthEast();
+    const sw = bounds.getSouthWest();
+    const isSamePoint =
+      Math.abs(ne.lat() - sw.lat()) < 0.0001 &&
+      Math.abs(ne.lng() - sw.lng()) < 0.0001;
+
+    const fireBoundsUpdate = () => {
+      const b = mapRef.current?.getBounds();
+      if (!b) return;
+      const bne = b.getNorthEast(), bsw = b.getSouthWest();
+      const mapData = { north: bne.lat(), east: bne.lng(), south: bsw.lat(), west: bsw.lng() };
+      onBoundsChange?.(mapData);
+      const filtered = venues.filter((v) => {
+        const c = getVenueCoords(v);
+        if (!c) return false;
+        return c.lat <= mapData.north && c.lat >= mapData.south &&
+               c.lng <= mapData.east  && c.lng >= mapData.west;
+      });
+      setVisibleVenues(filtered);
+      onVisibleVenuesChange?.(filtered);
+    };
+
+    clusterZoomingRef.current = true;
+
+    if (isSamePoint) {
+      mapRef.current.setCenter(boundsCenter);
+      mapRef.current.setZoom(Math.min(currentZoom + 4, 17));
+      window.google.maps.event.addListenerOnce(mapRef.current, "idle", () => {
+        clusterZoomingRef.current = false;
+        fireBoundsUpdate();
+      });
+      return;
+    }
+
+    mapRef.current.fitBounds(bounds, 80);
+
+    window.google.maps.event.addListenerOnce(mapRef.current, "idle", () => {
+      clusterZoomingRef.current = false;
+      const newZoom = mapRef.current?.getZoom() ?? 0;
+      if (newZoom > 16) mapRef.current.setZoom(16);
+      fireBoundsUpdate();
+    });
+  }, [venues, onBoundsChange, onVisibleVenuesChange]);
+
+   const BASE_URL = process.env.NEXT_PUBLIC_AWS_BUCKET_URL;
+
+
   if (!isLoaded) return <MapSkeleton />;
 
   return (
     <>
-    {/* Spinner keyframe */}
     <style>{`
       @keyframes vcDot {
         0%, 80%, 100% { transform: scale(0.6); opacity: 0.3; }
@@ -599,171 +834,24 @@ export default function MapView({
     `}</style>
     <GoogleMap
       mapContainerStyle={containerStyle}
-      center={geocodedCenter ?? selectedCountryConfig.center}
-      zoom={geocodedCenter ? 12 : selectedCountryConfig.zoom}
+      center={initialCenterRef.current}
+      zoom={initialZoomRef.current}
       onLoad={(map) => {
         mapRef.current = map;
         setMapInstance(map);
       }}
       onClick={() => setSelected(null)}
-      options={{
-        mapTypeControl: false,
-        streetViewControl: false,
-        fullscreenControl: false,
-        clickableIcons: false,
-        gestureHandling: "greedy",
-        zoomControl: true,
-        restriction: {
-          latLngBounds: selectedCountryConfig.bounds,
-          strictBounds: selectedCountryConfig.strictBounds ?? false,
-        },
-      }}
-      onIdle={() => {
-        // Skip mid-animation idle events fired during a cluster-click fitBounds.
-        // The click handler fires the update manually once the animation settles.
-        if (clusterZoomingRef.current) return;
-        if (!mapRef.current) return;
-
-        const bounds = mapRef.current.getBounds();
-        if (!bounds) return;
-
-        const ne = bounds.getNorthEast();
-        const sw = bounds.getSouthWest();
-
-        const mapData = {
-          north: ne.lat(),
-          east: ne.lng(),
-          south: sw.lat(),
-          west: sw.lng(),
-        };
-
-        onBoundsChange?.(mapData);
-
-        const filtered = venues
-          .filter((venue) => {
-            const c = getVenueCoords(venue);
-            if (!c) return false;
-            return (
-              c.lat <= mapData.north && c.lat >= mapData.south &&
-              c.lng <= mapData.east  && c.lng >= mapData.west
-            );
-          });
-
-        setVisibleVenues(filtered);
-        onVisibleVenuesChange?.(filtered);
-      }}
+      options={mapOptions}
+      onIdle={handleIdle}
     >
       {/* MARKERS */}
       <MarkerClusterer
         styles={CLUSTER_STYLES}
         zoomOnClick={false}
-        onMouseOver={(cluster) => {
-          if (!cluster?.getMarkers) return;
-          const ids = cluster.getMarkers()
-            .map((m) => markerVenueMapRef.current.get(m))
-            .filter(Boolean);
-          if (ids.length) onMapClusterHover?.(ids);
-        }}
-        onMouseOut={() => onMapClusterHover?.([])}
-        onClusteringEnd={(mc) => {
-          // Use venueId stored on each marker instance (via markerVenueMapRef) instead of
-          // coordinate matching — avoids float precision issues and is O(1) per marker.
-          const data = mc.getClusters()
-            .filter((c) => c.getSize() > 1)
-            .map((c) => {
-              const center = c.getCenter();
-              if (!center) return null;
-              return {
-                position: { lat: center.lat(), lng: center.lng() },
-                size: c.getSize(),
-                venueIds: c.getMarkers()
-                  .map((m) => markerVenueMapRef.current.get(m))
-                  .filter(Boolean),
-              };
-            })
-            .filter(Boolean);
-          setClusterData(data);
-        }}
-        onClick={(cluster) => {
-          if (!mapRef.current) return;
-          const clusterMarkers = cluster?.getMarkers?.();
-          if (!clusterMarkers?.length) return;
-
-          const currentZoom = mapRef.current.getZoom() ?? 0;
-
-          // Build bounds by looking up coordinates from the venues prop via
-          // markerVenueMapRef (marker → venueId → venue → coords).
-          // This is more reliable than m.getPosition() which can drift in legacy
-          // MarkerClusterer, and avoids the stale-closure issue with cluster.getCenter().
-          const bounds = new window.google.maps.LatLngBounds();
-          let validCount = 0;
-          clusterMarkers.forEach((m) => {
-            const vid    = markerVenueMapRef.current.get(m);
-            const vn     = vid ? venues.find((v) => (v.childVenueId || v.id || v._id) === vid) : null;
-            const coords = vn ? getVenueCoords(vn) : null;
-            if (coords) {
-              bounds.extend(new window.google.maps.LatLng(coords.lat, coords.lng));
-              validCount++;
-            } else {
-              // Fallback: use marker's own position if venue lookup misses
-              const p = m.getPosition();
-              if (p) { bounds.extend(p); validCount++; }
-            }
-          });
-          if (!validCount) return;
-
-          const boundsCenter = bounds.getCenter();
-
-          // Same-point: all venues share one lat/lng → fitBounds produces zero-size
-          // bounds which causes extreme over-zoom. Step-zoom instead.
-          const ne = bounds.getNorthEast();
-          const sw = bounds.getSouthWest();
-          const isSamePoint =
-            Math.abs(ne.lat() - sw.lat()) < 0.0001 &&
-            Math.abs(ne.lng() - sw.lng()) < 0.0001;
-
-          // Fire onBoundsChange + visible-venues sync after map settles.
-          const fireBoundsUpdate = () => {
-            const b = mapRef.current?.getBounds();
-            if (!b) return;
-            const bne = b.getNorthEast(), bsw = b.getSouthWest();
-            const mapData = { north: bne.lat(), east: bne.lng(), south: bsw.lat(), west: bsw.lng() };
-            onBoundsChange?.(mapData);
-            const filtered = venues.filter((v) => {
-              const c = getVenueCoords(v);
-              if (!c) return false;
-              return c.lat <= mapData.north && c.lat >= mapData.south &&
-                     c.lng <= mapData.east  && c.lng >= mapData.west;
-            });
-            setVisibleVenues(filtered);
-            onVisibleVenuesChange?.(filtered);
-          };
-
-          // Suppress main onIdle handler during animation to prevent re-clustering.
-          clusterZoomingRef.current = true;
-
-          if (isSamePoint) {
-            mapRef.current.setCenter(boundsCenter);
-            mapRef.current.setZoom(Math.min(currentZoom + 4, 17));
-            window.google.maps.event.addListenerOnce(mapRef.current, "idle", () => {
-              clusterZoomingRef.current = false;
-              fireBoundsUpdate();
-            });
-            return;
-          }
-
-          // Numeric padding (80px) — universally supported across all Maps API versions.
-          // If fitBounds results in a lower zoom (cluster spans a wide area) we trust it:
-          // it correctly shows all listings. We only cap the upper bound at zoom 16.
-          mapRef.current.fitBounds(bounds, 80);
-
-          window.google.maps.event.addListenerOnce(mapRef.current, "idle", () => {
-            clusterZoomingRef.current = false;
-            const newZoom = mapRef.current?.getZoom() ?? 0;
-            if (newZoom > 16) mapRef.current.setZoom(16);
-            fireBoundsUpdate();
-          });
-        }}
+        onMouseOver={handleClusterMouseOver}
+        onMouseOut={handleClusterMouseOut}
+        onClusteringEnd={handleClusteringEnd}
+        onClick={handleClusterClick}
       >
         {(clusterer) =>
           visibleVenues
@@ -773,9 +861,7 @@ export default function MapView({
               const venueId = venue.childVenueId || venue.id || venue._id;
               const isSelected =
                 selected && (selected.childVenueId || selected.id || selected._id) === venueId;
-              // Pin is "active" (dark) when selected or highlighted from card hover
               const isActive   = isSelected || hoveredVenueId === venueId;
-              // Pin is "map-hovered" when the mouse is physically over it
               const isMapHov   = mapHoveredId === venueId;
               return (
                 <Marker
@@ -804,11 +890,6 @@ export default function MapView({
         }
       </MarkerClusterer>
 
-      {/* Cluster hover highlight is driven by an HTML OverlayView in the useEffect above —
-           renders a CSS-animated gradient div that exceeds MAX_ZINDEX+1 */}
-
-      {/* Skeleton OverlayViews removed — loading state is shown outside the map */}
-
       {/* ── DESKTOP POPUP: anchored just below the marker via OverlayView ── */}
       {selected && popupCoords && !isMobile && (
         <OverlayView
@@ -829,11 +910,13 @@ export default function MapView({
             }}
           >
             <div>
-            {/* Image */}
             {selected.images?.[0] && (
               <div style={{ position: "relative", height: 110, overflow: "hidden" }}>
                 <img
-                  src={selected.images[0]}
+                src={`${BASE_URL}/${typeof selected.images?.[0] === "string"
+  ? selected.images[0]
+  : selected.images?.[0]?.image ?? ""
+}`}
                   alt={selected.venueName || selected.name}
                   style={{ width: "100%", height: "100%", objectFit: "cover" }}
                 />
@@ -853,7 +936,6 @@ export default function MapView({
               </div>
             )}
 
-            {/* Content */}
             <div style={{ padding: "9px 11px 11px" }}>
               <p style={{ fontWeight: 700, fontSize: 12.5, color: "#111827", lineHeight: 1.3, marginBottom: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                 {selected.venueName || selected.name}
@@ -868,7 +950,7 @@ export default function MapView({
                 <p style={{ fontWeight: 800, fontSize: 13, color: "#111827" }}>
                   {getVenuePrice(selected)
                     ? new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(getVenuePrice(selected))
-                    : "Contact"}
+                    : "Enquiry"}
                 </p>
                 {(selected.rating || selected.avgRating) && (
                   <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
@@ -892,7 +974,6 @@ export default function MapView({
 
     </GoogleMap>
 
-    {/* ── LOADING CHIP: top-center badge while venue data fetches ── */}
     {isLoading && (
       <div className="vc-loading-chip" style={{
         position: "absolute",
@@ -921,10 +1002,8 @@ export default function MapView({
       </div>
     )}
 
-    {/* ── MOBILE BOTTOM SHEET: slides up from the bottom when a marker is tapped ── */}
     {selected && isMobile && (
       <>
-        {/* Dim backdrop */}
         <div
           onClick={() => setSelected(null)}
           style={{
@@ -932,7 +1011,6 @@ export default function MapView({
             background: "rgba(0,0,0,0.18)",
           }}
         />
-        {/* Card */}
         <div
           onClick={(e) => e.stopPropagation()}
           style={{
@@ -943,24 +1021,24 @@ export default function MapView({
             overflow: "hidden",
           }}
         >
-          {/* Drag handle */}
           <div style={{ display: "flex", justifyContent: "center", padding: "10px 0 4px" }}>
             <div style={{ width: 36, height: 4, borderRadius: 2, background: "#e5e7eb" }} />
           </div>
 
           <div style={{ display: "flex", gap: 12, padding: "8px 16px 36px" }}>
-            {/* Image */}
             {selected.images?.[0] && (
               <div style={{ width: 90, height: 90, borderRadius: 12, overflow: "hidden", flexShrink: 0 }}>
                 <img
-                  src={selected.images[0]}
+                  src={`${BASE_URL}/${typeof selected.images?.[0] === "string"
+  ? selected.images[0]
+  : selected.images?.[0]?.image ?? ""
+}`}
                   alt={selected.venueName || selected.name}
                   style={{ width: "100%", height: "100%", objectFit: "cover" }}
                 />
               </div>
             )}
 
-            {/* Info */}
             <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
               <p style={{ fontWeight: 700, fontSize: 14, color: "#111827", lineHeight: 1.3, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
                 {selected.venueName || selected.name}
@@ -985,11 +1063,10 @@ export default function MapView({
               <p style={{ fontWeight: 800, fontSize: 15, color: "#111827", marginTop: 2 }}>
                 {getVenuePrice(selected)
                   ? new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(getVenuePrice(selected))
-                  : "Contact for Price"}
+                  : "Enquiry"}
               </p>
             </div>
 
-            {/* Close */}
             <button
               onClick={() => setSelected(null)}
               style={{
@@ -1009,4 +1086,3 @@ export default function MapView({
     </>
   );
 }
-

@@ -53,7 +53,7 @@ function MobileUpNextCard({ venue, onClick }) {
       <div style={{ padding: "8px 10px 10px" }}>
         <p style={{ fontSize: 11, fontWeight: 700, color: "#fff", lineHeight: 1.3,
           overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
-          {venue.title || venue.name || "Next Property"}
+          {venue.title || venue.venueName || "Next Property"}
         </p>
       </div>
     </button>

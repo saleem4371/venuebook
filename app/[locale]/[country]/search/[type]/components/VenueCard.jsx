@@ -14,11 +14,14 @@ import {
   Ruler,
   Star,
   ExternalLink,
+  ShoppingBasket,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 
 import { useCategory } from "@/context/CategoryContext";
+
+import LikeButton from "@/components/LikeButton";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    BADGE CONFIG
@@ -287,7 +290,7 @@ function PriceBlock({ venue, category }) {
   return (
     <div className="flex items-baseline gap-1.5 flex-wrap">
       <span className="text-[15px] font-bold text-gray-900 dark:text-gray-50">
-        {price ? formatINR(price) : "Contact"}
+        {price ? formatINR(price) : "Enquiry"}
       </span>
       <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium">
         {price ? suffix : "for Price"}
@@ -308,6 +311,8 @@ function PriceBlock({ venue, category }) {
    ============================================================================= */
 const VenueCard = ({
   venue,
+  likedData,
+  likedTotal,
   onHover,
   wishlist,
   compares,
@@ -316,6 +321,7 @@ const VenueCard = ({
   onRecentViews,
   onWishlist,
   onRemoveWishlist,
+  onLikedProperty, //API CALL 
   locale,
   country,
   compareList,
@@ -325,6 +331,7 @@ const VenueCard = ({
 }) => {
   const { activeCategory } = useCategory();
 
+ 
   /* ── STATE ──────────────────────────────────────────────────────────── */
   const [currentImage, setCurrentImage] = useState(0);
   const [hovered, setHovered] = useState(false);
@@ -342,7 +349,8 @@ const VenueCard = ({
   const [selectedCategory, setSelectedCategory] = useState(null);
 
   const BASE_URL = process.env.NEXT_PUBLIC_AWS_BUCKET_URL;
-  const liked = wishlist?.some((item) => item.venue_id === venue.childVenueId);
+   const collections = wishlist?.some((item) => item.venue_id === venue.childVenueId);
+ const liked = likedData?.has(venue.childVenueId);
 
   /* ── IMAGES ─────────────────────────────────────────────────────────── */
   const images = useMemo(() => {
@@ -391,8 +399,25 @@ const VenueCard = ({
     try {
       if (nextState) {
         setHeartPop(true);
-        onWishlist?.(venue, nextState);
+        
         setTimeout(() => setHeartPop(false), 650);
+      } else {
+        // onRemoveWishlist?.(venue);
+      }
+      onLikedProperty?.(venue);
+    } catch (err) {
+      console.error("Wishlist error:", err);
+    }
+  };  
+  
+  const toggleCollectionlist = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const nextState = !collections;
+    try {
+      if (nextState) {
+        onWishlist?.(venue, nextState);
+        // setTimeout(() => setHeartPop(false), 650);
       } else {
         onRemoveWishlist?.(venue);
       }
@@ -406,17 +431,23 @@ const VenueCard = ({
     e.preventDefault();
     e.stopPropagation();
     const id = venue.childVenueId;
-    const isAlreadyCompared = compares?.includes(id);
+    const isAlreadyCompared = compares?.some(
+  (item) => item.childVenueId === id
+);
     if (isAlreadyCompared) { onCompare?.(venue, false); return; }
     if ((compares?.length || 0) >= 4) { alert("Only 4 venues allowed"); return; }
     onCompare?.(venue, true);
   };
 
-  const compareIds = useMemo(
-    () => new Set(compares?.map((c) => c.venue_id)),
-    [compares],
+const compareIds = useMemo(() => {
+  return new Set(
+    (compares ?? []).map((item) => String(item.childVenueId))
   );
-  const isCompared = compareIds.has(venue.childVenueId);
+}, [compares]);
+
+const venueId = String(venue.childVenueId);
+
+const isCompared = compareIds.has(venueId);
 
   /* ── PARENT NAME ─────────────────────────────────────────────────────── */
   const parentName =
@@ -506,6 +537,10 @@ const VenueCard = ({
             )}
           </AnimatePresence>
 
+          
+
+          
+
           {/* ARROWS */}
           {hovered && images.length > 1 && (
             <>
@@ -565,21 +600,53 @@ const VenueCard = ({
                 }`}
               />
             </motion.div>
+          </motion.button>    
+          
+          {/* Collection  BUTTON */}
+          <motion.button
+            type="button"
+            onClick={toggleCollectionlist}
+            whileTap={{ scale: 0.85 }}
+            animate={{ scale: collections ? [1, 1.25, 1] : 1 }}
+            transition={{ duration: 0.35 }}
+            className="
+              absolute top-3 right-3 z-[2]
+              flex items-center justify-center h-10 w-10 rounded-full
+              bg-white/85 backdrop-blur-md
+              shadow-[0_4px_20px_rgba(0,0,0,0.12)]
+              border border-white/30
+            "
+          >
+            <motion.div
+              animate={{
+                scale: collections ? [1, 1.4, 1] : 1,
+                rotate: collections ? [0, -8, 8, 0] : 0,
+              }}
+              transition={{ duration: 0.45 }}
+            >
+              <ShoppingBasket
+                size={18}
+                className={`transition-all duration-300 ${
+                  collections ? "fill-pink-500 text-pink-500" : "text-gray-700"
+                }`}
+              />
+            </motion.div>
           </motion.button>
 
           {/* COMPARE BUTTON */}
           {venue.minPrice && (
-            <motion.button
-              onClick={handleCompare}
-              animate={{ scale: compareAnim ? 1.15 : 1 }}
-              className={`
-                absolute bottom-3 right-3 px-3 py-1 rounded-full text-xs font-semibold shadow
-                ${isCompared ? "bg-purple-600 text-white" : "bg-white/80 text-gray-800"}
-              `}
-            >
-              {isCompared ? "Compared ✓" : "Compare"}
-            </motion.button>
-          )}
+  <motion.button
+    onClick={handleCompare}
+    animate={{ scale: compareAnim ? 1.15 : 1 }}
+    className={`absolute bottom-3 right-3 px-3 py-1 rounded-full text-xs font-semibold shadow ${
+      isCompared
+        ? "bg-purple-600 text-white"
+        : "bg-white/80 text-gray-800"
+    }`}
+  >
+    {isCompared ? "Compared ✓" : "Compare"}
+  </motion.button>
+)}
         </div>
 
         {/* CARD CONTENT
@@ -637,11 +704,24 @@ const VenueCard = ({
                 )}
               </div>
             )}
+            
           </div>
 
           {/* 5 - CATEGORY METADATA */}
-          <div className="flex flex-col gap-0.5 mt-0.5">
-            <CategoryMeta venue={venue} category={activeCategory} />
+          <div className="flex items-center justify-between gap-2 mt-0.5">
+            <div >
+<CategoryMeta venue={venue} category={activeCategory} />
+            </div>
+            { venue.totalLikes !== '0'  && (
+ <div className="flex items-center gap-1 text-xs">
+
+  <LikeButton liked={venue.totalLikes}
+  count={venue.totalLikes}  />
+
+ </div>
+            )}
+
+             
           </div>
 
           {/* 6 - PRICE — always the final information block */}
