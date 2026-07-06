@@ -1274,5 +1274,479 @@
       "meeting_point": "نقطة الالتقاء",
       "guide_contact": "تواصل مع المرشد"
     }
+  },
+  "compare": {
+    "empty": {
+      "title": "لا يوجد شيء للمقارنة بعد",
+      "subtitle": "احفظ العقارات التي تهمك وقارنها جنبًا إلى جنب.",
+      "primaryCta": "استكشف العقارات",
+      "secondaryCta": "الانتقال إلى قائمة الرغبات",
+      "floatingLocation": "كورج، كارناتاكا"
+    },
+    "hero": {
+      "title": "قارن العقارات",
+      "subtitle": "قارن الأماكن أو الإقامات جنبًا إلى جنب قبل اتخاذ قرارك.",
+      "comparingCount": "مقارنة {count} عقارات"
+    },
+    "stickyBar": {
+      "remove": "إزالة",
+      "checkingFor": "التحقق من التوفر بتاريخ",
+      "shiftDay": "نهاري",
+      "shiftEvening": "مسائي",
+      "shiftFullDay": "يوم كامل",
+      "today": "اليوم",
+      "prevMonth": "الشهر السابق",
+      "nextMonth": "الشهر التالي"
+    },
+    "card": {
+      "wishlist": "المفضلة",
+      "remove": "إزالة",
+      "verified": "موثّق",
+      "startingFrom": "يبدأ من",
+      "viewProperty": "عرض العقار"
+    },
+    "addVenue": {
+      "tileLabel": "إضافة {category}",
+      "modalTitle": "إضافة {category} إلى المقارنة",
+      "searchPlaceholder": "ابحث عن العقارات بالاسم أو الموقع...",
+      "noResults": "لا توجد نتائج مطابقة.",
+      "addButton": "إضافة",
+      "close": "إغلاق"
+    },
+    "quickSummary": {
+      "bestPrice": "أقل سعر",
+      "highestRated": "الأعلى تقييمًا",
+      "mostBedrooms": "أكثر غرف نوم",
+      "highestCapacity": "أعلى سعة",
+      "bedroomsValue": "{count} غرف نوم",
+      "guestsValue": "{count} ضيوف",
+      "largestEstate": "أكبر مساحة أرض",
+      "acresValue": "{count} فدان",
+      "privatePool": "مسبح خاص",
+      "available": "متوفر",
+      "mostActivities": "أكثر الأنشطة",
+      "activitiesValue": "{count} أنشطة",
+      "largestArea": "أكبر مساحة",
+      "sqftValue": "{count} قدم مربع",
+      "mostEquipment": "أكثر المعدات",
+      "itemsValue": "{count} عناصر",
+      "mostSeats": "أكثر المقاعد",
+      "seatsValue": "{count} مقاعد",
+      "mostMeetingRooms": "أكثر قاعات الاجتماعات",
+      "roomsValue": "{count} غرف",
+      "mostGuests": "أكثر الضيوف",
+      "mostAmenities": "أكثر وسائل الراحة"
+    },
+    "differences": {
+      "allRowsShown": "عرض كل التفاصيل، بما في ذلك أوجه التشابه.",
+      "hiddenCount": "تم إخفاء {count} صفوف متشابهة — يتم عرض الاختلافات فقط.",
+      "hideSimilarities": "إخفاء أوجه التشابه",
+      "showSimilarities": "إظهار أوجه التشابه"
+    },
+    "venue": {
+      "yes": "نعم",
+      "no": "لا",
+      "guestsValue": "{count} ضيوف",
+      "carsValue": "{count} سيارات",
+      "roomsValue": "{count} غرف",
+      "reviewsValue": "{count} تقييمات",
+      "sqftValue": "{count} قدم مربع",
+      "notApplicable": "غير متاح",
+      "viewGallery": "عرض المعرض",
+      "highlights": {
+        "capacity": "السعة",
+        "indoorOutdoor": "داخلي / خارجي",
+        "startingFrom": "السعر يبدأ من"
+      },
+      "sections": {
+        "highlights": "أبرز المزايا",
+        "availability": "التوفر",
+        "pricing": "الأسعار",
+        "capacity": "السعة",
+        "eventSuitability": "مناسبة للفعاليات",
+        "food": "الطعام",
+        "facilities": "المرافق",
+        "policies": "السياسات",
+        "gallery": "معرض الصور",
+        "reviews": "التقييمات"
+      },
+      "availability": {
+        "available": "متاح",
+        "limited": "محدود",
+        "booked": "محجوز"
+      },
+      "pricing": {
+        "starting": "السعر الابتدائي",
+        "peak": "سعر الذروة",
+        "offSeason": "سعر خارج الموسم",
+        "decoration": "يشمل الديكور",
+        "food": "يشمل الطعام",
+        "taxes": "يشمل الضرائب",
+        "cancellation": "سياسة الإلغاء",
+        "advanceRequired": "الدفعة المقدمة المطلوبة"
+      },
+      "capacity": {
+        "minGuests": "الحد الأدنى للضيوف",
+        "maxGuests": "الحد الأقصى للضيوف",
+        "floating": "السعة الإضافية",
+        "dining": "الطعام (عدد المقاعد)",
+        "parking": "مواقف السيارات",
+        "stageSize": "حجم المسرح",
+        "rooms": "الغرف المتاحة",
+        "hallArea": "مساحة القاعة",
+        "seatingStyle": "نمط الجلوس"
+      },
+      "eventTypes": {
+        "Wedding": "زفاف",
+        "Reception": "حفل استقبال",
+        "Engagement": "خطوبة",
+        "Birthday": "عيد ميلاد",
+        "Corporate": "فعالية شركات",
+        "Conference": "مؤتمر",
+        "Cocktail": "حفل كوكتيل",
+        "Haldi": "هالدي",
+        "Sangeet": "سانجيت"
+      },
+      "foodItems": {
+        "Outside Catering": "تموين خارجي",
+        "Veg": "نباتي",
+        "Non Veg": "غير نباتي",
+        "Kitchen Available": "مطبخ متاح",
+        "Alcohol": "مشروبات كحولية",
+        "Bar": "بار",
+        "Live Counters": "أكشاك طعام حية"
+      },
+      "facilityGroups": {
+        "Venue Features": "مزايا المكان",
+        "Technology": "التقنية",
+        "Accessibility": "إمكانية الوصول",
+        "Parking": "مواقف السيارات",
+        "Accommodation": "الإقامة",
+        "Decoration": "الديكور",
+        "Entertainment": "الترفيه"
+      },
+      "policies": {
+        "operatingHours": "أوقات العمل",
+        "musicTiming": "توقيت الموسيقى",
+        "noiseRestriction": "قيود الضوضاء",
+        "outsideVendors": "السماح بموردين خارجيين",
+        "smoking": "التدخين",
+        "pets": "السماح بالحيوانات الأليفة",
+        "decorRules": "قواعد الديكور",
+        "cleaning": "التنظيف",
+        "liquorPolicy": "سياسة المشروبات الكحولية"
+      },
+      "badges": {
+        "highestCapacity": "أعلى سعة",
+        "lowestPrice": "أقل سعر",
+        "lowestAdvance": "أقل دفعة مقدمة",
+        "mostParking": "أكثر مواقف",
+        "largestArea": "أكبر مساحة",
+        "topRated": "الأعلى تقييمًا"
+      },
+      "reviews": {
+        "overallRating": "التقييم العام",
+        "reviewCount": "عدد التقييمات",
+        "topPros": "أبرز الإيجابيات",
+        "topCons": "أبرز السلبيات",
+        "latestReview": "أحدث تقييم"
+      }
+    },
+    "farmstay": {
+      "yes": "نعم",
+      "no": "لا",
+      "guestsValue": "{count} ضيوف",
+      "bedroomsValue": "{count} غرف نوم",
+      "bathroomsValue": "{count} حمامات",
+      "bedsValue": "{count} أسرّة",
+      "kmValue": "{count} كم",
+      "acresValue": "{count} فدان",
+      "notApplicable": "غير متاح",
+      "notRequired": "غير مطلوب",
+      "viewGallery": "عرض المعرض",
+      "overview": {
+        "startingPrice": "السعر الابتدائي",
+        "guests": "الضيوف",
+        "bedrooms": "غرف النوم",
+        "bathrooms": "الحمامات",
+        "acres": "الفدادين",
+        "entireOrPrivate": "عقار كامل / غرفة خاصة"
+      },
+      "sections": {
+        "overview": "نظرة عامة",
+        "stayDetails": "تفاصيل الإقامة",
+        "accommodation": "الإقامة",
+        "activities": "الأنشطة",
+        "comfort": "الراحة",
+        "food": "الطعام",
+        "nearby": "الأماكن القريبة",
+        "policies": "السياسات",
+        "gallery": "معرض الصور",
+        "reviews": "التقييمات"
+      },
+      "stay": {
+        "checkIn": "تسجيل الوصول",
+        "checkOut": "تسجيل المغادرة",
+        "mealsIncluded": "الوجبات مشمولة",
+        "caretaker": "مشرف العقار",
+        "petFriendly": "يسمح بالحيوانات الأليفة",
+        "smoking": "التدخين",
+        "familyFriendly": "مناسب للعائلات",
+        "coupleFriendly": "مناسب للأزواج"
+      },
+      "accommodation": {
+        "bedrooms": "غرف النوم",
+        "beds": "الأسرّة",
+        "bathrooms": "الحمامات",
+        "amenities": "وسائل الراحة",
+        "kitchen": "مطبخ",
+        "balcony": "شرفة",
+        "pool": "مسبح",
+        "privatePool": "مسبح خاص",
+        "riverAccess": "إطلالة على النهر",
+        "lakeView": "إطلالة على البحيرة",
+        "garden": "حديقة",
+        "privateLawn": "حديقة خاصة",
+        "firePit": "نار المخيم",
+        "bbq": "شواء",
+        "parking": "مواقف سيارات"
+      },
+      "activities": {
+        "Kayaking": "التجديف بالكاياك",
+        "Bonfire": "نار المخيم",
+        "Fishing": "صيد السمك",
+        "Cycling": "ركوب الدراجات",
+        "Organic Farm": "مزرعة عضوية",
+        "Nature Walk": "نزهة طبيعية",
+        "Horse Riding": "ركوب الخيل",
+        "Photography": "تصوير فوتوغرافي",
+        "Kids Area": "منطقة أطفال"
+      },
+      "comfort": {
+        "AC": "تكييف",
+        "WiFi": "واي فاي",
+        "Power Backup": "طاقة احتياطية",
+        "TV": "تلفاز",
+        "Workspace": "مساحة عمل",
+        "Washing Machine": "غسالة",
+        "Hot Water": "ماء ساخن"
+      },
+      "foodItems": {
+        "Breakfast": "إفطار",
+        "Lunch": "غداء",
+        "Dinner": "عشاء",
+        "Kitchen Access": "استخدام المطبخ",
+        "Self Cooking": "الطهي الذاتي",
+        "Veg": "نباتي",
+        "Non Veg": "غير نباتي",
+        "BBQ": "شواء"
+      },
+      "nearby": {
+        "Lake": "البحيرة",
+        "Beach": "الشاطئ",
+        "Airport": "المطار",
+        "Hospital": "المستشفى",
+        "City": "المدينة",
+        "Market": "السوق"
+      },
+      "policies": {
+        "pets": "الحيوانات الأليفة",
+        "events": "السماح بالفعاليات",
+        "visitors": "الزوار",
+        "cancellation": "الإلغاء",
+        "refund": "الاسترداد",
+        "securityDeposit": "التأمين"
+      },
+      "badges": {
+        "lowestPrice": "أقل سعر",
+        "mostBedrooms": "أكثر غرف نوم",
+        "largestEstate": "أكبر مساحة أرض",
+        "topRated": "الأعلى تقييمًا"
+      },
+      "reviews": {
+        "rating": "التقييم العام",
+        "cleanliness": "النظافة",
+        "location": "الموقع",
+        "host": "المضيف",
+        "value": "القيمة",
+        "topPros": "أبرز الإيجابيات",
+        "topCons": "أبرز السلبيات"
+      }
+    },
+    "recommendations": {
+      "heading": "توصيتنا",
+      "subheading": "مبنية على العقارات التي تقارنها — وليست اختيارًا عامًا.",
+      "bestValue": {
+        "title": "أفضل قيمة",
+        "reasonVenue": "أقل سعر ({price}) مع سعة تصل إلى {size} ضيف.",
+        "reasonFarmstay": "أقل سعر ({price}) مع {size} غرف نوم."
+      },
+      "topRated": {
+        "title": "الخيار الفاخر",
+        "reasonVenue": "أفضل أجواء وخدمة — بتقييم {rating} نجوم من الضيوف السابقين.",
+        "reasonFarmstay": "الإقامة الأكثر تفضيلاً — بتقييم {rating} نجوم من الضيوف السابقين."
+      },
+      "bestForFamilies": {
+        "title": "الأنسب للعائلات",
+        "reasonVenue": "يستوعب بشكل مريح حتى {size} ضيف — رائع لاحتفالات العائلة.",
+        "reasonFarmstay": "مناسب للعائلات مع أنشطة للأطفال عبر {size} غرف نوم."
+      },
+      "mostAmenities": {
+        "title": "الأكثر تكاملاً",
+        "reasonVenue": "يأتي مع أكبر عدد من المرافق والخدمات المشمولة ({count} ميزة).",
+        "reasonFarmstay": "يأتي مع أكبر عدد من وسائل الراحة والأنشطة المشمولة ({count} ميزة)."
+      }
+    },
+    "categorySwitcher": {
+      "label": "الفئة"
+    },
+    "categorySwitch": {
+      "heading": "لا يوجد عدد كافٍ من {category} محفوظة بعد",
+      "body": "احفظ عنصرين على الأقل من {category} لمقارنتهما جنبًا إلى جنب.",
+      "emptyHeading": "لا توجد {category} مضافة بعد",
+      "emptyBody": "تصفّح {category} لبدء المقارنة.",
+      "browseButton": "تصفّح {category}",
+      "switchButton": "التبديل إلى {category}"
+    },
+    "studio": {
+      "notApplicable": "غير متاح",
+      "sqftValue": "{count} قدم مربع",
+      "reviewsValue": "{count} تقييمات",
+      "overview": {
+        "studioArea": "مساحة الاستوديو",
+        "hourlyPrice": "السعر بالساعة",
+        "rating": "التقييم"
+      },
+      "sections": {
+        "overview": "نظرة عامة",
+        "lighting": "الإضاءة والتجهيزات",
+        "equipment": "المعدات",
+        "facilities": "المرافق",
+        "reviews": "التقييمات"
+      },
+      "lighting": {
+        "lighting": "الإضاءة",
+        "cyclorama": "خلفية سيكلوراما"
+      },
+      "equipmentItems": {
+        "Tripods": "حوامل ثلاثية",
+        "Backdrop Stands": "حوامل الخلفيات",
+        "Reflectors": "عاكسات الضوء",
+        "Continuous Lighting Kit": "طقم إضاءة مستمرة",
+        "Strobe Lights": "أضواء ستروب",
+        "Sound Equipment": "معدات الصوت",
+        "Teleprompter": "شاشة القراءة"
+      },
+      "facilities": {
+        "parking": "مواقف سيارات",
+        "powerBackup": "طاقة احتياطية",
+        "makeupRoom": "غرفة مكياج",
+        "changingRoom": "غرفة تبديل الملابس",
+        "ac": "تكييف"
+      },
+      "badges": {
+        "largestArea": "أكبر مساحة",
+        "lowestPrice": "أقل سعر",
+        "topRated": "الأعلى تقييمًا"
+      },
+      "reviews": {
+        "reviewCount": "عدد التقييمات"
+      }
+    },
+    "workspace": {
+      "seatsValue": "{count} مقاعد",
+      "roomsValue": "{count} غرف",
+      "reviewsValue": "{count} تقييمات",
+      "overview": {
+        "seats": "المقاعد",
+        "meetingRooms": "قاعات الاجتماعات",
+        "rating": "التقييم"
+      },
+      "sections": {
+        "overview": "نظرة عامة",
+        "pricing": "الأسعار والأوقات",
+        "facilities": "المرافق",
+        "reviews": "التقييمات"
+      },
+      "pricing": {
+        "rate": "السعر",
+        "pricingType": "نوع التسعير",
+        "operatingHours": "أوقات العمل",
+        "internet": "الإنترنت"
+      },
+      "facilities": {
+        "parking": "مواقف سيارات",
+        "printer": "طابعة",
+        "pantry": "مطبخ صغير",
+        "cabin": "مكتب خاص"
+      },
+      "amenities": {
+        "title": "وسائل الراحة"
+      },
+      "amenityItems": {
+        "Whiteboard": "سبورة بيضاء",
+        "Video Conferencing": "مؤتمرات الفيديو",
+        "Standing Desks": "مكاتب واقفة",
+        "Locker Storage": "خزائن تخزين",
+        "Reception Desk": "مكتب استقبال"
+      },
+      "badges": {
+        "mostSeats": "أكثر المقاعد",
+        "topRated": "الأعلى تقييمًا",
+        "lowestPrice": "أقل سعر"
+      },
+      "reviews": {
+        "reviewCount": "عدد التقييمات"
+      }
+    },
+    "rental": {
+      "yes": "نعم",
+      "no": "لا",
+      "guestsValue": "{count} ضيوف",
+      "bedroomsValue": "{count} غرف نوم",
+      "bathroomsValue": "{count} حمامات",
+      "reviewsValue": "{count} تقييمات",
+      "overview": {
+        "rentalType": "نوع الإيجار",
+        "price": "السعر",
+        "pricingType": "نوع التسعير",
+        "rating": "التقييم"
+      },
+      "capacity": {
+        "maxGuests": "الحد الأقصى للضيوف",
+        "bedrooms": "غرف النوم",
+        "bathrooms": "الحمامات"
+      },
+      "policy": {
+        "checkIn": "تسجيل الوصول",
+        "checkOut": "تسجيل المغادرة",
+        "petFriendly": "يسمح بالحيوانات الأليفة",
+        "cancellation": "سياسة الإلغاء"
+      },
+      "sections": {
+        "overview": "نظرة عامة",
+        "capacity": "السعة",
+        "policy": "سياسة الإقامة",
+        "amenities": "وسائل الراحة",
+        "reviews": "التقييمات"
+      },
+      "amenityItems": {
+        "WiFi": "واي فاي",
+        "Air Conditioning": "تكييف",
+        "Washing Machine": "غسالة",
+        "Kitchen": "مطبخ",
+        "TV / Streaming": "تلفاز / بث",
+        "Balcony": "شرفة",
+        "Housekeeping": "خدمة تنظيف الغرف"
+      },
+      "badges": {
+        "lowestPrice": "أقل سعر",
+        "topRated": "الأعلى تقييمًا",
+        "mostGuests": "أكثر الضيوف"
+      },
+      "reviews": {
+        "reviewCount": "عدد التقييمات"
+      }
+    }
   }
 }

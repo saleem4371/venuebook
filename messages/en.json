@@ -1274,5 +1274,479 @@
       "meeting_point": "Meeting Point",
       "guide_contact": "Guide Contact"
     }
+  },
+  "compare": {
+    "empty": {
+      "title": "Nothing to compare yet",
+      "subtitle": "Save properties you're interested in and compare them side by side.",
+      "primaryCta": "Explore Properties",
+      "secondaryCta": "Go to Wishlist",
+      "floatingLocation": "Coorg, Karnataka"
+    },
+    "hero": {
+      "title": "Compare Properties",
+      "subtitle": "Compare venues or stays side by side before making your decision.",
+      "comparingCount": "Comparing {count} Properties"
+    },
+    "stickyBar": {
+      "remove": "Remove",
+      "checkingFor": "Checking availability for",
+      "shiftDay": "Day",
+      "shiftEvening": "Evening",
+      "shiftFullDay": "Full Day",
+      "today": "Today",
+      "prevMonth": "Previous month",
+      "nextMonth": "Next month"
+    },
+    "card": {
+      "wishlist": "Wishlist",
+      "remove": "Remove",
+      "verified": "Verified",
+      "startingFrom": "Starting from",
+      "viewProperty": "View Property"
+    },
+    "addVenue": {
+      "tileLabel": "Add {category}",
+      "modalTitle": "Add {category} to Compare",
+      "searchPlaceholder": "Search venues by name or location...",
+      "noResults": "No matches found.",
+      "addButton": "Add",
+      "close": "Close"
+    },
+    "quickSummary": {
+      "bestPrice": "Lowest Price",
+      "highestRated": "Highest Rated",
+      "mostBedrooms": "Most Bedrooms",
+      "highestCapacity": "Highest Capacity",
+      "bedroomsValue": "{count} Bedrooms",
+      "guestsValue": "{count} Guests",
+      "largestEstate": "Largest Estate",
+      "acresValue": "{count} Acres",
+      "privatePool": "Private Pool",
+      "available": "Available",
+      "mostActivities": "Most Activities",
+      "activitiesValue": "{count} Activities",
+      "largestArea": "Largest Area",
+      "sqftValue": "{count} sq ft",
+      "mostEquipment": "Most Equipment",
+      "itemsValue": "{count} Items",
+      "mostSeats": "Most Seats",
+      "seatsValue": "{count} Seats",
+      "mostMeetingRooms": "Most Meeting Rooms",
+      "roomsValue": "{count} Rooms",
+      "mostGuests": "Most Guests",
+      "mostAmenities": "Most Amenities"
+    },
+    "differences": {
+      "allRowsShown": "Showing every detail, including similarities.",
+      "hiddenCount": "{count} similar rows hidden — showing only differences.",
+      "hideSimilarities": "Hide Similarities",
+      "showSimilarities": "Show Similarities"
+    },
+    "venue": {
+      "yes": "Yes",
+      "no": "No",
+      "guestsValue": "{count} Guests",
+      "carsValue": "{count} Cars",
+      "roomsValue": "{count} Rooms",
+      "reviewsValue": "{count} Reviews",
+      "sqftValue": "{count} sq ft",
+      "notApplicable": "Not Applicable",
+      "viewGallery": "View Gallery",
+      "highlights": {
+        "capacity": "Capacity",
+        "indoorOutdoor": "Indoor / Outdoor",
+        "startingFrom": "Price Starting From"
+      },
+      "sections": {
+        "highlights": "Quick Highlights",
+        "availability": "Availability",
+        "pricing": "Pricing",
+        "capacity": "Capacity",
+        "eventSuitability": "Event Suitability",
+        "food": "Food",
+        "facilities": "Facilities",
+        "policies": "Policies",
+        "gallery": "Gallery Preview",
+        "reviews": "Reviews"
+      },
+      "availability": {
+        "available": "Available",
+        "limited": "Limited",
+        "booked": "Booked"
+      },
+      "pricing": {
+        "starting": "Starting Price",
+        "peak": "Peak Price",
+        "offSeason": "Off Season Price",
+        "decoration": "Decoration Included",
+        "food": "Food Included",
+        "taxes": "Taxes Included",
+        "cancellation": "Cancellation Policy",
+        "advanceRequired": "Advance Required"
+      },
+      "capacity": {
+        "minGuests": "Minimum Guests",
+        "maxGuests": "Maximum Guests",
+        "floating": "Floating Capacity",
+        "dining": "Dining",
+        "parking": "Parking",
+        "stageSize": "Stage Size",
+        "rooms": "Rooms Available",
+        "hallArea": "Hall Area",
+        "seatingStyle": "Seating Style"
+      },
+      "eventTypes": {
+        "Wedding": "Wedding",
+        "Reception": "Reception",
+        "Engagement": "Engagement",
+        "Birthday": "Birthday",
+        "Corporate": "Corporate",
+        "Conference": "Conference",
+        "Cocktail": "Cocktail",
+        "Haldi": "Haldi",
+        "Sangeet": "Sangeet"
+      },
+      "foodItems": {
+        "Outside Catering": "Outside Catering",
+        "Veg": "Veg",
+        "Non Veg": "Non Veg",
+        "Kitchen Available": "Kitchen Available",
+        "Alcohol": "Alcohol",
+        "Bar": "Bar",
+        "Live Counters": "Live Counters"
+      },
+      "facilityGroups": {
+        "Venue Features": "Venue Features",
+        "Technology": "Technology",
+        "Accessibility": "Accessibility",
+        "Parking": "Parking",
+        "Accommodation": "Accommodation",
+        "Decoration": "Decoration",
+        "Entertainment": "Entertainment"
+      },
+      "policies": {
+        "operatingHours": "Timings",
+        "musicTiming": "Music Timing",
+        "noiseRestriction": "Noise Restriction",
+        "outsideVendors": "Outside Vendors Allowed",
+        "smoking": "Smoking",
+        "pets": "Pets Allowed",
+        "decorRules": "Decor Rules",
+        "cleaning": "Cleaning",
+        "liquorPolicy": "Liquor Policy"
+      },
+      "badges": {
+        "highestCapacity": "Highest Capacity",
+        "lowestPrice": "Lowest Price",
+        "lowestAdvance": "Lowest Advance",
+        "mostParking": "Most Parking",
+        "largestArea": "Largest Area",
+        "topRated": "Top Rated"
+      },
+      "reviews": {
+        "overallRating": "Overall Rating",
+        "reviewCount": "Review Count",
+        "topPros": "Top Pros",
+        "topCons": "Top Cons",
+        "latestReview": "Latest Review"
+      }
+    },
+    "farmstay": {
+      "yes": "Yes",
+      "no": "No",
+      "guestsValue": "{count} Guests",
+      "bedroomsValue": "{count} Bedrooms",
+      "bathroomsValue": "{count} Bathrooms",
+      "bedsValue": "{count} Beds",
+      "kmValue": "{count} km",
+      "acresValue": "{count} Acres",
+      "notApplicable": "Not Applicable",
+      "notRequired": "Not Required",
+      "viewGallery": "View Gallery",
+      "overview": {
+        "startingPrice": "Starting Price",
+        "guests": "Guests",
+        "bedrooms": "Bedrooms",
+        "bathrooms": "Bathrooms",
+        "acres": "Acres",
+        "entireOrPrivate": "Entire Property / Private Room"
+      },
+      "sections": {
+        "overview": "Overview",
+        "stayDetails": "Stay Details",
+        "accommodation": "Accommodation",
+        "activities": "Activities",
+        "comfort": "Comfort",
+        "food": "Food",
+        "nearby": "Nearby",
+        "policies": "Policies",
+        "gallery": "Gallery Preview",
+        "reviews": "Reviews"
+      },
+      "stay": {
+        "checkIn": "Check In",
+        "checkOut": "Check Out",
+        "mealsIncluded": "Meals Included",
+        "caretaker": "Caretaker",
+        "petFriendly": "Pet Friendly",
+        "smoking": "Smoking",
+        "familyFriendly": "Family Friendly",
+        "coupleFriendly": "Couple Friendly"
+      },
+      "accommodation": {
+        "bedrooms": "Bedrooms",
+        "beds": "Beds",
+        "bathrooms": "Bathrooms",
+        "amenities": "Amenities",
+        "kitchen": "Kitchen",
+        "balcony": "Balcony",
+        "pool": "Pool",
+        "privatePool": "Private Pool",
+        "riverAccess": "River Access",
+        "lakeView": "Lake View",
+        "garden": "Garden",
+        "privateLawn": "Private Lawn",
+        "firePit": "Campfire",
+        "bbq": "BBQ",
+        "parking": "Parking"
+      },
+      "activities": {
+        "Kayaking": "Kayaking",
+        "Bonfire": "Bonfire",
+        "Fishing": "Fishing",
+        "Cycling": "Cycling",
+        "Organic Farm": "Organic Farm",
+        "Nature Walk": "Nature Walk",
+        "Horse Riding": "Horse Riding",
+        "Photography": "Photography",
+        "Kids Area": "Kids Area"
+      },
+      "comfort": {
+        "AC": "AC",
+        "WiFi": "WiFi",
+        "Power Backup": "Power Backup",
+        "TV": "TV",
+        "Workspace": "Workspace",
+        "Washing Machine": "Washing Machine",
+        "Hot Water": "Hot Water"
+      },
+      "foodItems": {
+        "Breakfast": "Breakfast",
+        "Lunch": "Lunch",
+        "Dinner": "Dinner",
+        "Kitchen Access": "Kitchen Access",
+        "Self Cooking": "Self Cooking",
+        "Veg": "Veg",
+        "Non Veg": "Non Veg",
+        "BBQ": "BBQ"
+      },
+      "nearby": {
+        "Lake": "Lake",
+        "Beach": "Beach",
+        "Airport": "Airport",
+        "Hospital": "Hospital",
+        "City": "City",
+        "Market": "Market"
+      },
+      "policies": {
+        "pets": "Pets",
+        "events": "Events Allowed",
+        "visitors": "Visitors",
+        "cancellation": "Cancellation",
+        "refund": "Refund",
+        "securityDeposit": "Security Deposit"
+      },
+      "badges": {
+        "lowestPrice": "Lowest Price",
+        "mostBedrooms": "Most Bedrooms",
+        "largestEstate": "Largest Estate",
+        "topRated": "Top Rated"
+      },
+      "reviews": {
+        "rating": "Overall Rating",
+        "cleanliness": "Cleanliness",
+        "location": "Location",
+        "host": "Host",
+        "value": "Value",
+        "topPros": "Top Pros",
+        "topCons": "Top Cons"
+      }
+    },
+    "recommendations": {
+      "heading": "Our Recommendation",
+      "subheading": "Generated from the properties you're comparing — not a generic pick.",
+      "bestValue": {
+        "title": "Best Value",
+        "reasonVenue": "Lowest price ({price}) with room for up to {size} guests.",
+        "reasonFarmstay": "Lowest price ({price}) with {size} bedrooms of space."
+      },
+      "topRated": {
+        "title": "Luxury Pick",
+        "reasonVenue": "Best ambience and service — rated {rating} stars by past guests.",
+        "reasonFarmstay": "Best-loved stay — rated {rating} stars by past guests."
+      },
+      "bestForFamilies": {
+        "title": "Best for Families",
+        "reasonVenue": "Comfortably hosts up to {size} guests — great for family celebrations.",
+        "reasonFarmstay": "Family-friendly with activities for children across {size} bedrooms."
+      },
+      "mostAmenities": {
+        "title": "Most Complete",
+        "reasonVenue": "Comes with the most included facilities and services ({count} amenities).",
+        "reasonFarmstay": "Comes with the most comforts and activities included ({count} amenities)."
+      }
+    },
+    "categorySwitcher": {
+      "label": "Category"
+    },
+    "categorySwitch": {
+      "heading": "Not enough {category} saved yet",
+      "body": "Save at least 2 {category} to compare them side by side.",
+      "emptyHeading": "No {category} added yet",
+      "emptyBody": "Browse {category} to start comparing.",
+      "browseButton": "Browse {category}",
+      "switchButton": "Switch to {category}"
+    },
+    "studio": {
+      "notApplicable": "Not Applicable",
+      "sqftValue": "{count} sq ft",
+      "reviewsValue": "{count} Reviews",
+      "overview": {
+        "studioArea": "Studio Area",
+        "hourlyPrice": "Hourly Price",
+        "rating": "Rating"
+      },
+      "sections": {
+        "overview": "Overview",
+        "lighting": "Lighting & Setup",
+        "equipment": "Equipment",
+        "facilities": "Facilities",
+        "reviews": "Reviews"
+      },
+      "lighting": {
+        "lighting": "Lighting",
+        "cyclorama": "Cyclorama"
+      },
+      "equipmentItems": {
+        "Tripods": "Tripods",
+        "Backdrop Stands": "Backdrop Stands",
+        "Reflectors": "Reflectors",
+        "Continuous Lighting Kit": "Continuous Lighting Kit",
+        "Strobe Lights": "Strobe Lights",
+        "Sound Equipment": "Sound Equipment",
+        "Teleprompter": "Teleprompter"
+      },
+      "facilities": {
+        "parking": "Parking",
+        "powerBackup": "Power Backup",
+        "makeupRoom": "Makeup Room",
+        "changingRoom": "Changing Room",
+        "ac": "AC"
+      },
+      "badges": {
+        "largestArea": "Largest Area",
+        "lowestPrice": "Lowest Price",
+        "topRated": "Top Rated"
+      },
+      "reviews": {
+        "reviewCount": "Review Count"
+      }
+    },
+    "workspace": {
+      "seatsValue": "{count} Seats",
+      "roomsValue": "{count} Rooms",
+      "reviewsValue": "{count} Reviews",
+      "overview": {
+        "seats": "Seats",
+        "meetingRooms": "Meeting Rooms",
+        "rating": "Rating"
+      },
+      "sections": {
+        "overview": "Overview",
+        "pricing": "Pricing & Hours",
+        "facilities": "Facilities",
+        "reviews": "Reviews"
+      },
+      "pricing": {
+        "rate": "Rate",
+        "pricingType": "Pricing Type",
+        "operatingHours": "Operating Hours",
+        "internet": "Internet"
+      },
+      "facilities": {
+        "parking": "Parking",
+        "printer": "Printer",
+        "pantry": "Pantry",
+        "cabin": "Private Cabin"
+      },
+      "amenities": {
+        "title": "Amenities"
+      },
+      "amenityItems": {
+        "Whiteboard": "Whiteboard",
+        "Video Conferencing": "Video Conferencing",
+        "Standing Desks": "Standing Desks",
+        "Locker Storage": "Locker Storage",
+        "Reception Desk": "Reception Desk"
+      },
+      "badges": {
+        "mostSeats": "Most Seats",
+        "topRated": "Top Rated",
+        "lowestPrice": "Lowest Price"
+      },
+      "reviews": {
+        "reviewCount": "Review Count"
+      }
+    },
+    "rental": {
+      "yes": "Yes",
+      "no": "No",
+      "guestsValue": "{count} Guests",
+      "bedroomsValue": "{count} Bedrooms",
+      "bathroomsValue": "{count} Bathrooms",
+      "reviewsValue": "{count} Reviews",
+      "overview": {
+        "rentalType": "Rental Type",
+        "price": "Price",
+        "pricingType": "Pricing Type",
+        "rating": "Rating"
+      },
+      "capacity": {
+        "maxGuests": "Max Guests",
+        "bedrooms": "Bedrooms",
+        "bathrooms": "Bathrooms"
+      },
+      "policy": {
+        "checkIn": "Check In",
+        "checkOut": "Check Out",
+        "petFriendly": "Pet Friendly",
+        "cancellation": "Cancellation Policy"
+      },
+      "sections": {
+        "overview": "Overview",
+        "capacity": "Capacity",
+        "policy": "Stay Policy",
+        "amenities": "Amenities",
+        "reviews": "Reviews"
+      },
+      "amenityItems": {
+        "WiFi": "WiFi",
+        "Air Conditioning": "Air Conditioning",
+        "Washing Machine": "Washing Machine",
+        "Kitchen": "Kitchen",
+        "TV / Streaming": "TV / Streaming",
+        "Balcony": "Balcony",
+        "Housekeeping": "Housekeeping"
+      },
+      "badges": {
+        "lowestPrice": "Lowest Price",
+        "topRated": "Top Rated",
+        "mostGuests": "Most Guests"
+      },
+      "reviews": {
+        "reviewCount": "Review Count"
+      }
+    }
   }
 }

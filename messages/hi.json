@@ -1106,5 +1106,479 @@
       "meeting_point": "Meeting Point",
       "guide_contact": "Guide Contact"
     }
+  },
+  "compare": {
+    "empty": {
+      "title": "अभी तुलना के लिए कुछ नहीं है",
+      "subtitle": "जिन प्रॉपर्टीज़ में आपकी रुचि है उन्हें सेव करें और साथ-साथ तुलना करें।",
+      "primaryCta": "प्रॉपर्टीज़ देखें",
+      "secondaryCta": "विशलिस्ट पर जाएं",
+      "floatingLocation": "कूर्ग, कर्नाटक"
+    },
+    "hero": {
+      "title": "प्रॉपर्टीज़ की तुलना करें",
+      "subtitle": "निर्णय लेने से पहले वेन्यू या स्टे को साथ-साथ तुलना करें।",
+      "comparingCount": "{count} प्रॉपर्टीज़ की तुलना हो रही है"
+    },
+    "stickyBar": {
+      "remove": "हटाएं",
+      "checkingFor": "उपलब्धता जांची जा रही है",
+      "shiftDay": "दिन",
+      "shiftEvening": "शाम",
+      "shiftFullDay": "पूरा दिन",
+      "today": "आज",
+      "prevMonth": "पिछला महीना",
+      "nextMonth": "अगला महीना"
+    },
+    "card": {
+      "wishlist": "विशलिस्ट",
+      "remove": "हटाएं",
+      "verified": "सत्यापित",
+      "startingFrom": "शुरुआती कीमत",
+      "viewProperty": "प्रॉपर्टी देखें"
+    },
+    "addVenue": {
+      "tileLabel": "{category} जोड़ें",
+      "modalTitle": "तुलना में {category} जोड़ें",
+      "searchPlaceholder": "नाम या स्थान से प्रॉपर्टी खोजें...",
+      "noResults": "कोई मेल नहीं मिला।",
+      "addButton": "जोड़ें",
+      "close": "बंद करें"
+    },
+    "quickSummary": {
+      "bestPrice": "सबसे कम कीमत",
+      "highestRated": "सर्वोच्च रेटेड",
+      "mostBedrooms": "सबसे अधिक बेडरूम",
+      "highestCapacity": "सबसे अधिक क्षमता",
+      "bedroomsValue": "{count} बेडरूम",
+      "guestsValue": "{count} मेहमान",
+      "largestEstate": "सबसे बड़ी एस्टेट",
+      "acresValue": "{count} एकड़",
+      "privatePool": "निजी पूल",
+      "available": "उपलब्ध",
+      "mostActivities": "सबसे अधिक गतिविधियां",
+      "activitiesValue": "{count} गतिविधियां",
+      "largestArea": "सबसे बड़ा क्षेत्रफल",
+      "sqftValue": "{count} वर्ग फुट",
+      "mostEquipment": "सबसे अधिक उपकरण",
+      "itemsValue": "{count} आइटम",
+      "mostSeats": "सबसे अधिक सीटें",
+      "seatsValue": "{count} सीटें",
+      "mostMeetingRooms": "सबसे अधिक मीटिंग रूम",
+      "roomsValue": "{count} कमरे",
+      "mostGuests": "सबसे अधिक मेहमान",
+      "mostAmenities": "सबसे अधिक सुविधाएं"
+    },
+    "differences": {
+      "allRowsShown": "समानताओं सहित सभी विवरण दिखाए जा रहे हैं।",
+      "hiddenCount": "{count} समान पंक्तियाँ छिपाई गईं — केवल अंतर दिखाए जा रहे हैं।",
+      "hideSimilarities": "समानताएं छिपाएं",
+      "showSimilarities": "समानताएं दिखाएं"
+    },
+    "venue": {
+      "yes": "हां",
+      "no": "नहीं",
+      "guestsValue": "{count} मेहमान",
+      "carsValue": "{count} कारें",
+      "roomsValue": "{count} कमरे",
+      "reviewsValue": "{count} समीक्षाएं",
+      "sqftValue": "{count} वर्ग फुट",
+      "notApplicable": "लागू नहीं",
+      "viewGallery": "गैलरी देखें",
+      "highlights": {
+        "capacity": "क्षमता",
+        "indoorOutdoor": "इनडोर / आउटडोर",
+        "startingFrom": "शुरुआती कीमत"
+      },
+      "sections": {
+        "highlights": "मुख्य विशेषताएं",
+        "availability": "उपलब्धता",
+        "pricing": "मूल्य निर्धारण",
+        "capacity": "क्षमता",
+        "eventSuitability": "इवेंट उपयुक्तता",
+        "food": "भोजन",
+        "facilities": "सुविधाएं",
+        "policies": "नीतियां",
+        "gallery": "गैलरी झलक",
+        "reviews": "समीक्षाएं"
+      },
+      "availability": {
+        "available": "उपलब्ध",
+        "limited": "सीमित",
+        "booked": "बुक्ड"
+      },
+      "pricing": {
+        "starting": "शुरुआती कीमत",
+        "peak": "पीक कीमत",
+        "offSeason": "ऑफ सीज़न कीमत",
+        "decoration": "सजावट शामिल",
+        "food": "भोजन शामिल",
+        "taxes": "कर शामिल",
+        "cancellation": "रद्दीकरण नीति",
+        "advanceRequired": "अग्रिम राशि आवश्यक"
+      },
+      "capacity": {
+        "minGuests": "न्यूनतम मेहमान",
+        "maxGuests": "अधिकतम मेहमान",
+        "floating": "फ्लोटिंग क्षमता",
+        "dining": "डाइनिंग",
+        "parking": "पार्किंग",
+        "stageSize": "स्टेज का आकार",
+        "rooms": "उपलब्ध कमरे",
+        "hallArea": "हॉल का क्षेत्रफल",
+        "seatingStyle": "बैठने की शैली"
+      },
+      "eventTypes": {
+        "Wedding": "शादी",
+        "Reception": "रिसेप्शन",
+        "Engagement": "सगाई",
+        "Birthday": "जन्मदिन",
+        "Corporate": "कॉर्पोरेट",
+        "Conference": "कॉन्फ्रेंस",
+        "Cocktail": "कॉकटेल",
+        "Haldi": "हल्दी",
+        "Sangeet": "संगीत"
+      },
+      "foodItems": {
+        "Outside Catering": "बाहरी कैटरिंग",
+        "Veg": "शाकाहारी",
+        "Non Veg": "मांसाहारी",
+        "Kitchen Available": "रसोई उपलब्ध",
+        "Alcohol": "शराब",
+        "Bar": "बार",
+        "Live Counters": "लाइव काउंटर"
+      },
+      "facilityGroups": {
+        "Venue Features": "वेन्यू सुविधाएं",
+        "Technology": "तकनीक",
+        "Accessibility": "सुगम्यता",
+        "Parking": "पार्किंग",
+        "Accommodation": "आवास",
+        "Decoration": "सजावट",
+        "Entertainment": "मनोरंजन"
+      },
+      "policies": {
+        "operatingHours": "समय",
+        "musicTiming": "संगीत का समय",
+        "noiseRestriction": "शोर प्रतिबंध",
+        "outsideVendors": "बाहरी वेंडर की अनुमति",
+        "smoking": "धूम्रपान",
+        "pets": "पालतू जानवरों की अनुमति",
+        "decorRules": "सजावट नियम",
+        "cleaning": "सफाई",
+        "liquorPolicy": "शराब नीति"
+      },
+      "badges": {
+        "highestCapacity": "सबसे अधिक क्षमता",
+        "lowestPrice": "सबसे कम कीमत",
+        "lowestAdvance": "सबसे कम अग्रिम",
+        "mostParking": "सबसे अधिक पार्किंग",
+        "largestArea": "सबसे बड़ा क्षेत्रफल",
+        "topRated": "सर्वोच्च रेटेड"
+      },
+      "reviews": {
+        "overallRating": "समग्र रेटिंग",
+        "reviewCount": "समीक्षाओं की संख्या",
+        "topPros": "मुख्य फायदे",
+        "topCons": "मुख्य कमियां",
+        "latestReview": "नवीनतम समीक्षा"
+      }
+    },
+    "farmstay": {
+      "yes": "हां",
+      "no": "नहीं",
+      "guestsValue": "{count} मेहमान",
+      "bedroomsValue": "{count} बेडरूम",
+      "bathroomsValue": "{count} बाथरूम",
+      "bedsValue": "{count} बेड",
+      "kmValue": "{count} किमी",
+      "acresValue": "{count} एकड़",
+      "notApplicable": "लागू नहीं",
+      "notRequired": "आवश्यक नहीं",
+      "viewGallery": "गैलरी देखें",
+      "overview": {
+        "startingPrice": "शुरुआती कीमत",
+        "guests": "मेहमान",
+        "bedrooms": "बेडरूम",
+        "bathrooms": "बाथरूम",
+        "acres": "एकड़",
+        "entireOrPrivate": "पूरी प्रॉपर्टी / निजी कमरा"
+      },
+      "sections": {
+        "overview": "अवलोकन",
+        "stayDetails": "ठहरने का विवरण",
+        "accommodation": "आवास",
+        "activities": "गतिविधियां",
+        "comfort": "आराम",
+        "food": "भोजन",
+        "nearby": "आस-पास",
+        "policies": "नीतियां",
+        "gallery": "गैलरी झलक",
+        "reviews": "समीक्षाएं"
+      },
+      "stay": {
+        "checkIn": "चेक-इन",
+        "checkOut": "चेक-आउट",
+        "mealsIncluded": "भोजन शामिल",
+        "caretaker": "केयरटेकर",
+        "petFriendly": "पालतू-अनुकूल",
+        "smoking": "धूम्रपान",
+        "familyFriendly": "परिवार-अनुकूल",
+        "coupleFriendly": "कपल-अनुकूल"
+      },
+      "accommodation": {
+        "bedrooms": "बेडरूम",
+        "beds": "बेड",
+        "bathrooms": "बाथरूम",
+        "amenities": "सुविधाएं",
+        "kitchen": "रसोई",
+        "balcony": "बालकनी",
+        "pool": "पूल",
+        "privatePool": "निजी पूल",
+        "riverAccess": "नदी तक पहुंच",
+        "lakeView": "झील का नज़ारा",
+        "garden": "बगीचा",
+        "privateLawn": "निजी लॉन",
+        "firePit": "कैम्पफायर",
+        "bbq": "बारबेक्यू",
+        "parking": "पार्किंग"
+      },
+      "activities": {
+        "Kayaking": "कयाकिंग",
+        "Bonfire": "बॉनफायर",
+        "Fishing": "मछली पकड़ना",
+        "Cycling": "साइकिलिंग",
+        "Organic Farm": "जैविक खेत",
+        "Nature Walk": "प्रकृति भ्रमण",
+        "Horse Riding": "घुड़सवारी",
+        "Photography": "फोटोग्राफी",
+        "Kids Area": "किड्स एरिया"
+      },
+      "comfort": {
+        "AC": "एसी",
+        "WiFi": "वाईफाई",
+        "Power Backup": "पावर बैकअप",
+        "TV": "टीवी",
+        "Workspace": "वर्कस्पेस",
+        "Washing Machine": "वॉशिंग मशीन",
+        "Hot Water": "गर्म पानी"
+      },
+      "foodItems": {
+        "Breakfast": "नाश्ता",
+        "Lunch": "दोपहर का भोजन",
+        "Dinner": "रात का भोजन",
+        "Kitchen Access": "रसोई का उपयोग",
+        "Self Cooking": "स्वयं खाना बनाना",
+        "Veg": "शाकाहारी",
+        "Non Veg": "मांसाहारी",
+        "BBQ": "बारबेक्यू"
+      },
+      "nearby": {
+        "Lake": "झील",
+        "Beach": "समुद्र तट",
+        "Airport": "हवाई अड्डा",
+        "Hospital": "अस्पताल",
+        "City": "शहर",
+        "Market": "बाज़ार"
+      },
+      "policies": {
+        "pets": "पालतू जानवर",
+        "events": "इवेंट की अनुमति",
+        "visitors": "आगंतुक",
+        "cancellation": "रद्दीकरण",
+        "refund": "रिफंड",
+        "securityDeposit": "सुरक्षा जमा"
+      },
+      "badges": {
+        "lowestPrice": "सबसे कम कीमत",
+        "mostBedrooms": "सबसे अधिक बेडरूम",
+        "largestEstate": "सबसे बड़ी एस्टेट",
+        "topRated": "सर्वोच्च रेटेड"
+      },
+      "reviews": {
+        "rating": "समग्र रेटिंग",
+        "cleanliness": "स्वच्छता",
+        "location": "स्थान",
+        "host": "होस्ट",
+        "value": "वैल्यू",
+        "topPros": "मुख्य फायदे",
+        "topCons": "मुख्य कमियां"
+      }
+    },
+    "recommendations": {
+      "heading": "हमारी सिफारिश",
+      "subheading": "आपकी तुलना की जा रही प्रॉपर्टीज़ के आधार पर तैयार — कोई सामान्य चयन नहीं।",
+      "bestValue": {
+        "title": "सर्वश्रेष्ठ वैल्यू",
+        "reasonVenue": "सबसे कम कीमत ({price}) {size} मेहमानों तक की क्षमता के साथ।",
+        "reasonFarmstay": "सबसे कम कीमत ({price}) {size} बेडरूम के साथ।"
+      },
+      "topRated": {
+        "title": "लक्ज़री पिक",
+        "reasonVenue": "बेहतरीन माहौल और सेवा — पिछले मेहमानों द्वारा {rating} स्टार रेटेड।",
+        "reasonFarmstay": "सबसे पसंदीदा स्टे — पिछले मेहमानों द्वारा {rating} स्टार रेटेड।"
+      },
+      "bestForFamilies": {
+        "title": "परिवारों के लिए सर्वश्रेष्ठ",
+        "reasonVenue": "{size} मेहमानों तक आराम से मेज़बानी — पारिवारिक समारोहों के लिए बेहतरीन।",
+        "reasonFarmstay": "{size} बेडरूम में बच्चों के लिए गतिविधियों के साथ परिवार-अनुकूल।"
+      },
+      "mostAmenities": {
+        "title": "सबसे संपूर्ण",
+        "reasonVenue": "सबसे अधिक शामिल सुविधाओं और सेवाओं के साथ आता है ({count} सुविधाएं)।",
+        "reasonFarmstay": "सबसे अधिक आराम और गतिविधियों के साथ आता है ({count} सुविधाएं)।"
+      }
+    },
+    "categorySwitcher": {
+      "label": "श्रेणी"
+    },
+    "categorySwitch": {
+      "heading": "अभी तक पर्याप्त {category} सेव नहीं की गई हैं",
+      "body": "साथ-साथ तुलना करने के लिए कम से कम 2 {category} सेव करें।",
+      "emptyHeading": "अभी तक कोई {category} नहीं जोड़ी गई",
+      "emptyBody": "तुलना शुरू करने के लिए {category} ब्राउज़ करें।",
+      "browseButton": "{category} ब्राउज़ करें",
+      "switchButton": "{category} पर स्विच करें"
+    },
+    "studio": {
+      "notApplicable": "लागू नहीं",
+      "sqftValue": "{count} वर्ग फुट",
+      "reviewsValue": "{count} समीक्षाएं",
+      "overview": {
+        "studioArea": "स्टूडियो क्षेत्रफल",
+        "hourlyPrice": "प्रति घंटा कीमत",
+        "rating": "रेटिंग"
+      },
+      "sections": {
+        "overview": "अवलोकन",
+        "lighting": "लाइटिंग और सेटअप",
+        "equipment": "उपकरण",
+        "facilities": "सुविधाएं",
+        "reviews": "समीक्षाएं"
+      },
+      "lighting": {
+        "lighting": "लाइटिंग",
+        "cyclorama": "साइक्लोरामा"
+      },
+      "equipmentItems": {
+        "Tripods": "ट्राइपॉड",
+        "Backdrop Stands": "बैकड्रॉप स्टैंड",
+        "Reflectors": "रिफ्लेक्टर",
+        "Continuous Lighting Kit": "कंटिन्युअस लाइटिंग किट",
+        "Strobe Lights": "स्ट्रोब लाइट्स",
+        "Sound Equipment": "साउंड उपकरण",
+        "Teleprompter": "टेलीप्रॉम्प्टर"
+      },
+      "facilities": {
+        "parking": "पार्किंग",
+        "powerBackup": "पावर बैकअप",
+        "makeupRoom": "मेकअप रूम",
+        "changingRoom": "चेंजिंग रूम",
+        "ac": "एसी"
+      },
+      "badges": {
+        "largestArea": "सबसे बड़ा क्षेत्रफल",
+        "lowestPrice": "सबसे कम कीमत",
+        "topRated": "सर्वोच्च रेटेड"
+      },
+      "reviews": {
+        "reviewCount": "समीक्षाओं की संख्या"
+      }
+    },
+    "workspace": {
+      "seatsValue": "{count} सीटें",
+      "roomsValue": "{count} कमरे",
+      "reviewsValue": "{count} समीक्षाएं",
+      "overview": {
+        "seats": "सीटें",
+        "meetingRooms": "मीटिंग रूम",
+        "rating": "रेटिंग"
+      },
+      "sections": {
+        "overview": "अवलोकन",
+        "pricing": "कीमत और समय",
+        "facilities": "सुविधाएं",
+        "reviews": "समीक्षाएं"
+      },
+      "pricing": {
+        "rate": "दर",
+        "pricingType": "मूल्य निर्धारण प्रकार",
+        "operatingHours": "संचालन समय",
+        "internet": "इंटरनेट"
+      },
+      "facilities": {
+        "parking": "पार्किंग",
+        "printer": "प्रिंटर",
+        "pantry": "पैंट्री",
+        "cabin": "निजी केबिन"
+      },
+      "amenities": {
+        "title": "सुविधाएं"
+      },
+      "amenityItems": {
+        "Whiteboard": "व्हाइटबोर्ड",
+        "Video Conferencing": "वीडियो कॉन्फ्रेंसिंग",
+        "Standing Desks": "स्टैंडिंग डेस्क",
+        "Locker Storage": "लॉकर स्टोरेज",
+        "Reception Desk": "रिसेप्शन डेस्क"
+      },
+      "badges": {
+        "mostSeats": "सबसे अधिक सीटें",
+        "topRated": "सर्वोच्च रेटेड",
+        "lowestPrice": "सबसे कम कीमत"
+      },
+      "reviews": {
+        "reviewCount": "समीक्षाओं की संख्या"
+      }
+    },
+    "rental": {
+      "yes": "हां",
+      "no": "नहीं",
+      "guestsValue": "{count} मेहमान",
+      "bedroomsValue": "{count} बेडरूम",
+      "bathroomsValue": "{count} बाथरूम",
+      "reviewsValue": "{count} समीक्षाएं",
+      "overview": {
+        "rentalType": "रेंटल प्रकार",
+        "price": "कीमत",
+        "pricingType": "मूल्य निर्धारण प्रकार",
+        "rating": "रेटिंग"
+      },
+      "capacity": {
+        "maxGuests": "अधिकतम मेहमान",
+        "bedrooms": "बेडरूम",
+        "bathrooms": "बाथरूम"
+      },
+      "policy": {
+        "checkIn": "चेक-इन",
+        "checkOut": "चेक-आउट",
+        "petFriendly": "पालतू-अनुकूल",
+        "cancellation": "रद्दीकरण नीति"
+      },
+      "sections": {
+        "overview": "अवलोकन",
+        "capacity": "क्षमता",
+        "policy": "स्टे नीति",
+        "amenities": "सुविधाएं",
+        "reviews": "समीक्षाएं"
+      },
+      "amenityItems": {
+        "WiFi": "वाईफाई",
+        "Air Conditioning": "एसी",
+        "Washing Machine": "वॉशिंग मशीन",
+        "Kitchen": "रसोई",
+        "TV / Streaming": "टीवी / स्ट्रीमिंग",
+        "Balcony": "बालकनी",
+        "Housekeeping": "हाउसकीपिंग"
+      },
+      "badges": {
+        "lowestPrice": "सबसे कम कीमत",
+        "topRated": "सर्वोच्च रेटेड",
+        "mostGuests": "सबसे अधिक मेहमान"
+      },
+      "reviews": {
+        "reviewCount": "समीक्षाओं की संख्या"
+      }
+    }
   }
 }

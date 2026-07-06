@@ -1106,5 +1106,479 @@
       "meeting_point": "Meeting Point",
       "guide_contact": "Guide Contact"
     }
+  },
+  "compare": {
+    "empty": {
+      "title": "ಇನ್ನೂ ಹೋಲಿಸಲು ಏನೂ ಇಲ್ಲ",
+      "subtitle": "ನಿಮಗೆ ಆಸಕ್ತಿಯಿರುವ ಪ್ರಾಪರ್ಟಿಗಳನ್ನು ಉಳಿಸಿ ಮತ್ತು ಅವುಗಳನ್ನು ಪಕ್ಕಪಕ್ಕದಲ್ಲಿ ಹೋಲಿಸಿ.",
+      "primaryCta": "ಪ್ರಾಪರ್ಟಿಗಳನ್ನು ಅನ್ವೇಷಿಸಿ",
+      "secondaryCta": "ವಿಶ್‌ಲಿಸ್ಟ್‌ಗೆ ಹೋಗಿ",
+      "floatingLocation": "ಕೊಡಗು, ಕರ್ನಾಟಕ"
+    },
+    "hero": {
+      "title": "ಪ್ರಾಪರ್ಟಿಗಳನ್ನು ಹೋಲಿಸಿ",
+      "subtitle": "ನಿರ್ಧಾರ ತೆಗೆದುಕೊಳ್ಳುವ ಮೊದಲು ವೆನ್ಯೂ ಅಥವಾ ಸ್ಟೇಗಳನ್ನು ಪಕ್ಕಪಕ್ಕದಲ್ಲಿ ಹೋಲಿಸಿ.",
+      "comparingCount": "{count} ಪ್ರಾಪರ್ಟಿಗಳನ್ನು ಹೋಲಿಸಲಾಗುತ್ತಿದೆ"
+    },
+    "stickyBar": {
+      "remove": "ತೆಗೆದುಹಾಕಿ",
+      "checkingFor": "ಲಭ್ಯತೆಯನ್ನು ಪರಿಶೀಲಿಸಲಾಗುತ್ತಿದೆ",
+      "shiftDay": "ಹಗಲು",
+      "shiftEvening": "ಸಂಜೆ",
+      "shiftFullDay": "ಪೂರ್ಣ ದಿನ",
+      "today": "ಇಂದು",
+      "prevMonth": "ಹಿಂದಿನ ತಿಂಗಳು",
+      "nextMonth": "ಮುಂದಿನ ತಿಂಗಳು"
+    },
+    "card": {
+      "wishlist": "ವಿಶ್‌ಲಿಸ್ಟ್",
+      "remove": "ತೆಗೆದುಹಾಕಿ",
+      "verified": "ಪರಿಶೀಲಿಸಲಾಗಿದೆ",
+      "startingFrom": "ಪ್ರಾರಂಭಿಕ ಬೆಲೆ",
+      "viewProperty": "ಪ್ರಾಪರ್ಟಿ ವೀಕ್ಷಿಸಿ"
+    },
+    "addVenue": {
+      "tileLabel": "{category} ಸೇರಿಸಿ",
+      "modalTitle": "ಹೋಲಿಕೆಗೆ {category} ಸೇರಿಸಿ",
+      "searchPlaceholder": "ಹೆಸರು ಅಥವಾ ಸ್ಥಳದ ಮೂಲಕ ಪ್ರಾಪರ್ಟಿ ಹುಡುಕಿ...",
+      "noResults": "ಯಾವುದೇ ಫಲಿತಾಂಶಗಳು ಕಂಡುಬಂದಿಲ್ಲ.",
+      "addButton": "ಸೇರಿಸಿ",
+      "close": "ಮುಚ್ಚಿ"
+    },
+    "quickSummary": {
+      "bestPrice": "ಕಡಿಮೆ ಬೆಲೆ",
+      "highestRated": "ಅತ್ಯುತ್ತಮ ರೇಟಿಂಗ್",
+      "mostBedrooms": "ಹೆಚ್ಚು ಬೆಡ್‌ರೂಮ್‌ಗಳು",
+      "highestCapacity": "ಅತಿ ಹೆಚ್ಚು ಸಾಮರ್ಥ್ಯ",
+      "bedroomsValue": "{count} ಬೆಡ್‌ರೂಮ್‌ಗಳು",
+      "guestsValue": "{count} ಅತಿಥಿಗಳು",
+      "largestEstate": "ಅತಿದೊಡ್ಡ ಎಸ್ಟೇಟ್",
+      "acresValue": "{count} ಎಕರೆ",
+      "privatePool": "ಖಾಸಗಿ ಈಜುಕೊಳ",
+      "available": "ಲಭ್ಯವಿದೆ",
+      "mostActivities": "ಹೆಚ್ಚು ಚಟುವಟಿಕೆಗಳು",
+      "activitiesValue": "{count} ಚಟುವಟಿಕೆಗಳು",
+      "largestArea": "ಅತಿದೊಡ್ಡ ವಿಸ್ತೀರ್ಣ",
+      "sqftValue": "{count} ಚ.ಅಡಿ",
+      "mostEquipment": "ಹೆಚ್ಚು ಉಪಕರಣಗಳು",
+      "itemsValue": "{count} ವಸ್ತುಗಳು",
+      "mostSeats": "ಹೆಚ್ಚು ಆಸನಗಳು",
+      "seatsValue": "{count} ಆಸನಗಳು",
+      "mostMeetingRooms": "ಹೆಚ್ಚು ಸಭಾ ಕೊಠಡಿಗಳು",
+      "roomsValue": "{count} ಕೊಠಡಿಗಳು",
+      "mostGuests": "ಹೆಚ್ಚು ಅತಿಥಿಗಳು",
+      "mostAmenities": "ಹೆಚ್ಚು ಸೌಲಭ್ಯಗಳು"
+    },
+    "differences": {
+      "allRowsShown": "ಹೋಲಿಕೆಗಳು ಸೇರಿದಂತೆ ಎಲ್ಲಾ ವಿವರಗಳನ್ನು ತೋರಿಸಲಾಗುತ್ತಿದೆ.",
+      "hiddenCount": "{count} ಒಂದೇ ರೀತಿಯ ಸಾಲುಗಳನ್ನು ಮರೆಮಾಡಲಾಗಿದೆ — ವ್ಯತ್ಯಾಸಗಳನ್ನು ಮಾತ್ರ ತೋರಿಸಲಾಗುತ್ತಿದೆ.",
+      "hideSimilarities": "ಹೋಲಿಕೆಗಳನ್ನು ಮರೆಮಾಡಿ",
+      "showSimilarities": "ಹೋಲಿಕೆಗಳನ್ನು ತೋರಿಸಿ"
+    },
+    "venue": {
+      "yes": "ಹೌದು",
+      "no": "ಇಲ್ಲ",
+      "guestsValue": "{count} ಅತಿಥಿಗಳು",
+      "carsValue": "{count} ಕಾರುಗಳು",
+      "roomsValue": "{count} ಕೊಠಡಿಗಳು",
+      "reviewsValue": "{count} ವಿಮರ್ಶೆಗಳು",
+      "sqftValue": "{count} ಚ.ಅಡಿ",
+      "notApplicable": "ಅನ್ವಯಿಸುವುದಿಲ್ಲ",
+      "viewGallery": "ಗ್ಯಾಲರಿ ವೀಕ್ಷಿಸಿ",
+      "highlights": {
+        "capacity": "ಸಾಮರ್ಥ್ಯ",
+        "indoorOutdoor": "ಒಳಾಂಗಣ / ಹೊರಾಂಗಣ",
+        "startingFrom": "ಬೆಲೆ ಪ್ರಾರಂಭ"
+      },
+      "sections": {
+        "highlights": "ತ್ವರಿತ ಮುಖ್ಯಾಂಶಗಳು",
+        "availability": "ಲಭ್ಯತೆ",
+        "pricing": "ಬೆಲೆ ನಿಗದಿ",
+        "capacity": "ಸಾಮರ್ಥ್ಯ",
+        "eventSuitability": "ಈವೆಂಟ್ ಸೂಕ್ತತೆ",
+        "food": "ಆಹಾರ",
+        "facilities": "ಸೌಲಭ್ಯಗಳು",
+        "policies": "ನೀತಿಗಳು",
+        "gallery": "ಗ್ಯಾಲರಿ ಪೂರ್ವವೀಕ್ಷಣೆ",
+        "reviews": "ವಿಮರ್ಶೆಗಳು"
+      },
+      "availability": {
+        "available": "ಲಭ್ಯವಿದೆ",
+        "limited": "ಸೀಮಿತ",
+        "booked": "ಬುಕ್ ಆಗಿದೆ"
+      },
+      "pricing": {
+        "starting": "ಪ್ರಾರಂಭಿಕ ಬೆಲೆ",
+        "peak": "ಪೀಕ್ ಬೆಲೆ",
+        "offSeason": "ಆಫ್ ಸೀಸನ್ ಬೆಲೆ",
+        "decoration": "ಅಲಂಕಾರ ಸೇರಿದೆ",
+        "food": "ಆಹಾರ ಸೇರಿದೆ",
+        "taxes": "ತೆರಿಗೆಗಳು ಸೇರಿವೆ",
+        "cancellation": "ರದ್ದತಿ ನೀತಿ",
+        "advanceRequired": "ಅಗತ್ಯವಿರುವ ಮುಂಗಡ"
+      },
+      "capacity": {
+        "minGuests": "ಕನಿಷ್ಠ ಅತಿಥಿಗಳು",
+        "maxGuests": "ಗರಿಷ್ಠ ಅತಿಥಿಗಳು",
+        "floating": "ಫ್ಲೋಟಿಂಗ್ ಸಾಮರ್ಥ್ಯ",
+        "dining": "ಊಟದ ವ್ಯವಸ್ಥೆ",
+        "parking": "ಪಾರ್ಕಿಂಗ್",
+        "stageSize": "ವೇದಿಕೆಯ ಗಾತ್ರ",
+        "rooms": "ಲಭ್ಯವಿರುವ ಕೊಠಡಿಗಳು",
+        "hallArea": "ಹಾಲ್ ವಿಸ್ತೀರ್ಣ",
+        "seatingStyle": "ಆಸನ ವಿನ್ಯಾಸ"
+      },
+      "eventTypes": {
+        "Wedding": "ಮದುವೆ",
+        "Reception": "ಸ್ವಾಗತ ಸಮಾರಂಭ",
+        "Engagement": "ನಿಶ್ಚಿತಾರ್ಥ",
+        "Birthday": "ಹುಟ್ಟುಹಬ್ಬ",
+        "Corporate": "ಕಾರ್ಪೊರೇಟ್",
+        "Conference": "ಸಮ್ಮೇಳನ",
+        "Cocktail": "ಕಾಕ್ಟೈಲ್",
+        "Haldi": "ಹಳ್ದಿ",
+        "Sangeet": "ಸಂಗೀತ"
+      },
+      "foodItems": {
+        "Outside Catering": "ಹೊರಗಿನ ಕೇಟರಿಂಗ್",
+        "Veg": "ಸಸ್ಯಾಹಾರಿ",
+        "Non Veg": "ಮಾಂಸಾಹಾರಿ",
+        "Kitchen Available": "ಅಡುಗೆಮನೆ ಲಭ್ಯವಿದೆ",
+        "Alcohol": "ಮದ್ಯ",
+        "Bar": "ಬಾರ್",
+        "Live Counters": "ಲೈವ್ ಕೌಂಟರ್‌ಗಳು"
+      },
+      "facilityGroups": {
+        "Venue Features": "ವೆನ್ಯೂ ವೈಶಿಷ್ಟ್ಯಗಳು",
+        "Technology": "ತಂತ್ರಜ್ಞಾನ",
+        "Accessibility": "ಪ್ರವೇಶಸಾಧ್ಯತೆ",
+        "Parking": "ಪಾರ್ಕಿಂಗ್",
+        "Accommodation": "ವಸತಿ",
+        "Decoration": "ಅಲಂಕಾರ",
+        "Entertainment": "ಮನರಂಜನೆ"
+      },
+      "policies": {
+        "operatingHours": "ಸಮಯ",
+        "musicTiming": "ಸಂಗೀತ ಸಮಯ",
+        "noiseRestriction": "ಶಬ್ದ ನಿರ್ಬಂಧ",
+        "outsideVendors": "ಹೊರಗಿನ ವೆಂಡರ್‌ಗಳಿಗೆ ಅವಕಾಶ",
+        "smoking": "ಧೂಮಪಾನ",
+        "pets": "ಸಾಕುಪ್ರಾಣಿಗಳಿಗೆ ಅವಕಾಶ",
+        "decorRules": "ಅಲಂಕಾರ ನಿಯಮಗಳು",
+        "cleaning": "ಸ್ವಚ್ಛತೆ",
+        "liquorPolicy": "ಮದ್ಯ ನೀತಿ"
+      },
+      "badges": {
+        "highestCapacity": "ಅತಿ ಹೆಚ್ಚು ಸಾಮರ್ಥ್ಯ",
+        "lowestPrice": "ಕಡಿಮೆ ಬೆಲೆ",
+        "lowestAdvance": "ಕಡಿಮೆ ಮುಂಗಡ",
+        "mostParking": "ಹೆಚ್ಚು ಪಾರ್ಕಿಂಗ್",
+        "largestArea": "ಅತಿದೊಡ್ಡ ವಿಸ್ತೀರ್ಣ",
+        "topRated": "ಅತ್ಯುತ್ತಮ ರೇಟಿಂಗ್"
+      },
+      "reviews": {
+        "overallRating": "ಒಟ್ಟಾರೆ ರೇಟಿಂಗ್",
+        "reviewCount": "ವಿಮರ್ಶೆಗಳ ಸಂಖ್ಯೆ",
+        "topPros": "ಮುಖ್ಯ ಅನುಕೂಲಗಳು",
+        "topCons": "ಮುಖ್ಯ ಅನಾನುಕೂಲಗಳು",
+        "latestReview": "ಇತ್ತೀಚಿನ ವಿಮರ್ಶೆ"
+      }
+    },
+    "farmstay": {
+      "yes": "ಹೌದು",
+      "no": "ಇಲ್ಲ",
+      "guestsValue": "{count} ಅತಿಥಿಗಳು",
+      "bedroomsValue": "{count} ಬೆಡ್‌ರೂಮ್‌ಗಳು",
+      "bathroomsValue": "{count} ಬಾತ್‌ರೂಮ್‌ಗಳು",
+      "bedsValue": "{count} ಹಾಸಿಗೆಗಳು",
+      "kmValue": "{count} ಕಿ.ಮೀ",
+      "acresValue": "{count} ಎಕರೆ",
+      "notApplicable": "ಅನ್ವಯಿಸುವುದಿಲ್ಲ",
+      "notRequired": "ಅಗತ್ಯವಿಲ್ಲ",
+      "viewGallery": "ಗ್ಯಾಲರಿ ವೀಕ್ಷಿಸಿ",
+      "overview": {
+        "startingPrice": "ಪ್ರಾರಂಭಿಕ ಬೆಲೆ",
+        "guests": "ಅತಿಥಿಗಳು",
+        "bedrooms": "ಬೆಡ್‌ರೂಮ್‌ಗಳು",
+        "bathrooms": "ಬಾತ್‌ರೂಮ್‌ಗಳು",
+        "acres": "ಎಕರೆ",
+        "entireOrPrivate": "ಸಂಪೂರ್ಣ ಪ್ರಾಪರ್ಟಿ / ಖಾಸಗಿ ಕೊಠಡಿ"
+      },
+      "sections": {
+        "overview": "ಅವಲೋಕನ",
+        "stayDetails": "ವಾಸ್ತವ್ಯದ ವಿವರಗಳು",
+        "accommodation": "ವಸತಿ",
+        "activities": "ಚಟುವಟಿಕೆಗಳು",
+        "comfort": "ಸೌಕರ್ಯ",
+        "food": "ಆಹಾರ",
+        "nearby": "ಹತ್ತಿರದ ಸ್ಥಳಗಳು",
+        "policies": "ನೀತಿಗಳು",
+        "gallery": "ಗ್ಯಾಲರಿ ಪೂರ್ವವೀಕ್ಷಣೆ",
+        "reviews": "ವಿಮರ್ಶೆಗಳು"
+      },
+      "stay": {
+        "checkIn": "ಚೆಕ್-ಇನ್",
+        "checkOut": "ಚೆಕ್-ಔಟ್",
+        "mealsIncluded": "ಊಟ ಸೇರಿದೆ",
+        "caretaker": "ಆರೈಕೆದಾರ",
+        "petFriendly": "ಸಾಕುಪ್ರಾಣಿ ಸ್ನೇಹಿ",
+        "smoking": "ಧೂಮಪಾನ",
+        "familyFriendly": "ಕುಟುಂಬ ಸ್ನೇಹಿ",
+        "coupleFriendly": "ಜೋಡಿ ಸ್ನೇಹಿ"
+      },
+      "accommodation": {
+        "bedrooms": "ಬೆಡ್‌ರೂಮ್‌ಗಳು",
+        "beds": "ಹಾಸಿಗೆಗಳು",
+        "bathrooms": "ಬಾತ್‌ರೂಮ್‌ಗಳು",
+        "amenities": "ಸೌಲಭ್ಯಗಳು",
+        "kitchen": "ಅಡುಗೆಮನೆ",
+        "balcony": "ಬಾಲ್ಕನಿ",
+        "pool": "ಈಜುಕೊಳ",
+        "privatePool": "ಖಾಸಗಿ ಈಜುಕೊಳ",
+        "riverAccess": "ನದಿ ಪ್ರವೇಶ",
+        "lakeView": "ಸರೋವರದ ನೋಟ",
+        "garden": "ತೋಟ",
+        "privateLawn": "ಖಾಸಗಿ ಹುಲ್ಲುಹಾಸು",
+        "firePit": "ಕ್ಯಾಂಪ್‌ಫೈರ್",
+        "bbq": "ಬಿಬಿಕ್ಯೂ",
+        "parking": "ಪಾರ್ಕಿಂಗ್"
+      },
+      "activities": {
+        "Kayaking": "ಕಯಾಕಿಂಗ್",
+        "Bonfire": "ಬೆಂಕಿ ಶಿಬಿರ",
+        "Fishing": "ಮೀನುಗಾರಿಕೆ",
+        "Cycling": "ಸೈಕ್ಲಿಂಗ್",
+        "Organic Farm": "ಸಾವಯವ ಕೃಷಿ",
+        "Nature Walk": "ಪ್ರಕೃತಿ ನಡಿಗೆ",
+        "Horse Riding": "ಕುದುರೆ ಸವಾರಿ",
+        "Photography": "ಛಾಯಾಗ್ರಹಣ",
+        "Kids Area": "ಮಕ್ಕಳ ಪ್ರದೇಶ"
+      },
+      "comfort": {
+        "AC": "ಎಸಿ",
+        "WiFi": "ವೈಫೈ",
+        "Power Backup": "ಪವರ್ ಬ್ಯಾಕಪ್",
+        "TV": "ಟಿವಿ",
+        "Workspace": "ಕೆಲಸದ ಸ್ಥಳ",
+        "Washing Machine": "ವಾಷಿಂಗ್ ಮೆಷಿನ್",
+        "Hot Water": "ಬಿಸಿ ನೀರು"
+      },
+      "foodItems": {
+        "Breakfast": "ಬೆಳಗಿನ ಉಪಾಹಾರ",
+        "Lunch": "ಮಧ್ಯಾಹ್ನದ ಊಟ",
+        "Dinner": "ರಾತ್ರಿ ಊಟ",
+        "Kitchen Access": "ಅಡುಗೆಮನೆ ಬಳಕೆ",
+        "Self Cooking": "ಸ್ವಂತ ಅಡುಗೆ",
+        "Veg": "ಸಸ್ಯಾಹಾರಿ",
+        "Non Veg": "ಮಾಂಸಾಹಾರಿ",
+        "BBQ": "ಬಿಬಿಕ್ಯೂ"
+      },
+      "nearby": {
+        "Lake": "ಸರೋವರ",
+        "Beach": "ಬೀಚ್",
+        "Airport": "ವಿಮಾನ ನಿಲ್ದಾಣ",
+        "Hospital": "ಆಸ್ಪತ್ರೆ",
+        "City": "ನಗರ",
+        "Market": "ಮಾರುಕಟ್ಟೆ"
+      },
+      "policies": {
+        "pets": "ಸಾಕುಪ್ರಾಣಿಗಳು",
+        "events": "ಈವೆಂಟ್‌ಗಳಿಗೆ ಅವಕಾಶ",
+        "visitors": "ಸಂದರ್ಶಕರು",
+        "cancellation": "ರದ್ದತಿ",
+        "refund": "ಮರುಪಾವತಿ",
+        "securityDeposit": "ಭದ್ರತಾ ಠೇವಣಿ"
+      },
+      "badges": {
+        "lowestPrice": "ಕಡಿಮೆ ಬೆಲೆ",
+        "mostBedrooms": "ಹೆಚ್ಚು ಬೆಡ್‌ರೂಮ್‌ಗಳು",
+        "largestEstate": "ಅತಿದೊಡ್ಡ ಎಸ್ಟೇಟ್",
+        "topRated": "ಅತ್ಯುತ್ತಮ ರೇಟಿಂಗ್"
+      },
+      "reviews": {
+        "rating": "ಒಟ್ಟಾರೆ ರೇಟಿಂಗ್",
+        "cleanliness": "ಸ್ವಚ್ಛತೆ",
+        "location": "ಸ್ಥಳ",
+        "host": "ಆತಿಥೇಯ",
+        "value": "ಮೌಲ್ಯ",
+        "topPros": "ಮುಖ್ಯ ಅನುಕೂಲಗಳು",
+        "topCons": "ಮುಖ್ಯ ಅನಾನುಕೂಲಗಳು"
+      }
+    },
+    "recommendations": {
+      "heading": "ನಮ್ಮ ಶಿಫಾರಸು",
+      "subheading": "ನೀವು ಹೋಲಿಸುತ್ತಿರುವ ಪ್ರಾಪರ್ಟಿಗಳಿಂದ ರಚಿಸಲಾಗಿದೆ — ಸಾಮಾನ್ಯ ಆಯ್ಕೆ ಅಲ್ಲ.",
+      "bestValue": {
+        "title": "ಉತ್ತಮ ಮೌಲ್ಯ",
+        "reasonVenue": "{size} ಅತಿಥಿಗಳವರೆಗೆ ಸಾಮರ್ಥ್ಯದೊಂದಿಗೆ ಕಡಿಮೆ ಬೆಲೆ ({price}).",
+        "reasonFarmstay": "{size} ಬೆಡ್‌ರೂಮ್‌ಗಳೊಂದಿಗೆ ಕಡಿಮೆ ಬೆಲೆ ({price})."
+      },
+      "topRated": {
+        "title": "ಐಷಾರಾಮಿ ಆಯ್ಕೆ",
+        "reasonVenue": "ಅತ್ಯುತ್ತಮ ವಾತಾವರಣ ಮತ್ತು ಸೇವೆ — ಹಿಂದಿನ ಅತಿಥಿಗಳಿಂದ {rating} ಸ್ಟಾರ್ ರೇಟಿಂಗ್.",
+        "reasonFarmstay": "ಅತ್ಯಂತ ಇಷ್ಟಪಟ್ಟ ವಾಸ್ತವ್ಯ — ಹಿಂದಿನ ಅತಿಥಿಗಳಿಂದ {rating} ಸ್ಟಾರ್ ರೇಟಿಂಗ್."
+      },
+      "bestForFamilies": {
+        "title": "ಕುಟುಂಬಗಳಿಗೆ ಅತ್ಯುತ್ತಮ",
+        "reasonVenue": "{size} ಅತಿಥಿಗಳವರೆಗೆ ಆರಾಮದಾಯಕವಾಗಿ ಆತಿಥ್ಯ — ಕುಟುಂಬ ಸಮಾರಂಭಗಳಿಗೆ ಸೂಕ್ತ.",
+        "reasonFarmstay": "{size} ಬೆಡ್‌ರೂಮ್‌ಗಳಾದ್ಯಂತ ಮಕ್ಕಳಿಗೆ ಚಟುವಟಿಕೆಗಳೊಂದಿಗೆ ಕುಟುಂಬ ಸ್ನೇಹಿ."
+      },
+      "mostAmenities": {
+        "title": "ಅತ್ಯಂತ ಸಂಪೂರ್ಣ",
+        "reasonVenue": "ಹೆಚ್ಚಿನ ಸೌಲಭ್ಯಗಳು ಮತ್ತು ಸೇವೆಗಳೊಂದಿಗೆ ಬರುತ್ತದೆ ({count} ಸೌಲಭ್ಯಗಳು).",
+        "reasonFarmstay": "ಹೆಚ್ಚಿನ ಸೌಕರ್ಯಗಳು ಮತ್ತು ಚಟುವಟಿಕೆಗಳೊಂದಿಗೆ ಬರುತ್ತದೆ ({count} ಸೌಲಭ್ಯಗಳು)."
+      }
+    },
+    "categorySwitcher": {
+      "label": "ವರ್ಗ"
+    },
+    "categorySwitch": {
+      "heading": "ಇನ್ನೂ ಸಾಕಷ್ಟು {category} ಉಳಿಸಲಾಗಿಲ್ಲ",
+      "body": "ಪಕ್ಕಪಕ್ಕದಲ್ಲಿ ಹೋಲಿಸಲು ಕನಿಷ್ಠ 2 {category} ಉಳಿಸಿ.",
+      "emptyHeading": "ಇನ್ನೂ {category} ಸೇರಿಸಲಾಗಿಲ್ಲ",
+      "emptyBody": "ಹೋಲಿಕೆ ಪ್ರಾರಂಭಿಸಲು {category} ಬ್ರೌಸ್ ಮಾಡಿ.",
+      "browseButton": "{category} ಬ್ರೌಸ್ ಮಾಡಿ",
+      "switchButton": "{category} ಗೆ ಬದಲಿಸಿ"
+    },
+    "studio": {
+      "notApplicable": "ಅನ್ವಯಿಸುವುದಿಲ್ಲ",
+      "sqftValue": "{count} ಚ.ಅಡಿ",
+      "reviewsValue": "{count} ವಿಮರ್ಶೆಗಳು",
+      "overview": {
+        "studioArea": "ಸ್ಟುಡಿಯೋ ವಿಸ್ತೀರ್ಣ",
+        "hourlyPrice": "ಗಂಟೆಗೆ ಬೆಲೆ",
+        "rating": "ರೇಟಿಂಗ್"
+      },
+      "sections": {
+        "overview": "ಅವಲೋಕನ",
+        "lighting": "ಬೆಳಕು ಮತ್ತು ಸೆಟಪ್",
+        "equipment": "ಉಪಕರಣಗಳು",
+        "facilities": "ಸೌಲಭ್ಯಗಳು",
+        "reviews": "ವಿಮರ್ಶೆಗಳು"
+      },
+      "lighting": {
+        "lighting": "ಬೆಳಕು",
+        "cyclorama": "ಸೈಕ್ಲೊರಾಮಾ"
+      },
+      "equipmentItems": {
+        "Tripods": "ಟ್ರೈಪಾಡ್‌ಗಳು",
+        "Backdrop Stands": "ಬ್ಯಾಕ್‌ಡ್ರಾಪ್ ಸ್ಟ್ಯಾಂಡ್‌ಗಳು",
+        "Reflectors": "ರಿಫ್ಲೆಕ್ಟರ್‌ಗಳು",
+        "Continuous Lighting Kit": "ನಿರಂತರ ಬೆಳಕಿನ ಕಿಟ್",
+        "Strobe Lights": "ಸ್ಟ್ರೋಬ್ ದೀಪಗಳು",
+        "Sound Equipment": "ಧ್ವನಿ ಉಪಕರಣಗಳು",
+        "Teleprompter": "ಟೆಲಿಪ್ರಾಂಪ್ಟರ್"
+      },
+      "facilities": {
+        "parking": "ಪಾರ್ಕಿಂಗ್",
+        "powerBackup": "ಪವರ್ ಬ್ಯಾಕಪ್",
+        "makeupRoom": "ಮೇಕಪ್ ಕೊಠಡಿ",
+        "changingRoom": "ಬಟ್ಟೆ ಬದಲಾಯಿಸುವ ಕೊಠಡಿ",
+        "ac": "ಎಸಿ"
+      },
+      "badges": {
+        "largestArea": "ಅತಿದೊಡ್ಡ ವಿಸ್ತೀರ್ಣ",
+        "lowestPrice": "ಕಡಿಮೆ ಬೆಲೆ",
+        "topRated": "ಅತ್ಯುತ್ತಮ ರೇಟಿಂಗ್"
+      },
+      "reviews": {
+        "reviewCount": "ವಿಮರ್ಶೆಗಳ ಸಂಖ್ಯೆ"
+      }
+    },
+    "workspace": {
+      "seatsValue": "{count} ಆಸನಗಳು",
+      "roomsValue": "{count} ಕೊಠಡಿಗಳು",
+      "reviewsValue": "{count} ವಿಮರ್ಶೆಗಳು",
+      "overview": {
+        "seats": "ಆಸನಗಳು",
+        "meetingRooms": "ಸಭಾ ಕೊಠಡಿಗಳು",
+        "rating": "ರೇಟಿಂಗ್"
+      },
+      "sections": {
+        "overview": "ಅವಲೋಕನ",
+        "pricing": "ಬೆಲೆ ಮತ್ತು ಸಮಯ",
+        "facilities": "ಸೌಲಭ್ಯಗಳು",
+        "reviews": "ವಿಮರ್ಶೆಗಳು"
+      },
+      "pricing": {
+        "rate": "ದರ",
+        "pricingType": "ಬೆಲೆ ನಿಗದಿ ಪ್ರಕಾರ",
+        "operatingHours": "ಕಾರ್ಯಾಚರಣೆ ಸಮಯ",
+        "internet": "ಇಂಟರ್ನೆಟ್"
+      },
+      "facilities": {
+        "parking": "ಪಾರ್ಕಿಂಗ್",
+        "printer": "ಪ್ರಿಂಟರ್",
+        "pantry": "ಪ್ಯಾಂಟ್ರಿ",
+        "cabin": "ಖಾಸಗಿ ಕ್ಯಾಬಿನ್"
+      },
+      "amenities": {
+        "title": "ಸೌಲಭ್ಯಗಳು"
+      },
+      "amenityItems": {
+        "Whiteboard": "ವೈಟ್‌ಬೋರ್ಡ್",
+        "Video Conferencing": "ವೀಡಿಯೊ ಕಾನ್ಫರೆನ್ಸಿಂಗ್",
+        "Standing Desks": "ನಿಂತು ಕೆಲಸ ಮಾಡುವ ಡೆಸ್ಕ್‌ಗಳು",
+        "Locker Storage": "ಲಾಕರ್ ಸಂಗ್ರಹಣೆ",
+        "Reception Desk": "ರಿಸೆಪ್ಷನ್ ಡೆಸ್ಕ್"
+      },
+      "badges": {
+        "mostSeats": "ಹೆಚ್ಚು ಆಸನಗಳು",
+        "topRated": "ಅತ್ಯುತ್ತಮ ರೇಟಿಂಗ್",
+        "lowestPrice": "ಕಡಿಮೆ ಬೆಲೆ"
+      },
+      "reviews": {
+        "reviewCount": "ವಿಮರ್ಶೆಗಳ ಸಂಖ್ಯೆ"
+      }
+    },
+    "rental": {
+      "yes": "ಹೌದು",
+      "no": "ಇಲ್ಲ",
+      "guestsValue": "{count} ಅತಿಥಿಗಳು",
+      "bedroomsValue": "{count} ಬೆಡ್‌ರೂಮ್‌ಗಳು",
+      "bathroomsValue": "{count} ಬಾತ್‌ರೂಮ್‌ಗಳು",
+      "reviewsValue": "{count} ವಿಮರ್ಶೆಗಳು",
+      "overview": {
+        "rentalType": "ಬಾಡಿಗೆ ಪ್ರಕಾರ",
+        "price": "ಬೆಲೆ",
+        "pricingType": "ಬೆಲೆ ನಿಗದಿ ಪ್ರಕಾರ",
+        "rating": "ರೇಟಿಂಗ್"
+      },
+      "capacity": {
+        "maxGuests": "ಗರಿಷ್ಠ ಅತಿಥಿಗಳು",
+        "bedrooms": "ಬೆಡ್‌ರೂಮ್‌ಗಳು",
+        "bathrooms": "ಬಾತ್‌ರೂಮ್‌ಗಳು"
+      },
+      "policy": {
+        "checkIn": "ಚೆಕ್-ಇನ್",
+        "checkOut": "ಚೆಕ್-ಔಟ್",
+        "petFriendly": "ಸಾಕುಪ್ರಾಣಿ ಸ್ನೇಹಿ",
+        "cancellation": "ರದ್ದತಿ ನೀತಿ"
+      },
+      "sections": {
+        "overview": "ಅವಲೋಕನ",
+        "capacity": "ಸಾಮರ್ಥ್ಯ",
+        "policy": "ವಾಸ್ತವ್ಯ ನೀತಿ",
+        "amenities": "ಸೌಲಭ್ಯಗಳು",
+        "reviews": "ವಿಮರ್ಶೆಗಳು"
+      },
+      "amenityItems": {
+        "WiFi": "ವೈಫೈ",
+        "Air Conditioning": "ಎಸಿ",
+        "Washing Machine": "ವಾಷಿಂಗ್ ಮೆಷಿನ್",
+        "Kitchen": "ಅಡುಗೆಮನೆ",
+        "TV / Streaming": "ಟಿವಿ / ಸ್ಟ್ರೀಮಿಂಗ್",
+        "Balcony": "ಬಾಲ್ಕನಿ",
+        "Housekeeping": "ಹೌಸ್‌ಕೀಪಿಂಗ್"
+      },
+      "badges": {
+        "lowestPrice": "ಕಡಿಮೆ ಬೆಲೆ",
+        "topRated": "ಅತ್ಯುತ್ತಮ ರೇಟಿಂಗ್",
+        "mostGuests": "ಹೆಚ್ಚು ಅತಿಥಿಗಳು"
+      },
+      "reviews": {
+        "reviewCount": "ವಿಮರ್ಶೆಗಳ ಸಂಖ್ಯೆ"
+      }
+    }
   }
 }
