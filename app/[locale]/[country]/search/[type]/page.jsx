@@ -1,27 +1,35 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { useParams, useSearchParams } from "next/navigation";
-import { X, Scale, SearchX, MapPin, SlidersHorizontal, Clapperboard, Map as MapIcon } from "lucide-react";
+import {
+  X,
+  Scale,
+  SearchX,
+  MapPin,
+  SlidersHorizontal,
+  Clapperboard,
+  Map as MapIcon,
+} from "lucide-react";
 
-import MapView           from "./components/MapView";
-import VenueCard         from "./components/VenueCard";
-import FilterDrawer      from "./components/FilterDrawer";
-import WishlistPopup     from "./components/WishlistPopup";
-import FilterRow         from "./components/FilterRow";
-import DesktopReelPanel  from "./components/DesktopReelPanel";
+import MapView from "./components/MapView";
+import VenueCard from "./components/VenueCard";
+import FilterDrawer from "./components/FilterDrawer";
+import WishlistPopup from "./components/WishlistPopup";
+import FilterRow from "./components/FilterRow";
+import DesktopReelPanel from "./components/DesktopReelPanel";
 import { DEFAULT_FILTERS } from "./components/FilterDrawer";
 import ListingsSearchBar from "./components/ListingsSearchBar";
 import { getDemoVideoUrl } from "./data/demoReelVideos";
 
-import { useCategory }          from "@/context/CategoryContext";
-import { useUI }                from "@/context/UIContext";
-import { useAuth }              from "@/context/AuthContext";
+import { useCategory } from "@/context/CategoryContext";
+import { useUI } from "@/context/UIContext";
+import { useAuth } from "@/context/AuthContext";
 import { usePreferredLocation } from "@/hooks/usePreferredLocation";
-import { useMobileReels }       from "@/context/MobileReelsContext";
-import { getStaticVenues }      from "./data/staticVenues";
+import { useMobileReels } from "@/context/MobileReelsContext";
+import { getStaticVenues } from "./data/staticVenues";
 
 import {
   LoadProperty,
@@ -32,43 +40,21 @@ import {
   addCompareAPI,
   UserCompare,
   userRecentViews,
+  totalLikedProperty,
+  addLikedProperty,
+  likedProperty,
 } from "@/services/venues.service";
+
 import { findPropertyname } from "@/services/global.service";
 
-/*
- * NEW ORDER: SearchBar → FilterRow → Cards (toolbar removed)
- *
- * MOBILE  (< md)   nav=64px
- *   SearchBar  top : 64
- *   SearchBar  h   : mt-3 mb-0 (12) + trigger py-3.5+content (66) = 78px
- *   FilterRow  top : 64 + 78 = 142
- *   FilterRow  h   : pt-3(12)+icon(72)+mb-2(8)+label(16)+pb-3.5(14)+border(1) = 123px
- *
- * DESKTOP (≥ md)   nav=72px
- *   SearchBar  top : 72
- *   SearchBar  h   : mt-3 mb-2 (20) + bar border+pad+content (72) = 92px
- *   FilterRow  top : 72 + 92 = 164
- *   FilterRow  h   : same = 123px
- *
- * Z-index (higher = paints on top when overlapping):
- *   Navbar       z-50   fixed  top:0
- *   SearchBar    z-40   sticky (first layer, on top)
- *   FilterRow    z-30   sticky (second layer, below search)
- *   Map          —      sticky top:72 desktop
- *   Cards        z-[1]  low stacking context
- *   Compare FAB  z-[45] floating above everything below header
- */
 const MAP_TOP = 72;
-const MAP_H   = `calc(100vh - ${MAP_TOP}px)`;
-
+const MAP_H = `calc(100vh - ${MAP_TOP}px)`;
 
 // ── Skeleton card placeholder ──────────────────────────────────────────────
 function SkeletonCard() {
   return (
     <div className="rounded-2xl overflow-hidden bg-white dark:bg-gray-900 shadow-sm animate-pulse">
-      {/* Image */}
       <div className="h-48 bg-gray-200 dark:bg-gray-700" />
-      {/* Body */}
       <div className="p-3 space-y-2">
         <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded-full w-3/4" />
         <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-full w-1/2" />
@@ -82,51 +68,150 @@ function SkeletonCard() {
 }
 
 export default function SearchPage() {
- 
   const mapRef = useRef(null);
-  const { user }            = useAuth();
-  const t                   = useTranslations();
+  const { user } = useAuth();
+  const t = useTranslations();
   const { locale, country } = useParams();
-  const searchParams        = useSearchParams();
+  const searchParams = useSearchParams();
 
-  const { showMap, setShowMap, filterOpen, setFilterOpen, setLoginOpen } = useUI();
+  const { showMap, setShowMap, filterOpen, setFilterOpen, setLoginOpen } =
+    useUI();
   const { activeCategory } = useCategory();
   const { openReels, registerSource, unregisterSource } = useMobileReels();
 
   /* ── data ──────────────────────────────────────────────────── */
-  const [hoverVenue,       setHoverVenue]       = useState(null);
-  // venueIds highlighted via map hover (cluster or individual marker) → drives card highlight
+  const [hoverVenue, setHoverVenue] = useState(null);
   const [mapHighlightedIds, setMapHighlightedIds] = useState([]);
-  const [wishlistVenue,    setWishlistVenue]     = useState(null);
-  const [loadData,         setLoadData]          = useState([]);
-  const [loadProperty,     setLoadProperty]      = useState([]);
-  const [isLoadingVenues,  setIsLoadingVenues]   = useState(true);
-  const [wishlistCategory, setWishlistCategory]  = useState([]);
-  const [wishlist,         setWishlist]          = useState([]);
-  const [compares,         setCompares]          = useState([]);
-  const [showComparePanel, setShowComparePanel]  = useState(false);
-  const [fabVisible,       setFabVisible]        = useState(true);
-  const [isMobileWidth,    setIsMobileWidth]     = useState(false);
-  const fabLastScroll  = useRef(0);
-  const hasAutoOpened  = useRef(false);
-  const [selectedCategory, setSelectedCategory]  = useState(null);
-  const [mapBounds,        setMapBounds]         = useState(null);
-  const [mapResetKey,      setMapResetKey]       = useState(0);
-  const [viewMode,         setViewMode]          = useState("map"); // "map" | "reels"
-  /* Venues reported as visible by MapView — drives the card grid */
-  const [cardVenues,       setCardVenues]        = useState(null);
-  /* Init from URL params (passed by home page search) */
-  const [searchLocLabel,   setSearchLocLabel]    = useState(() => searchParams.get("location") || null);
+  const [wishlistVenue, setWishlistVenue] = useState(null);
+  const [loadData, setLoadData] = useState([]);
+  const [loadProperty, setLoadProperty] = useState([]);
+  const [likedTotal, setLikedTotal] = useState([]);
+  const [isLoadingVenues, setIsLoadingVenues] = useState(true);
+  const [wishlistCategory, setWishlistCategory] = useState([]);
+  const [wishlist, setWishlist] = useState([]);
+  const [compares, setCompares] = useState([]);
+  const [showComparePanel, setShowComparePanel] = useState(false);
+  const [fabVisible, setFabVisible] = useState(true);
+  const [isMobileWidth, setIsMobileWidth] = useState(false);
+  const fabLastScroll = useRef(0);
+  const hasAutoOpened = useRef(false);
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [mapBounds, setMapBounds] = useState(null);
+  const [mapResetKey, setMapResetKey] = useState(0);
+  const [viewMode, setViewMode] = useState("map"); // "map" | "reels"
+  const [cardVenues, setCardVenues] = useState(null);
+  const [searchLocLabel, setSearchLocLabel] = useState(
+    () => searchParams.get("location") || null,
+  );
+  const [likedData, setLikedData] = useState([]);
 
-  /* Sync URL → searchLocLabel on mount (handles Next.js hydration timing) */
+  const [searchData, setSearchData] = useState({
+  location: searchParams.get("location") || "",
+  date: searchParams.get("date") || "",
+  guests: searchParams.get("guests") || "",
+});
+
+  console.log("==============SEARCH===============");
+  console.log(searchData);
+
+  // const lastBoundsRef = useRef(null);
+
+  // Stable callback identity across re-renders — deps are empty because it
+  // only touches refs/state setters (both stable). Prevents MapView from
+  // seeing a "new" onBoundsChange prop on every SearchPage render.
+  // const handleBoundsChange = useCallback((bounds) => {
+  //   if (!bounds) return;
+
+  //   const normalized = {
+  //     north: Number(bounds.north.toFixed(4)),
+  //     south: Number(bounds.south.toFixed(4)),
+  //     east: Number(bounds.east.toFixed(4)),
+  //     west: Number(bounds.west.toFixed(4)),
+  //   };
+
+  //   const prev = lastBoundsRef.current;
+
+  //   if (
+  //     prev &&
+  //     prev.north === normalized.north &&
+  //     prev.south === normalized.south &&
+  //     prev.east === normalized.east &&
+  //     prev.west === normalized.west
+  //   ) {
+  //     return;
+  //   }
+
+  //   lastBoundsRef.current = normalized;
+  //   setMapBounds(normalized);
+  // }, []);
+
+  const lastBoundsRef = useRef(null);
+  const suppressBoundsUntilRef = useRef(0); // NEW
+
+  const handleBoundsChange = useCallback((bounds) => {
+    if (!bounds) return;
+
+    // Ignore bounds events fired by MapView's own auto-fit/recenter right after
+    // new venues are rendered — otherwise: mapBounds -> load -> new venues ->
+    // MapView recenters -> bounds event -> mapBounds -> load -> ... forever.
+    if (Date.now() < suppressBoundsUntilRef.current) return;
+
+    const normalized = {
+      north: Number(bounds.north.toFixed(4)),
+      south: Number(bounds.south.toFixed(4)),
+      east: Number(bounds.east.toFixed(4)),
+      west: Number(bounds.west.toFixed(4)),
+    };
+
+    const prev = lastBoundsRef.current;
+
+    if (
+      prev &&
+      prev.north === normalized.north &&
+      prev.south === normalized.south &&
+      prev.east === normalized.east &&
+      prev.west === normalized.west
+    ) {
+      return;
+    }
+
+    lastBoundsRef.current = normalized;
+    setMapBounds(normalized);
+  }, []);
+
+  /* Sync URL → searchLocLabel on mount */
   useEffect(() => {
     const loc = searchParams.get("location");
     if (loc) setSearchLocLabel(loc);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  /* Sync URL → searchLocLabel on mount */
 
-  /* Preferred location from user preferences */
-  const { location: preferredLocation } = usePreferredLocation();
+  useEffect(() => {
+    console.log(searchLocLabel);
+    console.log(typeof searchLocLabel);
+  }, [searchLocLabel]);
+
+  /* Preferred location from user preferences.
+     IMPORTANT: usePreferredLocation() may return a NEW object reference on
+     every render even when lat/lng/label are unchanged (common with hooks
+     that derive from context or re-fetch). Re-deriving here with useMemo,
+     keyed on the primitive values, guarantees MapView only receives a new
+     preferredLocation reference when the actual location changed — this is
+     what stops MapView's center-priority effect from re-firing (and
+     re-calling panTo/setZoom, which produces spurious `idle` events) on
+     every unrelated parent re-render. */
+  const { location: rawPreferredLocation } = usePreferredLocation();
+  const preferredLocation = useMemo(() => {
+    if (!rawPreferredLocation) return null;
+    const { lat, lng, label } = rawPreferredLocation;
+    return { lat, lng, label };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    rawPreferredLocation?.lat,
+    rawPreferredLocation?.lng,
+    rawPreferredLocation?.label,
+  ]);
 
   const [filters, setFilters] = useState(() => ({ ...DEFAULT_FILTERS }));
 
@@ -134,152 +219,256 @@ export default function SearchPage() {
   const COUNTRY_MAP = {
     in: { name: "india", center: { lat: 20.5937, lng: 78.9629 } },
     ae: { name: "dubai", center: { lat: 25.2048, lng: 55.2708 } },
-    us: { name: "usa",   center: { lat: 25.2048, lng: 55.2708 } },
+    us: { name: "usa", center: { lat: 25.2048, lng: 55.2708 } },
   };
   const selected_country =
     COUNTRY_MAP[String(country || "in").toLowerCase()] || COUNTRY_MAP.in;
 
-  /* ── Static venues — filtered by country + activeCategory + bounds ──
-     Memoized so the array reference only changes when deps genuinely change,
-     preventing MapView's useEffect([venues]) from re-firing on every render. */
-  const staticVenues = useMemo(
-    () => getStaticVenues(selected_country.name, activeCategory || null, mapBounds),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [selected_country.name, activeCategory, mapBounds],
-  );
+  const allCards = useMemo(() => [...loadProperty], [loadProperty]);
 
-  /* All venues sent to the map — static + API, unfiltered.
-     Stable reference prevents the onVisibleVenuesChange → re-render → new venues → loop. */
-  const allCards = useMemo(
-    () => [...staticVenues, ...loadProperty],
-    [staticVenues, loadProperty],
-  );
-
-  /*
-   * cardVenues = what the map is currently showing as markers.
-   * Set by MapView's onVisibleVenuesChange callback: only venues with valid
-   * coords that fall inside the current viewport.
-   * Before the first map idle fires, fall back to allCards so something renders.
-   */
   const displayCards = cardVenues ?? allCards;
 
-  /**
-   * reelVenues — same as displayCards but every entry is guaranteed to have
-   * a videoUrl.  Real backend videos take priority; demo videos fill the gap.
-   * Remove getDemoVideoUrl() call once the backend populates venue.videoUrl.
-   */
   const reelVenues = useMemo(
-    () => displayCards.map((venue, idx) => ({
-      ...venue,
-      videoUrl: venue.videoUrl || "https://vb-venue-images.s3.eu-north-1.amazonaws.com/vb_video/video.mp4" 
-      // videoUrl: venue.videoUrl || venue.video_url || venue.coverVideo
-      //   || getDemoVideoUrl(activeCategory, idx),
-    })),
+    () =>
+      displayCards.map((venue, idx) => ({
+        ...venue,
+        videoUrl:
+          venue.videoUrl ||
+          "https://vb-venue-images.s3.eu-north-1.amazonaws.com/vb_video/video.mp4",
+      })),
     [displayCards, activeCategory],
   );
 
-  /* ── Register this page's venue list as the global reels source ──────────
-     GlobalReelsBridge in ClientLayout will call getActiveSource() when the
-     user taps the Reels nav item from this page.  We re-register whenever
-     the venue list, category, or user data changes so the source is always
-     fresh.  Cleanup unregisters on unmount so no stale source persists.   */
   useEffect(() => {
     if (!reelVenues.length) return;
     registerSource(() => ({
-      venues:     reelVenues,
-      category:   activeCategory,
+      venues: reelVenues,
+      category: activeCategory,
       locale,
       country,
       wishlist,
       compares,
       onWishlist: setWishlistVenue,
-      onCompare:  handleCompare,
+      onCompare: handleCompare,
     }));
     return () => unregisterSource();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reelVenues, activeCategory, locale, country, wishlist, compares]);
 
-  /* ── Auto-open reels when navigated here with ?openReels=1 ───────────────
-     GlobalReelsBridge pushes to this URL when no source is registered on
-     the origin page (e.g. home, wishlist).  We open reels once the venue
-     list has finished loading.  hasAutoOpened prevents double-firing.     */
   useEffect(() => {
     if (
       searchParams.get("openReels") !== "1" ||
       hasAutoOpened.current ||
       !reelVenues.length
-    ) return;
+    )
+      return;
     hasAutoOpened.current = true;
     openReels({
-      venues:     reelVenues,
-      category:   activeCategory,
+      venues: reelVenues,
+      category: activeCategory,
       locale,
       country,
       wishlist,
       compares,
       onWishlist: setWishlistVenue,
-      onCompare:  handleCompare,
+      onCompare: handleCompare,
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reelVenues.length]);
 
   /* ── Pagination ───────────────────────────────────────────────── */
   const PAGE_SIZE = 12;
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Reset to page 1 whenever the visible set changes (map pan, category switch, etc.)
-  useEffect(() => { setCurrentPage(1); }, [displayCards.length, activeCategory]);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [displayCards.length, activeCategory]);
 
-  const totalPages    = Math.max(1, Math.ceil(displayCards.length / PAGE_SIZE));
-  const paginatedCards = displayCards.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(displayCards.length / PAGE_SIZE));
+  const paginatedCards = displayCards.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE,
+  );
 
-  /* Map marker click — map handles its own popup via onVenueClick */
-  const handleVenueClick = (_venue) => { /* intentionally no-op at page level; MapView handles popup */ };
+  // Stable — was an inline no-op recreated every render; harmless either way,
+  // but useCallback keeps every MapView prop consistent in identity discipline.
+  const handleVenueClick = useCallback((_venue) => {
+    /* MapView handles its own popup */
+  }, []);
 
-  const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+  const BASE_URL = process.env.NEXT_PUBLIC_AWS_BUCKET_URL;
 
-  /* ── load public data ──────────────────────────────────────── */
-  const load = async () => {
-    try {
-      if (!activeCategory) return;
-      setIsLoadingVenues(true);
-      const payload = { type: activeCategory, category: selectedCategory, filters, mapBounds };
-      const [res, resProperty] = await Promise.all([
-        findPropertyname(activeCategory),
-        LoadProperty(payload),
-      ]);
-      setLoadData(res?.data?.data ?? []);
-      setLoadProperty(resProperty?.data?.data ?? []);
-    } catch (err) { console.error(err); } finally {
-      setIsLoadingVenues(false);
-    }
-  };
+  const loadingRef = useRef(false);
 
-  useEffect(() => { load(); }, [activeCategory, selectedCategory, filters, mapBounds]);
+  // const load = useCallback(async () => {
+  //   if (loadingRef.current) return;
+
+  //   loadingRef.current = true;
+
+  //   try {
+  //     setIsLoadingVenues(true);
+
+  //     const payload = {
+  //       type: activeCategory,
+  //       category: selectedCategory,
+  //       filters,
+  //       mapBounds,
+  //     };
+
+  //     const [res, resProperty] = await Promise.all([
+  //       findPropertyname(activeCategory),
+  //       LoadProperty(payload),
+  //     ]);
+
+  //     setLoadData(res?.data?.data ?? []);
+  //     setLoadProperty(resProperty?.data?.data ?? []);
+
+  //   } finally {
+  //     loadingRef.current = false;
+  //     setIsLoadingVenues(false);
+  //   }
+  // // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, [activeCategory, selectedCategory, filters, mapBounds]);
+
+  // const load = useCallback(async () => {
+  //   if (loadingRef.current) return;
+
+  //   loadingRef.current = true;
+
+  //   try {
+  //     setIsLoadingVenues(true);
+
+  //     const payload = {
+  //       type: activeCategory,
+  //       category: selectedCategory,
+  //       filters,
+  //       mapBounds,
+  //     };
+
+  //     const [res, resProperty] = await Promise.all([
+  //       findPropertyname(activeCategory),
+  //       LoadProperty(payload), // i need this refresh
+  //     ]);
+
+  //     setLoadData(res?.data?.data ?? []);
+  //     setLoadProperty(resProperty?.data?.data ?? []);
+
+  //   } finally {
+  //     loadingRef.current = false;
+  //     setIsLoadingVenues(false);
+  //     suppressBoundsUntilRef.current = Date.now() + 700;
+  //   }
+  // // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, [activeCategory, selectedCategory, filters, mapBounds]);
+
+  // Shared fetcher. `silent: true` skips the loading flag entirely, so the
+  // grid never unmounts into skeleton cards — used for background
+  // refreshes (like a single like/unlike) where nothing should visibly
+  // "reload". `silent: false` (default) is the real filter/category/map
+  // refresh, which still shows the skeleton because that's a real new
+  // dataset moment.
+  const refreshProperties = useCallback(
+    async ({ silent = false } = {}) => {
+      if (loadingRef.current) return;
+      loadingRef.current = true;
+
+      try {
+        if (!silent) setIsLoadingVenues(true);
+
+        const payload = {
+  type: activeCategory,
+  category: selectedCategory,
+  filters,
+  mapBounds,
+
+  location: searchData.location,
+  date: searchData.date,
+  guests: searchData.guests,
+};
+        const [res, resProperty] = await Promise.all([
+          findPropertyname(activeCategory),
+          LoadProperty(payload),
+        ]);
+
+        setLoadData(res?.data?.data ?? []);
+        setLoadProperty(resProperty?.data?.data ?? []);
+      } finally {
+        loadingRef.current = false;
+        if (!silent) setIsLoadingVenues(false);
+        suppressBoundsUntilRef.current = Date.now() + 700;
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    },
+    [activeCategory, selectedCategory, filters, mapBounds,searchData],
+  );
+
+  // `load` stays the name your existing filter/map/category effect already
+  // calls — no changes needed anywhere else that references `load`.
+  const load = useCallback(
+    () => refreshProperties({ silent: false }),
+    [refreshProperties],
+  );
+
+  const filterKey = useMemo(() => JSON.stringify(filters), [filters]);
+
+ useEffect(() => {
+  if (!activeCategory) return;
+
+  const timer = setTimeout(load, 500);
+
+  return () => clearTimeout(timer);
+}, [
+  activeCategory,
+  selectedCategory,
+  filterKey,
+  mapBounds,
+  searchData.location,
+  searchData.date,
+  searchData.guests,
+]);
 
   /* ── load user data ────────────────────────────────────────── */
   useEffect(() => {
     if (!user) return;
-    const loadUser = async () => {
-      try {
-        const [wCat, wList, cList] = await Promise.all([
-          UserWishlistCategory(), UserWishlist(), UserCompare(),
-        ]);
-        setWishlistCategory(wCat?.data ?? []);
-        setWishlist(wList?.data ?? []);
-        setCompares(cList?.data ?? []);
-      } catch (err) { console.error(err); }
-    };
+
     loadUser();
-  }, [user]);
+  }, [user, mapBounds]);
 
-  /* Map cluster/marker hover → highlight matching cards */
-  const handleMapClusterHover = (ids) => setMapHighlightedIds(ids || []);
-  const handleMapMarkerHover  = (id)  => setMapHighlightedIds(id ? [id] : []);
+  const loadUser = async () => {
+    try {
+      const [wCat, wList, cList, likedP] = await Promise.all([
+        UserWishlistCategory(),
+        UserWishlist(),
+        UserCompare(),
+        likedProperty(),
+      ]);
+      setWishlistCategory(wCat?.data ?? []);
+      setWishlist(wList?.data ?? []);
+      setCompares(cList?.data ?? []);
 
-  /* Card hover highlights the marker via hoverVenue prop — no map pan (avoids onIdle lag) */
+      // const likeds = likedP?.data ?? [];
+      const likedIds = new Set(
+        (likedP?.data ?? []).map((item) => item.property_id),
+      );
 
-  /* ── FAB scroll tracking: hide on scroll-down, show on scroll-up (mobile only) ── */
+      setLikedData(likedIds);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  /* Map cluster/marker hover → highlight matching cards.
+     useCallback keeps these as stable props for MapView. */
+  const handleMapClusterHover = useCallback(
+    (ids) => setMapHighlightedIds(ids || []),
+    [],
+  );
+  const handleMapMarkerHover = useCallback(
+    (id) => setMapHighlightedIds(id ? [id] : []),
+    [],
+  );
+
+  /* ── FAB scroll tracking ── */
   useEffect(() => {
     const onScroll = () => {
       const y = window.scrollY;
@@ -290,7 +479,6 @@ export default function SearchPage() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  /* ── Track mobile breakpoint — scroll-hide only on < 768px ── */
   useEffect(() => {
     const check = () => setIsMobileWidth(window.innerWidth < 768);
     check();
@@ -298,71 +486,168 @@ export default function SearchPage() {
     return () => window.removeEventListener("resize", check);
   }, []);
 
-  /* body scroll lock is handled inside FilterDrawer modal */
+  const handleCompare = useCallback(
+    async (venue, action) => {
+      if (!user) {
+        setLoginOpen(true);
+        return;
+      }
+      const payload = { venue_id: venue.childVenueId };
+      action ? await addCompareAPI(payload) : await removeCompareAPI(payload);
+      loadUser();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    },
+    [user, load],
+  );
 
-  /* ── compare ───────────────────────────────────────────────── */
-  const handleCompare = async (venue, action) => {
-    if (!user) { setLoginOpen(true); return; }
-    const payload = { venue_id: venue.childVenueId };
-    action ? await addCompareAPI(payload) : await removeCompareAPI(payload);
-    load();
-  };
+  /* ── LIKED PROPERTY  ───────────────────────────────────────────────── */
 
-  const userRecentView = async (venue) => {
-    if (!user) return;
-    await userRecentViews({ venue_id: venue.childVenueId });
-  };
+  const onLikedProperty = useCallback(
+    async (venue) => {
+      if (!user) {
+        setLoginOpen(true);
+        return;
+      }
+      const payload = {
+        property_id: venue.childVenueId,
+        property_type: activeCategory,
+      };
+      await addLikedProperty(payload);
+      loadUser();
+      load();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    },
+    [user],
+  );
 
-  const removeWishlistAPI = async (venue) => {
+  const userRecentView = useCallback(
+    async (venue) => {
+      if (!user) return;
+      await userRecentViews({ venue_id: venue.childVenueId });
+    },
+    [user],
+  );
+
+  const removeWishlistAPI = useCallback(async (venue) => {
     try {
       await remove_wishlist({ venue_id: venue.childVenueId });
       setWishlist((p) => p.filter((i) => i.venue_id !== venue.childVenueId));
-    } catch (err) { console.error(err); }
-  };
+      loadUser();
+    } catch (err) {
+      console.error(err);
+    }
+  }, []);
 
   /* ── shared card props ─────────────────────────────────────── */
   const cardProps = {
-    wishlist, compares,
-    onHover:          setHoverVenue,
-    onLeave:          () => setHoverVenue(null),
-    onWishlist:       setWishlistVenue,
-    onCompare:        handleCompare,
-    onRecentViews:    userRecentView,
-    locale, country,
+    wishlist,
+    compares,
+    onHover: setHoverVenue,
+    onLeave: () => setHoverVenue(null),
+    onWishlist: setWishlistVenue,
+    onCompare: handleCompare,
+    onRecentViews: userRecentView,
+    locale,
+    country,
     onRemoveWishlist: removeWishlistAPI,
+    onLikedProperty: onLikedProperty,
   };
+
+useEffect(() => {
+  const rawNorth = searchParams.get("north");
+  const rawSouth = searchParams.get("south");
+  const rawEast  = searchParams.get("east");
+  const rawWest  = searchParams.get("west");
+
+  if (!rawNorth || !rawSouth || !rawEast || !rawWest) return;
+
+  const north = Number(rawNorth);
+  const south = Number(rawSouth);
+  const east  = Number(rawEast);
+  const west  = Number(rawWest);
+
+  if ([north, south, east, west].some(Number.isNaN)) return;
+
+  setMapBounds({ north, south, east, west });
+}, [searchParams]);
+
+
+
+useEffect(() => {
+  const params = new URLSearchParams();
+
+  if (searchData.location)
+    params.set("location", searchData.location);
+
+  if (searchData.date)
+    params.set("date", searchData.date);
+
+  if (searchData.guests)
+    params.set("guests", searchData.guests);
+
+  window.history.replaceState(
+    {},
+    "",
+    `${window.location.pathname}?${params.toString()}`
+  );
+}, [searchData]);
 
   /* ══════════════════════════════════════════════════════════════
      RENDER
      ══════════════════════════════════════════════════════════════ */
   return (
     <div className="pt-16 md:pt-[72px] flex flex-col min-h-screen bg-white dark:bg-gray-950">
-
       <div className="flex flex-col lg:flex-row flex-1">
-
-        {/* ── LEFT: Listings column ──────────────────────────────────
-            Order: SearchBar → FilterRow → Cards
-            ─────────────────────────────────────────────────────── */}
+        {/* ── LEFT: Listings column ── */}
         <div className="flex-1 lg:w-[60%] flex flex-col min-w-0">
-
-          {/* STICKY 1 — Search bar (topmost, z-40)
-              mobile top=64  desktop top=72 */}
           <div className="sticky z-40 bg-white dark:bg-gray-950 top-16 md:top-[72px]">
-            <ListingsSearchBar
+            {/* <ListingsSearchBar
               countryCode={String(country || "in").toLowerCase()}
+              isSearching={isLoadingVenues} // NEW
               defaultValues={{
                 location: searchParams.get("location") || "",
-                date:     searchParams.get("date")     || "",
-                guests:   searchParams.get("guests")   || "",
+                date: searchParams.get("date") || "",
+                guests: searchParams.get("guests") || "",
               }}
               onSearch={(data) => {
-                if (data?.location) setSearchLocLabel(data.location);
+                if (data?.location) {
+                  setSearchLocLabel(
+                    typeof data.location === "string"
+                      ? data.location
+                      : data.location.address || data.location.city || "",
+                  );
+                }
               }}
-            />
+            /> */}
+           <ListingsSearchBar
+  countryCode={String(country || "in").toLowerCase()}
+  isSearching={isLoadingVenues}
+  defaultValues={searchData}
+  onSearch={(data) => {
+    const location =
+      typeof data.location === "string"
+        ? data.location
+        : data.location?.address ||
+          data.location?.city ||
+          "";
+
+    // Update search state
+    setSearchData({
+      location,
+      date: data.date,
+      guests: data.guests,
+    });
+
+    setSearchLocLabel(location);
+
+    // New search -> don't keep previous map bounds
+    lastBoundsRef.current = null;
+    setMapBounds(null);
+    setMapResetKey((k) => k + 1);
+  }}
+/>
           </div>
 
-          {/* STICKY 2 — Property type + Filters strip (z-30)
-              mobile top=142  desktop top=148  (search bar is now ~60px shorter) */}
           <div className="sticky z-30 bg-white dark:bg-gray-950 top-[142px] md:top-[148px]">
             <FilterRow
               selectedCategory={selectedCategory}
@@ -372,20 +657,29 @@ export default function SearchPage() {
             />
           </div>
 
-          {/* Cards grid */}
           <div className="flex-1 flex flex-col min-h-0 px-4 pt-3 pb-4 lg:pb-4">
             {isLoadingVenues ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <SkeletonCard key={i} />
+                ))}
               </div>
             ) : paginatedCards.length === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center px-6 text-center select-none">
                 <div className="relative mb-6">
                   <div className="w-20 h-20 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                    <MapPin size={32} className="text-gray-300 dark:text-gray-600" strokeWidth={1.5} />
+                    <MapPin
+                      size={32}
+                      className="text-gray-300 dark:text-gray-600"
+                      strokeWidth={1.5}
+                    />
                   </div>
                   <div className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center border-2 border-white dark:border-gray-950">
-                    <SearchX size={14} className="text-gray-400 dark:text-gray-500" strokeWidth={2} />
+                    <SearchX
+                      size={14}
+                      className="text-gray-400 dark:text-gray-500"
+                      strokeWidth={2}
+                    />
                   </div>
                 </div>
                 <h3 className="text-[15px] font-semibold text-gray-800 dark:text-gray-100 mb-1">
@@ -396,7 +690,10 @@ export default function SearchPage() {
                 </p>
                 <div className="flex flex-col sm:flex-row gap-2">
                   <button
-                    onClick={() => { setMapBounds(null); setMapResetKey((k) => k + 1); }}
+                    onClick={() => {
+                      setMapBounds(null);
+                      setMapResetKey((k) => k + 1);
+                    }}
                     className="inline-flex items-center gap-1.5 h-9 px-4 rounded-full border border-gray-300 dark:border-gray-600 text-[12px] font-medium text-gray-700 dark:text-gray-300 hover:border-gray-700 dark:hover:border-gray-200 transition-colors"
                   >
                     <MapPin size={13} strokeWidth={2} />
@@ -419,6 +716,8 @@ export default function SearchPage() {
                     <VenueCard
                       key={vid}
                       venue={venue}
+                      likedData={likedData}
+                      likedTotal={likedTotal}
                       {...cardProps}
                       isMapHighlighted={mapHighlightedIds.includes(vid)}
                     />
@@ -427,25 +726,37 @@ export default function SearchPage() {
               </div>
             )}
 
-            {/* ── Pagination ── */}
             {!isLoadingVenues && totalPages > 1 && (
               <div className="flex items-center justify-center gap-1.5 pt-8 pb-24 lg:pb-8">
-                {/* Prev */}
                 <button
-                  onClick={() => { setCurrentPage((p) => Math.max(1, p - 1)); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                  onClick={() => {
+                    setCurrentPage((p) => Math.max(1, p - 1));
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
                   disabled={currentPage === 1}
                   className="flex items-center justify-center w-9 h-9 rounded-full border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-violet-500 hover:text-violet-600 dark:hover:border-violet-400 dark:hover:text-violet-400 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   aria-label="Previous page"
                 >
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 12L6 8l4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <path
+                      d="M10 12L6 8l4-4"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
                 </button>
 
-                {/* Page numbers */}
                 {(() => {
                   const pages = [];
-                  const delta = 1; // pages to show either side of current
+                  const delta = 1;
                   for (let i = 1; i <= totalPages; i++) {
-                    if (i === 1 || i === totalPages || (i >= currentPage - delta && i <= currentPage + delta)) {
+                    if (
+                      i === 1 ||
+                      i === totalPages ||
+                      (i >= currentPage - delta && i <= currentPage + delta)
+                    ) {
                       pages.push(i);
                     } else if (pages[pages.length - 1] !== "…") {
                       pages.push("…");
@@ -453,11 +764,19 @@ export default function SearchPage() {
                   }
                   return pages.map((p, idx) =>
                     p === "…" ? (
-                      <span key={`ellipsis-${idx}`} className="w-9 h-9 flex items-center justify-center text-gray-400 dark:text-gray-500 text-sm select-none">…</span>
+                      <span
+                        key={`ellipsis-${idx}`}
+                        className="w-9 h-9 flex items-center justify-center text-gray-400 dark:text-gray-500 text-sm select-none"
+                      >
+                        …
+                      </span>
                     ) : (
                       <button
                         key={p}
-                        onClick={() => { setCurrentPage(p); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                        onClick={() => {
+                          setCurrentPage(p);
+                          window.scrollTo({ top: 0, behavior: "smooth" });
+                        }}
                         className={`w-9 h-9 rounded-full text-sm font-semibold transition-colors ${
                           p === currentPage
                             ? "bg-violet-600 text-white shadow-sm shadow-violet-200 dark:shadow-violet-900"
@@ -466,18 +785,28 @@ export default function SearchPage() {
                       >
                         {p}
                       </button>
-                    )
+                    ),
                   );
                 })()}
 
-                {/* Next */}
                 <button
-                  onClick={() => { setCurrentPage((p) => Math.min(totalPages, p + 1)); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                  onClick={() => {
+                    setCurrentPage((p) => Math.min(totalPages, p + 1));
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
                   disabled={currentPage === totalPages}
                   className="flex items-center justify-center w-9 h-9 rounded-full border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-violet-500 hover:text-violet-600 dark:hover:border-violet-400 dark:hover:text-violet-400 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   aria-label="Next page"
                 >
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 12l4-4-4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <path
+                      d="M6 12l4-4-4-4"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
                 </button>
               </div>
             )}
@@ -488,21 +817,22 @@ export default function SearchPage() {
             venue={wishlistVenue}
             open={!!wishlistVenue}
             user={user}
-            onClose={() => setWishlistVenue(null)}
+            onClose={() => {
+              setWishlistVenue(null);
+              loadUser();
+            }}
           />
         </div>
 
-        {/* ── RIGHT: Map / Reels panel (40%) — desktop only ─────── */}
+        {/* ── RIGHT: Map / Reels panel ── */}
         <div className="hidden lg:block w-[40%] flex-shrink-0 border-l border-gray-200 dark:border-gray-800">
-          {/* Map ↔ Reels toggle — top of right column, no gap */}
           <div
             className="sticky z-[29] bg-gray-50 dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 flex items-center px-3"
             style={{ top: MAP_TOP, height: 56 }}
           >
-            {/* Segmented toggle */}
             <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-gray-100 dark:bg-gray-800">
               {[
-                { key: "map",   Icon: MapIcon,      label: "Map" },
+                { key: "map", Icon: MapIcon, label: "Map" },
                 { key: "reels", Icon: Clapperboard, label: "Reels" },
               ].map(({ key, Icon, label }) => (
                 <button
@@ -522,18 +852,29 @@ export default function SearchPage() {
             </div>
           </div>
 
-          {/* Panel content — starts immediately below toggle */}
           <div
             className="sticky relative"
-            style={{ top: MAP_TOP + 56, height: `calc(100vh - ${MAP_TOP + 56}px)` }}
+            style={{
+              top: MAP_TOP + 56,
+              height: `calc(100vh - ${MAP_TOP + 56}px)`,
+            }}
           >
-            {/* Map — always mounted, hidden when reels active (preserves map state) */}
-            <div className={viewMode === "map" ? "absolute inset-0 overflow-hidden" : "absolute inset-0 overflow-hidden invisible pointer-events-none"}>
-              {/* Venue count chip — overlaid top-left of map */}
+            <div
+              className={
+                viewMode === "map"
+                  ? "absolute inset-0 overflow-hidden"
+                  : "absolute inset-0 overflow-hidden invisible pointer-events-none"
+              }
+            >
               {viewMode === "map" && (
                 <div className="absolute top-3 left-3 z-10 pointer-events-none">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold text-gray-800 dark:text-gray-100 shadow-md"
-                    style={{ background: "rgba(255,255,255,0.92)", backdropFilter: "blur(8px)" }}>
+                  <span
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold text-gray-800 dark:text-gray-100 shadow-md"
+                    style={{
+                      background: "rgba(255,255,255,0.92)",
+                      backdropFilter: "blur(8px)",
+                    }}
+                  >
                     <span className="font-bold">{displayCards.length}</span>
                     {t("venues_in_this_area")}
                   </span>
@@ -545,7 +886,7 @@ export default function SearchPage() {
                 country={selected_country.name}
                 category={activeCategory}
                 isLoading={isLoadingVenues}
-                onBoundsChange={setMapBounds}
+                onBoundsChange={handleBoundsChange}
                 resetKey={mapResetKey}
                 preferredLocation={preferredLocation}
                 searchLocationLabel={searchLocLabel}
@@ -556,7 +897,6 @@ export default function SearchPage() {
               />
             </div>
 
-            {/* Desktop reel panel — browser grid → expand single 9:16 reel */}
             {viewMode === "reels" && (
               <div className="absolute inset-0 overflow-hidden">
                 <DesktopReelPanel
@@ -568,6 +908,7 @@ export default function SearchPage() {
                   compares={compares}
                   onWishlist={setWishlistVenue}
                   onCompare={handleCompare}
+                  onLiked={onLikedProperty}
                 />
               </div>
             )}
@@ -575,9 +916,7 @@ export default function SearchPage() {
         </div>
       </div>
 
-
-
-      {/* ── Floating Compare FAB — bottom-left, glassmorphism ─────── */}
+      {/* ── Floating Compare FAB ── */}
       <style>{`
         @keyframes vb-fab-glow {
           0%, 100% { box-shadow: 0 8px 28px rgba(124,58,237,0.22), 0 2px 8px rgba(0,0,0,0.10); }
@@ -596,27 +935,22 @@ export default function SearchPage() {
         {compares.length > 0 && (
           <motion.div
             key="compare-fab"
-            /* Entry: slides up + fades in */
             initial={{ opacity: 0, scale: 0.85, y: 20 }}
-            /* Scroll-aware on mobile only — tablet/desktop always visible */
             animate={
               (isMobileWidth ? fabVisible : true)
-                ? { opacity: 1,  scale: 1,    y: 0  }
-                : { opacity: 0,  scale: 0.95, y: 14 }
+                ? { opacity: 1, scale: 1, y: 0 }
+                : { opacity: 0, scale: 0.95, y: 14 }
             }
-            /* Exit when compare list clears */
             exit={{ opacity: 0, scale: 0.85, y: 20 }}
             transition={{ duration: 0.22, ease: [0.25, 0.46, 0.45, 0.94] }}
             className="fixed z-[35]"
             style={{
               bottom: "calc(68px + env(safe-area-inset-bottom, 0px) + 12px)",
               left: 25,
-              /* Prevent click-through when hidden on scroll */
-              pointerEvents: (isMobileWidth && !fabVisible) ? "none" : "auto",
+              pointerEvents: isMobileWidth && !fabVisible ? "none" : "auto",
             }}
           >
             <div className="relative">
-              {/* FAB pill */}
               <button
                 onClick={() => setShowComparePanel((p) => !p)}
                 className={!showComparePanel ? "vb-fab-pulse" : ""}
@@ -635,25 +969,37 @@ export default function SearchPage() {
                   alignItems: "center",
                   gap: 9,
                   cursor: "pointer",
-                  transition: "background 0.22s ease, border 0.22s ease, transform 0.15s ease",
+                  transition:
+                    "background 0.22s ease, border 0.22s ease, transform 0.15s ease",
                   color: showComparePanel ? "#fff" : "#4c1d95",
                   minWidth: 0,
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.04)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "scale(1.04)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "scale(1)";
+                }}
               >
                 <Scale size={19} strokeWidth={2} style={{ flexShrink: 0 }} />
-                <span style={{ fontSize: 13.5, fontWeight: 700, letterSpacing: "0.01em", whiteSpace: "nowrap" }}>
+                <span
+                  style={{
+                    fontSize: 13.5,
+                    fontWeight: 700,
+                    letterSpacing: "0.01em",
+                    whiteSpace: "nowrap",
+                  }}
+                >
                   Compare
                 </span>
-                {/* Animated badge */}
                 <span
                   className="vb-badge-anim"
                   style={{
                     display: "inline-flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    minWidth: 22, height: 22,
+                    minWidth: 22,
+                    height: 22,
                     padding: "0 5px",
                     borderRadius: 999,
                     fontSize: 11,
@@ -672,24 +1018,51 @@ export default function SearchPage() {
                 </span>
               </button>
 
-              {/* Dropdown — opens upward */}
               {showComparePanel && (
                 <>
-                  <div className="fixed inset-0 z-[44]" onClick={() => setShowComparePanel(false)} />
-                  <div className="absolute bottom-full left-0 mb-3 w-72 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl z-[46] overflow-hidden"
-                    style={{ boxShadow: "0 16px 48px rgba(0,0,0,0.16), 0 4px 16px rgba(0,0,0,0.08)" }}
+                  <div
+                    className="fixed inset-0 z-[44]"
+                    onClick={() => setShowComparePanel(false)}
+                  />
+                  <div
+                    className="absolute bottom-full left-0 mb-3 w-72 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl z-[46] overflow-hidden"
+                    style={{
+                      boxShadow:
+                        "0 16px 48px rgba(0,0,0,0.16), 0 4px 16px rgba(0,0,0,0.08)",
+                    }}
                   >
                     <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center">
-                      <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">Compare ({compares.length})</h3>
-                      <button onClick={() => setShowComparePanel(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-lg leading-none">✕</button>
+                      <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+                        Compare ({compares.length})
+                      </h3>
+                      <button
+                        onClick={() => setShowComparePanel(false)}
+                        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-lg leading-none"
+                      >
+                        ✕
+                      </button>
                     </div>
                     <div className="max-h-64 overflow-y-auto">
                       {compares.map((item, i) => (
-                        <div key={i} className="flex gap-3 p-3 hover:bg-gray-50 dark:hover:bg-gray-800 border-b border-gray-100 dark:border-gray-800 last:border-none">
-                          <img src={`${BASE_URL}/${item.image}`} className="w-12 h-12 rounded-lg object-cover flex-shrink-0" alt="" />
+                        <div
+                          key={i}
+                          className="flex gap-3 p-3 hover:bg-gray-50 dark:hover:bg-gray-800 border-b border-gray-100 dark:border-gray-800 last:border-none"
+                        >
+                          <img
+                            src={`${BASE_URL}/${item.image}`}
+                            className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
+                            alt=""
+                          />
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-800 dark:text-gray-100 line-clamp-1">{item.title}</p>
-                            <button onClick={() => handleCompare(item, false)} className="text-xs text-red-500 hover:underline mt-0.5">Remove</button>
+                            <p className="text-sm font-medium text-gray-800 dark:text-gray-100 line-clamp-1">
+                              {item.title}
+                            </p>
+                            <button
+                              onClick={() => handleCompare(item, false)}
+                              className="text-xs text-red-500 hover:underline mt-0.5"
+                            >
+                              Remove
+                            </button>
                           </div>
                         </div>
                       ))}
@@ -697,7 +1070,11 @@ export default function SearchPage() {
                     <div className="p-3 border-t border-gray-100 dark:border-gray-800">
                       <button
                         className="w-full text-white text-sm font-semibold py-2.5 rounded-xl transition hover:opacity-90 active:scale-[0.98]"
-                        style={{ background: "linear-gradient(135deg,#7c3aed 0%,#6d28d9 100%)", boxShadow: "0 4px 14px rgba(124,58,237,0.35)" }}
+                        style={{
+                          background:
+                            "linear-gradient(135deg,#7c3aed 0%,#6d28d9 100%)",
+                          boxShadow: "0 4px 14px rgba(124,58,237,0.35)",
+                        }}
                       >
                         Compare Now
                       </button>
@@ -710,7 +1087,7 @@ export default function SearchPage() {
         )}
       </AnimatePresence>
 
-      {/* ── Mobile: fullscreen map overlay ─────────────────────── */}
+      {/* ── Mobile: fullscreen map overlay ── */}
       <AnimatePresence>
         {showMap && (
           <motion.div
@@ -726,7 +1103,7 @@ export default function SearchPage() {
               country={selected_country.name}
               category={activeCategory}
               isLoading={isLoadingVenues}
-              onBoundsChange={setMapBounds}
+              onBoundsChange={handleBoundsChange}
               resetKey={mapResetKey}
               preferredLocation={preferredLocation}
               searchLocationLabel={searchLocLabel}
@@ -735,7 +1112,6 @@ export default function SearchPage() {
               onMapClusterHover={handleMapClusterHover}
               onMapMarkerHover={handleMapMarkerHover}
             />
-            {/* ── Listing count overlay — top-left of mobile map ── */}
             <div className="absolute top-5 left-4 z-10 pointer-events-none">
               <span className="inline-flex items-center gap-1.5 bg-white dark:bg-gray-900 rounded-full px-3 py-1.5 shadow-md text-sm font-semibold text-gray-800 dark:text-gray-100 border border-gray-100 dark:border-gray-800">
                 <span className="font-bold">{displayCards.length}</span>
@@ -752,8 +1128,6 @@ export default function SearchPage() {
         )}
       </AnimatePresence>
 
-
-      {/* ── Filter drawer ────────────────────────────────────────── */}
       <FilterDrawer
         open={filterOpen}
         setOpen={setFilterOpen}
@@ -761,7 +1135,6 @@ export default function SearchPage() {
         filters={filters}
         setFilters={setFilters}
       />
-
     </div>
   );
 }
