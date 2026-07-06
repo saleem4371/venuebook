@@ -40,3 +40,13 @@ export const removeCompareAPI  = async (data) => {
 export const userRecentViews  = async (data) => {
   return api.post("/listing/userRecentViews", data);
 };
+export const likedProperty  = async () => {
+  return api.get("/listing/likedProperty");
+};
+export const addLikedProperty  = async (data) => {
+  return api.post("/listing/addLikedProperty", data);
+};
+
+export const totalLikedProperty  = async (data) => {
+  return api.get("/listing/totalLikedProperty", data);
+};

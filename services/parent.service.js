@@ -2,8 +2,8 @@ import api from "@/lib/axios";
 
 /* venue-listing_create */
 
-export const LoadParent = () => {
-  return api.get(`/parent-listing/parent`);
+export const LoadParent = (cat) => {
+  return api.get(`/parent-listing/parent/${cat}`);
 };
 
 export const SaveParent = (id,data) => {
