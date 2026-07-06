@@ -96,7 +96,11 @@ export default function CategoryNavigator({ loadData = [], fabBreakpoint = 768 }
 
 function DesktopNav({ containerRef, isOpen, setIsOpen, activeCategory, activeColor, activeLabel, onSelect, t, loadData }) {
   return (
-    <div ref={containerRef} style={{ insetInlineEnd: "40px", top: "83px" }} className="fixed z-30 flex flex-col items-end">
+    // z-40: previously z-30, which tied with the compare page's own sticky
+    // comparison bar (also z-30 + backdrop-blur) and caused this switcher to
+    // render blurred/behind it there. This is global floating chrome meant
+    // to sit above ordinary page content everywhere, so it now always wins.
+    <div ref={containerRef} style={{ insetInlineEnd: "40px", top: "83px" }} className="fixed z-40 flex flex-col items-end">
       <button
         type="button"
         onClick={() => setIsOpen((v) => !v)}
