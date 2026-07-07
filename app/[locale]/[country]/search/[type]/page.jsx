@@ -718,6 +718,7 @@ useEffect(() => {
                       venue={venue}
                       likedData={likedData}
                       likedTotal={likedTotal}
+                        user={user}
                       {...cardProps}
                       isMapHighlighted={mapHighlightedIds.includes(vid)}
                     />
