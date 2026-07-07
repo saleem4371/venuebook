@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MapPinIcon, ClockIcon, MagnifyingGlassIcon, XMarkIcon } from "@heroicons/react/24/solid";
 
+import { useJsApiLoader } from "@react-google-maps/api";
+
 /* ── Category-aware popular destinations — India ─────────────── */
 const POPULAR_BY_CATEGORY_IN = {
   venues: [
@@ -331,14 +333,60 @@ export default function LocationAutoComplete({
   /* Reload recents when countryCode changes */
   useEffect(() => { setRecents(loadRecent(countryCode)); }, [countryCode]);
 
+  
+
+  // useEffect(() => {
+  //   if (typeof window === "undefined" || !window.google || query.length < 2) { setGoogle([]); return; }
+  //   const svc = new window.google.maps.places.AutocompleteService();
+  //   svc.getPlacePredictions(
+  //     { input: query, componentRestrictions: { country: countryCode || "in" } },
+  //     (preds) => { setGoogle(preds ?? []); }
+  //   );
+  // }, [query, countryCode]);
   useEffect(() => {
-    if (typeof window === "undefined" || !window.google || query.length < 2) { setGoogle([]); return; }
-    const svc = new window.google.maps.places.AutocompleteService();
-    svc.getPlacePredictions(
-      { input: query, componentRestrictions: { country: countryCode || "in" } },
-      (preds) => { setGoogle(preds ?? []); }
-    );
-  }, [query, countryCode]);
+  // Don't search if query is too short
+  if (query.trim().length < 2) {
+    setGoogle([]);
+    return;
+  }
+
+  // Wait until Google Maps API is fully loaded
+ 
+
+  // Safety checks
+  if (
+    typeof window === "undefined" ||
+    !window.google ||
+    !window.google.maps ||
+    !window.google.maps.places ||
+    !window.google.maps.places.AutocompleteService
+  ) {
+    console.error("Google Places API is not loaded.");
+    setGoogle([]);
+    return;
+  }
+
+  const service = new window.google.maps.places.AutocompleteService();
+
+  service.getPlacePredictions(
+    {
+      input: query,
+      componentRestrictions: {
+        country: countryCode || "in",
+      },
+    },
+    (predictions, status) => {
+      if (
+        status === window.google.maps.places.PlacesServiceStatus.OK &&
+        predictions
+      ) {
+        setGoogle(predictions);
+      } else {
+        setGoogle([]);
+      }
+    }
+  );
+}, [query, countryCode]);
 
   useEffect(() => {
     if (inline || !show) return;
