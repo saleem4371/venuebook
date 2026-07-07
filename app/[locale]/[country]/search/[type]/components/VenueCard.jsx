@@ -313,6 +313,7 @@ const VenueCard = ({
   venue,
   likedData,
   likedTotal,
+  user,
   onHover,
   wishlist,
   compares,
@@ -350,7 +351,12 @@ const VenueCard = ({
 
   const BASE_URL = process.env.NEXT_PUBLIC_AWS_BUCKET_URL;
    const collections = wishlist?.some((item) => item.venue_id === venue.childVenueId);
- const liked = likedData?.has(venue.childVenueId);
+// const liked = likedData?.has(venue.childVenueId);
+  let liked  = null;
+   if(user)
+   {
+ liked = likedData?.has(venue.childVenueId);
+   }
 
   /* ── IMAGES ─────────────────────────────────────────────────────────── */
   const images = useMemo(() => {
