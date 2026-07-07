@@ -19,6 +19,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 
+import { useRouter } from "next/navigation";
 import { useCategory } from "@/context/CategoryContext";
 
 import LikeButton from "@/components/LikeButton";
@@ -332,6 +333,7 @@ const VenueCard = ({
 }) => {
   const { activeCategory } = useCategory();
 
+  const router = useRouter();
  
   /* ── STATE ──────────────────────────────────────────────────────────── */
   const [currentImage, setCurrentImage] = useState(0);
@@ -351,12 +353,13 @@ const VenueCard = ({
 
   const BASE_URL = process.env.NEXT_PUBLIC_AWS_BUCKET_URL;
    const collections = wishlist?.some((item) => item.venue_id === venue.childVenueId);
-// const liked = likedData?.has(venue.childVenueId);
-  let liked  = null;
+let liked  = null;
    if(user)
    {
  liked = likedData?.has(venue.childVenueId);
    }
+   
+   
 
   /* ── IMAGES ─────────────────────────────────────────────────────────── */
   const images = useMemo(() => {
@@ -373,8 +376,6 @@ const VenueCard = ({
       })
       .filter(Boolean);
   }, [venue?.images, BASE_URL]);
-
-  console.log(images);
 
   const isActive = hoverVenue?.childVenueId === venue.childVenueId;
 
@@ -438,10 +439,15 @@ const VenueCard = ({
     e.stopPropagation();
     const id = venue.childVenueId;
     const isAlreadyCompared = compares?.some(
-  (item) => item.childVenueId === id
-);
+      (item) => item.childVenueId === id
+    );
     if (isAlreadyCompared) { onCompare?.(venue, false); return; }
     if ((compares?.length || 0) >= 4) { alert("Only 4 venues allowed"); return; }
+
+    // FIX: actually trigger the pop animation on add-to-compare
+    setCompareAnim(true);
+    setTimeout(() => setCompareAnim(false), 300);
+
     onCompare?.(venue, true);
   };
 
@@ -474,6 +480,11 @@ const isCompared = compareIds.has(venueId);
   /* ── RATING ──────────────────────────────────────────────────────────── */
   const rating      = venue.rating || venue.avgRating || venue.averageRating;
   const reviewCount = venue.reviewCount || venue.review_count || venue.totalReviews;
+
+  // FIX: previous check `venue.totalLikes !== '0'` compared against the
+  // string "0" only, so a numeric 0 (or 0n, etc.) would fail to match and
+  // still render the LikeButton. Coerce to Number for a reliable check.
+  const hasLikes = Number(venue.totalLikes) > 0;
 
   /* ═══════════════════════════════════════════════════════════════════════
      RENDER
@@ -672,7 +683,7 @@ const isCompared = compareIds.has(venueId);
           </h3>
 
           {/* 3 - PARENT NAME SLOT — clickable link for venues/farmstays */}
-          {showParentSlot && parentName ? (
+          {/* {showParentSlot && parentName ? (
             parentId ? (
               <Link
                 href={`/${locale || "en"}/${country || "in"}/venue/${parentId}?from=${activeCategory}`}
@@ -689,7 +700,35 @@ const isCompared = compareIds.has(venueId);
             )
           ) : (
             <div className="h-[14px] flex-shrink-0" aria-hidden="true" />
-          )}
+          )} */}
+          {showParentSlot && parentName ? (
+  parentId ? (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        router.push(
+          `/${locale || "en"}/${country || "in"}/venue/${parentId}?from=${activeCategory}`
+        );
+      }}
+      className="inline-flex items-center gap-1 text-xs text-violet-500 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 hover:underline truncate -mt-0.5 font-medium w-fit max-w-full"
+    >
+      <span className="truncate">{parentName}</span>
+      <ExternalLink
+        size={9}
+        className="flex-shrink-0 opacity-70"
+      />
+    </button>
+  ) : (
+    <p className="text-xs text-gray-400 dark:text-gray-500 truncate -mt-0.5 font-medium">
+      {parentName}
+    </p>
+  )
+) : (
+  <div className="h-[14px] flex-shrink-0" aria-hidden="true" />
+)}
 
           {/* 4 - LOCATION + RATING (same row) */}
           <div className="flex items-center justify-between gap-2 mt-0.5">
@@ -718,7 +757,7 @@ const isCompared = compareIds.has(venueId);
             <div >
 <CategoryMeta venue={venue} category={activeCategory} />
             </div>
-            { venue.totalLikes !== '0'  && (
+            {hasLikes && (
  <div className="flex items-center gap-1 text-xs">
 
   <LikeButton liked={venue.totalLikes}
