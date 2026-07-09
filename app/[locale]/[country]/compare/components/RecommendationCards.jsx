@@ -47,7 +47,7 @@ export default function RecommendationCards({ properties, experience, locale, co
               <Link
                 href={`/${locale || "en"}/${country || "in"}/search/${award.property.category}/${award.property.childVenueId}`}
                 target="_blank"
-                className="text-[16px] font-semibold text-gray-900 dark:text-gray-50 hover:text-violet-600 dark:hover:text-violet-400 transition"
+                className="text-[16px] font-semibold text-gray-900 dark:text-gray-50 hover:text-[var(--cat-accent)] transition"
               >
                 {award.property.venueName}
               </Link>

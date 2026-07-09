@@ -1,20 +1,21 @@
 "use client";
 
 /**
- * AddVenueModal — opened from an "Add Venue" slot in the comparison grid
- * (see ComparisonCards.jsx). Lets the user search the SAME category
- * currently being compared and add another property without leaving the
- * compare page. Never offers a different category here — that would mix
- * comparisons, which the platform never does.
+ * AddVenueModal — opened from an "Add" slot in the sticky compare bar
+ * (see StickyCompareBar.jsx) or the category-switch notice. Lets the user
+ * search the SAME category currently being compared and add another
+ * property without leaving the compare page. Never offers a different
+ * category here — that would mix comparisons, which the platform never does.
  */
 
 import { useMemo, useState } from "react";
 import { Fragment } from "react";
 import { Dialog, Transition } from "@headlessui/react";
 import { useTranslations } from "next-intl";
-import { Search, Star, MapPin, X, Plus, Users, BedDouble, Ruler } from "lucide-react";
+import { Search, Star, MapPin, X, Plus, Users, BedDouble, Ruler, CheckCircle2 } from "lucide-react";
 import { STATIC_VENUES } from "@/app/[locale]/[country]/search/[type]/data/staticVenues";
 import { useCurrency } from "@/hooks/useCurrency";
+import { MAX_COMPARE_PROPERTIES, getCategoryAccent, darkenHex } from "../utils/compareHelpers";
 
 /**
  * STATIC_VENUES stores the full country name ("india", "dubai", ...) while
@@ -56,7 +57,9 @@ function getPrice(v) {
   return v.pricing?.rate ?? v.minPrice ?? v.pricing?.startingPrice ?? v.hourlyPrice ?? null;
 }
 
-export default function AddVenueModal({ open, onClose, category, excludeIds, country, onAdd }) {
+export default function AddVenueModal({
+  open, onClose, category, excludeIds, country, onAdd, remainingSlots = MAX_COMPARE_PROPERTIES,
+}) {
   const t = useTranslations("compare.addVenue");
   const tCat = useTranslations("categories");
   const { format } = useCurrency();
@@ -65,7 +68,21 @@ export default function AddVenueModal({ open, onClose, category, excludeIds, cou
 
   const countryName = COUNTRY_CODE_TO_NAME[String(country || "in").toLowerCase()] || COUNTRY_CODE_TO_NAME.in;
 
+  // `remainingSlots` is passed down from the live compare list (page.jsx ->
+  // StickyCompareBar/CategorySwitchNotice), so it already re-renders with
+  // the up-to-date count the instant an add succeeds — it does NOT need a
+  // separate local subtraction for "adds made while this modal has been
+  // open". Previously this also subtracted `addedIds.size`, double-counting
+  // every single add (once via the parent's live prop, once again here) and
+  // making the "reached max" state fire one add too early — e.g. with 2
+  // slots actually open, a single add would already show "reached max of 4"
+  // instead of correctly leaving 1 slot.
+  const remaining = Math.max(0, remainingSlots);
+  const isFull = remaining <= 0;
+  const accent = getCategoryAccent(category);
+
   const results = useMemo(() => {
+    if (isFull) return [];
     const q = query.trim().toLowerCase();
     return STATIC_VENUES.filter((v) => {
       if (v.category !== category) return false;
@@ -75,9 +92,10 @@ export default function AddVenueModal({ open, onClose, category, excludeIds, cou
       const haystack = `${v.venueName} ${v.parentVenueName || ""} ${v.city || ""} ${v.state || ""}`.toLowerCase();
       return haystack.includes(q);
     }).slice(0, 30);
-  }, [query, category, countryName, excludeIds, addedIds]);
+  }, [query, category, countryName, excludeIds, addedIds, isFull]);
 
   const handleAdd = (venue) => {
+    if (isFull) return;
     setAddedIds((prev) => new Set(prev).add(venue.childVenueId));
     onAdd?.(venue.childVenueId);
   };
@@ -105,7 +123,10 @@ export default function AddVenueModal({ open, onClose, category, excludeIds, cou
             enter="ease-out duration-200" enterFrom="opacity-0 scale-95" enterTo="opacity-100 scale-100"
             leave="ease-in duration-150" leaveFrom="opacity-100 scale-100" leaveTo="opacity-0 scale-95"
           >
-            <Dialog.Panel className="w-full max-w-lg max-h-[80vh] flex flex-col bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 overflow-hidden">
+            <Dialog.Panel
+              className="w-full max-w-lg max-h-[80vh] flex flex-col bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 overflow-hidden"
+              style={{ "--modal-accent": accent }}
+            >
               <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800">
                 <Dialog.Title className="text-[17px] font-semibold text-gray-900 dark:text-gray-50">
                   {t("modalTitle", { category: tCat(category) })}
@@ -119,21 +140,38 @@ export default function AddVenueModal({ open, onClose, category, excludeIds, cou
                 </button>
               </div>
 
-              <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
-                <div className="relative">
-                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    autoFocus
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder={t("searchPlaceholder")}
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-[13.5px] text-gray-800 dark:text-gray-100 outline-none focus:border-violet-400"
-                  />
+              {!isFull && (
+                <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+                  <div className="relative">
+                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      autoFocus
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      placeholder={t("searchPlaceholder")}
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-[13.5px] text-gray-800 dark:text-gray-100 outline-none focus:border-[var(--modal-accent)]"
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="flex-1 overflow-y-auto px-4 py-3">
-                {results.length === 0 ? (
+                {isFull ? (
+                  // Reached MAX_COMPARE_PROPERTIES this session — stop
+                  // offering more results instead of letting "Add" keep
+                  // being clicked past the cap (previously unbounded).
+                  <div className="flex flex-col items-center text-center py-10 px-4">
+                    <span className="w-11 h-11 rounded-full bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 mb-3">
+                      <CheckCircle2 size={22} />
+                    </span>
+                    <p className="text-[13.5px] font-semibold text-gray-900 dark:text-gray-100">
+                      {t("maxReachedHeading", { max: MAX_COMPARE_PROPERTIES })}
+                    </p>
+                    <p className="text-[12.5px] text-gray-400 dark:text-gray-500 mt-1 max-w-xs">
+                      {t("maxReachedBody", { category: tCat(category) })}
+                    </p>
+                  </div>
+                ) : results.length === 0 ? (
                   <p className="text-[13px] text-gray-400 dark:text-gray-500 text-center py-10">{t("noResults")}</p>
                 ) : (
                   <div className="flex flex-col gap-2">
@@ -183,7 +221,7 @@ export default function AddVenueModal({ open, onClose, category, excludeIds, cou
                         <button
                           onClick={() => handleAdd(v)}
                           className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-white px-3.5 py-2 rounded-xl flex-shrink-0 transition active:scale-[0.97] hover:opacity-95"
-                          style={{ background: "linear-gradient(135deg,#7c3aed 0%,#6d28d9 100%)" }}
+                          style={{ background: `linear-gradient(135deg, ${accent} 0%, ${darkenHex(accent)} 100%)` }}
                         >
                           <Plus size={13} />
                           {t("addButton")}

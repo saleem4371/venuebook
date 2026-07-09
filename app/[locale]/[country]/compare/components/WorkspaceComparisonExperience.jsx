@@ -1,13 +1,9 @@
 "use client";
 
-import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Building2, Wallet, ShieldCheck, MessageSquareText } from "lucide-react";
 import { useCurrency } from "@/hooks/useCurrency";
-import {
-  ComparisonSection, FieldRow, ChipGroupCard,
-  DifferenceToggle, countIdenticalFields,
-} from "./shared/Primitives";
+import { ComparisonSection, FieldRow, ChipGroupCard } from "./shared/Primitives";
 
 /**
  * WorkspaceComparisonExperience — comparison attributes specific to the
@@ -18,7 +14,6 @@ import {
 export default function WorkspaceComparisonExperience({ properties }) {
   const t = useTranslations("compare.workspace");
   const { format } = useCurrency();
-  const [showSimilarities, setShowSimilarities] = useState(false);
 
   /* ── Overview ─────────────────────────────────────────────────────── */
   const overviewFields = [
@@ -38,8 +33,6 @@ export default function WorkspaceComparisonExperience({ properties }) {
   /* ── Facilities ───────────────────────────────────────────────────── */
   const facilityBoolFields = ["parking", "printer", "pantry", "cabin"];
 
-  const hiddenCount = countIdenticalFields([...pricingFields]);
-
   return (
     <>
       {/* ── Overview ─────────────────────────────────────────────────── */}
@@ -49,16 +42,10 @@ export default function WorkspaceComparisonExperience({ properties }) {
         ))}
       </ComparisonSection>
 
-      {hiddenCount > 0 && (
-        <div className="max-w-[1400px] mx-auto px-4 lg:px-8">
-          <DifferenceToggle showSimilarities={showSimilarities} onToggle={() => setShowSimilarities((v) => !v)} hiddenCount={hiddenCount} />
-        </div>
-      )}
-
       {/* ── Pricing & Hours ──────────────────────────────────────────── */}
       <ComparisonSection title={t("sections.pricing")} icon={<Wallet size={18} />}>
         {pricingFields.map((f, i) => (
-          <FieldRow key={f.key} field={f} properties={properties} showSimilarities={showSimilarities} zebra={i % 2 === 1} />
+          <FieldRow key={f.key} field={f} properties={properties} showSimilarities zebra={i % 2 === 1} />
         ))}
       </ComparisonSection>
 

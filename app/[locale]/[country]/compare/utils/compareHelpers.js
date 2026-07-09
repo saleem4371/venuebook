@@ -6,6 +6,79 @@
  * files supply their own field definitions and call into these.
  */
 
+import { CATEGORY_TINTS, DEFAULT_CATEGORY } from "@/config/categoryConfig";
+
+/**
+ * Every comparison surface (Add buttons, badges, accordion icons, sticky
+ * bar accents, ...) should carry the FOCUSED category's own brand color
+ * instead of a single hardcoded violet — a farmstay page should feel green,
+ * a studio page amber, etc. (CATEGORY_TINTS already holds this per category
+ * for hero tints/chips; this just re-exposes the solid hex + a darkened
+ * variant for two-stop gradients in one place instead of duplicating the
+ * darken math in every component that needs a gradient CTA.)
+ */
+export function getCategoryAccent(category) {
+  return (CATEGORY_TINTS[category] || CATEGORY_TINTS[DEFAULT_CATEGORY]).hex;
+}
+
+export function darkenHex(hex, amount = 0.15) {
+  const num = parseInt(hex.replace("#", ""), 16);
+  const r = Math.round(Math.max(0, ((num >> 16) & 255) * (1 - amount)));
+  const g = Math.round(Math.max(0, ((num >> 8) & 255) * (1 - amount)));
+  const b = Math.round(Math.max(0, (num & 255) * (1 - amount)));
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
+/**
+ * CSS custom properties for the focused category — set once on a page-level
+ * wrapper (see page.jsx) so every non-portaled descendant can just write
+ * `text-[var(--cat-accent)]` / `bg-[var(--cat-light)]` etc. instead of a
+ * hardcoded `violet-*` Tailwind class. NOTE: this cascades via the DOM tree,
+ * so it does NOT reach content rendered through a React Portal (e.g.
+ * AddVenueModal's headlessui Dialog) — those compute their own accent
+ * directly from CATEGORY_TINTS[category] instead.
+ */
+export function getCategoryAccentVars(category) {
+  const tint = CATEGORY_TINTS[category] || CATEGORY_TINTS[DEFAULT_CATEGORY];
+  return {
+    "--cat-accent": tint.hex,
+    "--cat-accent-dark": darkenHex(tint.hex),
+    "--cat-light": tint.light,
+    "--cat-bg": tint.bg,
+    "--cat-border": tint.border,
+    "--cat-active-border": tint.activeBorder,
+  };
+}
+
+/**
+ * Hard cap on how many properties can be compared side by side, per
+ * category. Single source of truth — imported by page.jsx (to cap the
+ * displayed/working set), StickyCompareBar.jsx (mini-card + add-slot
+ * count) and AddVenueModal.jsx (remaining-slots messaging) so the limit
+ * can never drift out of sync between where it's enforced and where it's
+ * communicated.
+ */
+export const MAX_COMPARE_PROPERTIES = 4;
+
+/**
+ * Property "type" label per category — e.g. "Banquet Hall" / "Convention
+ * Centre" for venues, "Luxury Villa" for farmstays. Categories are never
+ * mixed on this page, so a single field name per category is all that's
+ * needed. Venue/studio/workspace/rental already carry a real type field
+ * straight from the listing data (venueType/studioType/workspaceType/
+ * rentalType); farmstay gets its equivalent from compareSchema.js's
+ * enrichment (`stayType`), since the raw dataset never had one.
+ */
+export function getPropertyType(property, category) {
+  switch (category) {
+    case "farmstays": return property.stayType;
+    case "studios": return property.studioType;
+    case "workspaces": return property.workspaceType;
+    case "rentals": return property.rentalType;
+    default: return property.venueType;
+  }
+}
+
 /** Indices (within `values`) that hold the best value for the given direction. */
 export function bestIndices(values, direction) {
   const numeric = values.map((v) => (typeof v === "number" && Number.isFinite(v) ? v : null));

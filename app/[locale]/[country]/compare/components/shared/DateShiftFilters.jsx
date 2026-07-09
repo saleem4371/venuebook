@@ -9,10 +9,18 @@
  * keep the bundle minimal.
  */
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { Popover, Listbox, Transition } from "@headlessui/react";
-import { ChevronLeft, ChevronRight, ChevronDown, CalendarDays, Check } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown, CalendarDays, Check, PartyPopper, Search } from "lucide-react";
 import { useLocale } from "@/hooks/useLocale";
+
+/**
+ * Same event-type options the property detail page's own booking widget
+ * offers (BookingCard.jsx's CATEGORY_META.venues.eventTypes) — kept as
+ * plain, untranslated option strings on purpose, mirroring that existing
+ * component exactly rather than inventing a second, slightly-different set.
+ */
+const VENUE_EVENT_TYPE_OPTIONS = ["Wedding", "Reception", "Roce", "Engagement", "Birthday", "Corporate", "Baby Shower", "Other"];
 
 /** Locale-aware weekday short labels (Su, Mo, ... in en; translated equivalents elsewhere). */
 function weekdayLabels(locale) {
@@ -72,8 +80,8 @@ function DatePickerField({ value, onChange, todayLabel, prevMonthLabel, nextMont
 
   return (
     <Popover className="relative">
-      <Popover.Button className="flex sm:inline-flex w-full sm:w-auto items-center justify-center sm:justify-start gap-2 text-[13px] font-medium text-gray-800 dark:text-gray-100 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 outline-none hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm focus-visible:ring-2 focus-visible:ring-violet-400 transition">
-        <CalendarDays size={14} className="text-violet-500 flex-shrink-0" />
+      <Popover.Button className="flex sm:inline-flex w-full sm:w-auto sm:min-w-[190px] items-center justify-center sm:justify-start gap-2 text-[13px] font-medium text-gray-800 dark:text-gray-100 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 outline-none hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm focus-visible:ring-2 focus-visible:ring-[var(--cat-active-border)] transition">
+        <CalendarDays size={14} className="text-[var(--cat-accent)] flex-shrink-0" />
         <span className="truncate">{displayLabel}</span>
       </Popover.Button>
 
@@ -113,8 +121,8 @@ function DatePickerField({ value, onChange, todayLabel, prevMonthLabel, nextMont
                       onClick={() => { onChange(iso); close(); }}
                       className={`h-8 w-8 mx-auto flex items-center justify-center rounded-full text-[12px] transition
                         ${!cell.inMonth ? "text-gray-300 dark:text-gray-700" : "text-gray-700 dark:text-gray-200"}
-                        ${isSelected ? "bg-violet-500 text-white font-semibold hover:bg-violet-600" : "hover:bg-gray-100 dark:hover:bg-gray-800"}
-                        ${isToday && !isSelected ? "ring-1 ring-violet-300 dark:ring-violet-700 font-semibold" : ""}`}
+                        ${isSelected ? "bg-[var(--cat-accent)] text-white font-semibold hover:bg-[var(--cat-accent-dark)]" : "hover:bg-gray-100 dark:hover:bg-gray-800"}
+                        ${isToday && !isSelected ? "ring-1 ring-[var(--cat-border)] font-semibold" : ""}`}
                     >
                       {cell.day}
                     </button>
@@ -126,7 +134,7 @@ function DatePickerField({ value, onChange, todayLabel, prevMonthLabel, nextMont
                 <button
                   type="button"
                   onClick={() => { const t = new Date(); setViewYear(t.getFullYear()); setViewMonth(t.getMonth()); onChange(todayISO); close(); }}
-                  className="text-[12px] font-semibold text-violet-600 dark:text-violet-400 hover:underline"
+                  className="text-[12px] font-semibold text-[var(--cat-accent)] hover:underline"
                 >
                   {todayLabel}
                 </button>
@@ -144,7 +152,7 @@ function ShiftDropdown({ value, onChange, options }) {
   return (
     <Listbox value={value} onChange={onChange}>
       <div className="relative">
-        <Listbox.Button className="flex sm:inline-flex w-full sm:w-auto items-center gap-2 text-[13px] font-medium text-gray-800 dark:text-gray-100 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 outline-none hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm focus-visible:ring-2 focus-visible:ring-violet-400 transition sm:min-w-[112px]">
+        <Listbox.Button className="flex sm:inline-flex w-full sm:w-auto items-center gap-2 text-[13px] font-medium text-gray-800 dark:text-gray-100 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 outline-none hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm focus-visible:ring-2 focus-visible:ring-[var(--cat-active-border)] transition sm:min-w-[170px]">
           <span className="flex-1 text-left truncate">{current?.label}</span>
           <ChevronDown size={14} className="text-gray-400 flex-shrink-0" />
         </Listbox.Button>
@@ -159,7 +167,7 @@ function ShiftDropdown({ value, onChange, options }) {
                 {({ active, selected }) => (
                   <li
                     className={`flex items-center justify-between gap-2 px-3.5 py-2 text-[12.5px] font-medium cursor-pointer
-                      ${selected ? "text-violet-600 dark:text-violet-400" : "text-gray-700 dark:text-gray-200"}
+                      ${selected ? "text-[var(--cat-accent)]" : "text-gray-700 dark:text-gray-200"}
                       ${active ? "bg-gray-50 dark:bg-gray-800/60" : ""}`}
                   >
                     {opt.label}
@@ -175,7 +183,118 @@ function ShiftDropdown({ value, onChange, options }) {
   );
 }
 
-export default function DateShiftFilters({ selectedDate, setSelectedDate, selectedShift, setSelectedShift, t }) {
+/**
+ * Searchable event-type selector — same behavior as the property detail
+ * page's own booking widget (BookingCard.jsx's EventTypeDropdown): a search
+ * box only appears once there are more than 5 options, and typing something
+ * that matches nothing falls back to a "No match" message plus an "Other"
+ * option instead of leaving the list empty. Hand-rolled (not headlessui
+ * Combobox) because the trigger needs to stay a plain pill button showing
+ * the selected value/placeholder, with search living only inside the panel
+ * — matching that reference component's exact interaction, not Combobox's
+ * input-as-trigger pattern.
+ */
+function EventTypeField({ value, onChange, options, placeholder, searchPlaceholder, noMatchLabel, otherLabel }) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const rootRef = useRef(null);
+
+  useEffect(() => { if (!open) setSearch(""); }, [open]);
+
+  useEffect(() => {
+    function onPointerDown(e) {
+      if (rootRef.current && !rootRef.current.contains(e.target)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, []);
+
+  const showSearch = options.length > 5;
+  const filtered = showSearch && search.trim()
+    ? options.filter((o) => o.toLowerCase().includes(search.toLowerCase()))
+    : options;
+
+  return (
+    <div className="relative" ref={rootRef}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex sm:inline-flex w-full sm:w-auto sm:min-w-[170px] items-center justify-between sm:justify-start gap-2 text-[13px] font-medium text-gray-800 dark:text-gray-100 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 outline-none hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm focus-visible:ring-2 focus-visible:ring-[var(--cat-active-border)] transition"
+      >
+        <span className="flex items-center gap-2 min-w-0">
+          <PartyPopper size={14} className="text-[var(--cat-accent)] flex-shrink-0" />
+          <span className={`truncate ${value ? "" : "text-gray-400 dark:text-gray-500"}`}>{value || placeholder}</span>
+        </span>
+        <ChevronDown size={14} className={`text-gray-400 flex-shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      <Transition
+        show={open}
+        as={Fragment}
+        enter="transition ease-out duration-150" enterFrom="opacity-0 -translate-y-1" enterTo="opacity-100 translate-y-0"
+        leave="transition ease-in duration-100" leaveFrom="opacity-100 translate-y-0" leaveTo="opacity-0 -translate-y-1"
+      >
+        <div className="absolute z-50 mt-2 w-full min-w-[220px] rounded-xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-[0_12px_32px_rgba(0,0,0,0.12)] overflow-hidden">
+          {showSearch && (
+            <div className="px-3 pt-2.5 pb-2 border-b border-gray-100 dark:border-gray-800">
+              <div className="relative">
+                <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                <input
+                  type="text"
+                  autoFocus
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder={searchPlaceholder}
+                  className="w-full pl-7 pr-3 py-1.5 text-[12.5px] bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:border-gray-300 dark:focus:border-gray-600 transition-colors"
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="max-h-48 overflow-y-auto py-1.5">
+            {filtered.length > 0 ? filtered.map((opt) => (
+              <button
+                key={opt}
+                type="button"
+                onClick={() => { onChange(opt); setOpen(false); }}
+                className={`w-full text-left px-3.5 py-2 text-[12.5px] font-medium transition-colors ${
+                  value === opt
+                    ? "text-[var(--cat-accent)] bg-[var(--cat-light)]"
+                    : "text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/60"
+                }`}
+              >
+                {opt}
+              </button>
+            )) : (
+              <>
+                <p className="px-3.5 pt-3 pb-1 text-[11.5px] text-gray-400 dark:text-gray-500 text-center">
+                  {noMatchLabel(search)}
+                </p>
+                {options.includes("Other") && (
+                  <button
+                    type="button"
+                    onClick={() => { onChange("Other"); setOpen(false); }}
+                    className={`w-full text-left px-3.5 py-2 text-[12.5px] font-medium transition-colors ${
+                      value === "Other"
+                        ? "text-[var(--cat-accent)] bg-[var(--cat-light)]"
+                        : "text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/60"
+                    }`}
+                  >
+                    {otherLabel}
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      </Transition>
+    </div>
+  );
+}
+
+export default function DateShiftFilters({
+  selectedDate, setSelectedDate, selectedShift, setSelectedShift, selectedEventType, setSelectedEventType, t,
+}) {
   const { locale } = useLocale();
   const shiftOptions = [
     { value: "day", label: t("shiftDay") },
@@ -184,21 +303,29 @@ export default function DateShiftFilters({ selectedDate, setSelectedDate, select
   ];
 
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3">
-      <span className="text-[12px] font-medium text-gray-500 dark:text-gray-400 sm:flex-shrink-0">
-        {t("checkingFor")}
-      </span>
-      <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
-        <DatePickerField
-          value={selectedDate}
-          onChange={setSelectedDate}
-          todayLabel={t("today")}
-          prevMonthLabel={t("prevMonth")}
-          nextMonthLabel={t("nextMonth")}
-          locale={locale}
-        />
-        <ShiftDropdown value={selectedShift} onChange={setSelectedShift} options={shiftOptions} />
-      </div>
+    // No "Checking availability for" label — the calendar icon on the date
+    // button already makes the field's purpose obvious, and dropping the
+    // label frees up the room to make both controls wider (below) instead
+    // of narrow and label-crowded.
+    <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
+      <DatePickerField
+        value={selectedDate}
+        onChange={setSelectedDate}
+        todayLabel={t("today")}
+        prevMonthLabel={t("prevMonth")}
+        nextMonthLabel={t("nextMonth")}
+        locale={locale}
+      />
+      <ShiftDropdown value={selectedShift} onChange={setSelectedShift} options={shiftOptions} />
+      <EventTypeField
+        value={selectedEventType}
+        onChange={setSelectedEventType}
+        options={VENUE_EVENT_TYPE_OPTIONS}
+        placeholder={t("eventTypePlaceholder")}
+        searchPlaceholder={t("eventTypeSearchPlaceholder")}
+        noMatchLabel={(search) => t("noMatchFor", { search })}
+        otherLabel={t("otherOption")}
+      />
     </div>
   );
 }

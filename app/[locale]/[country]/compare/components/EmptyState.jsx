@@ -3,52 +3,20 @@
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
-import { Scale, Heart, Star, MapPin, ArrowRight } from "lucide-react";
-
-/* ── Tiny floating "ghost" property card used as background decoration ── */
-function FloatingCard({ className, delay = 0, children }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: [0, -10, 0] }}
-      transition={{ opacity: { duration: 0.6, delay }, y: { duration: 5, repeat: Infinity, ease: "easeInOut", delay } }}
-      className={`hidden md:flex absolute rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-[0_16px_40px_rgba(0,0,0,0.08)] p-4 w-40 select-none pointer-events-none ${className}`}
-    >
-      {children}
-    </motion.div>
-  );
-}
+import { Scale, Heart, ArrowRight } from "lucide-react";
+import FloatingDecorCards from "./shared/FloatingDecorCards";
 
 export default function EmptyState({ locale, country }) {
   const t = useTranslations("compare.empty");
 
   return (
-    <div className="relative min-h-[70vh] flex items-center justify-center overflow-hidden px-4 py-20">
-      {/* Floating decorative property cards */}
-      <FloatingCard className="top-6 left-[8%] rotate-[-6deg]" delay={0.1}>
-        <div className="h-16 rounded-xl bg-gradient-to-br from-purple-100 to-purple-50 dark:from-purple-900/40 dark:to-purple-900/10 mb-2" />
-        <div className="h-2 w-3/4 rounded-full bg-gray-200 dark:bg-gray-700 mb-2" />
-        <div className="h-2 w-1/2 rounded-full bg-gray-100 dark:bg-gray-800" />
-      </FloatingCard>
-
-      <FloatingCard className="top-10 right-[10%] rotate-[5deg]" delay={0.35}>
-        <div className="h-16 rounded-xl bg-gradient-to-br from-amber-100 to-amber-50 dark:from-amber-900/30 dark:to-amber-900/10 mb-2" />
-        <div className="flex items-center gap-1 text-[10px] font-semibold text-amber-500">
-          <Star size={10} className="fill-amber-400 text-amber-400" /> 4.9
-        </div>
-      </FloatingCard>
-
-      <FloatingCard className="bottom-10 left-[14%] rotate-[4deg]" delay={0.55}>
-        <div className="h-16 rounded-xl bg-gradient-to-br from-emerald-100 to-emerald-50 dark:from-emerald-900/30 dark:to-emerald-900/10 mb-2" />
-        <div className="flex items-center gap-1 text-[10px] text-gray-400">
-          <MapPin size={10} /> {t("floatingLocation")}
-        </div>
-      </FloatingCard>
-
-      <FloatingCard className="bottom-16 right-[8%] rotate-[-4deg]" delay={0.2}>
-        <div className="h-16 rounded-xl bg-gradient-to-br from-blue-100 to-blue-50 dark:from-blue-900/30 dark:to-blue-900/10 mb-2" />
-        <div className="h-2 w-2/3 rounded-full bg-gray-200 dark:bg-gray-700" />
-      </FloatingCard>
+    <div className="relative min-h-[70vh] flex items-center justify-center overflow-hidden px-4 py-36 md:py-20">
+      {/* Floating decorative property cards — illustrative mock listings
+          styled to match the real search-result card (photo, name,
+          location, rating, price), not empty grey skeleton bars. Shared
+          with CategorySwitchNotice so every "nothing to compare yet"
+          surface looks the same, not just this one. */}
+      <FloatingDecorCards />
 
       {/* Center content */}
       <motion.div
@@ -90,7 +58,7 @@ export default function EmptyState({ locale, country }) {
           </Link>
 
           <Link
-            href={`/${locale || "en"}/${country || "in"}/wishlist`}
+            href={`/${locale || "en"}/${country || "in"}/collections`}
             className="inline-flex items-center justify-center gap-2 text-gray-700 dark:text-gray-200 text-[14px] font-semibold px-6 py-4 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition active:scale-[0.98]"
           >
             {t("secondaryCta")}

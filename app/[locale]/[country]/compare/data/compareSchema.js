@@ -68,9 +68,16 @@ export const VENUE_FACILITY_GROUPS = {
   "Accessibility": ["Wheelchair Access", "Elevator", "Accessible Restrooms"],
   "Parking": ["Self Parking", "Valet Parking", "EV Charging", "Bus Parking"],
   "Accommodation": ["Guest Rooms", "Family Suites", "Nearby Hotel Tie-up"],
-  "Decoration": ["In-house Decor Team", "Floral Styling", "Mandap Setup", "Themed Decor"],
-  "Entertainment": ["DJ Setup", "Live Band Stage", "Dance Floor", "Photo Booth"],
 };
+
+// A flat, one-glance amenities checklist — deliberately separate from
+// VENUE_FACILITY_GROUPS above (which stays the deeper, grouped checklist).
+// Kept to items not already listed under a Facilities group, so the two
+// sections don't just repeat each other under different headings.
+export const VENUE_AMENITIES = [
+  "WiFi", "Housekeeping", "Cloakroom", "Locker Storage",
+  "Charging Points", "CCTV Surveillance", "In-house Catering", "Backup Generator",
+];
 
 const VENUE_PROS = [
   "Stunning architecture", "Attentive on-site staff", "Spacious grounds",
@@ -82,13 +89,49 @@ const VENUE_CONS = [
   "Needs early advance booking",
 ];
 
+// Farmstay "type" — venues/studios/workspaces/rentals already carry a real
+// type field straight from staticVenues.js (venueType/studioType/
+// workspaceType/rentalType); farmstay never had one, so it's derived here
+// the same deterministic way as every other enrichment field below.
+export const FARM_STAY_TYPES = [
+  "Luxury Villa", "Farmhouse", "Cottage", "Bungalow", "Cabin", "Homestay",
+];
+
 export const FARM_ACTIVITIES = [
   "Kayaking", "Bonfire", "Fishing", "Cycling", "Organic Farm",
   "Nature Walk", "Horse Riding", "Photography", "Kids Area",
 ];
 export const FARM_COMFORT = ["AC", "WiFi", "Power Backup", "TV", "Workspace", "Washing Machine", "Hot Water"];
 export const FARM_FOOD_ITEMS = ["Breakfast", "Lunch", "Dinner", "Kitchen Access", "Self Cooking", "Veg", "Non Veg", "BBQ"];
-export const FARM_NEARBY_LABELS = ["Lake", "Beach", "Airport", "Hospital", "City", "Market"];
+export const FARM_NEARBY_LABELS = ["Attraction", "City", "Airport", "Hospital", "Market"];
+
+/**
+ * A farmstay's single nearest natural attraction — previously hardcoded as
+ * "Lake" (with a separate, independent "Beach" field), which forced every
+ * property into "near a lake / near a beach" even when its real nearby
+ * feature is a river, mountain, waterfall, or valley. One property now
+ * picks ONE of these per farmstay (see enrichFarmstay below) instead of
+ * two fixed, unrelated fields.
+ */
+export const FARM_ATTRACTION_TYPES = [
+  "Lake", "River", "Mountain", "Waterfall", "Valley", "Beach", "Forest",
+  "Hill Station", "Wildlife Sanctuary", "Tea Estate", "Coffee Plantation",
+  "Spice Garden", "Backwaters", "Temple", "Vineyard", "Dam",
+];
+
+/**
+ * A small nearby town/village name — deliberately DIFFERENT from the
+ * farmstay's own `city`/region field (e.g. "Coorg, Karnataka" already shown
+ * on its card). Distance-to-city previously reused that same region name,
+ * so a farmstay "in Coorg" would show "41 km from Coorg" — nonsensical,
+ * since Coorg IS where it already is. picked in enrichFarmstay below,
+ * excluding whatever the property's own city already is.
+ */
+export const FARM_NEARBY_TOWNS = [
+  "Madikeri", "Kushalnagar", "Sultan Bathery", "Kalpetta", "Devikulam",
+  "Coonoor", "Kotagiri", "Sakleshpur", "Mahabaleshwar", "Panchgani",
+  "Lonavala", "Nainital", "Manali", "Munnar Town", "Kodaikanal Town",
+];
 
 const FARM_PROS = [
   "Peaceful, quiet surroundings", "Delicious home-cooked meals", "Warm, welcoming hosts",
@@ -160,6 +203,11 @@ function enrichVenue(base, rng) {
     facilities[group] = items.map((label) => ({ label, included: rBool(rng, 0.62) }));
   });
 
+  const amenities = {};
+  VENUE_AMENITIES.forEach((a) => {
+    amenities[a] = rBool(rng, 0.6);
+  });
+
   return {
     experience: "venue",
     indoorOutdoor: rPick(rng, ["Indoor", "Outdoor", "Indoor & Outdoor"]),
@@ -193,6 +241,7 @@ function enrichVenue(base, rng) {
     eventSuitability: eventTypes,
     food,
     facilities,
+    amenities,
 
     policies: {
       musicTiming: rPick(rng, ["Until 10:00 PM", "Until 11:00 PM", "Until 12:00 AM", "Until 1:00 AM"]),
@@ -232,16 +281,45 @@ function enrichFarmstay(base, rng) {
   const comfort = {};
   FARM_COMFORT.forEach((c) => { comfort[c] = rBool(rng, comfortBias[c] ?? 0.6); });
 
+  // Meals decided FIRST, then the Food chip set is built to agree with it —
+  // previously Breakfast/Lunch/Dinner/Self Cooking were randomized fully
+  // independently of stayDetails.mealsIncluded, so a "Not Included" farmstay
+  // could still show "Breakfast: Yes" as a Food chip, directly contradicting
+  // its own meals policy. Now "Not Included" always means Self Cooking (+
+  // Kitchen Access) is the active chip instead of stray meal chips, and
+  // "Breakfast Only" never also flags Lunch/Dinner true.
+  const mealsIncluded = rPick(rng, ["All Meals Included", "Breakfast Only", "Not Included"]);
+
   const foodBias = { Breakfast: 0.85, Lunch: 0.6, Dinner: 0.75, "Kitchen Access": 0.6, "Self Cooking": 0.4, Veg: 0.95, "Non Veg": 0.55, BBQ: 0.5 };
   const food = {};
   FARM_FOOD_ITEMS.forEach((f) => { food[f] = rBool(rng, foodBias[f] ?? 0.6); });
+  if (mealsIncluded === "Not Included") {
+    food.Breakfast = false;
+    food.Lunch = false;
+    food.Dinner = false;
+    food.BBQ = false;
+    food["Self Cooking"] = true;
+    food["Kitchen Access"] = true;
+  } else if (mealsIncluded === "Breakfast Only") {
+    food.Breakfast = true;
+    food.Lunch = false;
+    food.Dinner = false;
+  }
 
   const petFriendly = rBool(rng, 0.5);
   const bathrooms = Math.max(1, Math.round(bedrooms * rFloat(rng, 0.5, 0.8)));
   const pool = rBool(rng, 0.35);
+  const smoking = rPick(rng, ["Not Allowed", "Designated Area", "Allowed Outdoors"]);
+  // Replaces the old separate familyFriendly + coupleFriendly booleans —
+  // "Couple Friendly: Yes" read as a marketing pitch, not a plain fact, and
+  // having both meant the same restriction was really being said twice.
+  // One factual field instead: whether the stay actually suits families
+  // with kids.
+  const kidsSuitable = rBool(rng, 0.7);
 
   return {
     experience: "farmstay",
+    stayType: base.stayType || rPick(rng, FARM_STAY_TYPES),
     bathrooms,
     acres: Math.round(rFloat(rng, 0.5, 12) * 10) / 10,
     entireOrPrivateRoom: rBool(rng, 0.75) ? "Entire Property" : "Private Room",
@@ -249,12 +327,8 @@ function enrichFarmstay(base, rng) {
     stayDetails: {
       checkIn: rPick(rng, ["12:00 PM", "1:00 PM", "2:00 PM"]),
       checkOut: rPick(rng, ["10:00 AM", "11:00 AM", "12:00 PM"]),
-      mealsIncluded: rPick(rng, ["All Meals Included", "Breakfast Only", "Not Included"]),
+      mealsIncluded,
       caretaker: rBool(rng, 0.8),
-      petFriendly,
-      smoking: rPick(rng, ["Not Allowed", "Designated Area", "Allowed Outdoors"]),
-      familyFriendly: rBool(rng, 0.85),
-      coupleFriendly: rBool(rng, 0.9),
     },
 
     accommodation: {
@@ -279,16 +353,30 @@ function enrichFarmstay(base, rng) {
     food,
 
     nearby: {
-      Lake: rBool(rng, 0.5) ? rInt(rng, 1, 15) : null,
-      Beach: rBool(rng, 0.3) ? rInt(rng, 2, 40) : null,
+      // Several nearby attractions per property (2-4, each a different
+      // type, sorted nearest-first) instead of a single hardcoded "Lake" —
+      // a real farmstay is usually near more than one thing worth seeing,
+      // and forcing it down to just one type lost that. See
+      // FARM_ATTRACTION_TYPES for the full list of possible types.
+      attractions: rSample(rng, FARM_ATTRACTION_TYPES, rInt(rng, 2, 4))
+        .map((type) => ({ type, km: rInt(rng, 1, 25) }))
+        .sort((a, b) => a.km - b.km),
       Airport: rInt(rng, 10, 90),
       Hospital: rInt(rng, 3, 25),
+      // A genuinely different nearby town — NOT the property's own
+      // city/region (that would say "41 km from itself"). Excludes any
+      // name matching the property's own city, case-insensitive.
+      townName: rPick(rng, FARM_NEARBY_TOWNS.filter(
+        (town) => town.toLowerCase() !== String(base.city || "").toLowerCase()
+      )),
       City: rInt(rng, 5, 60),
       Market: rInt(rng, 1, 15),
     },
 
     policies: {
       pets: petFriendly,
+      smoking,
+      kidsSuitable,
       events: rBool(rng, 0.4),
       visitors: rPick(rng, ["Guests Only", "Day Visitors Allowed", "No Outside Visitors"]),
       cancellation: rPick(rng, ["Flexible", "Moderate", "Strict"]),
