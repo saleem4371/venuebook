@@ -19,8 +19,12 @@ import StayInformation from "../components/listing/StayInformation";
 import PhotoTourOverlay from "../components/listing/PhotoTourOverlay";
 import { getCategoryColors, normalizeCategory } from "../utils/categoryConfig";
 
+import {
+  loadVenues,
+} from "@/services/venue_details.service";
+
 // ─── Category-specific property meta ─────────────────────────────────────────
-function PropertyMeta({ category }) {
+function PropertyMeta({ category , venueData }) {
   const key = normalizeCategory(category);
 
   const dot = <span className="text-gray-300 dark:text-gray-700 select-none">·</span>;
@@ -30,13 +34,18 @@ function PropertyMeta({ category }) {
       <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1.5">
         <span className="flex items-center gap-1.5">
           <Users size={13} strokeWidth={1.6} className="text-gray-400 flex-none" />
-          1,000 Guests
+          {venueData.guest_rooms} Guests
         </span>
         {dot}
-        <span className="flex items-center gap-1.5">
+        { venueData.venue_mode !=='venue' &&(
+ <span className="flex items-center gap-1.5">
           <UtensilsCrossed size={13} strokeWidth={1.6} className="text-gray-400 flex-none" />
           In-house Catering
         </span>
+        )}
+
+       
+
       </div>
     );
   }
@@ -45,17 +54,17 @@ function PropertyMeta({ category }) {
     <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1.5">
       <span className="flex items-center gap-1.5">
         <BedDouble size={12} strokeWidth={1.6} className="text-gray-400 flex-none" />
-        4 bedrooms
+        {venueData.banquet_round} bedrooms
       </span>
       {dot}
-      <span>8 beds</span>
+      <span>{venueData.cocktail_round} beds</span>
       {dot}
       <span className="flex items-center gap-1.5">
         <Bath size={13} strokeWidth={1.6} className="text-gray-400 flex-none" />
         3 bathrooms
       </span>
       {dot}
-      <span>Up to 12 guests</span>
+      <span>Up to  {venueData.guest_rooms} guests</span>
     </div>
   );
 }
@@ -74,6 +83,10 @@ export default function ListingPage() {
   const category = params?.type ?? "venues";
   const locale = params?.locale ?? "en";
   const country = params?.country ?? "in";
+
+  const listingId = params?.id ?? null; //ID GET
+  
+  
   const catKey = normalizeCategory(category);
   const colors = getCategoryColors(category);
 
@@ -90,10 +103,22 @@ export default function ListingPage() {
   // (avoids stale-closure issues when sections changes based on catKey)
   const sectionsRef = useRef([]);
   const [calendarRange, setCalendarRange] = useState({ start: null, end: null });
-  const [venueSelection, setVenueSelection] = useState({ date: null, shift: null, shiftLabel: null, shiftTime: null });
+  const [venueSelection, setVenueSelection] = useState({ date: null, shift: null, shiftLabel: null, shiftTime: null , shiftAmount: null });
   const [calendarResetKey,    setCalendarResetKey]    = useState(0);
   const [calendarResetShiftKey, setCalendarResetShiftKey] = useState(0);
   const [calendarResetEndKey,  setCalendarResetEndKey]  = useState(0);
+  
+  const [images,  SetImages]  = useState([]);
+  const [galleyCategory,  SetGalleryCategory]  = useState([]);
+  const [venueData,  SetVenueData]  = useState({});
+  const [venueshifts,  SetVenueshifts]  = useState([]);
+  const [bookingData,  SetBookingData]  = useState([]);
+  const [bookingFull,  SetBookingFull]  = useState([]);
+  const [bookingParial,  SetBookingParial]  = useState([]);
+  const [amenities,  SetAmenities]  = useState([]); 
+  const [amenitiesgroup,  SetAmenitiesgroup]  = useState([]); 
+  const [venueEvents,  SetVenueEvents]  = useState([]); 
+  const [venueSettings,  SetvenueSettings]  = useState([]); 
 
   const propertyName = catKey === "venues"
     ? "Monappa Heritage Convention Hall"
@@ -122,29 +147,7 @@ export default function ListingPage() {
     setCalendarResetEndKey((k) => k + 1);
   };
 
-  const images = [
-    "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85",
-    "https://images.unsplash.com/photo-1496417263034-38ec4f0b665a",
-    "https://images.unsplash.com/photo-1613545325278-f24b0cae1224",
-    "https://images.unsplash.com/photo-1600210492493-0946911123ea",
-    "https://images.unsplash.com/photo-1493809842364-78817add7ffb",
-    "https://images.unsplash.com/photo-1505691723518-36a5ac3be353",
-    "https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af",
-    "https://images.unsplash.com/photo-1540518614846-7eded433c457",
-    "https://images.unsplash.com/photo-1484154218962-a197022b5858",
-    "https://images.unsplash.com/photo-1507089947368-19c1da9775ae",
-    "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136",
-    "https://images.unsplash.com/photo-1565538810643-b5bdb714032a",
-    "https://images.unsplash.com/photo-1555041469-a586c61ea9bc",
-    "https://images.unsplash.com/photo-1567016432779-094069958ea5",
-    "https://images.unsplash.com/photo-1506439773649-6e0eb8cfb237",
-    "https://images.unsplash.com/photo-1586023492125-27b2c045efd7",
-    "https://images.unsplash.com/photo-1512917774080-9991f1c4c750",
-    "https://images.unsplash.com/photo-1570129477492-45c003edd2be",
-    "https://images.unsplash.com/photo-1558618666-fcd25c85cd64",
-    "https://images.unsplash.com/photo-1564013799919-ab600027ffc6",
-  ];
-
+  
   // Section tab IDs — in render order
   const sections = catKey === "farmstays"
     ? ["photos", "highlights", "calendar", "amenities", "sleeping", "rules", "arrival", "facilities", "reviews", "location"]
@@ -224,6 +227,45 @@ export default function ListingPage() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  useEffect(() => {
+    if (!listingId) return;
+    let cancelled = false;
+
+    const load = async () => {
+      // setIsPageLoading(true);
+      try {
+        const [res] = await Promise.all([
+            loadVenues(listingId),
+          // getGalleryCategory(listingId),
+        ]);
+        if (cancelled) return;
+        if (res?.data) SetImages(res.data.gallery);
+        if (res?.data) SetGalleryCategory(res.data.category);
+        if (res?.data) SetVenueData(res.data.venues);
+        if (res?.data) SetVenueshifts(res.data.shifts);
+        if (res?.data) SetBookingData(res.data.SHIFT_STATUS);
+        if (res?.data) SetBookingFull(res.data.fullyBookedDates); 
+        if (res?.data) SetBookingParial(res.data.partiallyBookedDates);
+
+        if (res?.data) SetAmenities(res.data.Amenities);
+        if (res?.data) SetAmenitiesgroup(res.data.Amenitiesgroup);
+
+        if (res?.data) SetVenueEvents(res.data.events);
+        if (res?.data) SetvenueSettings(res.data.venue_settings);
+        // if (resCt?.data) setCategory(resCt.data);
+      } catch (err) {
+        if (!cancelled) console.error("Listing load error:", err);
+      } finally {
+        // if (!cancelled) setIsPageLoading(false);
+      }
+    };
+
+    load();
+    return () => { cancelled = true; };
+  }, [listingId]);
+
+  const BASE_URL = process.env.NEXT_PUBLIC_AWS_BUCKET_URL;
+
   return (
     <div className="flex flex-col relative bg-white dark:bg-gray-950 min-h-screen">
 
@@ -285,8 +327,8 @@ export default function ListingPage() {
           items={[
             { label: "Home", href: `/${locale}/${country}/home` },
             { label: catKey === "venues" ? "Venues" : "Farmstays", href: `/${locale}/${country}/search/${category}` },
-            { label: PARENT_ESTATE_NAME, href: `/${locale}/${country}/venue/${DEMO_PARENT_ID}?from=${catKey}` },
-            { label: catKey === "venues" ? "Monappa Heritage Convention Hall" : "Riverside Farmstay — Deenapani Estate" },
+            { label: venueData.venue_name, href: `/${locale}/${country}/venue/${venueData.venue_name}?from=${catKey}` },
+            { label:  venueData.child_venue_name },
           ]}
         />
 
@@ -298,7 +340,7 @@ export default function ListingPage() {
           className="pb-2"
           style={{ paddingTop: "14px" }}
         >
-          <Gallery images={images} openTour={() => setOpenTour(true)} />
+          <Gallery images={images} openTour={() => setOpenTour(true)}  galleyCategory = { galleyCategory }/>
         </div>
 
         {/* ── 65 / 35 SPLIT LAYOUT ── */}
@@ -313,61 +355,77 @@ export default function ListingPage() {
               {/* ── LEFT: core property info ── */}
               <div className="flex-1 min-w-0">
                 <h1 className="text-xl md:text-2xl lg:text-[26px] font-bold text-gray-900 dark:text-white leading-snug tracking-tight">
-                  {catKey === "venues" ? "Monappa Heritage Convention Hall" : "Riverside Farmstay — Deenapani Estate"}
+                  {/* {catKey === "venues" ? "Monappa Heritage Convention Hall" : "Riverside Farmstay — Deenapani Estate"} */}
+                  {venueData.child_venue_name}
+                  
                 </h1>
 
                 {/* Category-specific attribute row */}
-                <PropertyMeta category={category} />
+                <PropertyMeta category={category} venueData = {venueData} />
 
                 {/* Location */}
                 <div className="mt-2 flex items-center gap-1.5">
                   <MapPin size={13} className={`${colors.accent} flex-none`} strokeWidth={2} />
                   <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {catKey === "venues" ? "Kadri, Mangalore, Karnataka, India" : "Kaikamba, Mangalore, Karnataka, India"}
-                  </span>
+                    {/* {catKey === "venues" ? "Kadri, Mangalore, Karnataka, India" : "Kaikamba, Mangalore, Karnataka, India"}
+                     */}
+
+                     {venueData.venue_address}   {venueData.venue_state}  {venueData.venue_pincode}
+                  </span> 
                 </div>
 
                 {/* Starting price — below location, both categories */}
                 <p className="mt-2 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-                  {catKey === "venues" ? (
-                    <>Starting from{" "}<span className="font-semibold text-gray-900 dark:text-white">₹20,00,000</span></>
-                  ) : (
+                  {/* {catKey === "venues" ? ( */}
+                    <>Starting from{" "}<span className="font-semibold text-gray-900 dark:text-white"> { venueData.minPrice} </span></>
+                  {/* ) : (
                     <>Starting from{" "}<span className="font-semibold text-gray-900 dark:text-white">₹19,181</span>
                     <span className="text-gray-400 dark:text-gray-500"> / night</span></>
-                  )}
+                  )} */}
                 </p>
 
                 {/* Rating + reviews */}
                 <div className="flex items-center gap-3 mt-2 text-xs sm:text-sm">
                   <span className="flex items-center gap-1 font-semibold text-gray-900 dark:text-white">
                     <Star size={14} className="fill-amber-400 text-amber-400" />
-                    4.8
+                     {venueData.rating}
                   </span>
                   <span className="text-gray-300 dark:text-gray-700">·</span>
                   <button
                     onClick={() => document.getElementById("reviews")?.scrollIntoView({ behavior: "smooth" })}
                     className="text-gray-500 dark:text-gray-400 underline decoration-dotted underline-offset-2 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
                   >
-                    124 reviews
+                     {venueData.user_ratings_total} reviews 
                   </button>
                 </div>
               </div>
 
               {/* ── RIGHT: Parent Property Identity Block ── */}
               <Link
-                href={`/${locale}/${country}/venue/${DEMO_PARENT_ID}?from=${catKey}`}
+                href={`/${locale}/${country}/venue/${venueData.parent_venue_id}?from=${catKey}`}
                 className="flex-none flex items-center md:flex-col md:items-center gap-3 md:gap-3 px-5 py-4 md:px-4 md:py-5 rounded-2xl border border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-900/60 hover:bg-white dark:hover:bg-gray-900 hover:shadow-md hover:border-gray-200 dark:hover:border-gray-700 transition-all duration-200 w-full md:w-52 lg:w-48 xl:w-52 group"
               >
                 {/* Logo */}
-                <div className={`w-12 h-12 md:w-11 md:h-11 lg:w-12 lg:h-12 rounded-xl ${colors.iconBg} flex items-center justify-center text-white text-xl font-bold flex-none shadow-sm`}>
-                  M
-                </div>
+{venueData?.logo ? (
+  <img
+    src={`${BASE_URL}/${venueData.logo}`}
+    alt={venueData.venue_name || "Venue Logo"}
+    className="w-12 h-12 md:w-11 md:h-11 lg:w-12 lg:h-12 rounded-xl object-cover flex-none shadow-sm"
+  />
+) : (
+  <div
+    className={`w-12 h-12 md:w-11 md:h-11 lg:w-12 lg:h-12 rounded-xl ${colors.iconBg} flex items-center justify-center text-white text-xl font-bold flex-none shadow-sm`}
+  >
+    M
+  </div>
+)}
+               
                 <div className="min-w-0 md:text-center md:w-full">
                   <p className="text-[9px] sm:text-[10px] uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1 font-medium">
                     Part of
                   </p>
                   <p className="font-semibold text-[11px] sm:text-xs md:text-sm text-gray-900 dark:text-white leading-snug">
-                    {PARENT_ESTATE_NAME}
+                    {venueData.venue_name}
                   </p>
                   <p className={`text-[11px] sm:text-xs mt-2 flex items-center md:justify-center gap-0.5 font-medium ${colors.accent} group-hover:gap-1.5 transition-all`}>
                     View Parent Property <ChevronRight size={11} />
@@ -383,6 +441,10 @@ export default function ListingPage() {
             {/* Calendar — moved directly after highlights */}
             <div id="calendar" className="border-t border-gray-100 dark:border-gray-800 py-4">
               <PremiumCalendar
+                venueshifts={venueshifts}
+                bookingData={bookingData} 
+                bookingFull={bookingFull}
+                bookingParial={bookingParial}
                 category={category}
                 isMember={true}
                 onSelectionChange={setVenueSelection}
@@ -395,28 +457,29 @@ export default function ListingPage() {
 
             {/* Description */}
             <div className="border-t border-gray-100 dark:border-gray-800 pt-6 pb-6 text-sm text-gray-600 dark:text-gray-300 leading-6 sm:leading-7">
-              {catKey === "venues"
+              {/* {catKey === "venues"
                 ? "A heritage convention hall nestled in the heart of Mangalore. With colonial-era architecture, modern AV infrastructure, and an experienced catering team, this venue has hosted over 2,000 events ranging from intimate corporate dinners to grand weddings of 1,000+ guests."
                 : "A beautifully maintained estate nestled in the hills of Deenapani. Wake up to sunrise views, sip fresh coffee from the plantation, and unwind by the pool. Perfect for families, friends, and couples looking for a quiet, nature-immersive escape just hours from the city."
-              }
+              } */}
+              { venueData.more_info}
             </div>
 
             {/* Host — moved below description */}
-            <div className="border-t border-gray-100 dark:border-gray-800 pt-6 pb-6 flex items-center gap-4">
+            {/* <div className="border-t border-gray-100 dark:border-gray-800 pt-6 pb-6 flex items-center gap-4">
               <div className={`w-12 h-12 rounded-full ${colors.iconBg} flex items-center justify-center text-white font-bold text-lg flex-none`}>
                 G
               </div>
               <div>
-                <p className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white">Hosted by Gaurav</p>
+                <p className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white">Hosted by {venueData.conatct_person}</p>
                 <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Superhost · 4 years · 98% response rate</p>
               </div>
-            </div>
+            </div> */}
 
             {/* Experience / Event block */}
-            <ExperienceBlock category={category} />
+            <ExperienceBlock category={category}  venueEvents = {venueEvents }/>
 
             {/* Amenities — premium icon grid */}
-            <AmenitiesGrid category={category} />
+            <AmenitiesGrid category={category} amenities={amenities} amenitiesgroup={amenitiesgroup} />
 
           </div>
 
@@ -425,15 +488,19 @@ export default function ListingPage() {
             {/* top = measured header height + 44px section nav + 12px breathing room */}
             <div className="sticky" style={{ top: `${headerH + 44 + 12}px` }}>
               <BookingCard
+                venueData={venueData}
                 category={category}
-                propertyName={propertyName}
-                capacity={1000}
+                propertyName={venueData.child_venue_name}
+                capacity={venueData.guest_rooms}
                 calendarRange={calendarRange}
                 venueSelection={venueSelection}
+                venueEvents={venueEvents}
                 onClearVenueSelection={clearVenueSelection}
                 onClearShift={clearShift}
                 onClearCalendarRange={clearCalendarRange}
                 onClearCheckout={clearCheckout}
+                shiftAmount={venueSelection.shiftAmount}
+                 venue_settings={venueSettings}
               />
             </div>
           </div>
@@ -447,7 +514,7 @@ export default function ListingPage() {
 
         {/* Reviews — full width, above map */}
         <div id="reviews" className="mt-8">
-          <SocialProofHub category={category} />
+          <SocialProofHub category={category} venueData={venueData}/>
         </div>
 
         {/* Nearby */}
@@ -460,17 +527,19 @@ export default function ListingPage() {
             <div className="flex items-center gap-2 mt-2">
               <MapPin size={14} className={`${colors.accent} flex-none`} strokeWidth={2} />
               <span className="text-sm sm:text-base font-semibold text-gray-800 dark:text-gray-200">
-                {catKey === "venues" ? "Kadri, Mangalore, Karnataka, India" : "Kaikamba, Mangalore, Karnataka, India"}
+                {/* {catKey === "venues" ? "Kadri, Mangalore, Karnataka, India" : "Kaikamba, Mangalore, Karnataka, India"}
+                 */}
+                 {venueData.venue_address}
               </span>
             </div>
             <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1.5 ml-[22px]">
-              Exact address shared after booking confirmation.
+              {/* Exact address shared after booking confirmation. */}
             </p>
           </div>
           <div className="rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-800 shadow-sm">
             <div className="w-full h-[200px] sm:h-[280px] md:h-[380px]">
               <iframe
-                src="https://maps.google.com/maps?q=mangalore&t=&z=13&ie=UTF8&iwloc=&output=embed"
+                src={`https://maps.google.com/maps?q=${venueData.venue_city}&t=&z=13&ie=UTF8&iwloc=&output=embed`}
                 className="w-full h-full border-0"
                 loading="lazy"
               />
@@ -487,22 +556,26 @@ export default function ListingPage() {
         nights, and pricing across both layouts.
       */}
       <BookingCard
+        venueData={venueData}
         category={category}
         mobileOnly
-        propertyName={propertyName}
-        capacity={1000}
+        propertyName={venueData.child_venue_name}
+        capacity={venueData.guest_rooms}
         calendarRange={calendarRange}
         venueSelection={venueSelection}
+        venueEvents={venueEvents}
         onClearVenueSelection={clearVenueSelection}
         onClearShift={clearShift}
         onClearCalendarRange={clearCalendarRange}
         onClearCheckout={clearCheckout}
+        shiftAmount={venueSelection.shiftAmount}
+        venue_settings={venueSettings}
       />
 
       {/* Photo tour overlay */}
       <AnimatePresence>
         {openTour && (
-          <PhotoTourOverlay key="photo-tour" images={images} category={category} onClose={() => setOpenTour(false)} />
+          <PhotoTourOverlay key="photo-tour" images={images} category={category} onClose={() => setOpenTour(false)}  galleyCategory = { galleyCategory }/>
         )}
       </AnimatePresence>
     </div>
