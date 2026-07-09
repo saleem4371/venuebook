@@ -88,11 +88,19 @@ function parseDateParam(str) {
   return new Date(y, m - 1, d);
 }
 
-export default function ListingsSearchBar({ 
-  onSearch, countryCode = "in", defaultValues = {}, isSearching = false }) {
+export default function ListingsSearchBar({
+  onSearch, countryCode = "in", defaultValues = {}, isSearching = false, isLoading = false }) {
   const { activeCategory } = useCategory();
   const tint   = CATEGORY_TINTS[activeCategory] ?? CATEGORY_TINTS.venues;
   const fields = SEARCH_CONFIG[activeCategory] ?? SEARCH_CONFIG.venues;
+
+  /* The Search-page bar now shows Location, Date and Guests — the same state
+     created on the Home page. Location is seeded from the URL via
+     `defaultValues.location`, displayed in the field, kept in local
+     `searchData.location`, and re-emitted on every Search (see handleSearch),
+     so URL persistence, app state, listing filtering and map centering all
+     stay in sync. The Home page bar (HeroSection) is a separate component. */
+  const visibleFields = fields;
 
   /* Initialise dates from URL params (YYYY-MM-DD strings) */
   const [dates, setDates] = useState(() => ({
@@ -132,18 +140,55 @@ export default function ListingsSearchBar({
 
   useEffect(() => () => clearTimeout(clickTimerRef.current), []);
 
+  /* ── Initial-load skeleton — mirrors the real bar's shape/spacing so
+     there's no layout jump once data arrives. Only used for the very
+     first load (see isLoading gate in page.jsx); subsequent searches
+     keep the real interactive bar with its "Searching…" button state.
+     Placed after all hooks above so hook call order stays stable. */
+  if (isLoading) {
+    return (
+      <>
+        <div className="hidden md:flex items-stretch bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm overflow-hidden mx-4 mt-2.5 mb-2">
+          {visibleFields.map((field, i) => (
+            <div
+              key={field.id}
+              className={[
+                "flex-1 min-w-0 px-4 py-2.5",
+                i !== visibleFields.length - 1 ? "border-e border-gray-100 dark:border-white/10" : "",
+              ].join(" ")}
+            >
+              <div className="h-2.5 w-16 rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse mb-2" />
+              <div className="h-4 w-24 rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse" />
+            </div>
+          ))}
+          <div className="flex items-center px-2.5 py-1.5">
+            <div className="h-9 w-24 rounded-lg bg-gray-200 dark:bg-gray-700 animate-pulse" />
+          </div>
+        </div>
+
+        <div className="md:hidden mx-4 mt-3 mb-0 w-[calc(100%-2rem)] flex items-center justify-between rounded-xl px-4 py-3.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm">
+          <div className="flex flex-1 flex-col gap-1.5">
+            <div className="h-2 w-16 rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse" />
+            <div className="h-3 w-40 rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse" />
+          </div>
+          <div className="h-8 w-8 rounded-lg bg-gray-200 dark:bg-gray-700 animate-pulse" />
+        </div>
+      </>
+    );
+  }
+
    /* ── DESKTOP bar ───────────────────────────────────────────── */
   return (
     <>
       <div className="hidden md:flex items-stretch bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm overflow-visible mx-4 mt-2.5 mb-2">
 
-        {fields.map((field, i) => (
+        {visibleFields.map((field, i) => (
           <SearchField
             key={`${activeCategory}-${field.id}`}
             field={field}
             tint={tint}
             category={activeCategory}
-            isLast={i === fields.length - 1}
+            isLast={i === visibleFields.length - 1}
             dateValue={dates[field.id] ?? null}
             onDateChange={(v) => setDates((p) => ({ ...p, [field.id]: v }))}
             setSearchData={setSearchData}
@@ -233,7 +278,11 @@ function SearchField({ field, tint, category, isLast, dateValue, onDateChange,se
           clearClass={CLEAR_CLS}
           lightDropdown={true}
           countryCode={countryCode}
-          defaultValue={searchData.location?.city}
+          /* Inherited location from the URL arrives as a STRING
+             (defaultLocation). The previous `searchData.location?.city` read
+             `.city` off that string → undefined → the field showed nothing.
+             Seed from the string so the Home-page location is visible here. */
+          defaultValue={defaultLocation || (typeof searchData.location === "string" ? searchData.location : searchData.location?.city)}
           onSelect={(value) => setSearchData((p) => ({ ...p, location: value }))}
         />
       )}

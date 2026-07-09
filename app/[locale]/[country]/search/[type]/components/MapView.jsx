@@ -70,17 +70,42 @@ const countryConfig = {
 };
 
 // ---------------- VENUE FIELD NORMALIZERS ----------------
-/** Returns { lat, lng } numbers or null — handles lat/latitude/etc. */
+/**
+ * Returns { lat, lng } as finite, in-range numbers — or null for anything
+ * that must NEVER become a map marker. Handles lat/latitude/etc. field names.
+ *
+ * A marker with a bad coordinate is the root cause of the "cluster jumps to
+ * Chhattisgarh/Odisha" bug: when an invalid point (0,0, NaN, a string, or an
+ * out-of-range value) slips into a cluster, the bounds computed from that
+ * cluster include the bad point, and Google's fitBounds — constrained by the
+ * India `restriction` box — resolves the camera to the interior of that box
+ * (central India ≈ 20.6N, 79E). Filtering here means invalid points are never
+ * turned into markers, so they can never be clustered and can never drag the
+ * camera anywhere. This is the single validation gate every consumer relies on.
+ */
 function getVenueCoords(v) {
   const lat = v?.lat ?? v?.latitude ?? v?.location_lat;
   const lng = v?.lng ?? v?.longitude ?? v?.lon ?? v?.location_lng ?? v?.location_long;
-  // Use nullish/blank checks rather than falsy checks so a valid
-  // coordinate of exactly 0 (equator / prime meridian) isn't discarded.
-  if (lat === null || lat === undefined || lat === "" || lng === null || lng === undefined || lng === "") {
+
+  // Reject null / undefined / empty-string BEFORE coercion (Number("") === 0,
+  // which would otherwise sneak a (0,0) marker through).
+  if (lat === null || lat === undefined || lat === "" ||
+      lng === null || lng === undefined || lng === "") {
     return null;
   }
+
   const latN = Number(lat), lngN = Number(lng);
-  if (Number.isNaN(latN) || Number.isNaN(lngN)) return null;
+
+  // Reject NaN and ±Infinity (Number.isFinite is false for both).
+  if (!Number.isFinite(latN) || !Number.isFinite(lngN)) return null;
+
+  // Reject the (0,0) sentinel used for ungeocoded/blank records. No real
+  // India/UAE venue sits at the Gulf of Guinea; treat it as "no location".
+  if (latN === 0 && lngN === 0) return null;
+
+  // Reject anything physically off the globe (swapped/garbage coordinates).
+  if (latN < -90 || latN > 90 || lngN < -180 || lngN > 180) return null;
+
   return { lat: latN, lng: lngN };
 }
 
@@ -214,13 +239,19 @@ function buildMarkerIcon(venue, isSelected, isMapHovered, category) {
     const pinColor  = isSelected ? "#111827" : catColor;
     const iconColor = isSelected ? "#7c3aed" : catColor;
     const pinPath   = `M18,2 C10,2 4,8 4,16 C4,24 10,34 18,49 C26,34 32,24 32,16 C32,8 26,2 18,2 Z`;
-    const shadow    = `<filter id="sh" x="-45%" y="-20%" width="190%" height="160%"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="rgba(0,0,0,0.25)"/></filter>`;
+    // Cleaner, softer two-layer drop shadow (was a single harsh 0.25 alpha).
+    const shadow    = `<filter id="sh" x="-50%" y="-25%" width="200%" height="170%"><feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="rgba(17,24,39,0.20)"/><feDropShadow dx="0" dy="1" stdDeviation="1" flood-color="rgba(17,24,39,0.12)"/></filter>`;
     const icon      = getCategoryIcon(catKey, iconColor, 18, 16);
     const svg       = (
       `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="50">` +
       `<defs>${shadow}</defs>` +
-      `<path d="${pinPath}" fill="${pinColor}" filter="url(#sh)"/>` +
-      `<circle cx="18" cy="16" r="11" fill="white" stroke="rgba(0,0,0,0.06)" stroke-width="1"/>` +
+      // White hairline around the pin separates it from busy map tiles.
+      `<path d="${pinPath}" fill="${pinColor}" stroke="#ffffff" stroke-width="1.5" filter="url(#sh)"/>` +
+      // White icon disc with a stronger neutral border + a faint category-tinted
+      // inner ring for better contrast and visual balance (icon stays centered
+      // at 18,16 with ~8px padding inside the r=11 disc).
+      `<circle cx="18" cy="16" r="11" fill="#ffffff" stroke="rgba(17,24,39,0.14)" stroke-width="1"/>` +
+      `<circle cx="18" cy="16" r="9.6" fill="none" stroke="${iconColor}" stroke-width="0.9" opacity="0.16"/>` +
       `${icon}` +
       `</svg>`
     );
@@ -236,17 +267,23 @@ function buildMarkerIcon(venue, isSelected, isMapHovered, category) {
   const bg    = isSelected ? "#111827" : "#ffffff";
   const textC = isSelected ? "#ffffff" : "#111827";
   const fs    = label.length > 10 ? 10 : label.length > 8 ? 11 : 12;
-  const w     = Math.max(56, label.length * 7 + 14);
-  const h     = 30;
+  const h     = 32;
   const gap   = 3;
   const totalH = h + gap;
-  const cx    = w / 2;
+
+  // Clean price-only pill — no category icon/badge, just the price text,
+  // centered both ways. Keeps the same pill height/shadow/border/hover-grow
+  // behavior as before, just without the left icon zone eating into it.
+  const padX   = 14;
+  const textW  = label.length * 7;
+  const w      = Math.max(56, textW + padX * 2);
+  const textCx = w / 2;
   const shadow = `<filter id="sh" x="-40%" y="-60%" width="180%" height="220%"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="rgba(0,0,0,0.15)"/><feDropShadow dx="0" dy="1" stdDeviation="1" flood-color="rgba(0,0,0,0.07)"/></filter>`;
   const svg   = (
     `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${totalH}">` +
     `<defs>${shadow}</defs>` +
-    `<rect x="1" y="1" width="${w - 2}" height="${h - 2}" rx="${(h - 2) / 2}" fill="${bg}" stroke="rgba(0,0,0,0.07)" stroke-width="1" filter="url(#sh)"/>` +
-    `<text x="${cx}" y="${h / 2 + 0.5}" dominant-baseline="middle" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif" font-size="${fs}" fill="${textC}" font-weight="700" letter-spacing="-0.3">${label}</text>` +
+    `<rect x="1" y="1" width="${w - 2}" height="${h - 2}" rx="${(h - 2) / 2}" fill="${bg}" stroke="rgba(0,0,0,0.08)" stroke-width="1" filter="url(#sh)"/>` +
+    `<text x="${textCx}" y="${h / 2 + 0.5}" dominant-baseline="middle" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif" font-size="${fs}" fill="${textC}" font-weight="700" letter-spacing="-0.3">${label}</text>` +
     `</svg>`
   );
   const sw = isHov ? Math.round(w * 1.12) : w;
@@ -340,6 +377,7 @@ export default function MapView({
   onBoundsChange,
   preferredLocation = null,
   searchLocationLabel = null,
+  searchCenter = null,
   onVenueClick = null,
   onVisibleVenuesChange = null,
   onMapClusterHover = null,
@@ -395,6 +433,17 @@ export default function MapView({
   /* ── EARLY GEOCODE ── */
   useEffect(() => {
     if (!isLoaded) return;
+    // Exact coordinates from the URL (Home-page search) win outright — center
+    // on them directly with no Geocoder round-trip. This is what makes a
+    // Home→Search navigation land on the searched location. When they're
+    // absent (e.g. an in-page search cleared them), fall back to geocoding
+    // the text label as before.
+    const la = Number(searchCenter?.lat);
+    const ln = Number(searchCenter?.lng);
+    if (Number.isFinite(la) && Number.isFinite(ln) && !(la === 0 && ln === 0)) {
+      setGeocodedCenter({ lat: la, lng: ln });
+      return;
+    }
     if (!searchLocationLabel) { setGeocodedCenter(null); return; }
     geocodeLabel(
       searchLocationLabel,
@@ -406,7 +455,7 @@ export default function MapView({
     // `selectedCountryConfig` is included so switching countries while a
     // search label is present re-geocodes against the new country instead
     // of silently reusing a stale restriction.
-  }, [isLoaded, searchLocationLabel, selectedCountryConfig]);
+  }, [isLoaded, searchCenter, searchLocationLabel, selectedCountryConfig]);
 
   // Captured once — the controlled center/zoom props on <GoogleMap> are only
   // used for the very first paint. All navigation after mount happens
@@ -426,9 +475,39 @@ export default function MapView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [geocodedCenter, mapInstance]);
 
+  // ── MARKER VALIDATION PASS (runs once per dataset, memoized) ──
+  // Partitions the incoming venues into valid vs rejected markers BEFORE any
+  // of them can reach the clusterer, and logs every rejected one so bad
+  // coordinates are visible in the console. Only rebuilds when `venues`
+  // changes (dataset/filters), never on map pan/zoom.
+  const validVenues = useMemo(() => {
+    const valid = [];
+    const rejected = [];
+    for (const v of venues) {
+      if (getVenueCoords(v) !== null) valid.push(v);
+      else {
+        rejected.push({
+          name: v?.venueName || v?.name || v?.childVenueId || v?.id || "(unknown)",
+          lat: v?.lat ?? v?.latitude ?? v?.location_lat ?? null,
+          lng: v?.lng ?? v?.longitude ?? v?.lon ?? v?.location_lng ?? v?.location_long ?? null,
+        });
+      }
+    }
+    if (rejected.length) {
+      /* eslint-disable no-console */
+      console.groupCollapsed(
+        `[MapView] Rejected ${rejected.length} marker(s) with invalid coordinates (null/NaN/0,0/out-of-range)`
+      );
+      console.table(rejected);
+      console.groupEnd();
+      /* eslint-enable no-console */
+    }
+    return valid;
+  }, [venues]);
+
   useEffect(() => {
     // Only venues with valid coords can appear on the map
-    const withCoords = venues.filter((v) => getVenueCoords(v) !== null);
+    const withCoords = validVenues;
 
     if (!mapBounds) {
       setVisibleVenues(withCoords);
@@ -446,7 +525,7 @@ export default function MapView({
 
     setVisibleVenues(filtered);
     onVisibleVenuesChange?.(filtered);
-  }, [venues, mapBounds]);
+  }, [validVenues, mapBounds]);
 
   // Idempotent imperative navigation — the loop-breaker.
   // If the resolved target (lat/lng/zoom) is unchanged from the last
@@ -751,46 +830,71 @@ export default function MapView({
 
   const handleClusterClick = useCallback((cluster) => {
     if (!mapRef.current) return;
-    const clusterMarkers = cluster?.getMarkers?.();
-    if (!clusterMarkers?.length) return;
+    const map = mapRef.current;
+    const clusterMarkers = cluster?.getMarkers?.() || [];
+    if (!clusterMarkers.length) return;
 
-    const currentZoom = mapRef.current.getZoom() ?? 0;
+    const currentZoom = map.getZoom() ?? 0;
 
+    // ── Collect ONLY this cluster's own markers, validated. ──
+    // cluster.getMarkers() returns exactly the markers the MarkerClusterer
+    // grouped into THIS cluster (see @react-google-maps/marker-clusterer
+    // Cluster.getMarkers → this.markers). We never touch the global marker
+    // list or venues.find(); every position below belongs to this cluster.
     const bounds = new window.google.maps.LatLngBounds();
-    let validCount = 0;
+    const members = [];
+    let sumLat = 0, sumLng = 0, validCount = 0;
     clusterMarkers.forEach((m) => {
-      const vid    = markerVenueMapRef.current.get(m);
-      const vn     = vid ? venues.find((v) => (v.childVenueId || v.id || v._id) === vid) : null;
-      const coords = vn ? getVenueCoords(vn) : null;
-      if (coords) {
-        bounds.extend(new window.google.maps.LatLng(coords.lat, coords.lng));
-        validCount++;
-      } else {
-        const p = m.getPosition();
-        if (p) { bounds.extend(p); validCount++; }
-      }
+      const p = m?.getPosition?.();
+      if (!p) return;
+      const lat = p.lat(), lng = p.lng();
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+      if (lat === 0 && lng === 0) return;
+      if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return;
+      bounds.extend(p);
+      sumLat += lat; sumLng += lng; validCount++;
+      const venueId = markerVenueMapRef.current.get(m);
+      const v = venues.find((x) => (x.childVenueId || x.id || x._id) === venueId);
+      members.push({ name: v?.venueName || v?.name || venueId || "(unknown)", lat, lng });
     });
     if (!validCount) return;
 
-    const boundsCenter = bounds.getCenter();
+    // ── TEMP VERIFICATION LOG (remove after confirming) ──
+    // Prints every marker actually inside the clicked cluster so you can
+    // confirm whether these 12 are really all Karnataka or whether the
+    // pixel-grid cluster has pulled in markers from neighbouring states.
+    /* eslint-disable no-console */
+    console.groupCollapsed(`[cluster click] ${validCount} marker(s) in clicked cluster`);
+    console.table(members);
+    console.groupEnd();
+    /* eslint-enable no-console */
 
     const ne = bounds.getNorthEast();
     const sw = bounds.getSouthWest();
-    const isSamePoint =
-      Math.abs(ne.lat() - sw.lat()) < 0.0001 &&
-      Math.abs(ne.lng() - sw.lng()) < 0.0001;
+    const latSpan = Math.abs(ne.lat() - sw.lat());
+    const lngSpan = Math.abs(ne.lng() - sw.lng());
+    const isSamePoint = latSpan < 0.0001 && lngSpan < 0.0001;
+
+    // Anchor = the position of the cluster ICON the user actually clicked.
+    // MarkerClusterer draws the icon at cluster.center (averageCenter=false →
+    // the first member marker's real position). Falling back to the member
+    // average only if getCenter() is somehow unavailable. This anchor is
+    // guaranteed to be one of the cluster's own markers, i.e. inside the
+    // clicked area — so zooming toward it can never leave that area.
+    const c = cluster.getCenter?.();
+    const anchor = c || new window.google.maps.LatLng(sumLat / validCount, sumLng / validCount);
 
     const fireBoundsUpdate = () => {
-      const b = mapRef.current?.getBounds();
+      const b = map.getBounds();
       if (!b) return;
       const bne = b.getNorthEast(), bsw = b.getSouthWest();
       const mapData = { north: bne.lat(), east: bne.lng(), south: bsw.lat(), west: bsw.lng() };
       onBoundsChange?.(mapData);
       const filtered = venues.filter((v) => {
-        const c = getVenueCoords(v);
-        if (!c) return false;
-        return c.lat <= mapData.north && c.lat >= mapData.south &&
-               c.lng <= mapData.east  && c.lng >= mapData.west;
+        const cc = getVenueCoords(v);
+        if (!cc) return false;
+        return cc.lat <= mapData.north && cc.lat >= mapData.south &&
+               cc.lng <= mapData.east  && cc.lng >= mapData.west;
       });
       setVisibleVenues(filtered);
       onVisibleVenuesChange?.(filtered);
@@ -798,24 +902,47 @@ export default function MapView({
 
     clusterZoomingRef.current = true;
 
-    if (isSamePoint) {
-      mapRef.current.setCenter(boundsCenter);
-      mapRef.current.setZoom(Math.min(currentZoom + 4, 17));
-      window.google.maps.event.addListenerOnce(mapRef.current, "idle", () => {
-        clusterZoomingRef.current = false;
-        fireBoundsUpdate();
-      });
+    // Threshold (~0.75° ≈ 80 km). Above this the cluster spans a large area:
+    // that only happens at low zoom where a single icon covers several states.
+    const SPREAD_DEG = 0.75;
+    const isSpread = latSpan > SPREAD_DEG || lngSpan > SPREAD_DEG;
+
+    const onDone = () => {
+      clusterZoomingRef.current = false;
+      const nz = map.getZoom() ?? 0;
+      if (nz > 16) map.setZoom(16);
+      fireBoundsUpdate();
+    };
+
+    if (isSpread) {
+      // ── ROOT-CAUSE FIX ──
+      // A spread cluster's fitBounds would frame the whole extent and
+      // recenter the camera on the MIDDLE of that extent — for an
+      // India-scale spread that middle is central India (Chhattisgarh).
+      // Instead we keep the camera on the clicked icon (a real member,
+      // e.g. in Karnataka) and zoom in one step. The clusterer then
+      // re-splits into smaller clusters over the real markers. Repeated
+      // clicks drill down — Google-native behaviour — and the camera
+      // never leaves the clicked location's area.
+      map.setCenter(anchor);
+      map.setZoom(Math.min(currentZoom + 2, 16));
+      window.google.maps.event.addListenerOnce(map, "idle", onDone);
       return;
     }
 
-    mapRef.current.fitBounds(bounds, 80);
+    if (isSamePoint) {
+      // All markers stacked on one point — just zoom in on it.
+      map.setCenter(anchor);
+      map.setZoom(Math.min(currentZoom + 4, 17));
+      window.google.maps.event.addListenerOnce(map, "idle", onDone);
+      return;
+    }
 
-    window.google.maps.event.addListenerOnce(mapRef.current, "idle", () => {
-      clusterZoomingRef.current = false;
-      const newZoom = mapRef.current?.getZoom() ?? 0;
-      if (newZoom > 16) mapRef.current.setZoom(16);
-      fireBoundsUpdate();
-    });
+    // Tight cluster (all members within ~80 km): safe to frame them all so
+    // individual price pins become visible. Bounds are strictly this
+    // cluster's own markers, so the camera stays within the cluster.
+    map.fitBounds(bounds, 80);
+    window.google.maps.event.addListenerOnce(map, "idle", onDone);
   }, [venues, onBoundsChange, onVisibleVenuesChange]);
 
    const BASE_URL = process.env.NEXT_PUBLIC_AWS_BUCKET_URL;

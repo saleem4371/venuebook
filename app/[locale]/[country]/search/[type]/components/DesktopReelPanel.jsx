@@ -22,7 +22,7 @@
  *   · Keyboard: ArrowUp / ArrowDown / Escape
  */
 
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo, memo } from "react";
 import { AnimatePresence, motion }                  from "framer-motion";
 import { ArrowLeft, ChevronUp, ChevronDown, Clapperboard } from "lucide-react";
 import ReelCard from "./ReelCard";
@@ -136,26 +136,25 @@ function formatINR(n) {
 //     </div>
 //   );
 // }
-function BrowserCard({ venue, onClick }) {
+// The Reels grid only ever receives venues with a real video (filtered
+// upstream in page.jsx's `reelVenues`), so every BrowserCard is guaranteed
+// to have one. The video's own first frame — not the property's featured
+// photo — is the thumbnail: it's shown immediately via `preload="metadata"`
+// (loads just enough to paint frame 0, no full download) and stays put.
+// Hover only calls `.play()`; leaving pauses and resets to frame 0, so the
+// "thumbnail" never actually changes — it's always the reel itself.
+const BrowserCard = memo(function BrowserCard({ venue, onClick }) {
   const videoRef = useRef(null);
   const [hover, setHover] = useState(false);
-  const [vidReady, setVidReady] = useState(false);
 
-  const cover = getVenueCover(venue);
+  const videoUrl = venue.videoUrl ?? venue.video_url ?? venue.coverVideo;
 
-  const videoUrl =
-  venue.videoUrl ?? venue.video_url ?? venue.coverVideo;
-
-const hasVideo =
-  videoUrl !== 0 &&
-  videoUrl !== "0" &&
-  videoUrl !== null &&
-  videoUrl !== undefined &&
-  videoUrl !== "";
-
-if (!hasVideo) {
-  return null;
-}
+  const hasVideo =
+    videoUrl !== 0 &&
+    videoUrl !== "0" &&
+    videoUrl !== null &&
+    videoUrl !== undefined &&
+    videoUrl !== "";
 
   const price = venue.minPrice || venue.basePrice || venue.price;
 
@@ -164,6 +163,8 @@ if (!hasVideo) {
     venue.location ||
     "";
 
+  // Hooks must run unconditionally on every render (Rules of Hooks) — the
+  // `!hasVideo` bailout happens AFTER this, not before.
   useEffect(() => {
     const el = videoRef.current;
     if (!el || !hasVideo) return;
@@ -175,6 +176,12 @@ if (!hasVideo) {
       el.currentTime = 0;
     }
   }, [hover, hasVideo]);
+
+  // Defensive only — page.jsx already excludes videoless listings from the
+  // Reels feed entirely, so this should never actually trigger.
+  if (!hasVideo) {
+    return null;
+  }
 
   return (
     <div
@@ -193,35 +200,15 @@ if (!hasVideo) {
         willChange: "transform",
       }}
     >
-      {cover && (
-        <img
-          src={cover}
-          alt={venue.title || venue.venueName || "Property"}
-          className="absolute inset-0 w-full h-full object-cover"
-          loading="lazy"
-          style={{
-            opacity: hover && hasVideo && vidReady ? 0 : 1,
-            transition: "opacity 0.3s",
-          }}
-        />
-      )}
-
-      {hasVideo && (
-        <video
-          ref={videoRef}
-          src={videoUrl}
-          className="absolute inset-0 w-full h-full object-cover"
-          style={{
-            opacity: vidReady ? 1 : 0,
-            transition: "opacity 0.3s",
-          }}
-          muted
-          loop
-          playsInline
-          preload="none"
-          onCanPlay={() => setVidReady(true)}
-        />
-      )}
+      <video
+        ref={videoRef}
+        src={videoUrl}
+        className="absolute inset-0 w-full h-full object-cover"
+        muted
+        loop
+        playsInline
+        preload="metadata"
+      />
 
       <div
         className="absolute inset-x-0 bottom-0 pointer-events-none"
@@ -263,7 +250,7 @@ if (!hasVideo) {
       </div>
     </div>
   );
-}
+});
 
 /* ─── Slide variants (vertical, direction-aware, no opacity flicker) ──────── */
 const SLIDE = {
@@ -335,7 +322,10 @@ const NAV_BTN = {
 };
 
 /* ─── Main component ─────────────────────────────────────────────────────── */
-export default function DesktopReelPanel({
+// Memoized so unrelated page.jsx re-renders (e.g. a Listings-side wishlist
+// or map-bounds update) don't cascade into a Reels re-render unless this
+// panel's own props actually changed.
+function DesktopReelPanel({
   venues = [],
   category,
   locale,
@@ -637,6 +627,11 @@ export default function DesktopReelPanel({
         background: "var(--reel-browser-bg)",
         scrollbarWidth: "none",
         msOverflowStyle: "none",
+        // Reels must scroll independently of the page/Listings column.
+        // Without this, reaching the top/bottom edge of this grid lets the
+        // scroll gesture "chain" into the outer page scroll (which is what
+        // actually moves the Listings column) instead of stopping here.
+        overscrollBehavior: "contain",
       }}
     >
       <div className="p-3 pb-6">
@@ -647,7 +642,7 @@ export default function DesktopReelPanel({
             Explore Reels
           </p>
           <p className="text-gray-400 dark:text-gray-500 font-medium mt-0.5" style={{ fontSize: 11 }}>
-            {filteredWithIdx.length} {filteredWithIdx.length === 1 ? "video" : "videos"}
+            {filteredWithIdx.length} {filteredWithIdx.length === 1 ? "Reel" : "Reels"}
             {activeChip !== "all" && (
               <span className="ml-1.5 text-gray-300 dark:text-gray-600">
                 · tap <strong className="text-gray-500 dark:text-gray-400">All</strong> to see more
@@ -718,3 +713,5 @@ export default function DesktopReelPanel({
     </div>
   );
 }
+
+export default memo(DesktopReelPanel);
