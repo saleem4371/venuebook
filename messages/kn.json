@@ -36,10 +36,11 @@
     "region_aria": "ಪ್ರದೇಶ, ಭಾಷೆ ಅಥವಾ ಕರೆನ್ಸಿ ಬದಲಿಸಿ",
     "region_language": "ಪ್ರದೇಶ ಮತ್ತು ಭಾಷೆ",
     "login_signup": "ಲಾಗಿನ್ / ಸೈನ್ ಅಪ್",
-    "wishlist": "ವಿಶ್‌ಲಿಸ್ಟ್",
+    "collections": "ನನ್ನ ಸಂಗ್ರಹಗಳು",
     "compare": "ಹೋಲಿಸಿ",
     "bookings": "ಬುಕಿಂಗ್‌ಗಳು",
     "notifications": "ಅಧಿಸೂಚನೆಗಳು",
+    "messages": "ಸಂದೇಶಗಳು",
     "profile": "ಪ್ರೊಫೈಲ್",
     "logout": "ಲಾಗ್ ಔಟ್",
     "switch_to_customer": "Switch to customer",
@@ -1112,12 +1113,35 @@
       "title": "ಇನ್ನೂ ಹೋಲಿಸಲು ಏನೂ ಇಲ್ಲ",
       "subtitle": "ನಿಮಗೆ ಆಸಕ್ತಿಯಿರುವ ಪ್ರಾಪರ್ಟಿಗಳನ್ನು ಉಳಿಸಿ ಮತ್ತು ಅವುಗಳನ್ನು ಪಕ್ಕಪಕ್ಕದಲ್ಲಿ ಹೋಲಿಸಿ.",
       "primaryCta": "ಪ್ರಾಪರ್ಟಿಗಳನ್ನು ಅನ್ವೇಷಿಸಿ",
-      "secondaryCta": "ವಿಶ್‌ಲಿಸ್ಟ್‌ಗೆ ಹೋಗಿ",
-      "floatingLocation": "ಕೊಡಗು, ಕರ್ನಾಟಕ"
+      "secondaryCta": "ನನ್ನ ಉಳಿಸಿದ ಸಂಗ್ರಹಗಳು",
+      "floatingLocation": "ಕೊಡಗು, ಕರ್ನಾಟಕ",
+      "badgeVenue": "ವೆನ್ಯೂ",
+      "badgeStudio": "ಸ್ಟುಡಿಯೋ",
+      "badgeFarmstay": "ಫಾರ್ಮ್‌ಸ್ಟೇ",
+      "badgeWorkspace": "ವರ್ಕ್‌ಸ್ಪೇಸ್",
+      "floatingName1": "ದಿ ಗ್ರ್ಯಾಂಡ್ ಪೆವಿಲಿಯನ್",
+      "floatingName2": "ಸ್ಕೈಲೈನ್ ಸ್ಟುಡಿಯೋ",
+      "floatingName3": "ವಿಸ್ಪರಿಂಗ್ ಪೈನ್ಸ್ ಫಾರ್ಮ್‌ಸ್ಟೇ",
+      "floatingName4": "ಅರ್ಬನ್ ವರ್ಕ್‌ಸ್ಪೇಸ್ ಹಬ್",
+      "floatingLocation2": "ಇಂದಿರಾನಗರ, ಬೆಂಗಳೂರು",
+      "floatingLocation3": "ಕೋರಮಂಗಲ, ಬೆಂಗಳೂರು",
+      "floatingLocation4": "ವೈಟ್‌ಫೀಲ್ಡ್, ಬೆಂಗಳೂರು"
     },
     "hero": {
-      "title": "ಪ್ರಾಪರ್ಟಿಗಳನ್ನು ಹೋಲಿಸಿ",
-      "subtitle": "ನಿರ್ಧಾರ ತೆಗೆದುಕೊಳ್ಳುವ ಮೊದಲು ವೆನ್ಯೂ ಅಥವಾ ಸ್ಟೇಗಳನ್ನು ಪಕ್ಕಪಕ್ಕದಲ್ಲಿ ಹೋಲಿಸಿ.",
+      "titleByCategory": {
+        "venues": "ವೇನ್ಯೂಗಳನ್ನು ಹೋಲಿಸಿ",
+        "farmstays": "ಫಾರ್ಮ್‌ಸ್ಟೇಗಳನ್ನು ಹೋಲಿಸಿ",
+        "studios": "ಸ್ಟುಡಿಯೋಗಳನ್ನು ಹೋಲಿಸಿ",
+        "workspaces": "ವರ್ಕ್‌ಸ್ಪೇಸ್‌ಗಳನ್ನು ಹೋಲಿಸಿ",
+        "rentals": "ರೆಂಟಲ್‌ಗಳನ್ನು ಹೋಲಿಸಿ"
+      },
+      "subtitleByCategory": {
+        "venues": "ನಿರ್ಧಾರ ತೆಗೆದುಕೊಳ್ಳುವ ಮೊದಲು ವೇನ್ಯೂಗಳನ್ನು ಪಕ್ಕಪಕ್ಕದಲ್ಲಿ ಹೋಲಿಸಿ.",
+        "farmstays": "ನಿಮ್ಮ ವಾಸ್ತವ್ಯವನ್ನು ಯೋಜಿಸುವ ಮೊದಲು ಫಾರ್ಮ್‌ಸ್ಟೇಗಳನ್ನು ಪಕ್ಕಪಕ್ಕದಲ್ಲಿ ಹೋಲಿಸಿ.",
+        "studios": "ನಿಮ್ಮ ಶೂಟ್ ಬುಕ್ ಮಾಡುವ ಮೊದಲು ಸ್ಟುಡಿಯೋಗಳನ್ನು ಪಕ್ಕಪಕ್ಕದಲ್ಲಿ ಹೋಲಿಸಿ.",
+        "workspaces": "ನಿಮ್ಮ ಸೀಟ್ ಬುಕ್ ಮಾಡುವ ಮೊದಲು ವರ್ಕ್‌ಸ್ಪೇಸ್‌ಗಳನ್ನು ಪಕ್ಕಪಕ್ಕದಲ್ಲಿ ಹೋಲಿಸಿ.",
+        "rentals": "ಬುಕ್ ಮಾಡುವ ಮೊದಲು ರೆಂಟಲ್‌ಗಳನ್ನು ಪಕ್ಕಪಕ್ಕದಲ್ಲಿ ಹೋಲಿಸಿ."
+      },
       "comparingCount": "{count} ಪ್ರಾಪರ್ಟಿಗಳನ್ನು ಹೋಲಿಸಲಾಗುತ್ತಿದೆ"
     },
     "stickyBar": {
@@ -1128,7 +1152,11 @@
       "shiftFullDay": "ಪೂರ್ಣ ದಿನ",
       "today": "ಇಂದು",
       "prevMonth": "ಹಿಂದಿನ ತಿಂಗಳು",
-      "nextMonth": "ಮುಂದಿನ ತಿಂಗಳು"
+      "nextMonth": "ಮುಂದಿನ ತಿಂಗಳು",
+      "eventTypePlaceholder": "ಈವೆಂಟ್ ಪ್ರಕಾರ ಆಯ್ಕೆಮಾಡಿ",
+      "eventTypeSearchPlaceholder": "ಈವೆಂಟ್ ಪ್ರಕಾರ ಹುಡುಕಿ…",
+      "noMatchFor": "\"{search}\" ಗೆ ಯಾವುದೇ ಹೊಂದಾಣಿಕೆ ಇಲ್ಲ",
+      "otherOption": "ಇತರೆ"
     },
     "card": {
       "wishlist": "ವಿಶ್‌ಲಿಸ್ಟ್",
@@ -1143,7 +1171,9 @@
       "searchPlaceholder": "ಹೆಸರು ಅಥವಾ ಸ್ಥಳದ ಮೂಲಕ ಪ್ರಾಪರ್ಟಿ ಹುಡುಕಿ...",
       "noResults": "ಯಾವುದೇ ಫಲಿತಾಂಶಗಳು ಕಂಡುಬಂದಿಲ್ಲ.",
       "addButton": "ಸೇರಿಸಿ",
-      "close": "ಮುಚ್ಚಿ"
+      "close": "ಮುಚ್ಚಿ",
+      "maxReachedHeading": "ನೀವು ಗರಿಷ್ಠ {max} ಅನ್ನು ತಲುಪಿದ್ದೀರಿ",
+      "maxReachedBody": "ಬೇರೆ ಪ್ರಾಪರ್ಟಿ ಸೇರಿಸಲು ನಿಮ್ಮ ಹೋಲಿಸಲಾದ {category} ಪೈಕಿ ಒಂದನ್ನು ತೆಗೆದುಹಾಕಿ."
     },
     "quickSummary": {
       "bestPrice": "ಕಡಿಮೆ ಬೆಲೆ",
@@ -1185,22 +1215,42 @@
       "sqftValue": "{count} ಚ.ಅಡಿ",
       "notApplicable": "ಅನ್ವಯಿಸುವುದಿಲ್ಲ",
       "viewGallery": "ಗ್ಯಾಲರಿ ವೀಕ್ಷಿಸಿ",
+      "noAmenities": "ಯಾವುದೇ ಸೌಕರ್ಯಗಳನ್ನು ಪಟ್ಟಿ ಮಾಡಿಲ್ಲ",
       "highlights": {
         "capacity": "ಸಾಮರ್ಥ್ಯ",
         "indoorOutdoor": "ಒಳಾಂಗಣ / ಹೊರಾಂಗಣ",
-        "startingFrom": "ಬೆಲೆ ಪ್ರಾರಂಭ"
+        "startingFrom": "ಬೆಲೆ ಪ್ರಾರಂಭ",
+        "bookingOptions": "ಬುಕಿಂಗ್ ಆಯ್ಕೆಗಳು",
+        "instantBook": "ತಕ್ಷಣ ಬುಕ್ ಮಾಡಿ",
+        "reserve": "ಕಾಯ್ದಿರಿಸಿ",
+        "enquiry": "ವಿಚಾರಣೆ",
+        "quickAction": "ತ್ವರಿತ ಕ್ರಿಯೆ",
+        "quickActions": "ತ್ವರಿತ ಕ್ರಿಯೆಗಳು",
+        "viewAndBook": "ವೀಕ್ಷಿಸಿ ಮತ್ತು ಬುಕ್ ಮಾಡಿ"
       },
       "sections": {
         "highlights": "ತ್ವರಿತ ಮುಖ್ಯಾಂಶಗಳು",
         "availability": "ಲಭ್ಯತೆ",
+        "availabilityActions": "ಲಭ್ಯತೆ ಮತ್ತು ತ್ವರಿತ ಕ್ರಿಯೆಗಳು",
         "pricing": "ಬೆಲೆ ನಿಗದಿ",
         "capacity": "ಸಾಮರ್ಥ್ಯ",
-        "eventSuitability": "ಈವೆಂಟ್ ಸೂಕ್ತತೆ",
+        "eventPreference": "ಈವೆಂಟ್ ಆದ್ಯತೆ",
         "food": "ಆಹಾರ",
+        "amenities": "ಸೌಕರ್ಯಗಳು",
         "facilities": "ಸೌಲಭ್ಯಗಳು",
         "policies": "ನೀತಿಗಳು",
         "gallery": "ಗ್ಯಾಲರಿ ಪೂರ್ವವೀಕ್ಷಣೆ",
         "reviews": "ವಿಮರ್ಶೆಗಳು"
+      },
+      "amenityItems": {
+        "WiFi": "ವೈಫೈ",
+        "Housekeeping": "ಹೌಸ್‌ಕೀಪಿಂಗ್",
+        "Cloakroom": "ಕ್ಲೋಕ್‌ರೂಮ್",
+        "Locker Storage": "ಲಾಕರ್ ಸಂಗ್ರಹಣೆ",
+        "Charging Points": "ಚಾರ್ಜಿಂಗ್ ಪಾಯಿಂಟ್‌ಗಳು",
+        "CCTV Surveillance": "ಸಿಸಿಟಿವಿ ಕಣ್ಗಾವಲು",
+        "In-house Catering": "ಇನ್-ಹೌಸ್ ಕ್ಯಾಟರಿಂಗ್",
+        "Backup Generator": "ಬ್ಯಾಕಪ್ ಜನರೇಟರ್"
       },
       "availability": {
         "available": "ಲಭ್ಯವಿದೆ",
@@ -1293,6 +1343,7 @@
       "bedsValue": "{count} ಹಾಸಿಗೆಗಳು",
       "kmValue": "{count} ಕಿ.ಮೀ",
       "acresValue": "{count} ಎಕರೆ",
+      "reviewsValue": "{count} ವಿಮರ್ಶೆಗಳು",
       "notApplicable": "ಅನ್ವಯಿಸುವುದಿಲ್ಲ",
       "notRequired": "ಅಗತ್ಯವಿಲ್ಲ",
       "viewGallery": "ಗ್ಯಾಲರಿ ವೀಕ್ಷಿಸಿ",
@@ -1374,15 +1425,26 @@
         "BBQ": "ಬಿಬಿಕ್ಯೂ"
       },
       "nearby": {
-        "Lake": "ಸರೋವರ",
-        "Beach": "ಬೀಚ್",
+        "attraction": "ಹತ್ತಿರದ ಆಕರ್ಷಣೆ",
+        "attractionValue": "{type} — {count} ಕಿ.ಮೀ",
+        "attractionTypes": {
+          "Lake": "ಸರೋವರ",
+          "River": "ನದಿ",
+          "Mountain": "ಪರ್ವತ",
+          "Waterfall": "ಜಲಪಾತ",
+          "Valley": "ಕಣಿವೆ",
+          "Beach": "ಬೀಚ್"
+        },
+        "City": "ಹತ್ತಿರದ ಪಟ್ಟಣ",
+        "cityValue": "{city} ನಿಂದ {count} ಕಿ.ಮೀ",
+        "town": "ಹತ್ತಿರದ ಪಟ್ಟಣ",
         "Airport": "ವಿಮಾನ ನಿಲ್ದಾಣ",
         "Hospital": "ಆಸ್ಪತ್ರೆ",
-        "City": "ನಗರ",
         "Market": "ಮಾರುಕಟ್ಟೆ"
       },
       "policies": {
         "pets": "ಸಾಕುಪ್ರಾಣಿಗಳು",
+        "kidsSuitable": "ಮಕ್ಕಳೊಂದಿಗೆ ಕುಟುಂಬಗಳಿಗೆ ಸೂಕ್ತ",
         "events": "ಈವೆಂಟ್‌ಗಳಿಗೆ ಅವಕಾಶ",
         "visitors": "ಸಂದರ್ಶಕರು",
         "cancellation": "ರದ್ದತಿ",
@@ -1397,6 +1459,7 @@
       },
       "reviews": {
         "rating": "ಒಟ್ಟಾರೆ ರೇಟಿಂಗ್",
+        "reviewCount": "ವಿಮರ್ಶೆಗಳ ಸಂಖ್ಯೆ",
         "cleanliness": "ಸ್ವಚ್ಛತೆ",
         "location": "ಸ್ಥಳ",
         "host": "ಆತಿಥೇಯ",
@@ -1433,11 +1496,13 @@
       "label": "ವರ್ಗ"
     },
     "categorySwitch": {
-      "heading": "ಇನ್ನೂ ಸಾಕಷ್ಟು {category} ಉಳಿಸಲಾಗಿಲ್ಲ",
-      "body": "ಪಕ್ಕಪಕ್ಕದಲ್ಲಿ ಹೋಲಿಸಲು ಕನಿಷ್ಠ 2 {category} ಉಳಿಸಿ.",
+      "heading": "ಹೋಲಿಸಲು ಇನ್ನೂ ಸಾಕಷ್ಟು {category} ಇಲ್ಲ",
+      "body": "ಪಕ್ಕಪಕ್ಕದಲ್ಲಿ ಹೋಲಿಸಲು ಕನಿಷ್ಠ 2 {category} ಸೇರಿಸಿ.",
       "emptyHeading": "ಇನ್ನೂ {category} ಸೇರಿಸಲಾಗಿಲ್ಲ",
       "emptyBody": "ಹೋಲಿಕೆ ಪ್ರಾರಂಭಿಸಲು {category} ಬ್ರೌಸ್ ಮಾಡಿ.",
       "browseButton": "{category} ಬ್ರೌಸ್ ಮಾಡಿ",
+      "exploreButton": "{category} ಅನ್ವೇಷಿಸಿ",
+      "mySaved": "ನನ್ನ ಉಳಿಸಿದ ಸಂಗ್ರಹಗಳು",
       "switchButton": "{category} ಗೆ ಬದಲಿಸಿ"
     },
     "studio": {
@@ -1579,6 +1644,26 @@
       "reviews": {
         "reviewCount": "ವಿಮರ್ಶೆಗಳ ಸಂಖ್ಯೆ"
       }
+    }
+  },
+  "messages": {
+    "title": "ಸಂದೇಶಗಳು",
+    "subtitle": "ವೇದಿಕೆಗಳು ಮತ್ತು ಬೆಂಬಲದೊಂದಿಗೆ ನಿಮ್ಮ ಎಲ್ಲಾ ಸಂಭಾಷಣೆಗಳು ಒಂದೇ ಸ್ಥಳದಲ್ಲಿ.",
+    "searchPlaceholder": "ಸಂಭಾಷಣೆಗಳನ್ನು ಹುಡುಕಿ…",
+    "inbox": "ಇನ್‌ಬಾಕ್ಸ್",
+    "selectConversation": "ಸಂಭಾಷಣೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ",
+    "selectConversationSub": "ಸಂದೇಶ ಕಳುಹಿಸಲು ಪಟ್ಟಿಯಿಂದ ಥ್ರೆಡ್ ಆಯ್ಕೆಮಾಡಿ",
+    "noConversations": "ಯಾವುದೇ ಸಂಭಾಷಣೆಗಳು ಸಿಗಲಿಲ್ಲ",
+    "typeMessage": "ಸಂದೇಶ ಟೈಪ್ ಮಾಡಿ…",
+    "send": "ಕಳುಹಿಸಿ",
+    "attach": "ಫೈಲ್ ಲಗತ್ತಿಸಿ",
+    "online": "ಆನ್‌ಲೈನ್",
+    "offline": "ಆಫ್‌ಲೈನ್",
+    "categories": {
+      "all": "ಎಲ್ಲಾ",
+      "bookings": "ಬುಕಿಂಗ್‌ಗಳು",
+      "enquiries": "ವಿಚಾರಣೆಗಳು",
+      "support": "ಬೆಂಬಲ"
     }
   }
 }

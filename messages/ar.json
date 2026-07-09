@@ -36,10 +36,11 @@
     "region_aria": "تغيير المنطقة أو اللغة أو العملة",
     "region_language": "المنطقة واللغة",
     "login_signup": "تسجيل الدخول / التسجيل",
-    "wishlist": "قائمة الرغبات",
+    "collections": "مجموعاتي",
     "compare": "مقارنة",
     "bookings": "الحجوزات",
     "notifications": "الإشعارات",
+    "messages": "الرسائل",
     "profile": "الملف الشخصي",
     "logout": "تسجيل الخروج",
     "switch_to_customer": "Switch to customer",
@@ -1280,12 +1281,35 @@
       "title": "لا يوجد شيء للمقارنة بعد",
       "subtitle": "احفظ العقارات التي تهمك وقارنها جنبًا إلى جنب.",
       "primaryCta": "استكشف العقارات",
-      "secondaryCta": "الانتقال إلى قائمة الرغبات",
-      "floatingLocation": "كورج، كارناتاكا"
+      "secondaryCta": "مجموعاتي المحفوظة",
+      "floatingLocation": "كورج، كارناتاكا",
+      "badgeVenue": "قاعة",
+      "badgeStudio": "استوديو",
+      "badgeFarmstay": "مزرعة",
+      "badgeWorkspace": "مساحة عمل",
+      "floatingName1": "الجناح الكبير",
+      "floatingName2": "استوديو سكايلاين",
+      "floatingName3": "مزرعة ويسبرينغ باينز",
+      "floatingName4": "مركز أوربان للعمل",
+      "floatingLocation2": "إندرانجار، بنغالورو",
+      "floatingLocation3": "كورامانجالا، بنغالورو",
+      "floatingLocation4": "وايتفيلد، بنغالورو"
     },
     "hero": {
-      "title": "قارن العقارات",
-      "subtitle": "قارن الأماكن أو الإقامات جنبًا إلى جنب قبل اتخاذ قرارك.",
+      "titleByCategory": {
+        "venues": "قارن أماكن الفعاليات",
+        "farmstays": "قارن إقامات المزارع",
+        "studios": "قارن الاستوديوهات",
+        "workspaces": "قارن مساحات العمل",
+        "rentals": "قارن وحدات التأجير"
+      },
+      "subtitleByCategory": {
+        "venues": "قارن أماكن الفعاليات جنبًا إلى جنب قبل اتخاذ قرارك.",
+        "farmstays": "قارن إقامات المزارع جنبًا إلى جنب قبل التخطيط لإقامتك.",
+        "studios": "قارن الاستوديوهات جنبًا إلى جنب قبل حجز جلسة التصوير.",
+        "workspaces": "قارن مساحات العمل جنبًا إلى جنب قبل حجز مقعدك.",
+        "rentals": "قارن وحدات التأجير جنبًا إلى جنب قبل حجز إقامتك."
+      },
       "comparingCount": "مقارنة {count} عقارات"
     },
     "stickyBar": {
@@ -1296,7 +1320,11 @@
       "shiftFullDay": "يوم كامل",
       "today": "اليوم",
       "prevMonth": "الشهر السابق",
-      "nextMonth": "الشهر التالي"
+      "nextMonth": "الشهر التالي",
+      "eventTypePlaceholder": "اختر نوع الفعالية",
+      "eventTypeSearchPlaceholder": "ابحث عن نوع الفعالية…",
+      "noMatchFor": "لا توجد نتائج لـ \"{search}\"",
+      "otherOption": "أخرى"
     },
     "card": {
       "wishlist": "المفضلة",
@@ -1311,7 +1339,9 @@
       "searchPlaceholder": "ابحث عن العقارات بالاسم أو الموقع...",
       "noResults": "لا توجد نتائج مطابقة.",
       "addButton": "إضافة",
-      "close": "إغلاق"
+      "close": "إغلاق",
+      "maxReachedHeading": "لقد وصلت إلى الحد الأقصى وهو {max}",
+      "maxReachedBody": "أزل أحد {category} التي تقارنها لإضافة عقار آخر."
     },
     "quickSummary": {
       "bestPrice": "أقل سعر",
@@ -1353,22 +1383,42 @@
       "sqftValue": "{count} قدم مربع",
       "notApplicable": "غير متاح",
       "viewGallery": "عرض المعرض",
+      "noAmenities": "لا توجد وسائل راحة مدرجة",
       "highlights": {
         "capacity": "السعة",
         "indoorOutdoor": "داخلي / خارجي",
-        "startingFrom": "السعر يبدأ من"
+        "startingFrom": "السعر يبدأ من",
+        "bookingOptions": "خيارات الحجز",
+        "instantBook": "حجز فوري",
+        "reserve": "احجز",
+        "enquiry": "استفسار",
+        "quickAction": "إجراء سريع",
+        "quickActions": "إجراءات سريعة",
+        "viewAndBook": "عرض وحجز"
       },
       "sections": {
         "highlights": "أبرز المزايا",
         "availability": "التوفر",
+        "availabilityActions": "التوفر والإجراءات السريعة",
         "pricing": "الأسعار",
         "capacity": "السعة",
-        "eventSuitability": "مناسبة للفعاليات",
+        "eventPreference": "تفضيل الفعاليات",
         "food": "الطعام",
+        "amenities": "وسائل الراحة",
         "facilities": "المرافق",
         "policies": "السياسات",
         "gallery": "معرض الصور",
         "reviews": "التقييمات"
+      },
+      "amenityItems": {
+        "WiFi": "واي فاي",
+        "Housekeeping": "خدمة التنظيف",
+        "Cloakroom": "غرفة المعاطف",
+        "Locker Storage": "خزائن التخزين",
+        "Charging Points": "نقاط الشحن",
+        "CCTV Surveillance": "مراقبة بالكاميرات",
+        "In-house Catering": "تموين داخلي",
+        "Backup Generator": "مولد احتياطي"
       },
       "availability": {
         "available": "متاح",
@@ -1461,6 +1511,7 @@
       "bedsValue": "{count} أسرّة",
       "kmValue": "{count} كم",
       "acresValue": "{count} فدان",
+      "reviewsValue": "{count} تقييمات",
       "notApplicable": "غير متاح",
       "notRequired": "غير مطلوب",
       "viewGallery": "عرض المعرض",
@@ -1542,15 +1593,26 @@
         "BBQ": "شواء"
       },
       "nearby": {
-        "Lake": "البحيرة",
-        "Beach": "الشاطئ",
+        "attraction": "أقرب معلم طبيعي",
+        "attractionValue": "{type} — {count} كم",
+        "attractionTypes": {
+          "Lake": "بحيرة",
+          "River": "نهر",
+          "Mountain": "جبل",
+          "Waterfall": "شلال",
+          "Valley": "وادي",
+          "Beach": "شاطئ"
+        },
+        "City": "أقرب بلدة",
+        "cityValue": "{count} كم من {city}",
+        "town": "أقرب بلدة",
         "Airport": "المطار",
         "Hospital": "المستشفى",
-        "City": "المدينة",
         "Market": "السوق"
       },
       "policies": {
         "pets": "الحيوانات الأليفة",
+        "kidsSuitable": "مناسب للعائلات مع الأطفال",
         "events": "السماح بالفعاليات",
         "visitors": "الزوار",
         "cancellation": "الإلغاء",
@@ -1565,6 +1627,7 @@
       },
       "reviews": {
         "rating": "التقييم العام",
+        "reviewCount": "عدد التقييمات",
         "cleanliness": "النظافة",
         "location": "الموقع",
         "host": "المضيف",
@@ -1601,11 +1664,13 @@
       "label": "الفئة"
     },
     "categorySwitch": {
-      "heading": "لا يوجد عدد كافٍ من {category} محفوظة بعد",
-      "body": "احفظ عنصرين على الأقل من {category} لمقارنتهما جنبًا إلى جنب.",
+      "heading": "لا يوجد عدد كافٍ من {category} للمقارنة بعد",
+      "body": "أضف عنصرين على الأقل من {category} لمقارنتهما جنبًا إلى جنب.",
       "emptyHeading": "لا توجد {category} مضافة بعد",
       "emptyBody": "تصفّح {category} لبدء المقارنة.",
       "browseButton": "تصفّح {category}",
+      "exploreButton": "استكشف {category}",
+      "mySaved": "مجموعاتي المحفوظة",
       "switchButton": "التبديل إلى {category}"
     },
     "studio": {
@@ -1747,6 +1812,26 @@
       "reviews": {
         "reviewCount": "عدد التقييمات"
       }
+    }
+  },
+  "messages": {
+    "title": "الرسائل",
+    "subtitle": "جميع محادثاتك مع الأماكن والدعم في مكان واحد.",
+    "searchPlaceholder": "ابحث في المحادثات…",
+    "inbox": "صندوق الوارد",
+    "selectConversation": "اختر محادثة",
+    "selectConversationSub": "اختر محادثة من القائمة لبدء المراسلة",
+    "noConversations": "لم يتم العثور على محادثات",
+    "typeMessage": "اكتب رسالة…",
+    "send": "إرسال",
+    "attach": "إرفاق ملف",
+    "online": "متصل",
+    "offline": "غير متصل",
+    "categories": {
+      "all": "الكل",
+      "bookings": "الحجوزات",
+      "enquiries": "الاستفسارات",
+      "support": "الدعم"
     }
   }
 }

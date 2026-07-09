@@ -24,6 +24,23 @@ const nextConfig = {
       },
     ],
   },
+  // "Wishlist" was renamed to "My Collections" — /wishlist moved to
+  // /collections. This catches old bookmarks/links at the routing layer
+  // (before the thin redirect stub left at wishlist/page.jsx even renders).
+  async redirects() {
+    return [
+      {
+        source: "/:locale/:country/wishlist",
+        destination: "/:locale/:country/collections",
+        permanent: true,
+      },
+      {
+        source: "/:locale/:country/wishlist/:path*",
+        destination: "/:locale/:country/collections/:path*",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 module.exports = withNextIntl(withPWA(nextConfig));

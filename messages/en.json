@@ -36,10 +36,11 @@
     "region_aria": "Change region, language or currency",
     "region_language": "Region & language",
     "login_signup": "Login / Sign up",
-    "wishlist": "Wishlist",
+    "collections": "My Collections",
     "compare": "Compare",
     "bookings": "Bookings",
     "notifications": "Notifications",
+    "messages": "Messages",
     "profile": "Profile",
     "logout": "Log out",
     "switch_to_customer": "Switch to customer",
@@ -1280,12 +1281,35 @@
       "title": "Nothing to compare yet",
       "subtitle": "Save properties you're interested in and compare them side by side.",
       "primaryCta": "Explore Properties",
-      "secondaryCta": "Go to Wishlist",
-      "floatingLocation": "Coorg, Karnataka"
+      "secondaryCta": "My Saved Collections",
+      "floatingLocation": "Coorg, Karnataka",
+      "badgeVenue": "Venue",
+      "badgeStudio": "Studio",
+      "badgeFarmstay": "Farmstay",
+      "badgeWorkspace": "Workspace",
+      "floatingName1": "The Grand Pavilion",
+      "floatingName2": "Skyline Studio",
+      "floatingName3": "Whispering Pines Farmstay",
+      "floatingName4": "Urban Workspace Hub",
+      "floatingLocation2": "Indiranagar, Bengaluru",
+      "floatingLocation3": "Koramangala, Bengaluru",
+      "floatingLocation4": "Whitefield, Bengaluru"
     },
     "hero": {
-      "title": "Compare Properties",
-      "subtitle": "Compare venues or stays side by side before making your decision.",
+      "titleByCategory": {
+        "venues": "Compare Venues",
+        "farmstays": "Compare Farmstays",
+        "studios": "Compare Studios",
+        "workspaces": "Compare Workspaces",
+        "rentals": "Compare Rentals"
+      },
+      "subtitleByCategory": {
+        "venues": "Compare venues side by side before making your decision.",
+        "farmstays": "Compare farmstays side by side before planning your stay.",
+        "studios": "Compare studios side by side before booking your shoot.",
+        "workspaces": "Compare workspaces side by side before booking your seat.",
+        "rentals": "Compare rentals side by side before booking your stay."
+      },
       "comparingCount": "Comparing {count} Properties"
     },
     "stickyBar": {
@@ -1296,7 +1320,11 @@
       "shiftFullDay": "Full Day",
       "today": "Today",
       "prevMonth": "Previous month",
-      "nextMonth": "Next month"
+      "nextMonth": "Next month",
+      "eventTypePlaceholder": "Select event type",
+      "eventTypeSearchPlaceholder": "Search event type…",
+      "noMatchFor": "No match for \"{search}\"",
+      "otherOption": "Other"
     },
     "card": {
       "wishlist": "Wishlist",
@@ -1311,7 +1339,9 @@
       "searchPlaceholder": "Search venues by name or location...",
       "noResults": "No matches found.",
       "addButton": "Add",
-      "close": "Close"
+      "close": "Close",
+      "maxReachedHeading": "You've reached the max of {max}",
+      "maxReachedBody": "Remove one of your compared {category} to add a different one."
     },
     "quickSummary": {
       "bestPrice": "Lowest Price",
@@ -1353,22 +1383,42 @@
       "sqftValue": "{count} sq ft",
       "notApplicable": "Not Applicable",
       "viewGallery": "View Gallery",
+      "noAmenities": "No amenities listed",
       "highlights": {
         "capacity": "Capacity",
         "indoorOutdoor": "Indoor / Outdoor",
-        "startingFrom": "Price Starting From"
+        "startingFrom": "Price Starting From",
+        "bookingOptions": "Booking Options",
+        "instantBook": "Instant Book",
+        "reserve": "Reserve",
+        "enquiry": "Enquiry",
+        "quickAction": "Quick Action",
+        "quickActions": "Quick Actions",
+        "viewAndBook": "View & Book"
       },
       "sections": {
         "highlights": "Quick Highlights",
         "availability": "Availability",
+        "availabilityActions": "Availability & Quick Actions",
         "pricing": "Pricing",
         "capacity": "Capacity",
-        "eventSuitability": "Event Suitability",
+        "eventPreference": "Event Preference",
         "food": "Food",
+        "amenities": "Amenities",
         "facilities": "Facilities",
         "policies": "Policies",
         "gallery": "Gallery Preview",
         "reviews": "Reviews"
+      },
+      "amenityItems": {
+        "WiFi": "WiFi",
+        "Housekeeping": "Housekeeping",
+        "Cloakroom": "Cloakroom",
+        "Locker Storage": "Locker Storage",
+        "Charging Points": "Charging Points",
+        "CCTV Surveillance": "CCTV Surveillance",
+        "In-house Catering": "In-house Catering",
+        "Backup Generator": "Backup Generator"
       },
       "availability": {
         "available": "Available",
@@ -1461,6 +1511,7 @@
       "bedsValue": "{count} Beds",
       "kmValue": "{count} km",
       "acresValue": "{count} Acres",
+      "reviewsValue": "{count} Reviews",
       "notApplicable": "Not Applicable",
       "notRequired": "Not Required",
       "viewGallery": "View Gallery",
@@ -1542,15 +1593,26 @@
         "BBQ": "BBQ"
       },
       "nearby": {
-        "Lake": "Lake",
-        "Beach": "Beach",
+        "attraction": "Nearest Attraction",
+        "attractionValue": "{type} — {count} km",
+        "attractionTypes": {
+          "Lake": "Lake",
+          "River": "River",
+          "Mountain": "Mountain",
+          "Waterfall": "Waterfall",
+          "Valley": "Valley",
+          "Beach": "Beach"
+        },
+        "City": "Nearest Town",
+        "cityValue": "{count} km from {city}",
+        "town": "the nearest town",
         "Airport": "Airport",
         "Hospital": "Hospital",
-        "City": "City",
         "Market": "Market"
       },
       "policies": {
         "pets": "Pets",
+        "kidsSuitable": "Suitable for Families with Kids",
         "events": "Events Allowed",
         "visitors": "Visitors",
         "cancellation": "Cancellation",
@@ -1565,6 +1627,7 @@
       },
       "reviews": {
         "rating": "Overall Rating",
+        "reviewCount": "Review Count",
         "cleanliness": "Cleanliness",
         "location": "Location",
         "host": "Host",
@@ -1601,11 +1664,13 @@
       "label": "Category"
     },
     "categorySwitch": {
-      "heading": "Not enough {category} saved yet",
-      "body": "Save at least 2 {category} to compare them side by side.",
+      "heading": "Not enough {category} to compare yet",
+      "body": "Add at least 2 {category} to compare them side by side.",
       "emptyHeading": "No {category} added yet",
       "emptyBody": "Browse {category} to start comparing.",
       "browseButton": "Browse {category}",
+      "exploreButton": "Explore {category}",
+      "mySaved": "My Saved Collections",
       "switchButton": "Switch to {category}"
     },
     "studio": {
@@ -1747,6 +1812,26 @@
       "reviews": {
         "reviewCount": "Review Count"
       }
+    }
+  },
+  "messages": {
+    "title": "Messages",
+    "subtitle": "Your conversations with venues and support, all in one place.",
+    "searchPlaceholder": "Search conversations…",
+    "inbox": "Inbox",
+    "selectConversation": "Select a conversation",
+    "selectConversationSub": "Choose a thread from the list to start messaging",
+    "noConversations": "No conversations found",
+    "typeMessage": "Type a message…",
+    "send": "Send",
+    "attach": "Attach file",
+    "online": "Online",
+    "offline": "Offline",
+    "categories": {
+      "all": "All",
+      "bookings": "Bookings",
+      "enquiries": "Enquiries",
+      "support": "Support"
     }
   }
 }
