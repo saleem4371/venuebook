@@ -521,7 +521,7 @@ function LoggedInMenu({ user, isListed, locale, country, onClose, onLogout, onVe
           <MenuItem icon={<UserIcon />}     label={t("profile")}       href={`${base}/profile`}       onClick={onClose} />
         </li>
         <li role="none">
-          <MenuItem icon={<HeartIcon />}    label={t("wishlist")}      href={`${base}/wishlist`}      onClick={onClose} />
+          <MenuItem icon={<FolderIcon />}   label={t("collections")}   href={`${base}/collections`}   onClick={onClose} />
         </li>
         <li role="none">
           <MenuItem icon={<CompareIcon />}  label={t("compare")}       href={`${base}/compare`}       onClick={onClose} />
@@ -531,6 +531,9 @@ function LoggedInMenu({ user, isListed, locale, country, onClose, onLogout, onVe
         </li>
         <li role="none">
           <MenuItem icon={<BellIcon />}     label={t("notifications")} href={`${base}/notifications`} onClick={onClose} />
+        </li>
+        <li role="none">
+          <MenuItem icon={<MessageIcon />}  label={t("messages")}      href={`${base}/messages`}      onClick={onClose} />
         </li>
 
         <Divider />
@@ -610,8 +613,12 @@ function GlobeIcon() {
 function LoginIcon() {
   return <svg {...iconProps}><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" /><polyline points="10 17 15 12 10 7" /><line x1="15" y1="12" x2="3" y2="12" /></svg>;
 }
-function HeartIcon() {
-  return <svg {...iconProps}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>;
+// Matches lucide-react's "Folder" glyph — same icon used for Collections
+// throughout the /collections page (tabs, overview card, empty state), so
+// the nav entry that links there carries the same visual language instead
+// of the leftover heart icon from when this was "Wishlist".
+function FolderIcon() {
+  return <svg {...iconProps}><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z" /></svg>;
 }
 function CompareIcon() {
   return <svg {...iconProps}><path d="M9 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h4" /><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" /><line x1="12" y1="3" x2="12" y2="21" /></svg>;
@@ -621,6 +628,9 @@ function CalendarIcon() {
 }
 function BellIcon() {
   return <svg {...iconProps}><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></svg>;
+}
+function MessageIcon() {
+  return <svg {...iconProps}><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" /></svg>;
 }
 function UserIcon() {
   return <svg {...iconProps}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>;

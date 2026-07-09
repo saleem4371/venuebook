@@ -140,7 +140,7 @@ export default function Navbar() {
   const locale  = params?.locale  || "en";
   const country = params?.country || "in";
 
-  const { setFilterOpen, setLoginOpen, loginOpen } = useUI();
+  const { setFilterOpen, setLoginOpen, loginOpen, hideSiteChrome } = useUI();
   const { openDropdown }                           = useDropdown();
   const { isLoggedIn, isListed }                   = useAuth();
 
@@ -255,6 +255,10 @@ export default function Navbar() {
     const t = getCookie("token");
     setToken(t);
   }, []);
+
+  // Messages page sets this when a conversation thread is open full-screen
+  // on mobile — the chat has its own header, so the site Navbar steps aside.
+  if (hideSiteChrome) return null;
 
   return (
     <>

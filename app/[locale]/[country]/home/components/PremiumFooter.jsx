@@ -127,7 +127,7 @@ function FooterLogo({ ariaLabel }) {
  * Clicking opens the shared RegionLanguageModal (same as header).
  * Format example: "English (IN) · INR" or "العربية (UAE) · AED"
  */
-function LocalizationPill({ t, region, currency, onOpenModal }) {
+export function LocalizationPill({ t, region, currency, onOpenModal }) {
   return (
     <button
       type="button"
@@ -149,7 +149,7 @@ function LocalizationPill({ t, region, currency, onOpenModal }) {
 }
 
 /** Inline copyright + legal link strip */
-function LegalStrip({ t }) {
+export function LegalStrip({ t }) {
   const year = new Date().getFullYear();
   return (
     <div
@@ -182,7 +182,7 @@ function LegalStrip({ t }) {
  * Dark:  text-gray-400 → hover:text-gray-100
  * No background change on hover — clean, minimal premium feel.
  */
-function SocialRow({ t }) {
+export function SocialRow({ t }) {
   return (
     <ul className="flex items-center gap-4" aria-label={t("social.aria_label")}>
       {SOCIAL_LINKS.map(({ label, Icon }) => (
