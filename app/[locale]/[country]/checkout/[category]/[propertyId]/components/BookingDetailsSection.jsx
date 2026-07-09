@@ -31,7 +31,7 @@ function FieldWrapper({ label, children, badge }) {
 const inputClass =
   "w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-neutral-700 bg-gray-50 dark:bg-neutral-800 text-gray-900 dark:text-neutral-100 text-sm placeholder-gray-400 dark:placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-offset-0 transition-shadow";
 
-function TextInput({ placeholder, value, onChange, type = "text", ...rest }) {
+function TextInput({ placeholder, value, onChange, type = "text", ...rest  }) {
   return (
     <input
       type={type}
@@ -114,31 +114,23 @@ function ShiftPicker({ value, onChange, t }) {
 
 /* ─── Category field renderers ──────────────────────────────────────── */
 
-function VenueFields({ t, details, update }) {
+function VenueFields({ t, details, update ,venueEvents,booking}) {
   return (
     <>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <FieldWrapper label={t("event_type")}>
           <SelectInput
-            value={details.eventType}
+            value={booking.eventType}
             onChange={(v) => update("eventType", v)}
             placeholder={t("placeholder_select")}
-            options={[
-              { value: "wedding", label: "Wedding" },
-              { value: "birthday", label: "Birthday Party" },
-              { value: "corporate", label: "Corporate Event" },
-              { value: "engagement", label: "Engagement" },
-              { value: "babyshower", label: "Baby Shower" },
-              { value: "reunion", label: "Reunion" },
-              { value: "other", label: "Other" },
-            ]}
+            options={venueEvents}
           />
         </FieldWrapper>
         <FieldWrapper label={t("guest_count")}>
           <TextInput
             type="number"
             min={1}
-            value={details.guestCount}
+            value={booking.guests}
             onChange={(v) => update("guestCount", v)}
             placeholder="e.g. 150"
           />
@@ -149,13 +141,14 @@ function VenueFields({ t, details, update }) {
         <FieldWrapper label={t("event_date")}>
           <TextInput
             type="date"
-            value={details.eventDate}
-            onChange={(v) => update("eventDate", v)}
+            value={booking.date}
+            onChange={(v) => update("eventDate", v)} 
+            readonly='readonly'
           />
         </FieldWrapper>
         <FieldWrapper label={t("shift")}>
           <ShiftPicker
-            value={details.shift}
+            value={booking.shift}
             onChange={(v) => update("shift", v)}
             t={t}
           />
@@ -191,22 +184,22 @@ function VenueFields({ t, details, update }) {
           />
         </FieldWrapper>
         <FieldWrapper label={t("vendor_notes")}>
-          <TextInput value={details.vendorNotes} onChange={(v) => update("vendorNotes", v)} placeholder={t("placeholder_enter")} />
+          <TextInput value={details.vendorNotes} onChange={(v) => update("vendorNotes", v)} placeholder={t("placeholder_enter")}   />
         </FieldWrapper>
       </div>
     </>
   );
 }
 
-function FarmstayFields({ t, details, update, isGoldMember }) {
+function FarmstayFields({ t, details, update, isGoldMember , booking , venueData }) {
   return (
     <>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <FieldWrapper label={t("check_in")}>
-          <TextInput type="date" value={details.checkIn} onChange={(v) => update("checkIn", v)} />
+          <TextInput type="date" value={booking.checkIn} onChange={(v) => update("checkIn", v)}  readonly='readonly'/>
         </FieldWrapper>
         <FieldWrapper label={t("check_out")}>
-          <TextInput type="date" value={details.checkOut} onChange={(v) => update("checkOut", v)} />
+          <TextInput type="date" value={booking.checkOut} onChange={(v) => update("checkOut", v)} readonly='readonly' />
         </FieldWrapper>
       </div>
 
@@ -218,7 +211,7 @@ function FarmstayFields({ t, details, update, isGoldMember }) {
           <TextInput type="number" min={0} value={details.children} onChange={(v) => update("children", v)} placeholder="0" />
         </FieldWrapper>
         <FieldWrapper label={t("arrival_time")}>
-          <TextInput type="time" value={details.arrivalTime} onChange={(v) => update("arrivalTime", v)} />
+          <TextInput type="text" value={venueData.CheckOut} onChange={(v) => update("arrivalTime", v)} readonly='readonly' />
         </FieldWrapper>
       </div>
 
@@ -466,6 +459,9 @@ export default function BookingDetailsSection({
   category,
   bookingDetails,
   onUpdate,
+  booking,
+  venueData,
+  venueEvents
 }) {
   const t = useTranslations("checkout.booking");
 
@@ -501,6 +497,9 @@ export default function BookingDetailsSection({
           details={bookingDetails}
           update={onUpdate}
           isGoldMember={isGoldMember}
+          booking={booking}
+          venueData={venueData}
+          venueEvents={venueEvents}
         />
       </div>
     </section>

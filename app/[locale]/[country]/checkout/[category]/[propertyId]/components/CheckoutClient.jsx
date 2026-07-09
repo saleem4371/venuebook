@@ -11,10 +11,19 @@
  *   - Right column → Sticky BookingSummary (financial breakdown + payment + CTA)
  */
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo,useEffect } from "react";
 import { useTranslations } from "next-intl";
-import { useRouter } from "next/navigation";
+import { useRouter,useSearchParams } from "next/navigation";
 import { useCurrency } from "@/hooks/useCurrency";
+
+import { startPayment } from "@/services/cashfree.service";
+
+import {
+  loadVenues,
+  loadAddons,
+} from "@/services/venue_details.service";
+
+
 import {
   getCheckoutConfig,
   PLATFORM_FEE_PERCENT,
@@ -69,6 +78,30 @@ export default function CheckoutClient({ locale, country, category, propertyId }
   const { format } = useCurrency();
   const router = useRouter();
 
+  const [images,  SetImages]  = useState([]);
+  const [venueData,  SetVenueData]  = useState({});
+  const [venueshifts,  SetVenueshifts]  = useState([]);
+  const [venueEvents,  SetVenueEvents]  = useState([]); 
+ const [venueSettings,  SetvenueSettings]  = useState([]); 
+ const [addons,  SetAddons]  = useState([]); 
+
+  const searchParams = useSearchParams();
+
+  const booking = {
+    eventType: searchParams.get("eventType"),
+    bookingType: searchParams.get("bookingType"),
+    guests: Number(searchParams.get("guests") || 0),
+    date: searchParams.get("date"),
+    shift: searchParams.get("shift"),
+    venueName: searchParams.get("venueName"),
+    venueId: searchParams.get("venueId"),
+    category: searchParams.get("category"),
+    checkIn: searchParams.get("checkIn"),
+    checkOut: searchParams.get("checkOut"),
+  };
+
+  console.log(venueshifts);
+
   const normCat = normalizeCategory(category);
   const catConfig = getCheckoutConfig(normCat);
   const tint = CATEGORY_TINTS[normCat] ?? CATEGORY_TINTS.venues;
@@ -80,16 +113,52 @@ export default function CheckoutClient({ locale, country, category, propertyId }
   const [walletApplied, setWalletApplied] = useState(false);
 
   /* ── Add-ons state ───────────────────────────────────────────────── */
-  const [selectedAddOns, setSelectedAddOns] = useState(new Set());
+  // const [selectedAddOns, setSelectedAddOns] = useState(new Set());
+  const [selectedAddOns, setSelectedAddOns] = useState(new Map());
+  const [addonSummary, setAddonSummary] = useState({
+  unitTotal: 0,
+  flatTotal: 0,
+  grandTotal: 0,
+});
 
-  const toggleAddOn = useCallback((id) => {
-    setSelectedAddOns((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  }, []);
+const [paymentSummarys, setPaymentSummary] = useState(null);
 
+  // const toggleAddOn = useCallback((id) => {
+  //   setSelectedAddOns((prev) => {
+  //     const next = new Set(prev);
+  //     next.has(id) ? next.delete(id) : next.add(id);
+  //     return next;
+  //   });
+  // }, []);
+
+// Paste this in the parent component that owns `selectedAddOns`
+// (wherever you currently have: const [selectedAddOns, setSelectedAddOns] = useState(new Map());)
+
+const toggleAddOn = (addon, action = "toggle") => {
+  setSelectedAddOns((prev) => {
+    const next = new Map(prev);
+    const existing = next.get(addon.add_on_id);
+
+    if (addon.type === "unit") {
+      const qty = existing?.qty || 0;
+
+      if (action === "add") {
+        const newQty = Math.min(qty + 1, addon.stock ?? Infinity);
+        next.set(addon.add_on_id, { addon, qty: newQty });
+      }
+
+      if (action === "remove") {
+        if (qty <= 1) next.delete(addon.add_on_id);
+        else next.set(addon.add_on_id, { addon, qty: qty - 1 });
+      }
+    } else {
+      if (existing) next.delete(addon.add_on_id);
+      else next.set(addon.add_on_id, { addon, qty: 1 });
+    }
+
+    return next;
+  });
+};
   /* ── Booking details state ───────────────────────────────────────── */
   const [bookingDetails, setBookingDetails] = useState({});
 
@@ -153,15 +222,71 @@ export default function CheckoutClient({ locale, country, category, propertyId }
     : -1;
 
   /* ── Handle submit ───────────────────────────────────────────────── */
-  const handlePayment = () => {
-    setIsProcessing(true);
-    // Simulate async payment processing
+const handlePayment = async () => {
+  const amount = paymentSummarys?.grandTotal ?? financials.totalINR;
+
+  if (!amount) {
+    console.error("Payment amount not ready yet");
+    return;
+  }
+
+  setIsProcessing(true);
+
+  try {
+    await startPayment({
+      bookingId: `${propertyId}-${Date.now()}`,
+      amount,
+      customer: {
+        id: propertyId ?? `guest-${Date.now()}`,
+        name: 'Saleem',
+        email: 'vb.develop1@gmail.com',
+        phone: '8147484371',
+      },
+      url:`${locale}/${country}/checkout/${category}/${propertyId}/success`
+    });
+
     setTimeout(() => {
-      router.push(
-        `/${locale}/${country}/checkout/${category}/${propertyId}/success`
-      );
+      router.push(`/${locale}/${country}/checkout/${category}/${propertyId}/success`);
     }, 1800);
-  };
+  } catch (err) {
+    console.error("Payment error:", err);
+    setIsProcessing(false);
+  }
+};
+
+    useEffect(() => {
+      if (!propertyId) return;
+      let cancelled = false;
+  
+      const load = async () => {
+        // setIsPageLoading(true);
+        try {
+          const [res,resp] = await Promise.all([
+              loadVenues(propertyId),
+              loadAddons(propertyId),
+            // getGalleryCategory(listingId),
+          ]);
+          if (cancelled) return;
+          if (res?.data) SetImages(res.data.gallery);
+          if (res?.data) SetVenueData(res.data.venues);
+          if (res?.data) SetVenueshifts(res.data.shifts);
+          if (res?.data) SetVenueEvents(res.data.events);
+          if (res?.data) SetvenueSettings(res.data.venue_settings);
+          if (resp?.data) SetAddons(resp.data);
+          // if (resCt?.data) setCategory(resCt.data);
+        } catch (err) {
+          if (!cancelled) console.error("Listing load error:", err);
+        } finally {
+          // if (!cancelled) setIsPageLoading(false);
+        }
+      };
+
+  
+  
+      load();
+      return () => { cancelled = true; };
+    }, [propertyId]);
+
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-neutral-950">
@@ -247,6 +372,9 @@ export default function CheckoutClient({ locale, country, category, propertyId }
               category={normCat}
               bookingDetails={bookingDetails}
               onUpdate={updateBookingDetail}
+               booking={booking}
+               venueData={venueData}
+                venueEvents={venueEvents}
             />
 
             {/* Section 3: Add-ons */}
@@ -257,9 +385,10 @@ export default function CheckoutClient({ locale, country, category, propertyId }
               selectedAddOns={selectedAddOns}
               onToggle={toggleAddOn}
               format={format}
+              addons={addons}
+               onTotalChange={setAddonSummary}
             />
           </div>
-
           {/* ── RIGHT COLUMN ─────────────────────────────────────────── */}
           <div className="w-full lg:w-[400px] xl:w-[440px] lg:sticky lg:top-24">
             <BookingSummary
@@ -276,6 +405,13 @@ export default function CheckoutClient({ locale, country, category, propertyId }
               onPaymentMethodChange={setPaymentMethod}
               isProcessing={isProcessing}
               onPay={handlePayment}
+              images={images}
+              venueData={venueData}
+              booking={booking}
+              venueshifts={venueshifts}
+              venueSettings={venueSettings}
+              addonSummary={addonSummary}
+              onSummaryChange={setPaymentSummary}
             />
           </div>
         </div>
