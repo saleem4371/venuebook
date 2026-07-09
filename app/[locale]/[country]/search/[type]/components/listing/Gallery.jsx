@@ -23,7 +23,7 @@ const slideVariants = {
   exit:  (dir) => ({ x: dir >= 0 ? "-100%" : "100%" }),
 };
 
-export default function Gallery({ images, setOpen, openTour }) {
+export default function Gallery({ images, setOpen, openTour , galleyCategory }) {
   const [index, setIndex] = useState(0);
   const [dir,   setDir]   = useState(1);
   const preload           = useImagePreloader(images);

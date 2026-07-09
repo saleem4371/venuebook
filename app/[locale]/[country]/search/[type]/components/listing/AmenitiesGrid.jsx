@@ -170,12 +170,11 @@ function AmenityItem({ label, accent }) {
     </div>
   );
 }
-
-export default function AmenitiesGrid({ category }) {
+export default function AmenitiesGrid({ category , amenities , amenitiesgroup}) {
   const key       = normalizeCategory(category);
   const accent    = ICON_ACCENT[key] ?? ICON_ACCENT.venues;
-  const amenities = AMENITIES[key] ?? AMENITIES.venues;
-  const groups    = AMENITY_GROUPS[key] ?? AMENITY_GROUPS.venues;
+  // const amenities = amenities[key] ?? amenities.venues;
+  const groups    = amenitiesgroup;
   const [modalOpen, setModalOpen] = useState(false);
 
   // Disable body scroll while modal is open

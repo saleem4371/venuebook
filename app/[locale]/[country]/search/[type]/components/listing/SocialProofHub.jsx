@@ -161,7 +161,7 @@ function StarRow({ value, max = 5, size = 14 }) {
   );
 }
 
-export default function SocialProofHub({ category }) {
+export default function SocialProofHub({ category , venueData }) {
   const catKey = normalize(category);
   const tabs = REVIEW_TABS[catKey] ?? REVIEW_TABS.venues;
 
@@ -186,14 +186,17 @@ export default function SocialProofHub({ category }) {
       <div className="flex items-center gap-3 mb-6">
         <div className="flex items-center gap-1.5">
           <Star size={18} className="text-amber-400 fill-amber-400" />
-          <span className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">4.8</span>
+          <span className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{venueData.rating}</span>
         </div>
         <div className="w-px h-5 bg-gray-200 dark:bg-gray-700" />
-        <span className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm">{totalReviews} reviews</span>
+        <span className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm">{venueData.user_ratings_total} reviews</span>
       </div>
+       <p className="text-xs text-gray-500">
+      Based on Google Reviews
+    </p>
 
       {/* Rating breakdown */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 sm:gap-x-8 gap-y-3 mb-7 pb-6 border-b border-gray-100 dark:border-gray-800">
+      {/* <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 sm:gap-x-8 gap-y-3 mb-7 pb-6 border-b border-gray-100 dark:border-gray-800">
         {RATING_BREAKDOWN.map(({ label, value }) => (
           <div key={label} className="flex items-center gap-2 sm:gap-3">
             <span className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 w-20 sm:w-24 flex-none">{label}</span>
@@ -206,10 +209,10 @@ export default function SocialProofHub({ category }) {
             <span className="text-xs font-medium text-gray-600 dark:text-gray-300 w-6 text-right">{value}</span>
           </div>
         ))}
-      </div>
+      </div> */}
 
       {/* Experience tabs */}
-      <div className="flex gap-2 mb-5 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+      {/* <div className="flex gap-2 mb-5 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
         {tabs.map((tab) => (
           <button
             key={tab}
@@ -223,10 +226,10 @@ export default function SocialProofHub({ category }) {
             {tab}
           </button>
         ))}
-      </div>
+      </div> */}
 
       {/* Review cards grid */}
-      {filteredReviews.length === 0 ? (
+      {/* {filteredReviews.length === 0 ? (
         <p className="text-sm text-gray-400 dark:text-gray-600 py-6">No reviews for this category yet.</p>
       ) : (
         <div className="grid md:grid-cols-2 gap-4">
@@ -237,7 +240,6 @@ export default function SocialProofHub({ category }) {
                 key={review.id}
                 className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 sm:p-5 hover:shadow-sm transition-shadow"
               >
-                {/* Author */}
                 <div className="flex items-start gap-3 mb-3">
                   <img
                     src={review.avatar}
@@ -258,10 +260,8 @@ export default function SocialProofHub({ category }) {
                   </div>
                 </div>
 
-                {/* Review text */}
                 <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed line-clamp-3">{review.text}</p>
 
-                {/* Helpful */}
                 <button
                   onClick={() => handleHelpful(review.id)}
                   className={`mt-3 flex items-center gap-1.5 text-xs transition-colors ${
@@ -277,7 +277,7 @@ export default function SocialProofHub({ category }) {
             );
           })}
         </div>
-      )}
+      )} */}
     </div>
   );
 }
