@@ -72,8 +72,21 @@ export const MONAPPA_ESTATE = {
     instagram: "https://instagram.com/monappaestates",
     facebook: "https://facebook.com/monappaestates",
     youtube: "https://youtube.com/@monappaestates",
+    twitter: "https://x.com/monappaestates",
     website: "https://monappaestates.example.com",
     whatsapp: "+919900011122",
+  },
+
+  // Read-only on the public page — editable from the vendor's own
+  // "Location & Hours" panel (see vendor/listing/parent_details).
+  operatingHours: {
+    Monday: { open: true, from: "09:00", to: "22:00" },
+    Tuesday: { open: true, from: "09:00", to: "22:00" },
+    Wednesday: { open: true, from: "09:00", to: "22:00" },
+    Thursday: { open: true, from: "09:00", to: "22:00" },
+    Friday: { open: true, from: "09:00", to: "23:00" },
+    Saturday: { open: true, from: "08:00", to: "23:30" },
+    Sunday: { open: false },
   },
 
   contact: {
@@ -166,11 +179,16 @@ export const MONAPPA_ESTATE = {
   categories: {
     venues: {
       key: "venues",
+      heroTagline: "Grand ballrooms built for celebrations of every size.",
       overview:
-        "Two heritage-restored event spaces on the estate grounds, from intimate 300-guest gatherings to 1,000-guest weddings.",
+        "Two heritage-restored event spaces on the estate grounds, from intimate 300-guest gatherings to 1,000-guest weddings. The Grand Ballroom's original 1920s teakwood columns anchor a space built for a full wedding weekend — sangeet, ceremony, and reception all under one roof — while the Royal Heritage Hall offers a more intimate setting for corporate galas and smaller celebrations. Both venues come with in-house catering, a dedicated event coordinator, and grounds access for pre-function photography.",
+      // Pasted by the vendor in their own listing editor — the public page
+      // just embeds whatever URL lands here. Null means no video has been
+      // pasted yet, so the page falls back to the house-stock clip.
+      youtubeUrl: "https://www.youtube.com/watch?v=M7lc1UVf-VE",
       amenities: {
         Facilities: ["Parking", "Swimming Pool", "Garden", "Lawn", "Indoor Hall", "Rooftop", "Outdoor Terrace"],
-        "Catering & Food": ["In-house Catering", "Bar & Beverages", "Veg Menu", "Non-veg Menu", "Custom Menu"],
+        "Food & Catering": ["In-house Catering", "Bar & Beverages", "Veg Menu", "Non-veg Menu", "Custom Menu"],
         Services: ["Event Coordinator", "Decoration", "Photography", "Videography", "DJ", "Live Music", "Security", "Valet Parking"],
         Technology: ["High-speed WiFi", "AV Equipment", "Projector", "Sound System", "LED Screen"],
         Accessibility: ["Wheelchair Access", "Elevator", "Accessible Restrooms"],
@@ -192,6 +210,12 @@ export const MONAPPA_ESTATE = {
           priceINR: 2000000,
           priceUnit: "per event",
           rating: 4.9,
+          likes: 24,
+          city: "Mangaluru",
+          state: "Karnataka",
+          address: "VVG5+976, Mallikatte, Mangaluru, KA 575002",
+          lat: 12.9235,
+          lng: 74.8631,
         },
         {
           id: "royal-heritage-hall",
@@ -202,16 +226,26 @@ export const MONAPPA_ESTATE = {
           priceINR: 1200000,
           priceUnit: "per event",
           rating: 4.8,
+          likes: 15,
+          city: "Mangaluru",
+          state: "Karnataka",
+          address: "WWJ2+4F8, Kadri, Mangaluru, KA 575002",
+          lat: 12.8996,
+          lng: 74.8397,
         },
       ],
     },
     farmstays: {
       key: "farmstays",
+      heroTagline: "Riverside cottages for slow mornings between events.",
       overview:
-        "Riverside cottages and a private villa on the estate's water frontage — built for slow mornings between wedding events, or a standalone escape.",
+        "Riverside cottages and a private villa on the estate's water frontage — built for slow mornings between wedding events, or a standalone escape. Riverside Farmstay sits directly on the Netravati backwaters with its own kayaking dock, while the Private Villa is a fully self-contained retreat suited to family reunions or an extended stay once the celebrations wind down. Both properties share the estate's organic gardens, a common pool, and a BBQ setup for evenings under the stars.",
+      // No YouTube link pasted for this category yet — Video section
+      // falls back to the house-stock farmstay clip.
+      youtubeUrl: null,
       amenities: {
         Facilities: ["Parking", "Garden", "Lawn", "Outdoor Terrace", "Common Pool"],
-        "Catering & Food": ["In-house Catering", "Veg Menu", "Custom Menu", "Halal Options", "BBQ Setup"],
+        "Food & Catering": ["In-house Catering", "Veg Menu", "Custom Menu", "Halal Options", "BBQ Setup"],
         Services: ["Event Coordinator", "Photography", "Kayaking Guide"],
         Technology: ["High-speed WiFi"],
         Accessibility: ["Wheelchair Access"],
@@ -232,6 +266,12 @@ export const MONAPPA_ESTATE = {
           priceINR: 19181,
           priceUnit: "per night",
           rating: 4.8,
+          likes: 31,
+          city: "Mangaluru",
+          state: "Karnataka",
+          address: "Netravati Riverside Estate, Bantwal Rd, Mangaluru, KA 574243",
+          lat: 12.8878,
+          lng: 75.0350,
         },
         {
           id: "private-villa",
@@ -242,16 +282,24 @@ export const MONAPPA_ESTATE = {
           priceINR: 25999,
           priceUnit: "per night",
           rating: 4.9,
+          likes: 19,
+          city: "Mangaluru",
+          state: "Karnataka",
+          address: "Coastal Backwaters Estate, Someshwara, Mangaluru, KA 575011",
+          lat: 12.8422,
+          lng: 74.8394,
         },
       ],
     },
     studios: {
       key: "studios",
+      heroTagline: "A working photography studio, open for shoots.",
       overview:
         "A full working photography studio on the estate — used for guest wedding shoots and independently bookable for commercial work.",
+      videos: [],
       amenities: {
         Facilities: ["Parking", "Rooftop", "Indoor Hall"],
-        "Catering & Food": ["Outside Catering Allowed"],
+        "Food & Catering": ["Outside Catering Allowed"],
         Services: ["Photography", "Videography", "Styling Assistance"],
         Technology: ["High-speed WiFi", "AV Equipment", "LED Screen", "Sound System", "Lighting Rig", "Live Streaming"],
         Accessibility: ["Elevator"],
@@ -271,15 +319,20 @@ export const MONAPPA_ESTATE = {
           priceINR: 8999,
           priceUnit: "per day",
           rating: 4.9,
+          likes: 8,
+          city: "Mangaluru",
+          state: "Karnataka",
         },
       ],
     },
     workspaces: {
       key: "workspaces",
+      heroTagline: "A dedicated co-working space on the estate — coming soon.",
       overview: "A dedicated co-working & meeting space on the estate — in development.",
       amenities: {},
       gallery: [],
       video: null,
+      videos: [],
       comingSoon: true,
       listings: [],
     },
@@ -321,6 +374,41 @@ export function getActiveCategoryKeys(estate) {
   return Object.keys(estate.categories).filter((k) => (estate.categories[k].listings || []).length > 0);
 }
 
+/**
+ * Per-category stats for the Quick Stats strip — replaces the old
+ * estate-wide numbers with ones scoped to whichever category is
+ * currently selected, so the strip actually reacts to the switcher
+ * above it instead of always showing the same estate-level totals.
+ */
+export function computeCategoryStats(estate, categoryKey) {
+  const cat = estate.categories?.[categoryKey];
+  const listings = cat?.listings ?? [];
+
+  const prices = listings.map((l) => l.priceINR).filter(Boolean);
+  const ratings = listings.map((l) => l.rating).filter(Boolean);
+  const maxCapacity = listings.reduce((max, l) => Math.max(max, l.capacity || 0), 0);
+
+  const stats = [{ label: "Listings", value: listings.length }];
+
+  if (ratings.length > 0) {
+    stats.push({
+      label: "Avg Rating",
+      value: ratings.reduce((sum, r) => sum + r, 0) / ratings.length,
+      isDecimal: true,
+    });
+  }
+
+  if (maxCapacity > 0) {
+    stats.push({ label: "Max Capacity", value: maxCapacity });
+  }
+
+  if (prices.length > 0) {
+    stats.push({ label: "Starting Price", value: Math.min(...prices), isCurrency: true });
+  }
+
+  return stats;
+}
+
 export function computeEstateStats(estate) {
   const cats = estate.categories;
   const totalListings = Object.values(cats).reduce((sum, c) => sum + (c.listings?.length || 0), 0);
@@ -331,12 +419,8 @@ export function computeEstateStats(estate) {
   return [
     { label: "Listings", value: totalListings },
     { label: "Categories", value: activeCategoryCount },
-    { label: "Rating", value: estate.rating, isDecimal: true },
     { label: manual.guestsHosted.label, value: manual.guestsHosted.value, suffix: manual.guestsHosted.suffix },
     { label: manual.eventsHosted.label, value: manual.eventsHosted.value, suffix: manual.eventsHosted.suffix },
     { label: manual.yearsOperating.label, value: manual.yearsOperating.value },
-    { label: manual.acreage.label, value: manual.acreage.value },
-    { label: manual.staff.label, value: manual.staff.value, suffix: manual.staff.suffix },
-    { label: manual.awards.label, value: manual.awards.value },
   ];
 }

@@ -94,6 +94,11 @@ export default function ClientLayout({ children }) {
   // listing DETAIL pages (/search/[type]/[id]) which have an extra segment.
   const isSearchListPage = /\/search\/[^/]+\/?$/.test(pathname);
 
+  // Messages is a self-contained, fixed-height chat screen (list + thread) —
+  // the marketing footer (newsletter, sitemap links, etc.) never belongs
+  // here, on any breakpoint or view.
+  const isMessagesRoute = pathname.includes("/messages");
+
   // Listing detail page: /search/[type]/[id] — has two segments after /search/
   const isListingDetailPage = /\/search\/[^/]+\/[^/]+/.test(pathname);
 
@@ -137,7 +142,7 @@ export default function ClientLayout({ children }) {
             <MobileReelsProvider>
 
               {!hideChrome && <Navbar />}
-              {!hideChrome && !isListingDetailPage && !isVenueParentPage && (
+              {!hideChrome && !isListingDetailPage && !isVenueParentPage && !isMessagesRoute && (
                 <CategoryNavigator
                   loadData={loadData}
                   fabBreakpoint={fabBreakpoint}
@@ -147,7 +152,7 @@ export default function ClientLayout({ children }) {
               {children}
 
               {!hideChrome && <BottomMenu />}
-              {!hideChrome && !isSearchListPage && <Footer />}
+              {!hideChrome && !isSearchListPage && !isMessagesRoute && <Footer />}
 
               {/* Consumes showReels signal from BottomMenu — works on every page */}
               <GlobalReelsBridge />

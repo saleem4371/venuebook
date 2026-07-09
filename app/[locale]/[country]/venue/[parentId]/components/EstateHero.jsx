@@ -1,22 +1,45 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
-  BadgeCheck, MapPin, Star, PlayCircle, Phone, Navigation,
+  MapPin, Star,
   Share2, Heart, ChevronDown,
 } from "lucide-react";
-import { CATEGORY_LABELS } from "../utils/estateTheme";
 
+/**
+ * Hero now reacts to whichever category is selected in the switcher
+ * below it: background image, tagline, and rating all switch to that
+ * category's own content instead of always showing fixed estate-level
+ * copy. Brand identity (logo, estate name, location, years operating)
+ * stays constant — "the estate itself stays the same" — only the
+ * category-specific layer changes. The "categories available" pill row
+ * was dropped: the switcher immediately below the hero now owns that
+ * job, so showing both was a duplicate control.
+ */
 export default function EstateHero({
   estate,
-  availableCategoryKeys,
+  categoryKey,
+  catLabel,
   onViewListings,
-  onWatchReel,
 }) {
   const [saved, setSaved] = useState(false);
   const yearsOperating = new Date().getFullYear() - estate.establishedYear;
   const locationLabel = [estate.location?.city, estate.location?.state].filter(Boolean).join(", ");
+
+  const cat = estate.categories?.[categoryKey];
+  const listings = cat?.listings ?? [];
+
+  const heroImage = listings[0]?.image || estate.heroImage;
+  const heroTagline = cat?.heroTagline || estate.tagline;
+
+  const categoryRating = useMemo(() => {
+    const ratings = listings.map((l) => l.rating).filter(Boolean);
+    if (ratings.length === 0) return null;
+    return ratings.reduce((sum, r) => sum + r, 0) / ratings.length;
+  }, [listings]);
+
+  const displayRating = categoryRating ?? estate.rating;
 
   const handleShare = async () => {
     const url = typeof window !== "undefined" ? window.location.href : "";
@@ -32,12 +55,32 @@ export default function EstateHero({
       {/* ── BACKGROUND ── */}
       <div className="relative h-[440px] sm:h-[500px] lg:h-[560px] w-full">
         <img
-          src={estate.heroImage}
-          alt={estate.name}
-          className="absolute inset-0 h-full w-full object-cover"
+          key={heroImage}
+          src={heroImage}
+          alt={`${catLabel} at ${estate.name}`}
+          className="absolute inset-0 h-full w-full object-cover transition-opacity duration-300"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-black/10" />
         <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-transparent" />
+
+        {/* ── SHARE + SAVE — top right ── */}
+        <div className="absolute top-4 right-4 sm:top-6 sm:right-6 z-10 flex items-center gap-2.5">
+          <button
+            onClick={handleShare}
+            className="flex items-center justify-center w-10 h-10 rounded-xl bg-white/10 border border-white/25 text-white backdrop-blur-sm hover:bg-white/20 transition-colors"
+            aria-label="Share"
+          >
+            <Share2 size={15} />
+          </button>
+          <motion.button
+            onClick={() => setSaved((s) => !s)}
+            whileTap={{ scale: 0.85 }}
+            className="flex items-center justify-center w-10 h-10 rounded-xl bg-white/10 border border-white/25 text-white backdrop-blur-sm hover:bg-white/20 transition-colors"
+            aria-label="Save"
+          >
+            <Heart size={15} className={saved ? "fill-pink-500 text-pink-500" : ""} />
+          </motion.button>
+        </div>
 
         {/* ── CONTENT ── */}
         <div className="relative z-10 h-full flex flex-col justify-end px-4 sm:px-6 lg:px-10 pb-6 sm:pb-8 max-w-5xl">
@@ -47,99 +90,40 @@ export default function EstateHero({
               {estate.logoInitial}
             </div>
             <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white tracking-tight leading-tight">
-                  {estate.name}
-                </h1>
-                {estate.verified && (
-                  <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/20 border border-blue-400/40 text-blue-200 text-[10px] sm:text-xs font-semibold">
-                    <BadgeCheck size={12} /> Verified
-                  </span>
-                )}
-              </div>
-              <p className="text-white/70 text-xs sm:text-sm mt-0.5">{estate.tagline}</p>
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white tracking-tight leading-tight">
+                {estate.name}
+              </h1>
+              <p className="text-white/70 text-xs sm:text-sm mt-0.5">{heroTagline}</p>
             </div>
           </div>
 
           {/* Meta row */}
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-white/85 text-xs sm:text-sm mb-3">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-white/85 text-xs sm:text-sm mb-4">
             <span className="flex items-center gap-1.5">
               <MapPin size={13} className="opacity-80" /> {locationLabel}
             </span>
             <span className="opacity-40">·</span>
-            <span>{yearsOperating} Years Operating</span>
-            <span className="opacity-40">·</span>
-            <span className="flex items-center gap-1">
-              <Star size={13} className="fill-amber-400 text-amber-400" />
-              <span className="font-semibold text-white">{estate.rating}</span>
-              <span className="opacity-70">({estate.reviewCount.toLocaleString()} reviews)</span>
-            </span>
+            <span>{yearsOperating} Years in Operation</span>
+            {displayRating && (
+              <>
+                <span className="opacity-40">·</span>
+                <span className="flex items-center gap-1">
+                  <Star size={13} className="fill-amber-400 text-amber-400" />
+                  <span className="font-semibold text-white">{Number(displayRating).toFixed(1)}</span>
+                  <span className="opacity-70">{catLabel}</span>
+                </span>
+              </>
+            )}
           </div>
 
-          {/* Categories available */}
-          <div className="flex flex-wrap items-center gap-1.5 mb-4">
-            {availableCategoryKeys.map((key) => (
-              <span
-                key={key}
-                className="px-2.5 py-1 rounded-full bg-white/10 border border-white/20 text-white/90 text-[11px] sm:text-xs font-medium backdrop-blur-sm"
-              >
-                {CATEGORY_LABELS[key] ?? key}
-              </span>
-            ))}
-          </div>
-
-          {/* Short description */}
-          <p className="text-white/80 text-sm sm:text-base max-w-2xl leading-relaxed mb-5 line-clamp-2 sm:line-clamp-3">
-            {estate.shortDescription}
-          </p>
-
-          {/* CTAs */}
+          {/* CTA */}
           <div className="flex flex-wrap items-center gap-2.5">
             <button
               onClick={onViewListings}
-              className="px-5 py-2.5 rounded-xl bg-white text-gray-900 text-sm font-semibold hover:bg-gray-100 transition-colors shadow-lg"
+              className="w-full sm:w-auto sm:min-w-[220px] px-8 py-2.5 rounded-xl bg-white text-gray-900 text-sm font-semibold hover:bg-gray-100 transition-colors shadow-lg text-center"
             >
-              View Listings
+              View {catLabel}
             </button>
-            {estate.heroVideo && (
-              <button
-                onClick={onWatchReel}
-                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white/10 border border-white/25 text-white text-sm font-semibold backdrop-blur-sm hover:bg-white/20 transition-colors"
-              >
-                <PlayCircle size={16} /> Watch Reel
-              </button>
-            )}
-            {estate.contact?.estateOffice && (
-              <a
-                href={`tel:${estate.contact.estateOffice}`}
-                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white/10 border border-white/25 text-white text-sm font-semibold backdrop-blur-sm hover:bg-white/20 transition-colors"
-              >
-                <Phone size={15} /> Call
-              </a>
-            )}
-            <a
-              href={`https://maps.google.com/?q=${encodeURIComponent(estate.name + " " + locationLabel)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white/10 border border-white/25 text-white text-sm font-semibold backdrop-blur-sm hover:bg-white/20 transition-colors"
-            >
-              <Navigation size={15} /> Directions
-            </a>
-            <button
-              onClick={handleShare}
-              className="flex items-center justify-center w-10 h-10 rounded-xl bg-white/10 border border-white/25 text-white backdrop-blur-sm hover:bg-white/20 transition-colors"
-              aria-label="Share"
-            >
-              <Share2 size={15} />
-            </button>
-            <motion.button
-              onClick={() => setSaved((s) => !s)}
-              whileTap={{ scale: 0.85 }}
-              className="flex items-center justify-center w-10 h-10 rounded-xl bg-white/10 border border-white/25 text-white backdrop-blur-sm hover:bg-white/20 transition-colors"
-              aria-label="Save"
-            >
-              <Heart size={15} className={saved ? "fill-pink-500 text-pink-500" : ""} />
-            </motion.button>
           </div>
         </div>
 
