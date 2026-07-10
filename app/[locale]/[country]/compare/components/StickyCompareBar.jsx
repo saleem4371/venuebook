@@ -13,6 +13,8 @@ function MiniPropertyCard({ property, category, onRemove, onWishlistToggle, isWi
   const tCard = useTranslations("compare.card");
   const location = [property.city, property.state].filter(Boolean).join(", ");
   const propertyType = getPropertyType(property, category);
+
+ const BASE_URL = process.env.NEXT_PUBLIC_AWS_BUCKET_URL;
   return (
     <motion.div
       layout
@@ -23,7 +25,7 @@ function MiniPropertyCard({ property, category, onRemove, onWishlistToggle, isWi
       className="relative flex-shrink-0 w-[212px] lg:w-full flex items-center gap-2 bg-gray-50 dark:bg-gray-800/60 rounded-2xl p-2 border border-gray-100 dark:border-gray-800"
     >
       <div className="relative w-12 h-12 rounded-xl overflow-hidden flex-shrink-0">
-        <img src={property.gallery?.[0] || property.images?.[0]} alt="" className="w-full h-full object-cover" />
+        <img   src={`${BASE_URL}/${property.images?.[0]}`} alt="" className="w-full h-full object-cover" />
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-[12.5px] font-semibold text-gray-900 dark:text-gray-100 truncate">{property.venueName}</p>

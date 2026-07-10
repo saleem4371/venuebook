@@ -8,7 +8,7 @@
  * category here — that would mix comparisons, which the platform never does.
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useState ,useMemo} from "react";
 import { Fragment } from "react";
 import { Dialog, Transition } from "@headlessui/react";
 import { useTranslations } from "next-intl";
@@ -16,6 +16,11 @@ import { Search, Star, MapPin, X, Plus, Users, BedDouble, Ruler, CheckCircle2 } 
 import { STATIC_VENUES } from "@/app/[locale]/[country]/search/[type]/data/staticVenues";
 import { useCurrency } from "@/hooks/useCurrency";
 import { MAX_COMPARE_PROPERTIES, getCategoryAccent, darkenHex } from "../utils/compareHelpers";
+
+
+import {
+  LoadProperty
+} from "@/services/venues.service";
 
 /**
  * STATIC_VENUES stores the full country name ("india", "dubai", ...) while
@@ -66,33 +71,80 @@ export default function AddVenueModal({
   const [query, setQuery] = useState("");
   const [addedIds, setAddedIds] = useState(() => new Set());
 
+
+const [properties, setProperties] = useState([]);
+const [loading, setLoading] = useState(false);
+
   const countryName = COUNTRY_CODE_TO_NAME[String(country || "in").toLowerCase()] || COUNTRY_CODE_TO_NAME.in;
 
-  // `remainingSlots` is passed down from the live compare list (page.jsx ->
-  // StickyCompareBar/CategorySwitchNotice), so it already re-renders with
-  // the up-to-date count the instant an add succeeds — it does NOT need a
-  // separate local subtraction for "adds made while this modal has been
-  // open". Previously this also subtracted `addedIds.size`, double-counting
-  // every single add (once via the parent's live prop, once again here) and
-  // making the "reached max" state fire one add too early — e.g. with 2
-  // slots actually open, a single add would already show "reached max of 4"
-  // instead of correctly leaving 1 slot.
+ 
   const remaining = Math.max(0, remainingSlots);
   const isFull = remaining <= 0;
   const accent = getCategoryAccent(category);
 
+  useEffect(() => {
+  if (!open) return;
+
+  const loadProperties = async () => {
+    try {
+      setLoading(true);
+
+      const payload = {
+        type: category,
+        filters: {},
+        mapBounds: null,
+        location: "",
+        date: "",
+        guests: "",
+      };
+
+      const res = await LoadProperty(payload);
+
+      setProperties(res?.data?.data ?? []);
+    } catch (err) {
+      console.error("LoadProperty Error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  loadProperties();
+}, [open, category]);
+
+
+  // const results = useMemo(() => {
+  //   if (isFull) return [];
+  //   const q = query.trim().toLowerCase();
+
+  //   return STATIC_VENUES.filter((v) => {
+  //     if (v.category !== category) return false;
+  //     if (v.country && v.country.toLowerCase() !== countryName) return false;
+  //     if (excludeIds?.has(v.childVenueId) || addedIds.has(v.childVenueId)) return false;
+  //     if (!q) return true;
+  //     const haystack = `${v.venueName} ${v.parentVenueName || ""} ${v.city || ""} ${v.state || ""}`.toLowerCase();
+  //     return haystack.includes(q);
+  //   }).slice(0, 30);
+
+  // }, [query, category, countryName, excludeIds, addedIds, isFull]);
+
   const results = useMemo(() => {
-    if (isFull) return [];
-    const q = query.trim().toLowerCase();
-    return STATIC_VENUES.filter((v) => {
-      if (v.category !== category) return false;
-      if (v.country && v.country.toLowerCase() !== countryName) return false;
-      if (excludeIds?.has(v.childVenueId) || addedIds.has(v.childVenueId)) return false;
+  if (isFull) return [];
+
+  const q = query.trim().toLowerCase();
+
+  return properties
+    .filter((v) => {
+      if (excludeIds?.has(v.childVenueId) || addedIds.has(v.childVenueId))
+        return false;
+
       if (!q) return true;
-      const haystack = `${v.venueName} ${v.parentVenueName || ""} ${v.city || ""} ${v.state || ""}`.toLowerCase();
+
+      const haystack = `${v.venueName} ${v.city || ""} ${v.state || ""}`.toLowerCase();
+
       return haystack.includes(q);
-    }).slice(0, 30);
-  }, [query, category, countryName, excludeIds, addedIds, isFull]);
+    })
+    .slice(0, 30);
+}, [properties, query, excludeIds, addedIds, isFull]);
 
   const handleAdd = (venue) => {
     if (isFull) return;
@@ -105,6 +157,8 @@ export default function AddVenueModal({
     setAddedIds(new Set());
     onClose?.();
   };
+
+   const BASE_URL = process.env.NEXT_PUBLIC_AWS_BUCKET_URL;
 
   return (
     <Transition show={open} as={Fragment}>
@@ -183,11 +237,15 @@ export default function AddVenueModal({
                         key={v.childVenueId}
                         className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/60 transition"
                       >
-                        <img
-                          src={v.images?.[0]}
-                          alt=""
-                          className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
-                        />
+                      <img
+  src={`${BASE_URL}/${
+    typeof v.images?.[0] === "string"
+      ? v.images[0]
+      : v.images?.[0]?.image || v.coverImage
+  }`}
+  alt={v.venueName}
+  className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
+/>
                         <div className="min-w-0 flex-1">
                           <p className="text-[13.5px] font-semibold text-gray-900 dark:text-gray-50 truncate">{v.venueName}</p>
 

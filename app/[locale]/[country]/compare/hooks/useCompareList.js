@@ -99,10 +99,24 @@ export function useCompareList() {
       .filter(Boolean);
   }, [rawItems]);
 
-  const remove = useCallback(async (childVenueId) => {
-    setRawItems((prev) => prev.filter((r) => extractId(r) !== childVenueId));
-    try { await removeCompareAPI({ venue_id: childVenueId }); } catch (_) { /* optimistic — already removed locally */ }
-  }, []);
+  // const remove = useCallback(async (childVenueId) => {
+  //   setRawItems((prev) => prev.filter((r) => extractId(r) !== childVenueId));
+  //   try { await removeCompareAPI({ venue_id: childVenueId }); } catch (_) { /* optimistic — already removed locally */ }
+  // }, []);
+  
+   const handleCompare = useCallback(
+      async (venue, action) => {
+        if (!user) {
+          setLoginOpen(true);
+          return;
+        }
+        const payload = { venue_id: venue.childVenueId };
+        action ? await addCompareAPI(payload) : await removeCompareAPI(payload);
+        loadUser();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+      },
+      [user, load],
+    );
 
   /**
    * Add a venue back into the compare set — used by the "Add Venue" slot
@@ -110,12 +124,31 @@ export function useCompareList() {
    * filled), so the grid never has to look empty. Same payload shape as
    * search/[type]/page.jsx's handleCompare: { venue_id }.
    */
+  // const add = useCallback(async (childVenueId) => {
+  //   setRawItems((prev) => (
+  //     prev.some((r) => extractId(r) === childVenueId) ? prev : [...prev, { venue_id: childVenueId }]
+  //   ));
+  //   try { await addCompareAPI({ venue_id: childVenueId }); } catch (_) { /* optimistic — already added locally */ }
+  
+  // }, []);
+
   const add = useCallback(async (childVenueId) => {
-    setRawItems((prev) => (
-      prev.some((r) => extractId(r) === childVenueId) ? prev : [...prev, { venue_id: childVenueId }]
-    ));
-    try { await addCompareAPI({ venue_id: childVenueId }); } catch (_) { /* optimistic — already added locally */ }
-  }, []);
+  try {
+    await addCompareAPI({ venue_id: childVenueId });
+    await load();
+  } catch (err) {
+    console.error(err);
+  }
+}, [load]);
+
+const remove = useCallback(async (childVenueId) => {
+  try {
+    await removeCompareAPI({ venue_id: childVenueId });
+    await load();
+  } catch (err) {
+    console.error(err);
+  }
+}, [load]);
 
   const toggleWishlist = useCallback(async (childVenueId) => {
     const isSaved = wishlistIds.has(childVenueId);

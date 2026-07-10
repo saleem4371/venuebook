@@ -17,6 +17,7 @@ function PropertyCompareCard({ property, onRemove, onWishlistToggle, isWishliste
   const t = useTranslations("compare.card");
   const { format } = useCurrency();
   const location = [property.city, property.state].filter(Boolean).join(", ");
+  const BASE_URL = process.env.NEXT_PUBLIC_AWS_BUCKET_URL;
 
   return (
     <motion.div
@@ -30,7 +31,7 @@ function PropertyCompareCard({ property, onRemove, onWishlistToggle, isWishliste
     >
       <div className="relative h-48 overflow-hidden">
         <img
-          src={property.gallery?.[0] || property.images?.[0]}
+          src={`${BASE_URL}/${property.images?.[0]}`}
           alt={property.venueName}
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
         />

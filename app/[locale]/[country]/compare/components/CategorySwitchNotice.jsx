@@ -43,6 +43,8 @@ export default function CategorySwitchNotice({
   const savedProperty = properties[0];
   const accent = getCategoryAccent(category);
 
+   const BASE_URL = process.env.NEXT_PUBLIC_AWS_BUCKET_URL;
+
   return (
     // Same spacious, no-box illustration treatment the true "nothing saved
     // anywhere" state (EmptyState.jsx) always had — a single category being
@@ -83,7 +85,7 @@ export default function CategorySwitchNotice({
           <div className="relative flex items-center gap-3 max-w-[280px] w-full mt-5 p-2 rounded-2xl text-left bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800">
             <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0">
               <img
-                src={savedProperty.gallery?.[0] || savedProperty.images?.[0]}
+                src={`${BASE_URL}/${savedProperty.images?.[0]}`}
                 alt=""
                 className="w-full h-full object-cover"
               />
