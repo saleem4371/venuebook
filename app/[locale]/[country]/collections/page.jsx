@@ -45,6 +45,8 @@ import { useAuth } from "@/context/AuthContext";
 import { useUI } from "@/context/UIContext";
 import { useToast } from "@/components/ToastProvider";
 
+import { useCategory } from "@/context/CategoryContext";
+
 import {
   likedProperty,
   UserWishlist,
@@ -153,6 +155,8 @@ function dateBucketLabel(date) {
    PAGE
    ═══════════════════════════════════════════════════════════════════════════ */
 export default function CollectionsPage() {
+
+
   const { user } = useAuth();
   const { setLoginOpen } = useUI();
   const { locale, country } = useParams();
@@ -168,6 +172,10 @@ export default function CollectionsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedCollectionId, setSelectedCollectionId] = useState(null);
   const [activeTab, setActiveTab] = useState("liked"); // "liked" | "collections" | "recent"
+
+  const { activeCategory } = useCategory();
+
+  const BASE_URL = process.env.NEXT_PUBLIC_AWS_BUCKET_URL;
 
   const load = useCallback(async () => {
     if (!user) {
@@ -191,7 +199,7 @@ export default function CollectionsPage() {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user,activeCategory]);
 
   useEffect(() => {
     load();
@@ -233,13 +241,33 @@ export default function CollectionsPage() {
     return groups;
   }, [recentViews]);
 
-  const coverFor = useCallback(
-    (categoryId) => {
-      const rel = wishlist.find((i) => i.category_id === categoryId);
-      return rel ? resolveVenue(rel)?.images?.[0] || null : null;
-    },
-    [wishlist],
-  );
+  // const coverFor = useCallback(
+  //   (categoryId) => {
+  //     const rel = wishlist.find((i) => i.category_id === categoryId);
+  //     return rel ? resolveVenue(rel)?.images?.[0].image || null : null;
+  //   },
+  //   [wishlist],
+  // );
+const getImageUrl = (path) => {
+  if (!path) return null;
+  if (path.startsWith("http")) return path;
+  return `${BASE_URL}/${path}`;
+};
+
+const coverFor = useCallback(
+  (categoryId) => {
+    const rel = wishlist.find((i) => i.category_id === categoryId);
+    if (!rel) return null;
+
+    const venue = resolveVenue(rel);
+
+    return getImageUrl(
+      venue?.images?.[0]?.image ||
+      venue?.coverImage
+    );
+  },
+  [wishlist, resolveVenue]
+);
 
   /* ── Handlers — same real API calls the search page uses, adapted so a
         mixed-category grid (venues + farmstays + studios...) resolves each
@@ -594,7 +622,7 @@ function CollectionCard({ cat, count, coverImage, updatedLabel, selected, onClic
       <div className="p-3.5">
         <p className="text-[14px] font-semibold text-gray-900 dark:text-gray-50 truncate">{cat.name}</p>
         <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5">
-          {count} {count === 1 ? "Property" : "Properties"}
+          {cat.total_wishlist} {cat.total_wishlist === 1 ? "Property" : "Properties"}
           {updatedLabel ? ` · Updated ${updatedLabel}` : ""}
         </p>
       </div>
