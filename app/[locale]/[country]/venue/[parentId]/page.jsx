@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 
 import EstateHero from "./components/EstateHero";
@@ -20,9 +20,15 @@ import {
 } from "./data/estateData";
 import { CATEGORY_LABELS, getCategoryTheme, normalizeEstateCategory } from "./utils/estateTheme";
 
+import { getParent } from "@/services/venues.service";
+
+//getParent
+
 export default function EstatePublicPage() {
   const { parentId } = useParams();
   const searchParams = useSearchParams();
+
+  const created_by = searchParams.get("id");
 
   const estate = useMemo(() => getEstateData(parentId), [parentId]);
   // Estate page currently only supports Venues and Farmstays — Studios
@@ -40,6 +46,7 @@ export default function EstatePublicPage() {
   // it points here.
   const originCategory = normalizeEstateCategory(searchParams.get("from"), activeCategoryKeys);
   const [activeCat, setActiveCat] = useState(originCategory);
+  const [parents, setParents] = useState([]);
 
   // Everything below the switcher is driven by this one piece of state —
   // Hero, Stats, About, Listings, Amenities, Videos, Reels, and Location
@@ -73,6 +80,21 @@ export default function EstatePublicPage() {
     document.getElementById(`category-${activeCat}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+        const loadParent = async () => {
+          try {
+            const parent = await getParent(parentId,created_by);
+             setParents(parent?.data);
+  
+  
+          } catch (err) {
+            console.error("Addons load error:", err);
+          }
+        };
+  
+    useEffect( () => {
+        loadParent();
+      }, []);
+
   return (
     <div className="bg-white dark:bg-gray-950 min-h-screen pb-10 pt-16 md:pt-[72px]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-3">
@@ -81,6 +103,7 @@ export default function EstatePublicPage() {
           categoryKey={activeCat}
           catLabel={catLabel}
           onViewListings={scrollToListings}
+          parents={parents}
         />
       </div>
 
