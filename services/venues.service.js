@@ -50,3 +50,7 @@ export const addLikedProperty  = async (data) => {
 export const totalLikedProperty  = async (data) => {
   return api.get("/listing/totalLikedProperty", data);
 };
+
+export const getParent  = async (data,data1) => {
+  return api.get(`/listing/getParent/${data}/${data1}`);
+};
