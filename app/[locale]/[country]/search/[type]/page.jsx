@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams, useSearchParams,useRouter } from "next/navigation";
 import {
   X,
   Scale,
@@ -73,6 +73,8 @@ export default function SearchPage() {
   const t = useTranslations();
   const { locale, country } = useParams();
   const searchParams = useSearchParams();
+
+  const router = useRouter();
 
   const { showMap, setShowMap, filterOpen, setFilterOpen, setLoginOpen } =
     useUI();
@@ -592,6 +594,12 @@ useEffect(() => {
   );
 }, [searchData]);
 
+const compare = () =>{
+
+   router.push(`/${locale}/${country}/compare`);
+  // ${locale}/${country}
+}
+
   /* ══════════════════════════════════════════════════════════════
      RENDER
      ══════════════════════════════════════════════════════════════ */
@@ -1070,6 +1078,7 @@ useEffect(() => {
                     </div>
                     <div className="p-3 border-t border-gray-100 dark:border-gray-800">
                       <button
+                      onClick={compare}
                         className="w-full text-white text-sm font-semibold py-2.5 rounded-xl transition hover:opacity-90 active:scale-[0.98]"
                         style={{
                           background:
