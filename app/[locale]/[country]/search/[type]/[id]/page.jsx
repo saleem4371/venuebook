@@ -402,7 +402,7 @@ export default function ListingPage() {
 
               {/* ── RIGHT: Parent Property Identity Block ── */}
               <Link
-                href={`/${locale}/${country}/venue/${venueData.parent_venue_id}?from=${catKey}`}
+                href={`/${locale}/${country}/venue/${venueData.parent_venue_id}?from=${catKey}&id=${venueData.created_by}`}
                 className="flex-none flex items-center md:flex-col md:items-center gap-3 md:gap-3 px-5 py-4 md:px-4 md:py-5 rounded-2xl border border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-900/60 hover:bg-white dark:hover:bg-gray-900 hover:shadow-md hover:border-gray-200 dark:hover:border-gray-700 transition-all duration-200 w-full md:w-52 lg:w-48 xl:w-52 group"
               >
                 {/* Logo */}
