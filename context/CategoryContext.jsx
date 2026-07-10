@@ -1,59 +1,71 @@
 "use client";
 
-/**
- * /context/CategoryContext.jsx
- *
- * Provides ACTIVE_CATEGORY and setActiveCategory across all discovery pages.
- * Wrap any layout/page that needs category-aware components with <CategoryProvider>.
- */
-
 import {
   createContext,
   useContext,
   useState,
   useCallback,
   useMemo,
+  useEffect,
 } from "react";
 
 import { CATEGORIES, DEFAULT_CATEGORY } from "@/config/categoryConfig";
 
-/* ------------------------------------------------------------------ */
-/*  Context                                                             */
-/* ------------------------------------------------------------------ */
-
 const CategoryContext = createContext(null);
 
-/* ------------------------------------------------------------------ */
-/*  Provider                                                            */
-/* ------------------------------------------------------------------ */
-
-/**
- * @param {{ children: React.ReactNode, initialCategory?: string }} props
- */
 export function CategoryProvider({ children, initialCategory }) {
+  // Initial category
+  const [activeCategory, setActiveCategoryRaw] = useState(() => {
+    if (
+      initialCategory &&
+      CATEGORIES[initialCategory]
+    ) {
+      return initialCategory;
+    }
 
+    return DEFAULT_CATEGORY;
+  });
 
-  const [activeCategory, setActiveCategoryRaw] = useState(
-    () =>
-      initialCategory && CATEGORIES[initialCategory]
-        ? initialCategory
-        : DEFAULT_CATEGORY,
-  );
+  // Load category from localStorage (runs once)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const saved = localStorage.getItem("activeCategory");
+
+    if (saved && CATEGORIES[saved]) {
+      setActiveCategoryRaw(saved);
+    }
+  }, []);
+
+  // Save category to localStorage
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    if (activeCategory) {
+      localStorage.setItem(
+        "activeCategory",
+        activeCategory
+      );
+    }
+  }, [activeCategory]);
 
   const setActiveCategory = useCallback((id) => {
-    if (CATEGORIES[id]) setActiveCategoryRaw(id);
+    if (!CATEGORIES[id]) return;
+
+    setActiveCategoryRaw(id);
+
+    if (typeof window !== "undefined") {
+      localStorage.setItem("activeCategory", id);
+    }
   }, []);
 
   const value = useMemo(
     () => ({
-      /** Current active category id, e.g. "venues" */
       activeCategory,
-      /** Full config object from CATEGORIES[activeCategory] */
       categoryConfig: CATEGORIES[activeCategory],
-      /** Update the active category */
       setActiveCategory,
     }),
-    [activeCategory, setActiveCategory],
+    [activeCategory, setActiveCategory]
   );
 
   return (
@@ -63,19 +75,14 @@ export function CategoryProvider({ children, initialCategory }) {
   );
 }
 
-/* ------------------------------------------------------------------ */
-/*  Consumer hook                                                       */
-/* ------------------------------------------------------------------ */
-
-/**
- * Access ACTIVE_CATEGORY and CATEGORY_CONFIG from anywhere inside CategoryProvider.
- *
- * const { activeCategory, categoryConfig, setActiveCategory } = useCategory();
- */
 export function useCategory() {
   const ctx = useContext(CategoryContext);
+
   if (!ctx) {
-    throw new Error("useCategory must be used within a <CategoryProvider>.");
+    throw new Error(
+      "useCategory must be used within CategoryProvider"
+    );
   }
+
   return ctx;
 }
