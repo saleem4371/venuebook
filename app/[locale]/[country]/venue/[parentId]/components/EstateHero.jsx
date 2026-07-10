@@ -22,6 +22,7 @@ export default function EstateHero({
   categoryKey,
   catLabel,
   onViewListings,
+  parents
 }) {
   const [saved, setSaved] = useState(false);
   const yearsOperating = new Date().getFullYear() - estate.establishedYear;
@@ -30,7 +31,10 @@ export default function EstateHero({
   const cat = estate.categories?.[categoryKey];
   const listings = cat?.listings ?? [];
 
-  const heroImage = listings[0]?.image || estate.heroImage;
+
+  const BASE_URL = process.env.NEXT_PUBLIC_AWS_BUCKET_URL;
+
+  const heroImage = BASE_URL+'/'+parents?.result?.[0]?.banner_image || estate.heroImage;
   const heroTagline = cat?.heroTagline || estate.tagline;
 
   const categoryRating = useMemo(() => {
@@ -91,16 +95,16 @@ export default function EstateHero({
             </div>
             <div className="min-w-0">
               <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white tracking-tight leading-tight">
-                {estate.name}
+                {parents?.result?.[0]?.venue_name}
               </h1>
-              <p className="text-white/70 text-xs sm:text-sm mt-0.5">{heroTagline}</p>
+              <p className="text-white/70 text-xs sm:text-sm mt-0.5"> {parents?.result?.[0]?.banner_content}</p>
             </div>
           </div>
 
           {/* Meta row */}
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-white/85 text-xs sm:text-sm mb-4">
             <span className="flex items-center gap-1.5">
-              <MapPin size={13} className="opacity-80" /> {locationLabel}
+              <MapPin size={13} className="opacity-80" /> {parents?.result?.[0]?.venue_address}
             </span>
             <span className="opacity-40">·</span>
             <span>{yearsOperating} Years in Operation</span>
@@ -109,7 +113,7 @@ export default function EstateHero({
                 <span className="opacity-40">·</span>
                 <span className="flex items-center gap-1">
                   <Star size={13} className="fill-amber-400 text-amber-400" />
-                  <span className="font-semibold text-white">{Number(displayRating).toFixed(1)}</span>
+                  <span className="font-semibold text-white">{Number(parents?.result?.[0]?.rating).toFixed(1)}</span>
                   <span className="opacity-70">{catLabel}</span>
                 </span>
               </>
