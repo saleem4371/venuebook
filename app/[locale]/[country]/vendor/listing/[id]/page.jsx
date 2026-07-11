@@ -426,6 +426,18 @@ function SettingsContent({ section, isDark, brand = DEFAULT_BRAND, form, setForm
             right={<Toggle checked={pub.instant} onChange={(v) => setPub((p) => ({ ...p, instant: v }))} />}
             tk={tk}
           />
+           <SettingRow
+            label="Reserve"
+            description="Guests can confirm without host approval"
+            right={<Toggle checked={pub.reserve} onChange={(v) => setPub((p) => ({ ...p, reserve: v }))} />}
+            tk={tk}
+          />
+           <SettingRow
+            label="Enquire"
+            description="Guests can confirm without host approval"
+            right={<Toggle checked={pub.enquire} onChange={(v) => setPub((p) => ({ ...p, enquire: v }))} />}
+            tk={tk}
+          />
         </SettingCard>
       </div>
     ),
@@ -541,6 +553,19 @@ function SettingsContent({ section, isDark, brand = DEFAULT_BRAND, form, setForm
                 type="number"
                 value={pax.max}
                 onChange={(e) => setPax((p) => ({ ...p, max: e.target.value }))}
+                placeholder="e.g. 500"
+                className={INPUT_CLS}
+                style={inputStyle}
+              />
+            </div> 
+            <div>
+              <label className="block text-[12px] font-semibold mb-2" style={{ color: tk.muted }}>
+                Min Package Amount
+              </label>
+              <input
+                type="number"
+                value={pax.pack_amt}
+                onChange={(e) => setPax((p) => ({ ...p, pack_amt: e.target.value }))}
                 placeholder="e.g. 500"
                 className={INPUT_CLS}
                 style={inputStyle}
