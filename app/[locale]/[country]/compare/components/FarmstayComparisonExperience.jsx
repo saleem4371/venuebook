@@ -31,6 +31,9 @@ export default function FarmstayComparisonExperience({ properties, locale, count
   const t = useTranslations("compare.farmstay");
   const { format } = useCurrency();
 
+  console.log('======================')
+  console.log(properties)
+
   // See VenueComparisonExperience.jsx for the full rationale: opens the
   // same full gallery viewer the detail page uses, in-place, instead of
   // navigating away from the comparison to see photos.

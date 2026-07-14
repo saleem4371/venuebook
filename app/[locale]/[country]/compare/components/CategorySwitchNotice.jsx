@@ -33,6 +33,9 @@ import FloatingDecorCards from "./shared/FloatingDecorCards";
 export default function CategorySwitchNotice({
   category, count = 0, properties = [], onAdd, onRemove, excludeIds, remainingSlots, locale, country,
 }) {
+
+  console.log("================================")
+  console.log(properties)
   const t = useTranslations("compare.categorySwitch");
   const tCard = useTranslations("compare.card");
   const tAdd = useTranslations("compare.addVenue");
