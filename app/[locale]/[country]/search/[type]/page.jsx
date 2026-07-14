@@ -29,7 +29,6 @@ import { useUI } from "@/context/UIContext";
 import { useAuth } from "@/context/AuthContext";
 import { usePreferredLocation } from "@/hooks/usePreferredLocation";
 import { useMobileReels } from "@/context/MobileReelsContext";
-import { getStaticVenues } from "./data/staticVenues";
 
 import {
   LoadProperty,
@@ -74,6 +73,8 @@ export default function SearchPage() {
   const { locale, country } = useParams();
   const searchParams = useSearchParams();
 
+  const router = useRouter();
+
   const { showMap, setShowMap, filterOpen, setFilterOpen, setLoginOpen } =
     useUI();
   const { activeCategory } = useCategory();
@@ -103,11 +104,7 @@ export default function SearchPage() {
   const [searchLocLabel, setSearchLocLabel] = useState(
     () => searchParams.get("location") || null,
   );
-  // Exact coordinates the Home-page search already put in the URL (lat/lng).
-  // Using them lets the map center immediately on a Home→Search navigation
-  // instead of depending on re-geocoding the text label (which only fired
-  // reliably for in-page searches, because those bump mapResetKey). Cleared
-  // on an in-page search so the label-geocode path stays in charge there.
+
   const [searchCenter, setSearchCenter] = useState(() => {
     const la = Number(searchParams.get("lat"));
     const ln = Number(searchParams.get("lng"));
@@ -249,7 +246,7 @@ export default function SearchPage() {
         const videoUrl = venue.videoUrl || venue.video_url || venue.coverVideo;
         return Boolean(videoUrl) && videoUrl !== "0";
       }),
-    [displayCards],
+    [displayCards,activeCategory],
   );
 
   useEffect(() => {
@@ -609,6 +606,11 @@ useEffect(() => {
   );
 }, [searchData]);
 
+const compare = () =>{
+ 
+   router.push(`/${locale}/${country}/compare`);
+  // ${locale}/${country}
+}
   /* ══════════════════════════════════════════════════════════════
      RENDER
      ══════════════════════════════════════════════════════════════ */
@@ -1107,6 +1109,7 @@ useEffect(() => {
                             "linear-gradient(135deg,#7c3aed 0%,#6d28d9 100%)",
                           boxShadow: "0 4px 14px rgba(124,58,237,0.35)",
                         }}
+                        onClick={compare}
                       >
                         Compare Now
                       </button>
