@@ -32,7 +32,7 @@ export default function ScrollCarousel({
   className  = "",
   fadeSize   = 48,
   scrollBy   = 300,
-  arrowClass = "",
+  arrowClass = "flex",
   showArrows = true,
   lightFade  = "#ffffff",
   darkFade   = "#030712",
@@ -41,12 +41,17 @@ export default function ScrollCarousel({
   const [canLeft,  setCanLeft]  = useState(false);
   const [canRight, setCanRight] = useState(false);
 
+  // Epsilon is generous on purpose — sub-pixel layout rounding (common with
+  // fractional flex-basis widths) was tripping canRight into "true" even
+  // when every item already fit, showing an arrow with nothing left to reveal.
+  const EPSILON = 24;
+
   const update = useCallback(() => {
     const el = trackRef.current;
     if (!el) return;
     const { scrollLeft, scrollWidth, clientWidth } = el;
-    setCanLeft(scrollLeft > 4);
-    setCanRight(scrollLeft < scrollWidth - clientWidth - 4);
+    setCanLeft(scrollLeft > EPSILON);
+    setCanRight(scrollLeft < scrollWidth - clientWidth - EPSILON);
   }, []);
 
   useEffect(() => {
@@ -67,7 +72,7 @@ export default function ScrollCarousel({
 
   const arrowBase = [
     "absolute top-1/2 -translate-y-1/2 z-10",
-    "w-8 h-8 rounded-full border flex items-center justify-center",
+    "w-8 h-8 rounded-full border items-center justify-center",
     "transition-all duration-200 shadow-[0_2px_8px_rgba(0,0,0,0.15)]",
     "bg-white dark:bg-gray-900 border-gray-200 dark:border-white/15",
     "text-gray-600 dark:text-white hover:scale-110 active:scale-95",
@@ -75,7 +80,11 @@ export default function ScrollCarousel({
   ].join(" ");
 
   return (
-    <div className={`relative ${className}`}>
+    // -my-3 cancels the py-3 added to the track below. The padding gives
+    // hover lift/shadow room to breathe; without it, overflow-x:auto forces
+    // overflow-y to a computed "auto" too (a CSS spec quirk), which clips
+    // any shadow/scale that pokes outside the track's own box.
+    <div className={`relative -my-3 ${className}`}>
 
       {/* Left arrow — only when showArrows=true */}
       {showArrows && canLeft && (
@@ -101,9 +110,14 @@ export default function ScrollCarousel({
         </button>
       )}
 
-      {/* Fade masks — themed via CSS custom properties set on <html> */}
+      {/* Fade masks — themed via CSS custom properties set on <html>.
+          Wrapped in their own md:hidden container (rather than putting
+          md:hidden on each inner div) so it can't lose a specificity race
+          against the dark: variant on the same element — from md up the
+          arrows already do the "there's more" job; below md there are no
+          arrows (touch swipe only), so this is the only scrollable cue. */}
       {canLeft && (
-        <>
+        <div className="md:hidden">
           <div
             className="absolute inset-y-0 start-0 z-[1] pointer-events-none dark:hidden"
             style={{ width: fadeSize, background: `linear-gradient(to right, ${lightFade}, transparent)` }}
@@ -112,10 +126,10 @@ export default function ScrollCarousel({
             className="absolute inset-y-0 start-0 z-[1] pointer-events-none hidden dark:block"
             style={{ width: fadeSize, background: `linear-gradient(to right, ${darkFade}, transparent)` }}
           />
-        </>
+        </div>
       )}
       {canRight && (
-        <>
+        <div className="md:hidden">
           <div
             className="absolute inset-y-0 end-0 z-[1] pointer-events-none dark:hidden"
             style={{ width: fadeSize, background: `linear-gradient(to left, ${lightFade}, transparent)` }}
@@ -124,13 +138,13 @@ export default function ScrollCarousel({
             className="absolute inset-y-0 end-0 z-[1] pointer-events-none hidden dark:block"
             style={{ width: fadeSize, background: `linear-gradient(to left, ${darkFade}, transparent)` }}
           />
-        </>
+        </div>
       )}
 
       {/* Track */}
       <div
         ref={trackRef}
-        className={`flex ${gap} overflow-x-auto scroll-smooth`}
+        className={`flex ${gap} overflow-x-auto scroll-smooth py-3`}
         style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}
         onKeyDown={(e) => {
           if (e.key === "ArrowRight") scroll(1);

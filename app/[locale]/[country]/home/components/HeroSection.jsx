@@ -366,7 +366,7 @@ const handleSearch = () => {
 </div>
 
         {/* Content */}
-        <div className="relative z-10 flex flex-col flex-1 justify-center w-full max-w-6xl mx-auto px-5 sm:px-8 md:px-12 lg:px-16 pt-32 md:pt-28 pb-8 md:pb-10">
+        <div className="relative z-10 flex flex-col flex-1 justify-center w-full mx-auto lg:max-w-[1400px] px-4 sm:px-6 lg:px-8 pt-32 md:pt-28 pb-8 md:pb-10">
 
           {/* Headline */}
           <motion.div

@@ -113,6 +113,20 @@ const CATEGORY_CONTENT = {
         image:
           "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=400&q=75&fit=crop",
       },
+      {
+        name: "Grand Heritage Manor",
+        location: "Chennai",
+        badge: "Featured",
+        image:
+          "https://images.unsplash.com/photo-1519741497674-611481863552?w=400&q=75&fit=crop",
+      },
+      {
+        name: "Oceanfront Pavilion",
+        location: "Goa",
+        badge: null,
+        image:
+          "https://images.unsplash.com/photo-1445991842772-097fea258e7b?w=400&q=75&fit=crop",
+      },
     ],
     popularItems: [
       {
@@ -230,6 +244,20 @@ const CATEGORY_CONTENT = {
         badge: "Heritage",
         image:
           "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400&q=75&fit=crop",
+      },
+      {
+        name: "Backwater Houseboat",
+        location: "Alleppey",
+        badge: "New",
+        image:
+          "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=400&q=75&fit=crop",
+      },
+      {
+        name: "Cardamom Hill Retreat",
+        location: "Munnar",
+        badge: null,
+        image:
+          "https://images.unsplash.com/photo-1500076656116-558758c991c1?w=400&q=75&fit=crop",
       },
     ],
     popularItems: [
@@ -349,6 +377,20 @@ const CATEGORY_CONTENT = {
         image:
           "https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=400&q=75&fit=crop",
       },
+      {
+        name: "Rooftop Photo Loft",
+        location: "Chennai",
+        badge: "New",
+        image:
+          "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=400&q=75&fit=crop",
+      },
+      {
+        name: "Analog Vinyl Studio",
+        location: "Pune",
+        badge: null,
+        image:
+          "https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=400&q=75&fit=crop",
+      },
     ],
     popularItems: [
       {
@@ -467,6 +509,20 @@ const CATEGORY_CONTENT = {
         image:
           "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400&q=75&fit=crop",
       },
+      {
+        name: "Seaside Marquee",
+        location: "Goa",
+        badge: "New",
+        image:
+          "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=400&q=75&fit=crop",
+      },
+      {
+        name: "Courtyard Haveli",
+        location: "Udaipur",
+        badge: null,
+        image:
+          "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400&q=75&fit=crop",
+      },
     ],
     popularItems: [
       {
@@ -584,6 +640,20 @@ const CATEGORY_CONTENT = {
         badge: "New",
         image:
           "https://images.unsplash.com/photo-1497366412874-3415097a27e7?w=400&q=75&fit=crop",
+      },
+      {
+        name: "Sky Lounge Offices",
+        location: "Hyderabad",
+        badge: "New",
+        image:
+          "https://images.unsplash.com/photo-1582192730841-2a682d7375f9?w=400&q=75&fit=crop",
+      },
+      {
+        name: "Founders' Boardroom",
+        location: "Pune",
+        badge: null,
+        image:
+          "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=400&q=75&fit=crop",
       },
     ],
     popularItems: [
@@ -761,7 +831,22 @@ useEffect(() => {
           {!isComingSoon && <CategorySection  loadData= {loadData}/>}
 
           {!isComingSoon && content.sections.length > 0 && (
-            <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            // pt-16: guarantees the gap from the category strip to whichever
+            // section renders first (Recently Viewed, or Recommended when
+            // there's no recent-view data) — independent of which one that
+            // is, instead of relying on Categories' own bottom padding.
+            <div className="w-full mx-auto lg:max-w-[1400px] px-4 sm:px-6 lg:px-8 pt-8">
+              {/* Section 2 — Recently Viewed (moved above Recommended) */}
+              {content.sections[1] && (
+                <VenueSection
+                  title={content.sections[1].title}
+                  subtitle={content.sections[1].subtitle}
+                   venues={recent}
+                  dataSource="api"
+                  tint={tint}
+                />
+              )}
+
               {/* Section 1 — Recommended */}
               {content.sections[0] && (
                 <VenueSection
@@ -801,17 +886,6 @@ useEffect(() => {
                 <HostSpotlight tint={tint} host={content.host} />
               )}
 
-              {/* Section 2 — Recently Viewed */}
-              {content.sections[1] && (
-                <VenueSection
-                  title={content.sections[1].title}
-                  subtitle={content.sections[1].subtitle}
-                   venues={recent}
-                  dataSource="api"
-                  tint={tint}
-                />
-              )}
-
               {/* Top Destinations */}
               {content.luxuryItems?.length > 0 && (
                 <TopDestinations
@@ -825,7 +899,7 @@ useEffect(() => {
 
           {/* Coming soon */}
           {isComingSoon && (
-            <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
+            <div className="w-full mx-auto lg:max-w-[1400px] px-4 sm:px-6 lg:px-8 py-16 text-center">
               <p className="text-4xl mb-4">🚀</p>
               <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">
                 Coming Soon

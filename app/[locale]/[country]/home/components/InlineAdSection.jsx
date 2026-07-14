@@ -1,8 +1,9 @@
 "use client";
 
 import { motion } from "framer-motion";
-import ScrollCarousel from "./ScrollCarousel";
+import HorizontalRail from "./HorizontalRail";
 import VenueCard      from "./VenueCard";
+import ViewAllCard     from "./ViewAllCard";
 
 /* ── Premium full-width banner ──────────────────────────────── */
 export function PremiumBanner({ tint, badge, headline, subtext, cta, image }) {
@@ -12,8 +13,8 @@ export function PremiumBanner({ tint, badge, headline, subtext, cta, image }) {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ duration: 0.4 }}
-      className="relative rounded-2xl overflow-hidden my-6"
-      style={{ minHeight: 140 }}
+      className="relative rounded-2xl overflow-hidden mb-8 flex items-center"
+      style={{ minHeight: 250 }}
     >
       <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${image})` }} />
       <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/55 to-black/20" />
@@ -21,7 +22,7 @@ export function PremiumBanner({ tint, badge, headline, subtext, cta, image }) {
         className="absolute inset-y-0 start-0 w-1 rounded-s-2xl"
         style={{ background: tint?.hex ?? "#7c3aed" }}
       />
-      <div className="relative z-10 flex flex-wrap  items-center justify-between gap-6 px-8 py-7">
+      <div className="relative z-10 w-full flex flex-wrap items-center justify-between gap-6 px-8 py-7">
         <div className="min-w-0">
           {badge && (
             <span
@@ -51,45 +52,20 @@ export function PremiumBanner({ tint, badge, headline, subtext, cta, image }) {
   );
 }
 
-/* ── Popular {category} — same card style as Recommended ────────
- *  Mobile  → 2-col flex-wrap grid (no scroll)
- *  Desktop → horizontal scroll carousel (no arrows)
- *  "See all" hidden when ≤ 5 items
- */
+/* ── Popular {category} — same card + rail as Recommended ──── */
 export function PopularCategoryRow({ tint, categoryLabel = "Venues", items }) {
   if (!items?.length) return null;
-  const title      = `Popular ${categoryLabel}`;
-  const showSeeAll = items.length > 5;
+  const title = `Popular ${categoryLabel}`;
 
   return (
-    <div className="my-6">
-      <div className="flex items-end justify-between mb-4">
-        <div>
-          <span
-            className="inline-block text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full mb-1"
-            style={{ background: tint?.light ?? "rgba(124,58,237,0.1)", color: tint?.hex ?? "#7c3aed" }}
-          >
-            Popular
-          </span>
-          <h3 className="text-gray-800 dark:text-gray-100 font-bold text-lg">{title}</h3>
-        </div>
-        {showSeeAll && (
-          <button
-            className="text-sm font-medium hover:opacity-70 transition"
-            style={{ color: tint?.hex ?? "#7c3aed" }}
-          >
-            See all →
-          </button>
-        )}
-      </div>
-
-      {/*
-        Mobile  → flex-wrap 2-col (no overflow)
-        Desktop → horizontal scroll carousel
-      */}
-      <div
-        className="flex flex-wrap gap-3 overflow-visible sm:flex-nowrap sm:gap-4 sm:overflow-x-auto sm:scroll-smooth"
-        style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+    <section className="mb-8">
+      <HorizontalRail
+        title={title}
+        subtitle={`Trending picks in ${categoryLabel.toLowerCase()}`}
+        eyebrow="Popular"
+        count={items.length}
+        accent={tint?.hex ?? "#7c3aed"}
+        viewAllCard={<ViewAllCard images={items.slice(-3).map((it) => it.image)} />}
       >
         {items.map((item, i) => (
           <motion.div
@@ -98,7 +74,6 @@ export function PopularCategoryRow({ tint, categoryLabel = "Venues", items }) {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: i * 0.04, duration: 0.22 }}
-            className="w-[calc(50%-6px)] shrink-0 sm:w-[220px] md:w-[240px]"
           >
             <VenueCard
               venue={{
@@ -111,8 +86,8 @@ export function PopularCategoryRow({ tint, categoryLabel = "Venues", items }) {
             />
           </motion.div>
         ))}
-      </div>
-    </div>
+      </HorizontalRail>
+    </section>
   );
 }
 
@@ -120,13 +95,20 @@ export function PopularCategoryRow({ tint, categoryLabel = "Venues", items }) {
 function VenueAdCard({ item, tint }) {
   return (
     <motion.div
-      whileHover={{ y: -3 }}
-      className="shrink-0 w-[200px] rounded-2xl overflow-hidden bg-white dark:bg-gray-800/90 border border-gray-100 dark:border-white/[0.06] cursor-pointer transition-all"
-      style={{ boxShadow: "0 4px 16px rgba(0,0,0,0.08)" }}
+      whileHover={{ y: -6 }}
+      transition={{ duration: 0.2 }}
+      className="w-full rounded-2xl overflow-hidden bg-white dark:bg-gray-800/90 border border-gray-100 dark:border-white/[0.06] cursor-pointer shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)] transition-shadow duration-200"
     >
-      <div className="relative h-32">
-        <img src={item.image} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+      <div className="relative h-32 overflow-hidden">
+        <motion.img
+          whileHover={{ scale: 1.03 }}
+          transition={{ duration: 0.4 }}
+          src={item.image}
+          alt={item.name}
+          className="w-full h-full object-cover"
+          loading="lazy"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent pointer-events-none" />
         <span
           className="absolute top-2 end-2 text-[9px] font-bold px-1.5 py-0.5 rounded-full text-white"
           style={{ background: tint?.hex ?? "#7c3aed" }}
@@ -147,44 +129,26 @@ function VenueAdCard({ item, tint }) {
   );
 }
 
-/* ── Sponsored {category} — scrollable carousel WITH arrows ─────
- *  Scrollable on ALL screen sizes (per spec).
- *  "See all" hidden when ≤ 5 items.
- */
+/* ── Sponsored {category} — same shared rail ─────────────────── */
 export function SponsoredCategoryRow({ tint, categoryLabel = "Venues", items }) {
   if (!items?.length) return null;
-  const title      = `Sponsored ${categoryLabel}`;
-  const showSeeAll = items.length > 5;
+  const title = `Sponsored ${categoryLabel}`;
 
   return (
-    <div className="my-6">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <span
-            className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full"
-            style={{ background: tint?.light ?? "rgba(124,58,237,0.1)", color: tint?.hex ?? "#7c3aed" }}
-          >
-            Sponsored
-          </span>
-          <h3 className="text-gray-800 dark:text-gray-100 font-bold text-base">{title}</h3>
-        </div>
-        {showSeeAll && (
-          <button
-            className="text-sm font-medium hover:opacity-70 transition"
-            style={{ color: tint?.hex ?? "#7c3aed" }}
-          >
-            See all →
-          </button>
-        )}
-      </div>
-
-      {/* showArrows=true — only this section gets nav arrows */}
-      <ScrollCarousel gap="gap-4" scrollBy={240} fadeSize={40} showArrows={true}>
+    <section className="mb-8">
+      <HorizontalRail
+        title={title}
+        subtitle="Featured partner listings"
+        eyebrow="Sponsored"
+        count={items.length}
+        accent={tint?.hex ?? "#7c3aed"}
+        viewAllCard={<ViewAllCard images={items.slice(-3).map((it) => it.image)} />}
+      >
         {items.map((item, i) => (
           <VenueAdCard key={i} item={item} tint={tint} />
         ))}
-      </ScrollCarousel>
-    </div>
+      </HorizontalRail>
+    </section>
   );
 }
 
@@ -196,7 +160,7 @@ export function HostSpotlight({ tint, host }) {
       initial={{ opacity: 0 }}
       whileInView={{ opacity: 1 }}
       viewport={{ once: true }}
-      className="relative rounded-2xl overflow-hidden my-6 p-5 border"
+      className="relative rounded-2xl overflow-hidden mb-8 p-5 border"
       style={{
         background: `linear-gradient(135deg, ${tint?.light ?? "rgba(124,58,237,0.06)"}, rgba(0,0,0,0.01))`,
         border:     `1px solid ${tint?.border ?? "rgba(124,58,237,0.15)"}`,
@@ -235,69 +199,54 @@ export function HostSpotlight({ tint, host }) {
   );
 }
 
-/* ── Top Destinations — premium image cards ─────────────────────
- *  Mobile  → flex-wrap 2-col (no scroll)
- *  Desktop → horizontal scroll carousel (no arrows)
- *  "View all" hidden when ≤ 5 items
+/* ── Top Destinations — the one section that stays a grid ────
+ *  Every other homepage row is a horizontal rail; this one is
+ *  intentionally a responsive CSS grid, per spec.
  */
 export function TopDestinations({ tint, title = "Top Destinations", items }) {
   if (!items?.length) return null;
   const showViewAll = items.length > 5;
+  const accent = tint?.hex ?? "#7c3aed";
 
   return (
-    <div className="my-6">
-      <div className="flex items-end justify-between mb-4">
+    <section className="mb-8">
+      <div className="flex items-end justify-between gap-3 mb-6">
         <div>
-          <p
-            className="text-[10px] font-bold uppercase tracking-widest mb-1"
-            style={{ color: tint?.hex ?? "#7c3aed" }}
-          >
+          <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: accent }}>
             Explore More
           </p>
-          <h3 className="text-gray-800 dark:text-gray-100 font-bold text-lg">{title}</h3>
+          <h2 className="text-lg md:text-xl font-bold text-gray-800 dark:text-gray-100 leading-snug">
+            {title}
+          </h2>
         </div>
         {showViewAll && (
           <button
-            className="text-sm font-medium hover:opacity-70 transition mb-0.5"
-            style={{ color: tint?.hex ?? "#7c3aed" }}
+            type="button"
+            className="text-sm font-medium hover:opacity-70 transition whitespace-nowrap shrink-0"
+            style={{ color: accent }}
           >
-            View all →
+            View all &#8594;
           </button>
         )}
       </div>
 
-      {/*
-        Mobile  → flex-wrap 2-col
-        Desktop → horizontal scroll (no arrows)
-      */}
-      <div
-        className="flex flex-wrap gap-3 overflow-visible sm:flex-nowrap sm:gap-4 sm:overflow-x-auto sm:scroll-smooth"
-        style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-      >
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
         {items.map((item, i) => (
           <motion.div
             key={i}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            className="relative shrink-0 rounded-2xl overflow-hidden cursor-pointer w-[calc(50%-6px)] sm:w-[220px] sm:h-[160px]"
-            style={{ height: 148 }}
+            whileHover={{ y: -6 }}
+            transition={{ duration: 0.2 }}
+            className="relative rounded-2xl overflow-hidden cursor-pointer aspect-[4/3] shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.14)]"
           >
-            <img
+            <motion.img
+              whileHover={{ scale: 1.03 }}
+              transition={{ duration: 0.4 }}
               src={item.image}
               alt={item.name}
-              className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+              className="absolute inset-0 w-full h-full object-cover"
               loading="lazy"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent" />
-
-            {item.badge && (
-              <span
-                className="absolute top-3 start-3 text-[9px] font-bold uppercase tracking-widest px-2 py-1 rounded-full text-white"
-                style={{ background: tint?.hex ?? "#7c3aed" }}
-              >
-                {item.badge}
-              </span>
-            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent pointer-events-none" />
 
             <div className="absolute bottom-3 start-3 end-3">
               <p className="text-white font-bold text-sm leading-snug">{item.name}</p>
@@ -306,7 +255,7 @@ export function TopDestinations({ tint, title = "Top Destinations", items }) {
           </motion.div>
         ))}
       </div>
-    </div>
+    </section>
   );
 }
 

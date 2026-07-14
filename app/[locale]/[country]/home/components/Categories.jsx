@@ -256,7 +256,7 @@ export default function CategorySection(loadData) {
   if (!loadData.loadData.length) return null;
 
   return (
-    <section className="relative px-4 md:px-10 py-7 bg-white dark:bg-gray-950/80">
+    <section className="relative py-7 bg-white dark:bg-gray-950/80">
       {/* Per-category tint overlay — works in both light & dark */}
       <div
         className="absolute inset-0 pointer-events-none"
@@ -271,7 +271,7 @@ export default function CategorySection(loadData) {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.22 }}
-          className="relative z-[1] max-w-7xl mx-auto mb-5"
+          className="relative z-[1] mx-auto lg:max-w-[1400px] px-4 sm:px-6 lg:px-8 mb-5"
         >
           <h2 className="text-xl md:text-2xl font-bold text-gray-800 dark:text-gray-100">
             {heading.title}
@@ -290,14 +290,19 @@ export default function CategorySection(loadData) {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.18 }}
-          className="relative z-[1] max-w-7xl mx-auto"
+          /* Below md (no arrows — touch swipe only) the end-padding is
+             dropped so the row bleeds to the viewport edge: it maximises
+             the exposed track width, which is what actually guarantees the
+             next chip peeks into view instead of ending flush with nothing
+             hinting there's more to scroll. From md up, arrows take over
+             as the "there's more" cue, so padding goes back to symmetric. */
+          className="relative z-[1] mx-auto lg:max-w-[1400px] ps-4 pe-0 md:px-6 lg:px-8"
         >
           <ScrollCarousel
-            gap="gap-2.5"
+            gap="gap-3"
             scrollBy={320}
-            fadeSize={40}
-            lightFade="#ffffff"
-            darkFade="#030712"
+            fadeSize={0}
+            arrowClass="hidden md:flex"
           >
             {loadData.loadData.map((chip, i) => (
               <motion.button
@@ -306,50 +311,42 @@ export default function CategorySection(loadData) {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.03, duration: 0.22 }}
-                whileHover={{ scale: 1.04 }}
                 whileTap={{ scale: 0.96 }}
-                className="group relative shrink-0 w-[130px] sm:w-[140px] rounded-xl overflow-hidden cursor-pointer bg-white dark:bg-gray-800/90 border border-gray-100/80 dark:border-white/[0.07] shadow-sm hover:shadow-md transition-all duration-200 text-start"
+                /* Fixed w-36 only holds from md up (where arrows exist, so a
+                   flush fit is fine). Below md it's a % of the track width
+                   instead — with a fixed 144px card, whether the next one
+                   peeks at all depends entirely on whether the viewport
+                   happens to divide evenly into 144px steps, which is pure
+                   coincidence and was landing on "flush, no peek" often
+                   enough to be the actual bug. A percentage width can never
+                   land flush: it guarantees a fractional card is always
+                   sitting right at the edge. */
+                className="group flex flex-col items-center shrink-0 w-[38%] sm:w-[28%] md:w-36 cursor-pointer text-center"
               >
-                {/* Image */}
-                <div className="relative h-24 overflow-hidden">
-                  <img
-                    src={
-                      chip.frontImage
-                        ? `${process.env.NEXT_PUBLIC_AWS_BUCKET_URL}/${chip.frontImage}`
-                        : "https://digitalsynopsis.com/wp-content/uploads/2017/02/beautiful-color-gradients-backgrounds-070-aqua-splash.png"
-                    }
-                    alt={chip.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    loading="lazy"
-                    onError={(e) => {
-                      e.currentTarget.src =
-                        "https://digitalsynopsis.com/wp-content/uploads/2017/02/beautiful-color-gradients-backgrounds-070-aqua-splash.png";
-                    }}
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/15 to-transparent" />
-                  <div
-                    className="absolute top-2 start-2 p-1.5 rounded-lg backdrop-blur-sm"
-                    style={{ background: tint.light }}
-                  >
-                    {/* <span className="text-sm leading-none">{chip.icon}</span> */}
+                {/* Icon — same field the search page's CategoryBar uses (chip.icon) — a soft
+                    tinted tile behind it keeps every icon reading at the same visual scale
+                    (source illustrations have wildly different internal padding) */}
+                <motion.div
+                  whileHover={{ y: -4, scale: 1.05 }}
+                  transition={{ duration: 0.2 }}
+                  className="flex items-center justify-center w-full h-28 rounded-2xl shadow-sm group-hover:shadow-md transition-shadow duration-200"
+                  style={{ background: tint.light }}
+                >
+                  {chip.icon && (
                     <img
-                      src={
-                      chip.icon
-                        ? `${process.env.NEXT_PUBLIC_AWS_BUCKET_URL}/${chip.icon}`
-                        : "https://digitalsynopsis.com/wp-content/uploads/2017/02/beautiful-color-gradients-backgrounds-070-aqua-splash.png"
-                    }
-                      alt={chip.label}
-                      className="w-4 h-4 object-contain"
+                      src={`${process.env.NEXT_PUBLIC_AWS_BUCKET_URL}/${chip.icon}`}
+                      alt=""
+                      className="w-24 h-24 object-contain"
                     />
-                  </div>
-                </div>
-                <div className="px-2.5 py-2">
-                  <p className="text-gray-800 dark:text-gray-100 font-semibold text-[11px] leading-snug truncate">
-                    {chip.name}
-                  </p>
-                </div>
+                  )}
+                </motion.div>
+                <p className="mt-2.5 text-gray-800 dark:text-gray-100 font-semibold text-[13px] leading-snug truncate w-full">
+                  {chip.name}
+                </p>
               </motion.button>
             ))}
+            {/* Trailing gutter so the last chip clears the viewport edge once scrolled fully */}
+            <div className="shrink-0 w-4" />
           </ScrollCarousel>
         </motion.div>
       </AnimatePresence>

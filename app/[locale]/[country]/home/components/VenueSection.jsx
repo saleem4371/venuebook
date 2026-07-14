@@ -2,53 +2,47 @@
 
 import { motion } from "framer-motion";
 import VenueCard from "./VenueCard";
+import HorizontalRail from "./HorizontalRail";
+import ViewAllCard from "./ViewAllCard";
 import { useCategory } from "@/context/CategoryContext";
+
+const BASE_URL = process.env.NEXT_PUBLIC_AWS_BUCKET_URL;
+
+/* Same image-resolution rule VenueCard uses, just for the "See all" collage thumbs */
+function resolveThumb(venue, dataSource) {
+  const raw = venue.images?.[0] ?? venue.image;
+  const src = typeof raw === "string" ? raw : raw?.image || raw?.url || "";
+  if (!src) return null;
+  if (src.startsWith("http")) return src;
+  return dataSource === "api" ? `${BASE_URL}/${src}` : src;
+}
 
 /*
  * VenueSection
  * ─────────────────────────────────────────────────────────────
- * Mobile  (<sm): 2-column flex-wrap grid — no horizontal scroll
- * Desktop (sm+): horizontal scroll carousel
+ * Same rail behaviour everywhere on the homepage:
+ *   Mobile        → swipe, ~1.3 cards visible
+ *   Tablet        → 3 cards
+ *   Desktop       → 5 cards
  *
- * "View all" is hidden when there are 5 or fewer venues.
+ * "View all" is the trailing card in the row itself; hidden when
+ * the row isn't scrollable / has 5 or fewer venues.
  */
 export default function VenueSection({ title, subtitle, venues, dataSource, tint }) {
   const { activeCategory } = useCategory();
 
   if (!venues?.length) return null;
 
-  const showViewAll = venues.length > 5;
+  const collageThumbs = venues.slice(-3).map((v) => resolveThumb(v, dataSource));
 
   return (
-    <section className="w-full py-7">
-      {/* Header */}
-      <div className="flex items-end justify-between mb-4">
-        <div>
-          <h2 className="text-lg md:text-xl font-bold text-gray-800 dark:text-gray-100 leading-snug">
-            {title}
-          </h2>
-          {subtitle && (
-            <p className="text-gray-500 dark:text-gray-400 text-sm mt-0.5">{subtitle}</p>
-          )}
-        </div>
-        {showViewAll && (
-          <button
-            className="text-sm font-medium shrink-0 hover:opacity-70 transition"
-            style={{ color: tint?.hex ?? "#7c3aed" }}
-          >
-            View all &#8594;
-          </button>
-        )}
-      </div>
-
-      {/*
-        Responsive track:
-          Mobile  → flex-wrap (2-col), overflow-visible
-          Desktop → flex-nowrap + horizontal scroll
-      */}
-      <div
-        className="flex flex-wrap gap-3 overflow-visible sm:flex-nowrap sm:gap-4 sm:overflow-x-auto sm:scroll-smooth"
-        style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+    <section className="w-full mb-8">
+      <HorizontalRail
+        title={title}
+        subtitle={subtitle}
+        count={venues.length}
+        accent={tint?.hex ?? "#7c3aed"}
+        viewAllCard={<ViewAllCard images={collageThumbs} />}
       >
         {venues.map((venue, i) => (
           <motion.div
@@ -57,13 +51,11 @@ export default function VenueSection({ title, subtitle, venues, dataSource, tint
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: i * 0.04, duration: 0.22 }}
-            /* Mobile: 2 per row; sm+: fixed carousel width */
-            className="w-[calc(50%-6px)] shrink-0 sm:w-[220px] md:w-[240px]"
           >
             <VenueCard venue={venue} dataSource={dataSource} category={activeCategory} />
           </motion.div>
         ))}
-      </div>
+      </HorizontalRail>
     </section>
   );
 }
