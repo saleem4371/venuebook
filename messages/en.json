@@ -1515,6 +1515,7 @@
       "notApplicable": "Not Applicable",
       "notRequired": "Not Required",
       "viewGallery": "View Gallery",
+      "noAmenities": "No amenities listed",
       "overview": {
         "startingPrice": "Starting Price",
         "guests": "Guests",
@@ -1529,6 +1530,7 @@
         "accommodation": "Accommodation",
         "activities": "Activities",
         "comfort": "Comfort",
+        "amenities": "Amenities",
         "food": "Food",
         "nearby": "Nearby",
         "policies": "Policies",
@@ -1601,7 +1603,17 @@
           "Mountain": "Mountain",
           "Waterfall": "Waterfall",
           "Valley": "Valley",
-          "Beach": "Beach"
+          "Beach": "Beach",
+          "Forest": "Forest",
+          "Hill Station": "Hill Station",
+          "Wildlife Sanctuary": "Wildlife Sanctuary",
+          "Tea Estate": "Tea Estate",
+          "Coffee Plantation": "Coffee Plantation",
+          "Spice Garden": "Spice Garden",
+          "Backwaters": "Backwaters",
+          "Temple": "Temple",
+          "Vineyard": "Vineyard",
+          "Dam": "Dam"
         },
         "City": "Nearest Town",
         "cityValue": "{count} km from {city}",
@@ -1832,6 +1844,243 @@
       "bookings": "Bookings",
       "enquiries": "Enquiries",
       "support": "Support"
+    }
+  },
+  "profile": {
+    "header": {
+      "verified": "Verified",
+      "customerSince": "Customer since {year}",
+      "lastBooking": "Last booking: {date}",
+      "preferredCategory": "Prefers {category}",
+      "editProfile": "Edit Profile",
+      "completion": "{percent}% Complete",
+      "completionTitle": "Complete your profile",
+      "suggestions": {
+        "addPhone": "Add phone number",
+        "verifyEmail": "Verify your email",
+        "addPhoto": "Upload a profile picture"
+      }
+    },
+    "stats": {
+      "upcoming": "Upcoming Bookings",
+      "completed": "Completed Bookings",
+      "collections": "Collections",
+      "saved": "Saved Properties",
+      "points": "Reward Points"
+    },
+    "member": {
+      "title": "Membership",
+      "since": "Member since {year}",
+      "benefitsTitle": "Your Benefits",
+      "upgradeProgress": "{points} points to {tier}",
+      "maxTier": "You've reached our top tier",
+      "viewBenefits": "View Benefits"
+    },
+    "farmRewards": {
+      "title": "Farm Rewards",
+      "subtitle": "Earn points every time you book a Farmstay",
+      "currentPoints": "Current Points",
+      "nextReward": "Next reward at {points} pts",
+      "redeem": "Redeem",
+      "history": "Recent Activity",
+      "empty": "No activity yet"
+    },
+    "bookings": {
+      "title": "Bookings",
+      "subtitle": "Everything you've booked with VenueBook",
+      "viewAll": "View All",
+      "id": "Booking ID",
+      "date": "Date",
+      "guests": "Guests",
+      "category": "Category",
+      "amountPaid": "Amount Paid",
+      "view": "View",
+      "manage": "Manage Booking",
+      "invoice": "Invoice",
+      "support": "Support",
+      "modify": "Modify Booking",
+      "writeReview": "Write Review",
+      "bookAgain": "Book Again",
+      "rebook": "Rebook",
+      "status": {
+        "upcoming": "Upcoming",
+        "completed": "Completed",
+        "cancelled": "Cancelled",
+        "confirmed": "Confirmed",
+        "pending": "Pending",
+        "enquiry": "Enquiry Sent",
+        "draft": "Draft"
+      },
+      "payment": {
+        "paid": "Paid",
+        "partial": "Partially Paid",
+        "pending": "Payment Pending",
+        "refunded": "Refunded"
+      },
+      "empty": {
+        "title": "No bookings yet",
+        "subtitle": "Your upcoming and past bookings will show up here.",
+        "cta": "Browse Venues"
+      },
+      "statusLabel": "Status",
+      "manageHelp": "Need to change dates or guest count? Our support team can update this booking for you.",
+      "reviewPrompt": "How was your stay?",
+      "reviewThanks": "Thanks for your feedback!",
+      "tabs": {
+        "all": "All",
+        "upcoming": "Upcoming",
+        "completed": "Completed",
+        "cancelled": "Cancelled",
+        "reservation": "Reservation",
+        "enquiry": "Enquiry",
+        "drafted": "Drafted"
+      },
+      "nights": "Nights",
+      "paymentLabel": "Payment",
+      "message": "Message",
+      "invoiceModal": {
+        "tabs": {
+          "main": "Main Invoice",
+          "venue": "Venue Invoice",
+          "fee": "Fee Invoice"
+        },
+        "download": "Download",
+        "main": {
+          "docTitle": "Venuebook.in Invoice to Customer",
+          "docSubtitle": "Main Booking Invoice",
+          "bookingId": "Booking ID",
+          "invoiceDate": "Invoice Date",
+          "customerName": "Customer Name",
+          "customerMobile": "Customer Mobile No.",
+          "customerEmail": "Customer Email",
+          "venue": "Venue",
+          "vendor": "Vendor",
+          "checkIn": "Check in",
+          "checkOut": "Check out",
+          "eventDateTime": "Event Date and Time",
+          "paymentStatus": "Payment Status",
+          "paymentMode": "Payment Mode",
+          "transactionId": "Transaction ID",
+          "paymentSummary": "Payment Summary",
+          "particular": "Particular",
+          "amount": "Amount",
+          "venueCharges": "Venue/Farmstay Charges (Inclusive of GST)",
+          "convenienceFee": "Convenience Fee",
+          "gstOnFee": "GST @18% on Convenience Fee",
+          "grandTotal": "Grand Total Paid"
+        },
+        "tax": {
+          "venueHeading": "Tax Invoice – Venue/Farmstay Service",
+          "feeHeading": "Tax Invoice – VenueBook Convenience Fee",
+          "supplier": "Supplier",
+          "invoiceNo": "Invoice No.",
+          "invoiceDate": "Invoice Date",
+          "gstin": "GSTIN",
+          "placeOfSupply": "Place of Supply",
+          "description": "Description",
+          "qty": "Qty",
+          "amount": "Amount",
+          "farmstayBooking": "Farmstay Booking",
+          "venueBooking": "Venue Booking",
+          "convenienceFee": "Convenience Fee",
+          "taxableValue": "Taxable Value",
+          "cgst": "CGST @9%",
+          "sgst": "SGST @9%",
+          "invoiceTotal": "Invoice Total",
+          "venueFooter": "This tax invoice is issued by {vendor}, the supplier of the accommodation service.",
+          "feeFooter": "This tax invoice is issued by VenueBook.in for the convenience fee charged on the booking.",
+          "inclusiveOfGst": "Inclusive of GST"
+        },
+        "unavailable": "Invoice will be available once payment is completed."
+      }
+    },
+    "collections": {
+      "title": "Collections",
+      "subtitle": "Properties you've organized and saved",
+      "viewAll": "View All",
+      "empty": {
+        "title": "Start saving properties",
+        "subtitle": "Save venues you love into a collection to plan faster.",
+        "cta": "Start Saving Properties"
+      }
+    },
+    "recentlyViewed": {
+      "title": "Recently Viewed",
+      "subtitle": "Pick up where you left off",
+      "empty": "Properties you view will show up here",
+      "viewAll": "View All"
+    },
+    "offers": {
+      "title": "Offers & Rewards",
+      "subtitle": "Deals picked for you",
+      "creditWallet": "Credit Wallet",
+      "coupons": "Coupons",
+      "giftCards": "Gift Cards",
+      "empty": {
+        "title": "No current offers",
+        "subtitle": "Check back soon for deals and discounts."
+      }
+    },
+    "notifications": {
+      "title": "Notifications",
+      "viewAll": "View All",
+      "empty": "You're all caught up"
+    },
+    "settings": {
+      "title": "Account",
+      "subtitle": "Manage how VenueBook works for you",
+      "personalInfo": "Personal Information",
+      "emailPreferences": "Email Preferences",
+      "notificationSettings": "Notification Settings",
+      "privacy": "Privacy",
+      "security": "Security",
+      "language": "Language",
+      "region": "Region",
+      "currency": "Currency",
+      "nameLabel": "Name",
+      "emailLabel": "Email",
+      "phoneLabel": "Phone",
+      "save": "Save",
+      "comingSoon": "This isn't connected to a live setting yet — coming soon."
+    },
+    "password": {
+      "title": "Change Password",
+      "cta": "Update Password",
+      "currentPassword": "Current password",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm new password"
+    },
+    "danger": {
+      "title": "Danger Zone",
+      "deleteAccount": "Delete Account",
+      "deleteDescription": "Permanently delete your account and all associated data. This can't be undone.",
+      "deleteCta": "Delete My Account",
+      "cancel": "Cancel"
+    },
+    "signedOut": {
+      "title": "Sign in to see your profile",
+      "subtitle": "Bookings, collections and rewards are tied to your account.",
+      "cta": "Sign In"
+    },
+    "identity": {
+      "nights": "Nights",
+      "lifetime": "Lifetime",
+      "bookings": "Bookings",
+      "settingsTooltip": "Account settings",
+      "editTooltip": "Edit profile"
+    },
+    "upcomingBooking": {
+      "title": "Upcoming",
+      "openItinerary": "Open itinerary",
+      "messageHost": "Message host",
+      "empty": "No upcoming bookings"
+    },
+    "drawer": {
+      "settingsTitle": "Account",
+      "bookingsTitle": "All Bookings",
+      "close": "Close",
+      "rewardsTitle": "Membership & Rewards",
+      "notificationsTitle": "Notifications"
     }
   }
 }

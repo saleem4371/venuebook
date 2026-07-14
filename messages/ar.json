@@ -1515,6 +1515,7 @@
       "notApplicable": "غير متاح",
       "notRequired": "غير مطلوب",
       "viewGallery": "عرض المعرض",
+      "noAmenities": "لا توجد وسائل راحة مدرجة",
       "overview": {
         "startingPrice": "السعر الابتدائي",
         "guests": "الضيوف",
@@ -1529,6 +1530,7 @@
         "accommodation": "الإقامة",
         "activities": "الأنشطة",
         "comfort": "الراحة",
+        "amenities": "وسائل الراحة",
         "food": "الطعام",
         "nearby": "الأماكن القريبة",
         "policies": "السياسات",
@@ -1601,7 +1603,17 @@
           "Mountain": "جبل",
           "Waterfall": "شلال",
           "Valley": "وادي",
-          "Beach": "شاطئ"
+          "Beach": "شاطئ",
+          "Forest": "غابة",
+          "Hill Station": "منتجع جبلي",
+          "Wildlife Sanctuary": "محمية حياة برية",
+          "Tea Estate": "مزرعة شاي",
+          "Coffee Plantation": "مزرعة قهوة",
+          "Spice Garden": "حديقة توابل",
+          "Backwaters": "برك خلفية",
+          "Temple": "معبد",
+          "Vineyard": "كرم عنب",
+          "Dam": "سد"
         },
         "City": "أقرب بلدة",
         "cityValue": "{count} كم من {city}",
@@ -1832,6 +1844,243 @@
       "bookings": "الحجوزات",
       "enquiries": "الاستفسارات",
       "support": "الدعم"
+    }
+  },
+  "profile": {
+    "header": {
+      "verified": "موثّق",
+      "customerSince": "عميل منذ {year}",
+      "lastBooking": "آخر حجز: {date}",
+      "preferredCategory": "يفضّل {category}",
+      "editProfile": "تعديل الملف الشخصي",
+      "completion": "اكتمل {percent}%",
+      "completionTitle": "أكمل ملفك الشخصي",
+      "suggestions": {
+        "addPhone": "أضف رقم الهاتف",
+        "verifyEmail": "وثّق بريدك الإلكتروني",
+        "addPhoto": "ارفع صورة الملف الشخصي"
+      }
+    },
+    "stats": {
+      "upcoming": "الحجوزات القادمة",
+      "completed": "الحجوزات المكتملة",
+      "collections": "المجموعات",
+      "saved": "العقارات المحفوظة",
+      "points": "نقاط المكافآت"
+    },
+    "member": {
+      "title": "العضوية",
+      "since": "عضو منذ {year}",
+      "benefitsTitle": "مزاياك",
+      "upgradeProgress": "{points} نقطة للوصول إلى {tier}",
+      "maxTier": "لقد وصلت إلى أعلى مستوى لدينا",
+      "viewBenefits": "عرض المزايا"
+    },
+    "farmRewards": {
+      "title": "مكافآت المزرعة",
+      "subtitle": "اكسب نقاطًا مع كل حجز إقامة مزرعة",
+      "currentPoints": "النقاط الحالية",
+      "nextReward": "المكافأة التالية عند {points} نقطة",
+      "redeem": "استبدال",
+      "history": "النشاط الأخير",
+      "empty": "لا يوجد نشاط بعد"
+    },
+    "bookings": {
+      "title": "الحجوزات",
+      "subtitle": "كل ما حجزته عبر VenueBook",
+      "viewAll": "عرض الكل",
+      "id": "رقم الحجز",
+      "date": "التاريخ",
+      "guests": "الضيوف",
+      "category": "الفئة",
+      "amountPaid": "المبلغ المدفوع",
+      "view": "عرض",
+      "manage": "إدارة الحجز",
+      "invoice": "الفاتورة",
+      "support": "الدعم",
+      "modify": "تعديل الحجز",
+      "writeReview": "كتابة تقييم",
+      "bookAgain": "احجز مرة أخرى",
+      "rebook": "إعادة الحجز",
+      "status": {
+        "upcoming": "قادم",
+        "completed": "مكتمل",
+        "cancelled": "ملغى",
+        "confirmed": "مؤكد",
+        "pending": "قيد الانتظار",
+        "enquiry": "تم إرسال الاستفسار",
+        "draft": "مسودة"
+      },
+      "payment": {
+        "paid": "مدفوع",
+        "partial": "مدفوع جزئيًا",
+        "pending": "الدفع معلّق",
+        "refunded": "تم استرداد المبلغ"
+      },
+      "empty": {
+        "title": "لا توجد حجوزات بعد",
+        "subtitle": "ستظهر حجوزاتك القادمة والسابقة هنا.",
+        "cta": "تصفح الأماكن"
+      },
+      "statusLabel": "الحالة",
+      "manageHelp": "هل تحتاج إلى تغيير التاريخ أو عدد الضيوف؟ يمكن لفريق الدعم لدينا تحديث هذا الحجز نيابة عنك.",
+      "reviewPrompt": "كيف كانت إقامتك؟",
+      "reviewThanks": "شكرًا على ملاحظاتك!",
+      "tabs": {
+        "all": "الكل",
+        "upcoming": "القادمة",
+        "completed": "مكتملة",
+        "cancelled": "ملغاة",
+        "reservation": "حجز",
+        "enquiry": "استفسار",
+        "drafted": "مسودة"
+      },
+      "nights": "الليالي",
+      "paymentLabel": "الدفع",
+      "message": "رسالة",
+      "invoiceModal": {
+        "tabs": {
+          "main": "الفاتورة الرئيسية",
+          "venue": "فاتورة المكان",
+          "fee": "فاتورة الرسوم"
+        },
+        "download": "تنزيل",
+        "main": {
+          "docTitle": "فاتورة Venuebook.in إلى العميل",
+          "docSubtitle": "فاتورة الحجز الرئيسية",
+          "bookingId": "رقم الحجز",
+          "invoiceDate": "تاريخ الفاتورة",
+          "customerName": "اسم العميل",
+          "customerMobile": "رقم جوال العميل",
+          "customerEmail": "البريد الإلكتروني للعميل",
+          "venue": "المكان",
+          "vendor": "المورّد",
+          "checkIn": "تسجيل الوصول",
+          "checkOut": "تسجيل المغادرة",
+          "eventDateTime": "تاريخ ووقت الفعالية",
+          "paymentStatus": "حالة الدفع",
+          "paymentMode": "طريقة الدفع",
+          "transactionId": "رقم المعاملة",
+          "paymentSummary": "ملخص الدفع",
+          "particular": "البند",
+          "amount": "المبلغ",
+          "venueCharges": "رسوم المكان/المزرعة (شاملة ضريبة القيمة المضافة)",
+          "convenienceFee": "رسوم الخدمة",
+          "gstOnFee": "ضريبة القيمة المضافة @18% على رسوم الخدمة",
+          "grandTotal": "إجمالي المبلغ المدفوع"
+        },
+        "tax": {
+          "venueHeading": "فاتورة ضريبية – خدمة المكان/المزرعة",
+          "feeHeading": "فاتورة ضريبية – رسوم خدمة VenueBook",
+          "supplier": "المورّد",
+          "invoiceNo": "رقم الفاتورة",
+          "invoiceDate": "تاريخ الفاتورة",
+          "gstin": "الرقم الضريبي (GSTIN)",
+          "placeOfSupply": "مكان التوريد",
+          "description": "الوصف",
+          "qty": "الكمية",
+          "amount": "المبلغ",
+          "farmstayBooking": "حجز المزرعة",
+          "venueBooking": "حجز المكان",
+          "convenienceFee": "رسوم الخدمة",
+          "taxableValue": "القيمة الخاضعة للضريبة",
+          "cgst": "ضريبة مركزية @9%",
+          "sgst": "ضريبة حكومية @9%",
+          "invoiceTotal": "إجمالي الفاتورة",
+          "venueFooter": "تم إصدار هذه الفاتورة الضريبية من قبل {vendor}، مورّد خدمة الإقامة.",
+          "feeFooter": "تم إصدار هذه الفاتورة الضريبية من قبل VenueBook.in مقابل رسوم الخدمة المفروضة على الحجز.",
+          "inclusiveOfGst": "شاملة ضريبة القيمة المضافة"
+        },
+        "unavailable": "ستكون الفاتورة متاحة بعد اكتمال الدفع."
+      }
+    },
+    "collections": {
+      "title": "المجموعات",
+      "subtitle": "العقارات التي نظّمتها وحفظتها",
+      "viewAll": "عرض الكل",
+      "empty": {
+        "title": "ابدأ بحفظ العقارات",
+        "subtitle": "احفظ الأماكن التي تعجبك في مجموعة للتخطيط بشكل أسرع.",
+        "cta": "ابدأ بحفظ العقارات"
+      }
+    },
+    "recentlyViewed": {
+      "title": "شوهدت مؤخرًا",
+      "subtitle": "أكمل من حيث توقفت",
+      "empty": "ستظهر هنا العقارات التي تشاهدها",
+      "viewAll": "عرض الكل"
+    },
+    "offers": {
+      "title": "العروض والمكافآت",
+      "subtitle": "عروض مختارة لك",
+      "creditWallet": "محفظة الرصيد",
+      "coupons": "القسائم",
+      "giftCards": "بطاقات الهدايا",
+      "empty": {
+        "title": "لا توجد عروض حالية",
+        "subtitle": "تحقق مرة أخرى قريبًا للحصول على العروض والخصومات."
+      }
+    },
+    "notifications": {
+      "title": "الإشعارات",
+      "viewAll": "عرض الكل",
+      "empty": "لا توجد إشعارات جديدة"
+    },
+    "settings": {
+      "title": "الحساب",
+      "subtitle": "إدارة كيفية عمل VenueBook من أجلك",
+      "personalInfo": "المعلومات الشخصية",
+      "emailPreferences": "تفضيلات البريد الإلكتروني",
+      "notificationSettings": "إعدادات الإشعارات",
+      "privacy": "الخصوصية",
+      "security": "الأمان",
+      "language": "اللغة",
+      "region": "المنطقة",
+      "currency": "العملة",
+      "nameLabel": "الاسم",
+      "emailLabel": "البريد الإلكتروني",
+      "phoneLabel": "الهاتف",
+      "save": "حفظ",
+      "comingSoon": "هذا الإعداد غير متصل بعد — قريبًا."
+    },
+    "password": {
+      "title": "تغيير كلمة المرور",
+      "cta": "تحديث كلمة المرور",
+      "currentPassword": "كلمة المرور الحالية",
+      "newPassword": "كلمة المرور الجديدة",
+      "confirmPassword": "تأكيد كلمة المرور الجديدة"
+    },
+    "danger": {
+      "title": "منطقة الخطر",
+      "deleteAccount": "حذف الحساب",
+      "deleteDescription": "احذف حسابك وجميع البيانات المرتبطة به نهائيًا. لا يمكن التراجع عن هذا الإجراء.",
+      "deleteCta": "احذف حسابي",
+      "cancel": "إلغاء"
+    },
+    "signedOut": {
+      "title": "سجّل الدخول لعرض ملفك الشخصي",
+      "subtitle": "ترتبط الحجوزات والمجموعات والمكافآت بحسابك.",
+      "cta": "تسجيل الدخول"
+    },
+    "identity": {
+      "nights": "الليالي",
+      "lifetime": "الإنفاق الكلي",
+      "bookings": "الحجوزات",
+      "settingsTooltip": "إعدادات الحساب",
+      "editTooltip": "تعديل الملف الشخصي"
+    },
+    "upcomingBooking": {
+      "title": "القادم",
+      "openItinerary": "فتح خط الرحلة",
+      "messageHost": "مراسلة المضيف",
+      "empty": "لا توجد حجوزات قادمة"
+    },
+    "drawer": {
+      "settingsTitle": "الحساب",
+      "bookingsTitle": "كل الحجوزات",
+      "close": "إغلاق",
+      "rewardsTitle": "العضوية والمكافآت",
+      "notificationsTitle": "الإشعارات"
     }
   }
 }

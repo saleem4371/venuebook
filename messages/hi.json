@@ -1347,6 +1347,7 @@
       "notApplicable": "लागू नहीं",
       "notRequired": "आवश्यक नहीं",
       "viewGallery": "गैलरी देखें",
+      "noAmenities": "कोई सुविधा सूचीबद्ध नहीं",
       "overview": {
         "startingPrice": "शुरुआती कीमत",
         "guests": "मेहमान",
@@ -1361,6 +1362,7 @@
         "accommodation": "आवास",
         "activities": "गतिविधियां",
         "comfort": "आराम",
+        "amenities": "सुविधाएं",
         "food": "भोजन",
         "nearby": "आस-पास",
         "policies": "नीतियां",
@@ -1433,7 +1435,17 @@
           "Mountain": "पर्वत",
           "Waterfall": "झरना",
           "Valley": "घाटी",
-          "Beach": "समुद्र तट"
+          "Beach": "समुद्र तट",
+          "Forest": "जंगल",
+          "Hill Station": "हिल स्टेशन",
+          "Wildlife Sanctuary": "वन्यजीव अभयारण्य",
+          "Tea Estate": "चाय बागान",
+          "Coffee Plantation": "कॉफी बागान",
+          "Spice Garden": "मसाला उद्यान",
+          "Backwaters": "बैकवाटर",
+          "Temple": "मंदिर",
+          "Vineyard": "अंगूर का बाग",
+          "Dam": "बांध"
         },
         "City": "निकटतम शहर",
         "cityValue": "{city} से {count} किमी",
@@ -1664,6 +1676,243 @@
       "bookings": "बुकिंग",
       "enquiries": "पूछताछ",
       "support": "सहायता"
+    }
+  },
+  "profile": {
+    "header": {
+      "verified": "सत्यापित",
+      "customerSince": "{year} से ग्राहक",
+      "lastBooking": "पिछली बुकिंग: {date}",
+      "preferredCategory": "पसंदीदा: {category}",
+      "editProfile": "प्रोफ़ाइल संपादित करें",
+      "completion": "{percent}% पूर्ण",
+      "completionTitle": "अपनी प्रोफ़ाइल पूरी करें",
+      "suggestions": {
+        "addPhone": "फ़ोन नंबर जोड़ें",
+        "verifyEmail": "अपना ईमेल सत्यापित करें",
+        "addPhoto": "प्रोफ़ाइल फ़ोटो अपलोड करें"
+      }
+    },
+    "stats": {
+      "upcoming": "आगामी बुकिंग",
+      "completed": "पूर्ण बुकिंग",
+      "collections": "कलेक्शन",
+      "saved": "सहेजी गई संपत्तियां",
+      "points": "रिवॉर्ड पॉइंट्स"
+    },
+    "member": {
+      "title": "सदस्यता",
+      "since": "{year} से सदस्य",
+      "benefitsTitle": "आपके लाभ",
+      "upgradeProgress": "{tier} तक {points} अंक",
+      "maxTier": "आपने हमारा शीर्ष स्तर हासिल कर लिया है",
+      "viewBenefits": "लाभ देखें"
+    },
+    "farmRewards": {
+      "title": "फार्म रिवॉर्ड्स",
+      "subtitle": "हर फार्मस्टे बुकिंग पर पॉइंट्स कमाएं",
+      "currentPoints": "वर्तमान पॉइंट्स",
+      "nextReward": "अगला रिवॉर्ड {points} अंकों पर",
+      "redeem": "रिडीम करें",
+      "history": "हाल की गतिविधि",
+      "empty": "अभी तक कोई गतिविधि नहीं"
+    },
+    "bookings": {
+      "title": "बुकिंग",
+      "subtitle": "VenueBook के साथ आपकी सभी बुकिंग",
+      "viewAll": "सभी देखें",
+      "id": "बुकिंग आईडी",
+      "date": "तारीख़",
+      "guests": "मेहमान",
+      "category": "श्रेणी",
+      "amountPaid": "भुगतान की गई राशि",
+      "view": "देखें",
+      "manage": "बुकिंग प्रबंधित करें",
+      "invoice": "इनवॉइस",
+      "support": "सहायता",
+      "modify": "बुकिंग बदलें",
+      "writeReview": "समीक्षा लिखें",
+      "bookAgain": "फिर से बुक करें",
+      "rebook": "पुनः बुक करें",
+      "status": {
+        "upcoming": "आगामी",
+        "completed": "पूर्ण",
+        "cancelled": "रद्द",
+        "confirmed": "पुष्टि की गई",
+        "pending": "लंबित",
+        "enquiry": "पूछताछ भेजी गई",
+        "draft": "ड्राफ़्ट"
+      },
+      "payment": {
+        "paid": "भुगतान हो गया",
+        "partial": "आंशिक भुगतान",
+        "pending": "भुगतान लंबित",
+        "refunded": "वापस किया गया"
+      },
+      "empty": {
+        "title": "अभी तक कोई बुकिंग नहीं",
+        "subtitle": "आपकी आगामी और पिछली बुकिंग यहां दिखाई देंगी।",
+        "cta": "वेन्यू ब्राउज़ करें"
+      },
+      "statusLabel": "स्थिति",
+      "manageHelp": "तारीख़ या मेहमानों की संख्या बदलनी है? हमारी सहायता टीम आपकी बुकिंग अपडेट कर सकती है।",
+      "reviewPrompt": "आपका अनुभव कैसा रहा?",
+      "reviewThanks": "आपकी प्रतिक्रिया के लिए धन्यवाद!",
+      "tabs": {
+        "all": "सभी",
+        "upcoming": "आगामी",
+        "completed": "पूर्ण",
+        "cancelled": "रद्द",
+        "reservation": "आरक्षण",
+        "enquiry": "पूछताछ",
+        "drafted": "ड्राफ़्ट"
+      },
+      "nights": "रातें",
+      "paymentLabel": "भुगतान",
+      "message": "संदेश",
+      "invoiceModal": {
+        "tabs": {
+          "main": "मुख्य इनवॉइस",
+          "venue": "वेन्यू इनवॉइस",
+          "fee": "शुल्क इनवॉइस"
+        },
+        "download": "डाउनलोड करें",
+        "main": {
+          "docTitle": "Venuebook.in से ग्राहक को इनवॉइस",
+          "docSubtitle": "मुख्य बुकिंग इनवॉइस",
+          "bookingId": "बुकिंग आईडी",
+          "invoiceDate": "इनवॉइस तारीख़",
+          "customerName": "ग्राहक का नाम",
+          "customerMobile": "ग्राहक मोबाइल नंबर",
+          "customerEmail": "ग्राहक ईमेल",
+          "venue": "वेन्यू",
+          "vendor": "विक्रेता",
+          "checkIn": "चेक-इन",
+          "checkOut": "चेक-आउट",
+          "eventDateTime": "इवेंट तारीख़ और समय",
+          "paymentStatus": "भुगतान स्थिति",
+          "paymentMode": "भुगतान का तरीका",
+          "transactionId": "लेन-देन आईडी",
+          "paymentSummary": "भुगतान सारांश",
+          "particular": "विवरण",
+          "amount": "राशि",
+          "venueCharges": "वेन्यू/फ़ार्मस्टे शुल्क (जीएसटी सहित)",
+          "convenienceFee": "सुविधा शुल्क",
+          "gstOnFee": "सुविधा शुल्क पर जीएसटी @18%",
+          "grandTotal": "कुल भुगतान की गई राशि"
+        },
+        "tax": {
+          "venueHeading": "कर चालान – वेन्यू/फ़ार्मस्टे सेवा",
+          "feeHeading": "कर चालान – VenueBook सुविधा शुल्क",
+          "supplier": "आपूर्तिकर्ता",
+          "invoiceNo": "इनवॉइस नंबर",
+          "invoiceDate": "इनवॉइस तारीख़",
+          "gstin": "जीएसटीआईएन",
+          "placeOfSupply": "आपूर्ति का स्थान",
+          "description": "विवरण",
+          "qty": "मात्रा",
+          "amount": "राशि",
+          "farmstayBooking": "फ़ार्मस्टे बुकिंग",
+          "venueBooking": "वेन्यू बुकिंग",
+          "convenienceFee": "सुविधा शुल्क",
+          "taxableValue": "कर योग्य मूल्य",
+          "cgst": "सीजीएसटी @9%",
+          "sgst": "एसजीएसटी @9%",
+          "invoiceTotal": "कुल इनवॉइस राशि",
+          "venueFooter": "यह कर चालान {vendor} द्वारा जारी किया गया है, जो आवास सेवा का आपूर्तिकर्ता है।",
+          "feeFooter": "यह कर चालान VenueBook.in द्वारा बुकिंग पर लगाए गए सुविधा शुल्क के लिए जारी किया गया है।",
+          "inclusiveOfGst": "जीएसटी सहित"
+        },
+        "unavailable": "भुगतान पूरा होने के बाद इनवॉइस उपलब्ध होगा।"
+      }
+    },
+    "collections": {
+      "title": "कलेक्शन",
+      "subtitle": "आपकी व्यवस्थित और सहेजी गई संपत्तियां",
+      "viewAll": "सभी देखें",
+      "empty": {
+        "title": "संपत्तियां सहेजना शुरू करें",
+        "subtitle": "तेज़ी से योजना बनाने के लिए पसंदीदा वेन्यू को कलेक्शन में सहेजें।",
+        "cta": "संपत्तियां सहेजना शुरू करें"
+      }
+    },
+    "recentlyViewed": {
+      "title": "हाल ही में देखे गए",
+      "subtitle": "जहां से छोड़ा था वहीं से जारी रखें",
+      "empty": "आपके देखे गए प्रॉपर्टी यहां दिखेंगे",
+      "viewAll": "सभी देखें"
+    },
+    "offers": {
+      "title": "ऑफ़र और रिवॉर्ड्स",
+      "subtitle": "आपके लिए चुनी गई डील्स",
+      "creditWallet": "क्रेडिट वॉलेट",
+      "coupons": "कूपन",
+      "giftCards": "गिफ़्ट कार्ड",
+      "empty": {
+        "title": "कोई मौजूदा ऑफ़र नहीं",
+        "subtitle": "डील्स और छूट के लिए जल्द ही वापस देखें।"
+      }
+    },
+    "notifications": {
+      "title": "सूचनाएं",
+      "viewAll": "सभी देखें",
+      "empty": "आप पूरी तरह अपडेट हैं"
+    },
+    "settings": {
+      "title": "खाता",
+      "subtitle": "VenueBook आपके लिए कैसे काम करता है, प्रबंधित करें",
+      "personalInfo": "व्यक्तिगत जानकारी",
+      "emailPreferences": "ईमेल प्राथमिकताएं",
+      "notificationSettings": "सूचना सेटिंग्स",
+      "privacy": "गोपनीयता",
+      "security": "सुरक्षा",
+      "language": "भाषा",
+      "region": "क्षेत्र",
+      "currency": "मुद्रा",
+      "nameLabel": "नाम",
+      "emailLabel": "ईमेल",
+      "phoneLabel": "फ़ोन",
+      "save": "सहेजें",
+      "comingSoon": "यह अभी लाइव सेटिंग से जुड़ा नहीं है — जल्द आ रहा है।"
+    },
+    "password": {
+      "title": "पासवर्ड बदलें",
+      "cta": "पासवर्ड अपडेट करें",
+      "currentPassword": "वर्तमान पासवर्ड",
+      "newPassword": "नया पासवर्ड",
+      "confirmPassword": "नए पासवर्ड की पुष्टि करें"
+    },
+    "danger": {
+      "title": "डेंजर ज़ोन",
+      "deleteAccount": "खाता हटाएं",
+      "deleteDescription": "अपना खाता और सभी संबंधित डेटा स्थायी रूप से हटाएं। इसे पूर्ववत नहीं किया जा सकता।",
+      "deleteCta": "मेरा खाता हटाएं",
+      "cancel": "रद्द करें"
+    },
+    "signedOut": {
+      "title": "अपनी प्रोफ़ाइल देखने के लिए साइन इन करें",
+      "subtitle": "बुकिंग, कलेक्शन और रिवॉर्ड्स आपके खाते से जुड़े हैं।",
+      "cta": "साइन इन करें"
+    },
+    "identity": {
+      "nights": "रातें",
+      "lifetime": "कुल खर्च",
+      "bookings": "बुकिंग",
+      "settingsTooltip": "खाता सेटिंग्स",
+      "editTooltip": "प्रोफ़ाइल संपादित करें"
+    },
+    "upcomingBooking": {
+      "title": "आगामी",
+      "openItinerary": "यात्रा विवरण खोलें",
+      "messageHost": "होस्ट को संदेश भेजें",
+      "empty": "कोई आगामी बुकिंग नहीं"
+    },
+    "drawer": {
+      "settingsTitle": "खाता",
+      "bookingsTitle": "सभी बुकिंग",
+      "close": "बंद करें",
+      "rewardsTitle": "सदस्यता और रिवॉर्ड्स",
+      "notificationsTitle": "सूचनाएं"
     }
   }
 }
