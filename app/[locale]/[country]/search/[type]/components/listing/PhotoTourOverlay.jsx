@@ -14,41 +14,25 @@ const SECTION_CONFIG = [
   { label: "04", title: "Living",   count: 4 },
   { label: "05", title: "Exterior", count: 4 },
 ];
-function buildSections(images = [], galleryCategory = []) {
+
+function buildSections(images) {
   const out = [];
   let cursor = 0;
-
-  for (const cfg of galleryCategory) {
-    // Skip empty categories
-    if (!cfg.count || cfg.count <= 0) {
-      continue;
-    }
-
+  for (const cfg of SECTION_CONFIG) {
     if (cursor >= images.length) break;
-
     const slice = images.slice(cursor, cursor + cfg.count);
-
-    if (!slice.length) continue;
-
-    out.push({
-      ...cfg,
-      images: slice,
-      offset: cursor,
-    });
-
+    if (!slice.length) break;
+    out.push({ ...cfg, images: slice, offset: cursor });
     cursor += slice.length;
   }
-
   if (cursor < images.length) {
     out.push({
       label: String(out.length + 1).padStart(2, "0"),
       title: "More",
-      count: images.length - cursor,
       images: images.slice(cursor),
       offset: cursor,
     });
   }
-
   return out;
 }
 
@@ -214,7 +198,7 @@ function MobileCategoryCard({ section, isActive, isAll, totalCount, colors, onCl
 }
 
 // ─── Main overlay ─────────────────────────────────────────────────────────────
-export default function PhotoTourOverlay({ images = [], category = "venues", onClose ,galleyCategory}) {
+export default function PhotoTourOverlay({ images = [], category = "venues", onClose }) {
   const [sliderIndex,      setSliderIndex]      = useState(null);
   const [activeSectionIdx, setActiveSectionIdx] = useState(0); // 0 = All Photos
   const [phase,            setPhase]            = useState("open");
@@ -222,11 +206,7 @@ export default function PhotoTourOverlay({ images = [], category = "venues", onC
   // Category-aware colours
   const colors = getCategoryColors(category);
 
-  // const sections = useMemo(() => buildSections(images), [images] , galleyCategory);
-  const sections = useMemo(
-  () => buildSections(images, galleyCategory),
-  [images, galleyCategory]
-);
+  const sections = useMemo(() => buildSections(images), [images]);
 
   const allSection = useMemo(() => ({
     title: "All Photos", images, offset: 0, isAll: true,

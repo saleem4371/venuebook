@@ -248,8 +248,7 @@ const EXPERIENCES = {
   },
 };
 
-export default function ExperienceBlock({ category , venueEvents }) {
-  console.log(venueEvents)
+export default function ExperienceBlock({ category }) {
   const key = normalizeCategory(category);
   const data = EXPERIENCES[key] ?? EXPERIENCES.venues;
   const activePill = ACTIVE_PILL[key] ?? ACTIVE_PILL.venues;
@@ -257,12 +256,8 @@ export default function ExperienceBlock({ category , venueEvents }) {
   const tagBg = TAG_BG[key] ?? TAG_BG.venues;
 
   const [active, setActive] = useState(0);
-  // const item = data.items[active];
-  // const ItemIcon = item.Icon;
-
-  const item = venueEvents?.[active];
-
-if (!item) return null;
+  const item = data.items[active];
+  const ItemIcon = item.Icon;
 
   return (
     <div className="border-t border-gray-100 dark:border-gray-800 pt-8">
@@ -272,7 +267,7 @@ if (!item) return null;
       </div>
 
       {/* Tab pills — horizontal scroll with fade + arrows */}
-      {/* <ScrollCarousel className="pb-1 mb-5">
+      <ScrollCarousel className="pb-1 mb-5">
         <div className="flex gap-2 w-max px-1">
           {data.items.map((it, i) => {
             const TabIcon = it.Icon;
@@ -292,33 +287,15 @@ if (!item) return null;
             );
           })}
         </div>
-      </ScrollCarousel> */}
-      <ScrollCarousel className="pb-1 mb-5">
-  <div className="flex gap-2 w-max px-1">
-    {venueEvents.map((event, i) => (
-      <button
-        key={event.id}
-        onClick={() => setActive(i)}
-        className={`flex-none flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium border transition-all duration-150 ${
-          active === i
-            ? activePill
-            : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
-        }`}
-      >
-        <span className="text-base">{event.icon}</span>
-        <span>{event.event_name}</span>
-      </button>
-    ))}
-  </div>
-</ScrollCarousel>
+      </ScrollCarousel>
 
       {/* Active card */}
-      {/* <div className="rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm hover:shadow-md transition-shadow">
-       
+      <div className="rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm hover:shadow-md transition-shadow">
+        {/* Image */}
         <div className="relative h-48 sm:h-56 overflow-hidden">
           <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/55 to-transparent" />
-       
+          {/* Tags on image */}
           <div className="absolute bottom-4 left-4 flex flex-wrap gap-1.5">
             {item.tags.map((tag, t) => (
               <span key={t} className="bg-white/20 backdrop-blur-sm text-white text-xs font-medium px-2.5 py-1 rounded-full border border-white/30">
@@ -328,6 +305,7 @@ if (!item) return null;
           </div>
         </div>
 
+        {/* Content */}
         <div className="p-4 sm:p-5 flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1.5">
@@ -335,7 +313,7 @@ if (!item) return null;
               <h3 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white">{item.title}</h3>
             </div>
             <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-3">{item.desc}</p>
-           
+            {/* Capacity + layout chips */}
             <div className="flex flex-wrap gap-2 text-xs">
               <span className={`px-2.5 py-1 rounded-full font-medium ${tagBg}`}>{item.capacity}</span>
               <span className={`px-2.5 py-1 rounded-full font-medium ${tagBg}`}>{item.layout}</span>
@@ -345,32 +323,7 @@ if (!item) return null;
             <ChevronRight size={16} />
           </button>
         </div>
-      </div> */}
-
-      <div className="rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm hover:shadow-md transition-shadow">
-  <div className="relative h-56 overflow-hidden">
-    <img
-      src='https://images.unsplash.com/photo-1502086223501-7ea6ecd79368?w=400'
-      alt={item.event_name}
-      className="w-full h-full object-cover"
-    />
-  </div>
-
-  <div className="p-5">
-    <div className="flex items-center gap-2 mb-3">
-      <span className="text-2xl">{item.icon}</span>
-
-      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-        {item.event_name}
-      </h3>
-    </div>
-
-    <p className="text-sm text-gray-500 dark:text-gray-400">
-      Celebrate your <strong>{item.event_name}</strong> in this venue with
-      premium facilities and customizable event arrangements.
-    </p>
-  </div>
-</div>
+      </div>
     </div>
   );
 }

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
-import { useParams, useSearchParams,useRouter } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import {
   X,
   Scale,
@@ -19,10 +19,10 @@ import VenueCard from "./components/VenueCard";
 import FilterDrawer from "./components/FilterDrawer";
 import WishlistPopup from "./components/WishlistPopup";
 import FilterRow from "./components/FilterRow";
+import SearchFooter from "./components/SearchFooter";
 import DesktopReelPanel from "./components/DesktopReelPanel";
 import { DEFAULT_FILTERS } from "./components/FilterDrawer";
 import ListingsSearchBar from "./components/ListingsSearchBar";
-import { getDemoVideoUrl } from "./data/demoReelVideos";
 
 import { useCategory } from "@/context/CategoryContext";
 import { useUI } from "@/context/UIContext";
@@ -74,8 +74,6 @@ export default function SearchPage() {
   const { locale, country } = useParams();
   const searchParams = useSearchParams();
 
-  const router = useRouter();
-
   const { showMap, setShowMap, filterOpen, setFilterOpen, setLoginOpen } =
     useUI();
   const { activeCategory } = useCategory();
@@ -105,6 +103,18 @@ export default function SearchPage() {
   const [searchLocLabel, setSearchLocLabel] = useState(
     () => searchParams.get("location") || null,
   );
+  // Exact coordinates the Home-page search already put in the URL (lat/lng).
+  // Using them lets the map center immediately on a Home→Search navigation
+  // instead of depending on re-geocoding the text label (which only fired
+  // reliably for in-page searches, because those bump mapResetKey). Cleared
+  // on an in-page search so the label-geocode path stays in charge there.
+  const [searchCenter, setSearchCenter] = useState(() => {
+    const la = Number(searchParams.get("lat"));
+    const ln = Number(searchParams.get("lng"));
+    return Number.isFinite(la) && Number.isFinite(ln) && !(la === 0 && ln === 0)
+      ? { lat: la, lng: ln }
+      : null;
+  });
   const [likedData, setLikedData] = useState([]);
 
   const [searchData, setSearchData] = useState({
@@ -230,15 +240,16 @@ export default function SearchPage() {
 
   const displayCards = cardVenues ?? allCards;
 
+  // Reels are a fully independent feed — only venues with a REAL reel/video
+  // are included. Scraped listings without one are simply excluded: not
+  // rendered, not counted, and never given a fabricated placeholder video.
   const reelVenues = useMemo(
     () =>
-      displayCards.map((venue, idx) => ({
-        ...venue,
-        videoUrl:
-          venue.videoUrl ||
-          "https://vb-venue-images.s3.eu-north-1.amazonaws.com/vb_video/video.mp4",
-      })),
-    [displayCards, activeCategory],
+      displayCards.filter((venue) => {
+        const videoUrl = venue.videoUrl || venue.video_url || venue.coverVideo;
+        return Boolean(videoUrl) && videoUrl !== "0";
+      }),
+    [displayCards],
   );
 
   useEffect(() => {
@@ -515,8 +526,12 @@ export default function SearchPage() {
         property_type: activeCategory,
       };
       await addLikedProperty(payload);
+      // A like/unlike must never re-fetch the listing — no network call to
+      // `LoadProperty`/`findPropertyname`, no skeleton, no card refresh.
+      // The card's own optimistic heart/count already reflects the change
+      // instantly; `loadUser()` only syncs the lightweight user-scoped
+      // liked/wishlist/compare sets (not the listing) in the background.
       loadUser();
-      load();
       // eslint-disable-next-line react-hooks/exhaustive-deps
     },
     [user],
@@ -594,12 +609,6 @@ useEffect(() => {
   );
 }, [searchData]);
 
-const compare = () =>{
-
-   router.push(`/${locale}/${country}/compare`);
-  // ${locale}/${country}
-}
-
   /* ══════════════════════════════════════════════════════════════
      RENDER
      ══════════════════════════════════════════════════════════════ */
@@ -630,6 +639,7 @@ const compare = () =>{
            <ListingsSearchBar
   countryCode={String(country || "in").toLowerCase()}
   isSearching={isLoadingVenues}
+  isLoading={isLoadingVenues && loadData.length === 0}
   defaultValues={searchData}
   onSearch={(data) => {
     const location =
@@ -648,6 +658,10 @@ const compare = () =>{
 
     setSearchLocLabel(location);
 
+    // In-page search: drop the URL-derived coordinates so the map recenters
+    // by geocoding the newly-typed label (via the mapResetKey path below).
+    setSearchCenter(null);
+
     // New search -> don't keep previous map bounds
     lastBoundsRef.current = null;
     setMapBounds(null);
@@ -662,6 +676,7 @@ const compare = () =>{
               setSelectedCategory={setSelectedCategory}
               loadData={loadData}
               onFilterOpen={() => setFilterOpen(true)}
+              isLoading={isLoadingVenues && loadData.length === 0}
             />
           </div>
 
@@ -819,10 +834,17 @@ const compare = () =>{
                 </button>
               </div>
             )}
+
+            {!isLoadingVenues && (
+              <div className="mt-auto">
+                <SearchFooter />
+              </div>
+            )}
           </div>
 
           <WishlistPopup
             wishvenue={wishlistCategory}
+            wishlist={wishlist}
             venue={wishlistVenue}
             open={!!wishlistVenue}
             user={user}
@@ -899,6 +921,7 @@ const compare = () =>{
                 resetKey={mapResetKey}
                 preferredLocation={preferredLocation}
                 searchLocationLabel={searchLocLabel}
+                searchCenter={searchCenter}
                 onVenueClick={handleVenueClick}
                 onVisibleVenuesChange={setCardVenues}
                 onMapClusterHover={handleMapClusterHover}
@@ -1078,7 +1101,6 @@ const compare = () =>{
                     </div>
                     <div className="p-3 border-t border-gray-100 dark:border-gray-800">
                       <button
-                      onClick={compare}
                         className="w-full text-white text-sm font-semibold py-2.5 rounded-xl transition hover:opacity-90 active:scale-[0.98]"
                         style={{
                           background:
@@ -1117,6 +1139,7 @@ const compare = () =>{
               resetKey={mapResetKey}
               preferredLocation={preferredLocation}
               searchLocationLabel={searchLocLabel}
+              searchCenter={searchCenter}
               onVenueClick={handleVenueClick}
               onVisibleVenuesChange={setCardVenues}
               onMapClusterHover={handleMapClusterHover}

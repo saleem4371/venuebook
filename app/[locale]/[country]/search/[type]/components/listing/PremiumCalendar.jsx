@@ -17,18 +17,21 @@ const BOOKED = new Set([
   "2026-08-01", "2026-08-02", "2026-08-03",
 ]);
 
+// Partially booked venue dates (only some shifts taken)
+const PARTIAL = new Set(["2026-06-30", "2026-07-08", "2026-07-22"]);
 
-// // Partially booked venue dates (only some shifts taken)
-// const PARTIAL = new Set(["2026-06-30", "2026-07-08", "2026-07-22"]);
+// Per-date shift status for venue (available / reserved / booked)
+const SHIFT_STATUS = {
+  "2026-06-30": { morning: "booked",    afternoon: "available", evening: "reserved", fullday: "booked"    },
+  "2026-07-08": { morning: "available", afternoon: "booked",    evening: "available", fullday: "booked"    },
+  "2026-07-22": { morning: "reserved",  afternoon: "available", evening: "available", fullday: "booked"    },
+};
 
-// // Per-date shift status for venue (available / reserved / booked)
-// const SHIFT_STATUS = {
-//   "2026-06-30": { morning: "booked",    afternoon: "available", evening: "reserved", fullday: "booked"    },
-//   "2026-07-08": { morning: "available", afternoon: "booked",    evening: "available", fullday: "booked"    },
-//   "2026-07-22": { morning: "reserved",  afternoon: "available", evening: "available", fullday: "booked"    },
-// };
-
-
+function getShiftStatus(date, shiftId) {
+  if (!date) return "available";
+  const key = toKey(date);
+  return SHIFT_STATUS[key]?.[shiftId] ?? "available";
+}
 
 const STATUS_LABEL  = { available: "Available", reserved: "Reserved", booked: "Booked" };
 const STATUS_STYLE  = {
@@ -114,10 +117,9 @@ const MONTH_NAMES = [
 // VENUE MODE — single month + shift selection panel
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function VenueMonthGrid({ year,bookingFull,bookingParial, month, selectedDate, onDateClick, colors, catKey, isMember }) {
+function VenueMonthGrid({ year, month, selectedDate, onDateClick, colors, catKey, isMember }) {
   const days = useMemo(() => getCalendarDays(year, month), [year, month]);
-console.log(bookingFull)
-console.log(bookingParial)
+
   return (
     <div className="rounded-2xl border border-gray-100 dark:border-gray-800 p-4">
       <h3 className="text-center text-sm font-semibold text-gray-800 dark:text-gray-200 mb-4 tracking-wide">
@@ -136,12 +138,8 @@ console.log(bookingParial)
         {days.map((date, i) => {
           if (!date) return <div key={`e-${i}`} />;
           const key = toKey(date);
-          // const booked = bookingFull.has(key);
-          // const booked = BOOKED.has(key);
-          // const partial = bookingParial.has(key);
-          // const partial = PARTIAL.has(key);
-          const booked = bookingFull?.includes(key);
-const partial = bookingParial?.includes(key);
+          const booked = BOOKED.has(key);
+          const partial = PARTIAL.has(key);
           const past = isPast(date);
           const disabled = booked || past;
           const selected = sameDay(date, selectedDate);
@@ -177,10 +175,9 @@ const partial = bookingParial?.includes(key);
   );
 }
 
-function VenueCalendar({ venueshifts,bookingData, bookingFull,bookingParial, category, colors, isMember, onSelectionChange, resetKey, resetShiftKey }) {
-
-
+function VenueCalendar({ category, colors, isMember, onSelectionChange, resetKey, resetShiftKey }) {
   const catKey = normalizeCategory(category);
+  const basePrice = BASE_PRICE[catKey] ?? 20000;
   const now = new Date();
 
   const [baseMonth, setBaseMonth] = useState({ year: now.getFullYear(), month: now.getMonth() });
@@ -193,7 +190,12 @@ function VenueCalendar({ venueshifts,bookingData, bookingFull,bookingParial, cat
   // Shift-only reset (Time Slot X cleared — keeps selectedDate)
   useEffect(() => { setSelectedShift(null); }, [resetShiftKey]);
 
-
+  const SHIFTS = [
+    { id: "morning",   label: "Morning",   time: "8:00 AM – 1:00 PM",  icon: Sunrise,      mult: 0.50 },
+    { id: "afternoon", label: "Afternoon", time: "1:00 PM – 6:00 PM",  icon: Sun,          mult: 0.60 },
+    { id: "evening",   label: "Evening",   time: "6:00 PM – 11:00 PM", icon: Moon,         mult: 0.70 },
+    { id: "fullday",   label: "Full Day",  time: "8:00 AM – 11:00 PM", icon: CalendarDays, mult: 1.00 },
+  ];
 
   const memberPrice = (p) => isMember ? Math.round(p * (1 - GOLD_DISCOUNT)) : p;
 
@@ -213,7 +215,9 @@ function VenueCalendar({ venueshifts,bookingData, bookingFull,bookingParial, cat
     }
   };
 
-  const activeShift   = venueshifts.find((s) => s.id === selectedShift);
+  const activeShift   = SHIFTS.find((s) => s.id === selectedShift);
+  const shiftPrice    = activeShift ? memberPrice(Math.round(basePrice * activeShift.mult)) : null;
+  const shiftOriginal = activeShift ? Math.round(basePrice * activeShift.mult) : null;
 
   // Notify parent of selection changes
   useEffect(() => {
@@ -222,15 +226,8 @@ function VenueCalendar({ venueshifts,bookingData, bookingFull,bookingParial, cat
       shift: selectedShift,
       shiftLabel: activeShift?.label ?? null,
       shiftTime: activeShift?.time ?? null,
-      shiftAmount: activeShift?.price ?? 0,
     });
   }, [selectedDate, selectedShift]);
-
-  function getShiftStatus(date, shiftId) {
-  if (!date) return "available";
-  const key = toKey(date);
-  return bookingData[key]?.[shiftId] ?? "available";
-}
 
   return (
     <div>
@@ -291,8 +288,6 @@ function VenueCalendar({ venueshifts,bookingData, bookingFull,bookingParial, cat
         {/* Single month */}
         <VenueMonthGrid
           {...baseMonth}
-          bookingFull={bookingFull}
-          bookingParial={bookingParial}
           selectedDate={selectedDate}
           onDateClick={handleDateClick}
           colors={colors}
@@ -316,14 +311,13 @@ function VenueCalendar({ venueshifts,bookingData, bookingFull,bookingParial, cat
               <p className="text-xs font-medium text-gray-400 dark:text-gray-500 mb-0.5">Select a time slot</p>
 
               {/* Shift rows — status tag + pricing */}
-              {venueshifts.map((shift) => {
+              {SHIFTS.map((shift) => {
                 const ShiftIcon  = shift.icon;
                 const status     = getShiftStatus(selectedDate, shift.id);
                 const isBooked   = status === "booked";
                 const isSelected = selectedShift === shift.id;
-                // const price      = memberPrice(Math.round(shift.price));
-                const price      = Math.round(shift.price);
-                const original   = Math.round(shift.price);
+                const price      = memberPrice(Math.round(basePrice * shift.mult));
+                const original   = Math.round(basePrice * shift.mult);
 
                 return (
                   <button
@@ -358,9 +352,9 @@ function VenueCalendar({ venueshifts,bookingData, bookingFull,bookingParial, cat
 
                     {/* Pricing */}
                     <div className="text-right flex-none ml-1">
-                      {/* {isMember && price !== original && (
+                      {isMember && price !== original && (
                         <p className="text-[10px] line-through text-gray-400">{fmtShort(original)}</p>
-                      )} */}
+                      )}
                       <p className={`font-bold text-sm ${isSelected ? colors.accent : "text-gray-900 dark:text-white"}`}>
                         {fmtShort(price)}
                       </p>
@@ -395,7 +389,7 @@ function VenueCalendar({ venueshifts,bookingData, bookingFull,bookingParial, cat
 // STAY MODE — dual month, Airbnb-style range with blocked-range validation
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function StayMonthGrid({ year, month,bookingFull, range, hoverDate, checkoutLimit, onDateClick, onHover, colors, catKey, isMember }) {
+function StayMonthGrid({ year, month, range, hoverDate, checkoutLimit, onDateClick, onHover, colors, catKey, isMember }) {
   const days = useMemo(() => getCalendarDays(year, month), [year, month]);
 
   return (
@@ -416,8 +410,7 @@ function StayMonthGrid({ year, month,bookingFull, range, hoverDate, checkoutLimi
         {days.map((date, i) => {
           if (!date) return <div key={`e-${i}`} />;
           const key = toKey(date);
-          // const booked = BOOKED.has(key); //bookingFull
-          const booked = bookingFull?.includes(key);
+          const booked = BOOKED.has(key);
           const past = isPast(date);
           // When picking checkout: dates before/on check-in and dates >= first blocked date are slashed
           const selectingCheckout = range.start && !range.end;
@@ -479,7 +472,7 @@ function StayMonthGrid({ year, month,bookingFull, range, hoverDate, checkoutLimi
   );
 }
 
-function StayCalendar({ category, bookingFull,colors, isMember, onRangeChange, resetKey, resetEndKey }) {
+function StayCalendar({ category, colors, isMember, onRangeChange, resetKey, resetEndKey }) {
   const catKey = normalizeCategory(category);
   const minNights = MIN_NIGHTS[catKey] ?? 1;
   const now = new Date();
@@ -609,9 +602,9 @@ function StayCalendar({ category, bookingFull,colors, isMember, onRangeChange, r
 
       {/* Dual month */}
       <div className="flex flex-col md:flex-row gap-6 md:gap-8">
-        <StayMonthGrid {...baseMonth} bookingFull={bookingFull} range={range} hoverDate={hoverDate} checkoutLimit={checkoutLimit} onDateClick={handleDateClick} onHover={setHoverDate} colors={colors} catKey={catKey} isMember={isMember} />
+        <StayMonthGrid {...baseMonth} range={range} hoverDate={hoverDate} checkoutLimit={checkoutLimit} onDateClick={handleDateClick} onHover={setHoverDate} colors={colors} catKey={catKey} isMember={isMember} />
         <div className="hidden md:block w-px bg-gray-100 dark:bg-gray-800 self-stretch" />
-        <StayMonthGrid {...nextMonth} bookingFull={bookingFull}  range={range} hoverDate={hoverDate} checkoutLimit={checkoutLimit} onDateClick={handleDateClick} onHover={setHoverDate} colors={colors} catKey={catKey} isMember={isMember} />
+        <StayMonthGrid {...nextMonth} range={range} hoverDate={hoverDate} checkoutLimit={checkoutLimit} onDateClick={handleDateClick} onHover={setHoverDate} colors={colors} catKey={catKey} isMember={isMember} />
       </div>
 
       {/* Legend */}
@@ -640,11 +633,11 @@ function StayCalendar({ category, bookingFull,colors, isMember, onRangeChange, r
 // ═══════════════════════════════════════════════════════════════════════════════
 // EXPORT — routes to correct mode based on category
 // ═══════════════════════════════════════════════════════════════════════════════
-export default function PremiumCalendar({ venueshifts,bookingData,bookingFull,bookingParial, category = "venues", isMember = true, onSelectionChange, onRangeChange, resetKey, resetShiftKey, resetEndKey }) {
+export default function PremiumCalendar({ category = "venues", isMember = true, onSelectionChange, onRangeChange, resetKey, resetShiftKey, resetEndKey }) {
   const colors = getCategoryColors(category);
   const mode = getCalendarMode(category);
 
   return mode === "event"
-    ? <VenueCalendar bookingData={bookingData} bookingFull={bookingFull} bookingParial={bookingParial} venueshifts={venueshifts} category={category} colors={colors} isMember={isMember} onSelectionChange={onSelectionChange} resetKey={resetKey} resetShiftKey={resetShiftKey} />
-    : <StayCalendar category={category} bookingFull={bookingFull} colors={colors} isMember={isMember} onRangeChange={onRangeChange} resetKey={resetKey} resetEndKey={resetEndKey} />;
+    ? <VenueCalendar category={category} colors={colors} isMember={isMember} onSelectionChange={onSelectionChange} resetKey={resetKey} resetShiftKey={resetShiftKey} />
+    : <StayCalendar category={category} colors={colors} isMember={isMember} onRangeChange={onRangeChange} resetKey={resetKey} resetEndKey={resetEndKey} />;
 }
