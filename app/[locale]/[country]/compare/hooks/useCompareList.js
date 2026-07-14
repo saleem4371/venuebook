@@ -31,6 +31,8 @@ import {
 import { STATIC_VENUES } from "@/app/[locale]/[country]/search/[type]/data/staticVenues";
 import { enrichProperty } from "../data/compareSchema";
 
+import { useCategory } from "@/context/CategoryContext";
+
 function extractId(raw) {
   return raw?.venue_id || raw?.childVenueId || raw?.child_venue_id || raw?.id || raw?.venueId || null;
 }
@@ -49,6 +51,8 @@ export function useCompareList() {
   const [wishlistIds, setWishlistIds] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const { activeCategory } = useCategory();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -70,7 +74,7 @@ export function useCompareList() {
     if (authLoading) return;
     if (!user) { setRawItems([]); setLoading(false); return; }
     load();
-  }, [user, authLoading, load]);
+  }, [user, authLoading, load, activeCategory]);
 
   /** Raw compare rows → fully enriched, comparison-ready property objects. */
   const properties = useMemo(() => {
