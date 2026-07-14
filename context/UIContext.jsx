@@ -12,7 +12,12 @@ export function UIProvider({ children }) {
   const [compareOpen,        setCompareOpen]        = useState(false);
   const [categorySheetOpen,  setCategorySheetOpen]  = useState(false);
 
-  const hideBottomMenu = showMap || showReels || filterOpen || compareOpen;
+  /* Set by a page (e.g. Messages full-screen thread on mobile) to hide the
+     site Navbar + BottomMenu without touching their own internals. Always
+     reset back to false by the caller on unmount / condition change. */
+  const [hideSiteChrome,     setHideSiteChrome]     = useState(false);
+
+  const hideBottomMenu = showMap || showReels || filterOpen || compareOpen || hideSiteChrome;
 
   return (
     <UIContext.Provider
@@ -29,6 +34,8 @@ export function UIProvider({ children }) {
         setCompareOpen,
         categorySheetOpen,
         setCategorySheetOpen,
+        hideSiteChrome,
+        setHideSiteChrome,
         hideBottomMenu,
       }}
     >
