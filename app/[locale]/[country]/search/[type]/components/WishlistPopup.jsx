@@ -315,7 +315,7 @@ export default function WishlistPopup({
                               {cat.name}
                             </span>
                             <span className="block text-[11.5px] text-gray-500 dark:text-gray-400">
-                              {count} {count === 1 ? "Property" : "Properties"}
+                              {cat.total_wishlist} {cat.total_wishlist === 1 ? "Property" : "Properties"}
                             </span>
                           </span>
                           <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center">

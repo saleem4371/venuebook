@@ -957,7 +957,7 @@ const VenueCard = ({
                   e.stopPropagation();
 
                   router.push(
-                    `/${locale || "en"}/${country || "in"}/venue/${parentId}?from=${cardCategory}`,
+                     `/${locale || "en"}/${country || "in"}/venue/${parentId}/?from=${cardCategory}&id=${venue.created_by}`,
                   );
                 }}
                 className="inline-flex items-center gap-1 text-xs text-violet-500 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 hover:underline truncate -mt-0.5 font-medium w-fit max-w-full"
