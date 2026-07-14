@@ -99,6 +99,11 @@ export default function ClientLayout({ children }) {
   // here, on any breakpoint or view.
   const isMessagesRoute = pathname.includes("/messages");
 
+  // Profile is a fixed-height dashboard on desktop (no page scroll) and a
+  // dense account-management stack on mobile — the marketing footer doesn't
+  // belong on either.
+  const isProfileRoute = pathname.includes("/profile");
+
   // Listing detail page: /search/[type]/[id] — has two segments after /search/
   const isListingDetailPage = /\/search\/[^/]+\/[^/]+/.test(pathname);
 
@@ -142,7 +147,7 @@ export default function ClientLayout({ children }) {
             <MobileReelsProvider>
 
               {!hideChrome && <Navbar />}
-              {!hideChrome && !isListingDetailPage && !isVenueParentPage && !isMessagesRoute && (
+              {!hideChrome && !isListingDetailPage && !isVenueParentPage && !isMessagesRoute && !isProfileRoute && (
                 <CategoryNavigator
                   loadData={loadData}
                   fabBreakpoint={fabBreakpoint}
@@ -152,7 +157,7 @@ export default function ClientLayout({ children }) {
               {children}
 
               {!hideChrome && <BottomMenu />}
-              {!hideChrome && !isSearchListPage && !isMessagesRoute && <Footer />}
+              {!hideChrome && !isSearchListPage && !isMessagesRoute && !isProfileRoute && <Footer />}
 
               {/* Consumes showReels signal from BottomMenu — works on every page */}
               <GlobalReelsBridge />
