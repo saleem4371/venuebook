@@ -143,9 +143,13 @@ export default function ComparePage() {
   // nothing saved for compare (and the user hasn't explicitly chosen it
   // here), fall back to whichever category the user actually has
   // properties in. An explicit in-page choice (manualCategory) always wins.
+
+ 
   const focusedCategory = manualCategory
     ?? ((categoryCounts[activeCategory] || 0) > 0 ? activeCategory : (availableCategories[0] || activeCategory));
 
+
+     
   // categoryProperties: EVERY saved item in the focused category, uncapped —
   // used for exclusion checks (so a hidden overflow item never looks
   // "not yet added" in the Add modal). displayedProperties: the actual
@@ -162,6 +166,9 @@ export default function ComparePage() {
     () => categoryProperties.slice(0, MAX_COMPARE_PROPERTIES),
     [categoryProperties]
   );
+
+  console.log("Data Loading....")
+  console.log(focusedCategory)
 
   const experience = detectExperience(focusedCategory);
   const ExperienceComponent = EXPERIENCE_COMPONENTS[experience] || VenueComparisonExperience;
