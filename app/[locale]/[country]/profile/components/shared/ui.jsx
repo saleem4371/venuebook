@@ -176,12 +176,12 @@ export function StatCard({ label, value, Icon, color = "#7C3AED", loading = fals
 /* ═══════════════════════════════════════════════════════════════════════
    EMPTY STATE — every section's "never leave blank white space" fallback.
    ═══════════════════════════════════════════════════════════════════════ */
-export function EmptyState({ icon, title, subtitle, ctaLabel, ctaHref, onCtaClick, compact = false }) {
+export function EmptyState({ icon, title, subtitle, ctaLabel, ctaHref, onCtaClick, compact = false, fill = false, className = "" }) {
   return (
     <div
       className={`flex flex-col items-center justify-center text-center rounded-3xl bg-gray-50/60 dark:bg-gray-800/30 border border-dashed border-gray-200 dark:border-gray-700 ${
         compact ? "py-6 px-4" : "py-8 px-5"
-      }`}
+      } ${fill ? "h-full flex-1" : ""} ${className}`}
     >
       <div className="w-11 h-11 rounded-full bg-white dark:bg-gray-900 shadow-sm flex items-center justify-center mb-3">
         {icon}

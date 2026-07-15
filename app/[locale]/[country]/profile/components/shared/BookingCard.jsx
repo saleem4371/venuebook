@@ -12,22 +12,22 @@
  *
  * The card's standing action row is exactly three buttons — Manage
  * Booking, Invoice, Message — with no separate "View" step in front of
- * them; Manage/Invoice open the shared detail modal already on that
- * section (see shared/BookingDetailModal.jsx), Message is a direct link,
- * no modal involved. They're shown unconditionally (not gated by booking
- * type/status) so every card carries the same three buttons and therefore
- * the same content height — which is what lets the photo stretch to fill
- * the full card edge-to-edge instead of sitting in a fixed-height box with
- * dead space below it. "Write Review"/"Book Again" (completed) and
- * "Rebook" (cancelled) stay on the card too since they're outcome-specific,
- * not part of that standing 3-button set.
+ * them, and no extra outcome-specific buttons (Write Review/Book
+ * Again/Rebook) added on top; Manage/Invoice open the shared detail modal
+ * already on that section (see shared/BookingDetailModal.jsx), Message is
+ * a direct link, no modal involved. Shown unconditionally (not gated by
+ * booking type/status, aside from Invoice needing a real invoiceId) so
+ * every card carries the same buttons and therefore the same content
+ * height — which is what lets the photo stretch to fill the full card
+ * edge-to-edge instead of sitting in a fixed-height box with dead space
+ * below it.
  */
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { CalendarDays, Users, Settings2, FileText, MessageCircle, RotateCcw, Star } from "lucide-react";
+import { CalendarDays, Users, Settings2, FileText, MessageCircle } from "lucide-react";
 
-import { StatusBadge, SecondaryButton, GhostButton } from "./ui";
+import { StatusBadge, GhostButton } from "./ui";
 import { STATUS_TONE, PAYMENT_TONE } from "./BookingDetailModal";
 import { CATEGORY_COLORS } from "../../data/mockProfileData";
 
@@ -107,34 +107,17 @@ export function BookingCard({ booking, t, tCat, format, locale, country, onOpen 
               {t("manage")}
             </GhostButton>
 
-            <GhostButton onClick={() => onOpen("invoice")}>
-              <FileText size={13} />
-              {t("invoice")}
-            </GhostButton>
+            {b.invoiceId && (
+              <GhostButton onClick={() => onOpen("invoice")}>
+                <FileText size={13} />
+                {t("invoice")}
+              </GhostButton>
+            )}
 
             <GhostButton as={Link} href={`/${locale}/${country}/messages`}>
               <MessageCircle size={13} />
               {t("message")}
             </GhostButton>
-
-            {b.bookingStatus === "completed" && (
-              <>
-                <GhostButton onClick={() => onOpen("review")}>
-                  <Star size={13} />
-                  {t("writeReview")}
-                </GhostButton>
-                <SecondaryButton as={Link} href={`/${locale}/${country}/search/${b.category}`}>
-                  {t("bookAgain")}
-                </SecondaryButton>
-              </>
-            )}
-
-            {b.bookingStatus === "cancelled" && (
-              <SecondaryButton as={Link} href={`/${locale}/${country}/search/${b.category}`}>
-                <RotateCcw size={13} />
-                {t("rebook")}
-              </SecondaryButton>
-            )}
           </div>
         </div>
       </div>

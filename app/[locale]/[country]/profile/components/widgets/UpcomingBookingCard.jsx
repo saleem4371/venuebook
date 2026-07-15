@@ -20,7 +20,7 @@ import { CalendarClock, Users } from "lucide-react";
 import { useCurrency } from "@/hooks/useCurrency";
 import { PrimaryButton, GhostButton } from "../shared/ui";
 import { BookingDetailModal } from "../shared/BookingDetailModal";
-import { getNextUpcomingBooking, CATEGORY_COLORS } from "../../data/mockProfileData";
+import { getNextUpcomingBooking } from "../../data/mockProfileData";
 
 export default function UpcomingBookingCard() {
   const t = useTranslations("profile.upcomingBooking");
@@ -49,12 +49,6 @@ export default function UpcomingBookingCard() {
       <div className="relative h-24">
         <img src={booking.image} alt="" className="w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
-        <span
-          className="absolute top-2 left-2 px-2 py-0.5 rounded-lg text-[9px] font-bold text-white uppercase tracking-wide"
-          style={{ backgroundColor: CATEGORY_COLORS[booking.category] }}
-        >
-          {t("title")}
-        </span>
         <div className="absolute bottom-2 left-3 right-3">
           <p className="text-white text-[13px] font-bold truncate">{booking.propertyName}</p>
         </div>

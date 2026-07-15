@@ -13,27 +13,31 @@
  * there's no "View" step in front of them. Clicking Manage or Invoice on
  * the card opens this modal already on that section (`mode` decides what's
  * expanded on first render); Message never opens this modal at all, it's a
- * plain link to /messages. All three actions are also repeated here inside
- * the modal so you can switch between Manage/Invoice without closing it.
- * Shown unconditionally on every booking, not gated by type/status, so
- * every card carries the same fixed action row. "review" remains its own
- * dedicated flow (a star-rating form), not one of these three actions.
+ * plain link to /messages. Manage/Message stay gated by nothing; Invoice is
+ * hidden wherever there's no real payment yet (amountINR === 0 — drafts and
+ * enquiries never reach one).
+ *
+ * Once the Invoice document is open, it's the ONLY thing shown — no top
+ * detail rows, no action row repeated underneath it, since InvoiceDocument
+ * is a full, self-contained view; the header stays the plain property
+ * name/booking id (no back button — closing via X is the only way out of
+ * it, by design). The header itself doesn't scroll — only the body below
+ * it does — so InvoiceDocument's own sticky tabs+Download row has a fixed
+ * point to stick to as a long document scrolls underneath it.
  */
 
 import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { X, Star, MessageCircle, Settings2, FileText } from "lucide-react";
+import { X, MessageCircle, Settings2, FileText } from "lucide-react";
 
-import { StatusBadge, PrimaryButton, GhostButton } from "./ui";
+import { StatusBadge, GhostButton } from "./ui";
 import { InvoiceDocument } from "./InvoiceDocument";
 
 export const STATUS_TONE = { upcoming: "violet", completed: "green", cancelled: "red", enquiry: "amber", draft: "gray" };
 export const PAYMENT_TONE = { paid: "green", partial: "amber", pending: "amber", refunded: "gray" };
 
 export function BookingDetailModal({ booking: b, mode, t, tCat, format, locale, country, onClose }) {
-  const [rating, setRating] = useState(0);
-  const [submitted, setSubmitted] = useState(false);
   const [openSection, setOpenSection] = useState(mode === "invoice" ? "invoice" : mode === "manage" ? "manage" : null);
 
   const dateLabel = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric" }).format(
@@ -59,95 +63,68 @@ export function BookingDetailModal({ booking: b, mode, t, tCat, format, locale, 
         transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
         className={`w-full ${
           openSection === "invoice" ? "sm:max-w-xl" : "sm:max-w-lg"
-        } bg-white dark:bg-gray-900 rounded-t-3xl sm:rounded-3xl shadow-2xl p-6 max-h-[85vh] overflow-y-auto transition-[max-width] duration-200`}
+        } bg-white dark:bg-gray-900 rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[85vh] flex flex-col overflow-hidden transition-[max-width] duration-200`}
       >
-        <div className="flex items-start justify-between gap-4 mb-5">
-          <div>
-            <h3 className="text-[17px] font-semibold text-gray-900 dark:text-gray-50">{b.propertyName}</h3>
+        <div className="flex items-start justify-between gap-4 px-6 pt-6 pb-4 border-b border-gray-100 dark:border-gray-800 shrink-0">
+          <div className="min-w-0">
+            <h3 className="text-[17px] font-semibold text-gray-900 dark:text-gray-50 truncate">{b.propertyName}</h3>
             <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5">{b.bookingId}</p>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors shrink-0"
           >
             <X size={16} />
           </button>
         </div>
 
-        {mode !== "review" && (
-          <div className="space-y-3 text-[13.5px]">
-            <Row label={t("date")} value={dateLabel} />
-            <Row label={t("category")} value={tCat(b.category.replace(/s$/, ""))} />
-            <Row label={t("guests")} value={b.guests} />
-            {b.nights ? <Row label={t("nights")} value={b.nights} /> : null}
-            <Row label={t("amountPaid")} value={format(b.amountINR)} />
-            <div className="flex items-center justify-between py-1.5">
-              <span className="text-gray-500 dark:text-gray-400">{t("statusLabel")}</span>
-              <StatusBadge label={t(`status.${b.bookingStatus}`)} tone={STATUS_TONE[b.bookingStatus]} />
-            </div>
-            <div className="flex items-center justify-between py-1.5">
-              <span className="text-gray-500 dark:text-gray-400">{t("paymentLabel")}</span>
-              <StatusBadge label={t(`payment.${b.paymentStatus}`)} tone={PAYMENT_TONE[b.paymentStatus]} />
-            </div>
+        <div className="flex-1 overflow-y-auto px-6 pb-6">
+          {openSection === "invoice" ? (
+            <InvoiceDocument booking={b} t={t} tCat={tCat} />
+          ) : (
+            <div className="space-y-3 text-[13.5px] pt-4">
+              <Row label={t("date")} value={dateLabel} />
+              <Row label={t("category")} value={tCat(b.category.replace(/s$/, ""))} />
+              <Row label={t("guests")} value={b.guests} />
+              {b.nights ? <Row label={t("nights")} value={b.nights} /> : null}
+              <Row label={t("amountPaid")} value={format(b.amountINR)} />
+              <div className="flex items-center justify-between py-1.5">
+                <span className="text-gray-500 dark:text-gray-400">{t("statusLabel")}</span>
+                <StatusBadge label={t(`status.${b.bookingStatus}`)} tone={STATUS_TONE[b.bookingStatus]} />
+              </div>
+              <div className="flex items-center justify-between py-1.5">
+                <span className="text-gray-500 dark:text-gray-400">{t("paymentLabel")}</span>
+                <StatusBadge label={t(`payment.${b.paymentStatus}`)} tone={PAYMENT_TONE[b.paymentStatus]} />
+              </div>
 
-            {/* The three actions — hidden once the Invoice document itself
-                is open, since it's a full self-contained view and doesn't
-                need the switcher that opened it repeated inside it. */}
-            {openSection !== "invoice" && (
               <div className="flex flex-wrap gap-1.5 pt-3 border-t border-gray-100 dark:border-gray-800">
                 <GhostButton onClick={() => toggleSection("manage")}>
                   <Settings2 size={13} />
                   {t("manage")}
                 </GhostButton>
-                <GhostButton onClick={() => toggleSection("invoice")}>
-                  <FileText size={13} />
-                  {t("invoice")}
-                </GhostButton>
+                {/* No invoice exists until there's a real payment on the
+                    booking (drafts/enquiries never reach that point) — no
+                    point offering a button that opens an empty document. */}
+                {b.invoiceId && (
+                  <GhostButton onClick={() => toggleSection("invoice")}>
+                    <FileText size={13} />
+                    {t("invoice")}
+                  </GhostButton>
+                )}
                 <GhostButton as={Link} href={`/${locale}/${country}/messages`}>
                   <MessageCircle size={13} />
                   {t("message")}
                 </GhostButton>
               </div>
-            )}
 
-            {openSection === "manage" && (
-              <p className="text-[12.5px] text-gray-500 dark:text-gray-400 pt-3 border-t border-gray-100 dark:border-gray-800">
-                {t("manageHelp")}
-              </p>
-            )}
-
-            {openSection === "invoice" && (
-              <div className="pt-3 border-t border-gray-100 dark:border-gray-800">
-                <InvoiceDocument booking={b} t={t} />
-              </div>
-            )}
-          </div>
-        )}
-
-        {mode === "review" && (
-          <div>
-            {submitted ? (
-              <p className="text-[13.5px] text-green-600 font-medium py-4 text-center">{t("reviewThanks")}</p>
-            ) : (
-              <>
-                <p className="text-[12.5px] text-gray-500 dark:text-gray-400 mb-3">{t("reviewPrompt")}</p>
-                <div className="flex gap-1.5 mb-4">
-                  {[1, 2, 3, 4, 5].map((n) => (
-                    <button key={n} onClick={() => setRating(n)}>
-                      <Star
-                        size={26}
-                        className={n <= rating ? "text-amber-400 fill-amber-400" : "text-gray-300 dark:text-gray-700"}
-                      />
-                    </button>
-                  ))}
-                </div>
-                <PrimaryButton className="w-full" disabled={rating === 0} onClick={() => setSubmitted(true)}>
-                  {t("writeReview")}
-                </PrimaryButton>
-              </>
-            )}
-          </div>
-        )}
+              {openSection === "manage" && (
+                <p className="text-[12.5px] text-gray-500 dark:text-gray-400 pt-3 border-t border-gray-100 dark:border-gray-800">
+                  {t("manageHelp")}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
       </motion.div>
     </motion.div>
   );

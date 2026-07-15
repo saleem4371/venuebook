@@ -68,8 +68,8 @@ export default function BookingsSection() {
         <div className="mt-3">
           <EmptyState
             icon={<PackageSearch size={22} className="text-violet-600" />}
-            title={t("empty.title")}
-            subtitle={t("empty.subtitle")}
+            title={t(`empty.byTab.${activeTab}.title`)}
+            subtitle={t(`empty.byTab.${activeTab}.subtitle`)}
             ctaLabel={t("empty.cta")}
             ctaHref={`/${locale}/${country}/search/venues`}
           />

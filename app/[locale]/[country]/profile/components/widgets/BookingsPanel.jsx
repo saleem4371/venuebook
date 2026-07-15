@@ -57,14 +57,19 @@ export default function BookingsPanel() {
       </div>
 
       {bookings.length === 0 ? (
-        <div className="p-4 pt-0">
+        // Same pt-3 top gap the populated list uses below (px-4 pb-4 pt-3),
+        // and flex-1 so the dashed box stretches to fill whatever vertical
+        // room the panel has instead of sitting at its own compact height —
+        // EmptyState's own items-center/justify-center then centers the
+        // icon/title/subtitle/CTA within that full height, not just at top.
+        <div className="flex-1 min-h-0 flex flex-col px-4 pb-4 pt-3">
           <EmptyState
             icon={<PackageSearch size={20} className="text-violet-600" />}
-            title={t("empty.title")}
-            subtitle={t("empty.subtitle")}
+            title={t(`empty.byTab.${activeTab}.title`)}
+            subtitle={t(`empty.byTab.${activeTab}.subtitle`)}
             ctaLabel={t("empty.cta")}
             ctaHref={`/${locale}/${country}/search/venues`}
-            compact
+            fill
           />
         </div>
       ) : (

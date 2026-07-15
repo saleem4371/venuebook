@@ -74,6 +74,8 @@ import UpcomingBookingCard from "./components/widgets/UpcomingBookingCard";
 import BookingsPanel from "./components/widgets/BookingsPanel";
 import CollectionsPanel from "./components/widgets/CollectionsPanel";
 import RecentlyViewedPanel from "./components/widgets/RecentlyViewedPanel";
+import LikedPropertiesPanel from "./components/widgets/LikedPropertiesPanel";
+import MessagesNavCard from "./components/widgets/MessagesNavCard";
 import OffersPanel from "./components/widgets/OffersPanel";
 
 import { computeMockWalletPoints, hasFarmstayBooking } from "./data/mockProfileData";
@@ -223,8 +225,11 @@ export default function ProfilePage() {
            ════════════════════════════════════════════════════════════════ */
         <div className="flex flex-col h-screen pt-20 pb-3 px-3 xl:px-4 overflow-hidden">
           <div className="grid grid-cols-[260px_1fr_280px] xl:grid-cols-[300px_1fr_320px] gap-3 flex-1 min-h-0 min-w-0">
-            {/* LEFT — identity + upcoming booking */}
-            <div className="flex flex-col gap-3 min-h-0 min-w-0">
+            {/* LEFT — identity + upcoming booking + messages shortcut.
+                overflow-y-auto guards against a shorter viewport clipping
+                the new MessagesNavCard — same pattern the right column
+                already uses for the same reason. */}
+            <div className="flex flex-col gap-3 min-h-0 min-w-0 overflow-y-auto no-scrollbar">
               <IdentityPanel
                 user={user}
                 walletPoints={walletPoints}
@@ -234,6 +239,7 @@ export default function ProfilePage() {
                 onOpenRewards={() => setRewardsOpen(true)}
               />
               <UpcomingBookingCard />
+              <MessagesNavCard locale={locale} country={country} />
             </div>
 
             {/* CENTER — bookings (most important section) + offers ribbon */}
@@ -242,9 +248,10 @@ export default function ProfilePage() {
               <OffersPanel />
             </div>
 
-            {/* RIGHT — collections, recently viewed, notifications */}
+            {/* RIGHT — collections, liked properties, recently viewed, notifications */}
             <div className="flex flex-col gap-3 min-h-0 min-w-0 overflow-y-auto no-scrollbar">
               <CollectionsPanel collections={collections} wishlist={wishlist} loading={dataLoading} locale={locale} country={country} />
+              <LikedPropertiesPanel liked={liked} loading={dataLoading} locale={locale} country={country} />
               <RecentlyViewedPanel recentViews={recentViews} loading={dataLoading} locale={locale} country={country} />
               <NotificationsSection />
             </div>

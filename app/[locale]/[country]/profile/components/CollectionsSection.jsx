@@ -29,7 +29,10 @@ export default function CollectionsSection({ collections = [], wishlist = [], lo
   };
 
   const preview = useMemo(() => collections.slice(0, 4), [collections]);
-  const collectionsHref = `/${locale}/${country}/collections`;
+  // Deep-links into the real /collections page's "Collections" tab — see
+  // collections/page.jsx's header comment for the ?tab=/?collection= param
+  // contract (mirrors widgets/CollectionsPanel.jsx's desktop version).
+  const collectionsHref = `/${locale}/${country}/collections?tab=collections`;
 
   return (
     <SectionCard>
@@ -72,7 +75,7 @@ export default function CollectionsSection({ collections = [], wishlist = [], lo
                 transition={{ duration: 0.2 }}
               >
                 <Link
-                  href={collectionsHref}
+                  href={`${collectionsHref}&collection=${cat.id}`}
                   className="group block rounded-2xl overflow-hidden bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_12px_28px_rgba(0,0,0,0.10)] transition-shadow"
                 >
                   <div className="h-20 relative overflow-hidden">

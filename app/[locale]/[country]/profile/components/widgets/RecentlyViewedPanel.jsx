@@ -8,11 +8,9 @@
  * collections/page.jsx use. Deliberately just a row of thumbnails here
  * (no name/price rows) so this stays a short strip instead of competing
  * with Collections and Notifications for vertical space in a fixed right
- * column. "View All" routes to the real /collections page, which already
- * has a "Recently Viewed" tab backed by this same recent_views() data
- * (collections/page.jsx) — that tab is local component state, not a URL
- * param, so this links to the page itself rather than inventing a
- * ?tab=recent deep link into a page this feature doesn't own.
+ * column. "View All" routes to the real /collections page's "Recently
+ * Viewed" tab via ?tab=recent — see collections/page.jsx's header comment
+ * for the param contract.
  */
 
 import { useMemo, useState } from "react";
@@ -47,7 +45,7 @@ export default function RecentlyViewedPanel({ recentViews = [], loading = false,
             <Clock size={14} className="text-violet-600" />
           </span>
         }
-        action={<ViewAllLink href={`/${locale}/${country}/collections`}>{t("viewAll")}</ViewAllLink>}
+        action={<ViewAllLink href={`/${locale}/${country}/collections?tab=recent`}>{t("viewAll")}</ViewAllLink>}
       />
 
       {loading ? (

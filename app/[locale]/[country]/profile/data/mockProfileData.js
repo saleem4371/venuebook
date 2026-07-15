@@ -40,148 +40,252 @@ export const CATEGORY_COLORS = {
  * Drafted) read bookingStatus for the first four and bookingType for the
  * last three — see BookingTabs.jsx.
  */
+
+/**
+ * The real invoice download endpoint (services/booking.service.js's
+ * download_invoice → GET {NEXT_PUBLIC_API_URL}/invoice/download/:id) takes
+ * a real backend invoice id, which the mock bookings below don't have —
+ * there's no mock reservation row on the real backend to point at. Every
+ * paid mock booking uses this one known-working id as a placeholder so the
+ * Download button is wired to the real endpoint end-to-end; swap this for
+ * each booking's own id once the mock array is replaced by a real
+ * `all_reservations` response.
+ */
+const MOCK_REAL_INVOICE_ID = 64;
+
+/**
+ * MOCK_BOOKINGS is deliberately built as an exhaustive GST demo matrix —
+ * 4 venues + 4 farmstays, one for each combination of:
+ *   - gstRegistered: is the vendor itself GST-registered?
+ *       true  → the Tax Invoice tab shows TWO real documents (the vendor's
+ *               own tax invoice for the venue/farmstay charge, plus
+ *               venuebook.in's tax invoice for the convenience fee) — real
+ *               marketplace invoicing, two different suppliers.
+ *       false → an unregistered vendor cannot issue a GST tax invoice at
+ *               all, so venuebook.in itself issues ONE combined tax
+ *               invoice covering both the venue/farmstay charge and the
+ *               convenience fee (see InvoiceDocument.jsx's
+ *               buildCombinedModel).
+ *   - customerState vs the relevant supplier's state: CGST+SGST when they
+ *     match (intra-state), IGST when they don't (inter-state) — checked
+ *     independently per document. `customerState` lives per-booking (not
+ *     a single module constant) specifically so this demo matrix can show
+ *     all 4 outcomes side by side; `placeOfSupply` is still set on the
+ *     unregistered bookings for display/context on the card, but it does
+ *     NOT drive the tax math there — with no vendor tax invoice, only
+ *     venuebook.in's own state (VENUEBOOK_STATE) vs customerState matters.
+ *
+ * Amounts are deliberately round multiples of 118 so `amountINR / 1.18`
+ * (backing the GST-inclusive taxable value out of the sticker price) lands
+ * on a whole rupee every time — easy to eyeball-verify on each invoice.
+ */
 export const MOCK_BOOKINGS = [
+  // ── VENUES ──────────────────────────────────────────────────────────
   {
-    bookingId: "BK-102934",
+    bookingId: "BK-103010",
     propertyName: "Grand Orchid Palace",
-    image:
-      "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=800&q=80",
+    image: "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=800&q=80",
     category: "venues",
     date: "2026-08-14",
     nights: 1,
-    guests: 300,
-    amountINR: 185000,
+    guests: 120,
+    amountINR: 11800, // taxable 10,000 + GST 1,800 (CGST 900 + SGST 900)
     paymentStatus: "paid",
     bookingType: "reservation",
     bookingStatus: "upcoming",
     vendorName: "Grand Orchid Events Pvt. Ltd.",
     vendorGSTIN: "29GOPPL5678K1Z3",
+    gstRegistered: true,
     placeOfSupply: "Karnataka",
+    customerState: "Karnataka", // same state as vendor & venuebook.in → CGST/SGST
     paymentMode: "UPI",
+    invoiceId: MOCK_REAL_INVOICE_ID,
   },
   {
-    bookingId: "BK-102810",
+    bookingId: "BK-103022",
+    propertyName: "Azure Convention Center",
+    image: "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=800&q=80",
+    category: "venues",
+    date: "2026-09-02",
+    nights: 1,
+    guests: 200,
+    amountINR: 23600, // taxable 20,000 + GST 3,600 (IGST)
+    paymentStatus: "paid",
+    bookingType: "reservation",
+    bookingStatus: "upcoming",
+    vendorName: "Azure Convention Pvt. Ltd.",
+    vendorGSTIN: "27AZURE9988H1Z2",
+    gstRegistered: true,
+    placeOfSupply: "Maharashtra",
+    customerState: "Tamil Nadu", // differs from vendor's Maharashtra → IGST
+    paymentMode: "Credit Card",
+    invoiceId: MOCK_REAL_INVOICE_ID,
+  },
+  {
+    bookingId: "BK-103034",
+    propertyName: "Riverside Banquet Lawn",
+    image: "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=800&q=80",
+    category: "venues",
+    date: "2026-07-28",
+    nights: 1,
+    guests: 80,
+    amountINR: 5900, // taxable 5,000 + GST 900 (CGST 450 + SGST 450)
+    paymentStatus: "paid",
+    bookingType: "reservation",
+    bookingStatus: "completed",
+    vendorName: "Riverside Lawns",
+    vendorGSTIN: null,
+    gstRegistered: false,
+    placeOfSupply: "Telangana", // vendor's own location — not used in the tax math once unregistered
+    customerState: "Karnataka", // matches venuebook.in's own state → CGST/SGST
+    paymentMode: "UPI",
+    invoiceId: MOCK_REAL_INVOICE_ID,
+  },
+  {
+    bookingId: "BK-103046",
+    propertyName: "Coral Bay Rooftop",
+    image: "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=800&q=80",
+    category: "venues",
+    date: "2026-10-10",
+    nights: 1,
+    guests: 60,
+    amountINR: 17700, // taxable 15,000 + GST 2,700 (IGST)
+    paymentStatus: "partial",
+    bookingType: "reservation",
+    bookingStatus: "upcoming",
+    vendorName: "Coral Bay Events",
+    vendorGSTIN: null,
+    gstRegistered: false,
+    placeOfSupply: "Punjab",
+    customerState: "West Bengal", // differs from venuebook.in's Karnataka → IGST
+    paymentMode: "Net Banking",
+    invoiceId: MOCK_REAL_INVOICE_ID,
+  },
+
+  // ── FARMSTAYS ───────────────────────────────────────────────────────
+  {
+    bookingId: "BK-103058",
     propertyName: "Whispering Pines Farmstay",
-    image:
-      "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800&q=80",
+    image: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800&q=80",
     category: "farmstays",
     date: "2026-06-02",
     nights: 3,
     guests: 8,
-    amountINR: 22000,
+    amountINR: 8260, // taxable 7,000 + GST 1,260 (CGST 630 + SGST 630)
     paymentStatus: "paid",
     bookingType: "reservation",
     bookingStatus: "completed",
     vendorName: "Whispering Pines Farmstay LLP",
-    vendorGSTIN: "27WPFAR1234L1Z9",
-    placeOfSupply: "Maharashtra",
-    paymentMode: "Credit Card",
-  },
-  {
-    bookingId: "BK-102766",
-    propertyName: "Lumen Photo Studio",
-    image:
-      "https://images.unsplash.com/photo-1522069169874-c58ec4b76be5?w=800&q=80",
-    category: "studios",
-    date: "2026-05-11",
-    nights: 1,
-    guests: 12,
-    amountINR: 9500,
-    paymentStatus: "paid",
-    bookingType: "reservation",
-    bookingStatus: "completed",
-    vendorName: "Lumen Studios Pvt. Ltd.",
-    vendorGSTIN: "29LUMEN9988M1Z2",
+    vendorGSTIN: "29WPFAR1234L1Z9",
+    gstRegistered: true,
     placeOfSupply: "Karnataka",
-    paymentMode: "Net Banking",
+    customerState: "Karnataka", // same state as vendor & venuebook.in → CGST/SGST
+    paymentMode: "Credit Card",
+    invoiceId: MOCK_REAL_INVOICE_ID,
   },
   {
-    bookingId: "BK-102640",
-    propertyName: "Meridian Co-work Suite",
-    image:
-      "https://images.unsplash.com/photo-1497366754035-f200968a6e72?w=800&q=80",
-    category: "workspaces",
-    date: "2026-03-22",
-    nights: 1,
-    guests: 6,
-    amountINR: 4200,
-    paymentStatus: "refunded",
-    bookingType: "reservation",
-    bookingStatus: "cancelled",
-    vendorName: "Meridian Workspaces Pvt. Ltd.",
-    vendorGSTIN: "07MERID4455N1Z6",
-    placeOfSupply: "Delhi",
-    paymentMode: "UPI",
-  },
-  {
-    bookingId: "BK-102588",
+    bookingId: "BK-103060",
     propertyName: "Silver Birch Farmstay",
-    image:
-      "https://images.unsplash.com/photo-1499696010180-025ef6e1a8f9?w=800&q=80",
+    image: "https://images.unsplash.com/photo-1499696010180-025ef6e1a8f9?w=800&q=80",
     category: "farmstays",
     date: "2026-09-05",
-    nights: 8,
+    nights: 2,
     guests: 4,
-    amountINR: 14500,
-    paymentStatus: "partial",
+    amountINR: 15340, // taxable 13,000 + GST 2,340 (IGST)
+    paymentStatus: "paid",
     bookingType: "reservation",
     bookingStatus: "upcoming",
     vendorName: "Silver Birch Farmstay Pvt. Ltd.",
     vendorGSTIN: "24SILVR7766P1Z4",
+    gstRegistered: true,
     placeOfSupply: "Gujarat",
+    customerState: "Rajasthan", // differs from vendor's Gujarat → IGST
     paymentMode: "UPI",
+    invoiceId: MOCK_REAL_INVOICE_ID,
   },
   {
-    bookingId: "BK-102512",
-    propertyName: "Coastal Breeze Villa",
-    image:
-      "https://images.unsplash.com/photo-1505142468610-359e7d316be0?w=800&q=80",
-    category: "rentals",
-    date: "2026-09-20",
-    nights: 4,
-    guests: 10,
-    amountINR: 0,
-    paymentStatus: "pending",
-    bookingType: "enquiry",
-    bookingStatus: "enquiry",
-    vendorName: "Coastal Breeze Rentals",
-    vendorGSTIN: "—",
-    placeOfSupply: "—",
-    paymentMode: "—",
+    bookingId: "BK-103072",
+    propertyName: "Misty Meadows Farmstay",
+    image: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800&q=80",
+    category: "farmstays",
+    date: "2026-08-20",
+    nights: 2,
+    guests: 6,
+    amountINR: 4720, // taxable 4,000 + GST 720 (CGST 360 + SGST 360)
+    paymentStatus: "paid",
+    bookingType: "reservation",
+    bookingStatus: "upcoming",
+    vendorName: "Misty Meadows Farms",
+    vendorGSTIN: null,
+    gstRegistered: false,
+    placeOfSupply: "Kerala",
+    customerState: "Karnataka", // matches venuebook.in's own state → CGST/SGST
+    paymentMode: "UPI",
+    invoiceId: MOCK_REAL_INVOICE_ID,
   },
   {
-    bookingId: "BK-102490",
-    propertyName: "Skyline Experience Loft",
-    image:
-      "https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=800&q=80",
-    category: "experiences",
-    date: "2026-10-02",
+    bookingId: "BK-103084",
+    propertyName: "Cedar Creek Farmstay",
+    image: "https://images.unsplash.com/photo-1499696010180-025ef6e1a8f9?w=800&q=80",
+    category: "farmstays",
+    date: "2026-07-15",
     nights: 1,
-    guests: 20,
-    amountINR: 0,
-    paymentStatus: "pending",
-    bookingType: "draft",
-    bookingStatus: "draft",
-    vendorName: "Skyline Experiences",
-    vendorGSTIN: "—",
-    placeOfSupply: "—",
-    paymentMode: "—",
+    guests: 5,
+    amountINR: 10620, // taxable 9,000 + GST 1,620 (IGST)
+    paymentStatus: "partial",
+    bookingType: "reservation",
+    bookingStatus: "upcoming",
+    vendorName: "Cedar Creek Farms",
+    vendorGSTIN: null,
+    gstRegistered: false,
+    placeOfSupply: "Himachal Pradesh",
+    customerState: "Odisha", // differs from venuebook.in's Karnataka → IGST
+    paymentMode: "UPI",
+    invoiceId: MOCK_REAL_INVOICE_ID,
   },
 ];
 
 /**
- * Flat convenience fee VenueBook charges on top of every paid reservation,
- * GST added on top (not inclusive) — matches the reference invoice designs
- * exactly. Deliberately separate from checkoutConfig.js's real 3%
- * platform-fee formula: that formula produces different numbers than these
- * reference designs, and this mock invoice feature has no real backend
- * invoice endpoint to reconcile against yet, so it stays self-contained
- * rather than silently drifting from the reference.
+ * Flat convenience fee venuebook.in charges on top of every paid reservation,
+ * GST added on top (not inclusive). A round ₹100 (rather than the earlier
+ * ₹99) so its own GST @18% is a clean ₹18.00, not ₹17.82 — easier to
+ * verify by eye alongside the venue/farmstay charge's clean taxable value.
+ * Deliberately separate from checkoutConfig.js's real 3% platform-fee
+ * formula: that formula produces different numbers than these reference
+ * designs, and this mock invoice feature has no real backend invoice
+ * endpoint to reconcile against yet, so it stays self-contained rather
+ * than silently drifting from the reference.
  */
-export const MOCK_CONVENIENCE_FEE_INR = 99;
+export const MOCK_CONVENIENCE_FEE_INR = 100;
 
-/** VenueBook's own GSTIN, used on the Convenience Fee tax invoice. */
+/** venuebook.in's own GSTIN, used on every Fee/Combined tax invoice. */
 export const VENUEBOOK_GSTIN = "29AAFCV1234B1Z8";
+
+/** venuebook.in's own registered state (GSTIN 29 = Karnataka) — the other
+ *  half of the intra-/inter-state comparison on the Fee/Combined tax
+ *  invoice (compared against each booking's own `customerState`). */
+export const VENUEBOOK_STATE = "Karnataka";
+
+/**
+ * Flat mock "coupon"-style discount shown on the Main Invoice only — real
+ * discount codes are usually a flat amount rather than a percentage, so
+ * this stays flat across every booking rather than scaling with price.
+ * Doesn't appear on any GST tax invoice: those documents report the
+ * actual taxable value/GST the vendor and/or venuebook.in charged, and a
+ * customer-facing discount isn't part of that tax calculation.
+ */
+export const MOCK_DISCOUNT_INR = 250;
+
+/**
+ * Flat mock value of loyalty points redeemed against this booking (see
+ * MOCK_POINTS_HISTORY's "Reward Redeemed" entry) — its own Main Invoice
+ * line since it's the customer spending their own points, not a
+ * vendor/platform discount. Only ever applied to farmstay bookings (per
+ * product rule): the Main Invoice's Grand Total Paid (venues) vs Gross
+ * Invoice Value → Net Payable Value (farmstays) split in
+ * InvoiceDocument.jsx is what actually gates whether this line appears.
+ */
+export const MOCK_VB_LOYALTY_DISCOUNT_INR = 100;
 
 /**
  * Deterministic invoice numbers/transaction id derived from the booking's
@@ -191,6 +295,7 @@ export function deriveInvoiceNumbers(bookingId) {
   const digits = (bookingId || "").replace(/\D/g, "").padStart(6, "0");
   const short = digits.slice(-6);
   return {
+    mainInvoiceNo: `VB-${short}`,
     vendorInvoiceNo: `INV-${short}`,
     feeInvoiceNo: `CF-${short}`,
     transactionId: `TXNVB${digits}IN`,
@@ -236,14 +341,14 @@ export const MOCK_NOTIFICATIONS = [
     id: "n2",
     type: "payment",
     title: "Payment received",
-    body: "₹22,000 for Whispering Pines Farmstay",
+    body: "₹8,260 for Whispering Pines Farmstay",
     time: "1d ago",
   },
   {
     id: "n3",
     type: "reply",
     title: "Property replied",
-    body: "Meridian Co-work Suite answered your question",
+    body: "Silver Birch Farmstay answered your question",
     time: "3d ago",
   },
   {
