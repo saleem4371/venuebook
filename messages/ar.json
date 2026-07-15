@@ -70,7 +70,7 @@
   "auth": {
     "welcomeBack": "مرحباً بعودتك",
     "createAccount": "إنشاء حساب",
-    "newToVenueBook": "جديد على VenueBook؟",
+    "newToVenueBook": "جديد على venuebook.in؟",
     "alreadyHaveAccount": "هل لديك حساب بالفعل؟",
     "signUpFree": "إنشاء حساب مجاناً",
     "login": "تسجيل الدخول",
@@ -978,7 +978,7 @@
   "checkout": {
     "title": "أكمل حجزك",
     "wallet": {
-      "title": "مكافآت VenueBook الخاصة بك",
+      "title": "مكافآت venuebook.in الخاصة بك",
       "tier": "مستوى العضوية",
       "points": "نقاط المكافأة",
       "wallet_value": "قيمة المحفظة",
@@ -1180,7 +1180,7 @@
       "nights": "ليالٍ",
       "night": "ليلة",
       "earning_points": "هذا الحجز يمنحك",
-      "points_label": "نقاط VenueBook",
+      "points_label": "نقاط venuebook.in",
       "tier_progress": "التقدم نحو {tier}",
       "tier_progress_already": "تم الوصول لأعلى مستوى",
       "event_date": "تاريخ الحدث",
@@ -1887,7 +1887,7 @@
     },
     "bookings": {
       "title": "الحجوزات",
-      "subtitle": "كل ما حجزته عبر VenueBook",
+      "subtitle": "كل ما حجزته عبر venuebook.in",
       "viewAll": "عرض الكل",
       "id": "رقم الحجز",
       "date": "التاريخ",
@@ -1918,8 +1918,36 @@
         "refunded": "تم استرداد المبلغ"
       },
       "empty": {
-        "title": "لا توجد حجوزات بعد",
-        "subtitle": "ستظهر حجوزاتك القادمة والسابقة هنا.",
+        "byTab": {
+          "all": {
+            "title": "لا توجد حجوزات بعد",
+            "subtitle": "ستظهر حجوزاتك القادمة والسابقة هنا."
+          },
+          "upcoming": {
+            "title": "لا توجد حجوزات قادمة",
+            "subtitle": "ستظهر حجوزاتك القادمة هنا."
+          },
+          "completed": {
+            "title": "لا توجد حجوزات مكتملة",
+            "subtitle": "ستظهر الحجوزات التي أكملتها هنا."
+          },
+          "cancelled": {
+            "title": "لا توجد حجوزات ملغاة",
+            "subtitle": "ستظهر الحجوزات التي ألغيتها هنا."
+          },
+          "reservation": {
+            "title": "لا توجد حجوزات مؤكدة بعد",
+            "subtitle": "ستظهر الحجوزات المؤكدة هنا."
+          },
+          "enquiry": {
+            "title": "لم يتم إرسال أي استفسار",
+            "subtitle": "ستظهر هنا العقارات التي استفسرت عنها."
+          },
+          "drafted": {
+            "title": "لا توجد حجوزات مسودة",
+            "subtitle": "ستظهر هنا عمليات الحجز التي بدأتها ولم تُكملها."
+          }
+        },
         "cta": "تصفح الأماكن"
       },
       "statusLabel": "الحالة",
@@ -1942,11 +1970,14 @@
         "tabs": {
           "main": "الفاتورة الرئيسية",
           "venue": "فاتورة المكان",
-          "fee": "فاتورة الرسوم"
+          "fee": "فاتورة الرسوم",
+          "tax": "الفاتورة الضريبية",
+          "combined": "فاتورة مجمّعة"
         },
         "download": "تنزيل",
+        "print": "طباعة",
         "main": {
-          "docTitle": "فاتورة Venuebook.in إلى العميل",
+          "docTitle": "فاتورة venuebook.in إلى العميل",
           "docSubtitle": "فاتورة الحجز الرئيسية",
           "bookingId": "رقم الحجز",
           "invoiceDate": "تاريخ الفاتورة",
@@ -1964,14 +1995,23 @@
           "paymentSummary": "ملخص الدفع",
           "particular": "البند",
           "amount": "المبلغ",
-          "venueCharges": "رسوم المكان/المزرعة (شاملة ضريبة القيمة المضافة)",
           "convenienceFee": "رسوم الخدمة",
           "gstOnFee": "ضريبة القيمة المضافة @18% على رسوم الخدمة",
-          "grandTotal": "إجمالي المبلغ المدفوع"
+          "grandTotal": "إجمالي المبلغ المدفوع",
+          "footerNote": "هذا ملخص لدفعتك. راجع علامة تبويب الفاتورة الضريبية للاطلاع على فاتورة (فواتير) ضريبة القيمة المضافة الداعمة لهذه الدفعة.",
+          "taxableValueLabel": "رسوم {category} (القيمة الخاضعة للضريبة)",
+          "gstIncludedLabel": "ضريبة القيمة المضافة مشمولة @18%",
+          "grossInvoiceValue": "إجمالي قيمة الفاتورة",
+          "netPayable": "صافي المبلغ المستحق",
+          "discount": "الخصم",
+          "vbDiscount": "نقاط الولاء المستبدلة",
+          "invoiceNo": "رقم الفاتورة",
+          "groupInvoice": "معلومات الفاتورة",
+          "groupCustomer": "معلومات العميل",
+          "groupBooking": "معلومات الحجز",
+          "groupPayment": "معلومات الدفع"
         },
         "tax": {
-          "venueHeading": "فاتورة ضريبية – خدمة المكان/المزرعة",
-          "feeHeading": "فاتورة ضريبية – رسوم خدمة VenueBook",
           "supplier": "المورّد",
           "invoiceNo": "رقم الفاتورة",
           "invoiceDate": "تاريخ الفاتورة",
@@ -1980,18 +2020,22 @@
           "description": "الوصف",
           "qty": "الكمية",
           "amount": "المبلغ",
-          "farmstayBooking": "حجز المزرعة",
-          "venueBooking": "حجز المكان",
           "convenienceFee": "رسوم الخدمة",
           "taxableValue": "القيمة الخاضعة للضريبة",
           "cgst": "ضريبة مركزية @9%",
           "sgst": "ضريبة حكومية @9%",
           "invoiceTotal": "إجمالي الفاتورة",
           "venueFooter": "تم إصدار هذه الفاتورة الضريبية من قبل {vendor}، مورّد خدمة الإقامة.",
-          "feeFooter": "تم إصدار هذه الفاتورة الضريبية من قبل VenueBook.in مقابل رسوم الخدمة المفروضة على الحجز.",
-          "inclusiveOfGst": "شاملة ضريبة القيمة المضافة"
+          "feeFooter": "تم إصدار هذه الفاتورة الضريبية من قبل venuebook.in مقابل رسوم الخدمة المفروضة على الحجز.",
+          "combinedFooter": "{vendor} غير مسجل في ضريبة القيمة المضافة. يتم إصدار هذه الفاتورة الضريبية الواحدة من قبل venuebook.in، وتغطي كلاً من رسوم {category} ورسوم الخدمة.",
+          "notRegisteredBadge": "المورّد غير مسجل في ضريبة القيمة المضافة",
+          "inclusiveOfGst": "شاملة ضريبة القيمة المضافة",
+          "categoryBookingLabel": "حجز {category}",
+          "igst": "ضريبة متكاملة @18%"
         },
-        "unavailable": "ستكون الفاتورة متاحة بعد اكتمال الدفع."
+        "unavailable": "ستكون الفاتورة متاحة بعد اكتمال الدفع.",
+        "generating": "جارٍ الإنشاء…",
+        "downloadError": "تعذّر إنشاء ملف PDF. اضغط لإعادة المحاولة."
       }
     },
     "collections": {
@@ -2028,7 +2072,7 @@
     },
     "settings": {
       "title": "الحساب",
-      "subtitle": "إدارة كيفية عمل VenueBook من أجلك",
+      "subtitle": "إدارة كيفية عمل venuebook.in من أجلك",
       "personalInfo": "المعلومات الشخصية",
       "emailPreferences": "تفضيلات البريد الإلكتروني",
       "notificationSettings": "إعدادات الإشعارات",
@@ -2070,7 +2114,6 @@
       "editTooltip": "تعديل الملف الشخصي"
     },
     "upcomingBooking": {
-      "title": "القادم",
       "openItinerary": "فتح خط الرحلة",
       "messageHost": "مراسلة المضيف",
       "empty": "لا توجد حجوزات قادمة"
@@ -2081,6 +2124,16 @@
       "close": "إغلاق",
       "rewardsTitle": "العضوية والمكافآت",
       "notificationsTitle": "الإشعارات"
+    },
+    "likedProperties": {
+      "title": "العقارات المفضلة",
+      "viewAll": "عرض الكل",
+      "empty": "ستظهر هنا العقارات التي أعجبتك"
+    },
+    "messagesNav": {
+      "title": "الرسائل",
+      "subtitle": "تحدث مع المضيفين والدعم",
+      "cta": "فتح صندوق الوارد"
     }
   }
 }

@@ -153,7 +153,7 @@ export const MOCK_CONVERSATIONS = [
   {
     id: "6",
     category: "support",
-    contact: { name: "VenueBook Support", initials: "VS", color: "from-slate-500 to-gray-600",   isOnline: true  },
+    contact: { name: "venuebook.in Support", initials: "VS", color: "from-slate-500 to-gray-600",   isOnline: true  },
     venue:   null,
     subject: "Billing Issue – INV-2024-0341",
     lastMessage: "Our billing team will review within 24 hours.",
@@ -172,7 +172,7 @@ export const MOCK_CONVERSATIONS = [
   {
     id: "7",
     category: "system",
-    contact: { name: "VenueBook",        initials: "VB", color: "from-violet-600 to-indigo-600", isOnline: true  },
+    contact: { name: "venuebook.in",        initials: "VB", color: "from-violet-600 to-indigo-600", isOnline: true  },
     venue:   null,
     subject: "New Booking Alert",
     lastMessage: "New booking request for The Grand Pavilion.",

@@ -70,7 +70,7 @@
   "auth": {
     "welcomeBack": "ಮತ್ತೆ ಸ್ವಾಗತ",
     "createAccount": "ಖಾತೆ ರಚಿಸಿ",
-    "newToVenueBook": "venuebook ಗೆ ಹೊಸವರಾ?",
+    "newToVenueBook": "venuebook.in ಗೆ ಹೊಸವರಾ?",
     "alreadyHaveAccount": "ಈಗಾಗಲೇ ಖಾತೆಯಿದೆಯೇ?",
     "signUpFree": "ಉಚಿತವಾಗಿ ನೋಂದಣಿ ಮಾಡಿ",
     "login": "ಲಾಗಿನ್ ಮಾಡಿ",
@@ -810,7 +810,7 @@
   "checkout": {
     "title": "Complete Your Booking",
     "wallet": {
-      "title": "Your VenueBook Rewards",
+      "title": "Your venuebook.in Rewards",
       "tier": "Membership Tier",
       "points": "Reward Points",
       "wallet_value": "Wallet Value",
@@ -1012,7 +1012,7 @@
       "nights": "nights",
       "night": "night",
       "earning_points": "This booking earns you",
-      "points_label": "VenueBook Points",
+      "points_label": "venuebook.in Points",
       "tier_progress": "Progress to {tier}",
       "tier_progress_already": "Highest tier reached",
       "event_date": "Event Date",
@@ -1719,7 +1719,7 @@
     },
     "bookings": {
       "title": "ಬುಕಿಂಗ್‌ಗಳು",
-      "subtitle": "VenueBook ನೊಂದಿಗೆ ನೀವು ಬುಕ್ ಮಾಡಿದ ಎಲ್ಲವೂ",
+      "subtitle": "venuebook.in ನೊಂದಿಗೆ ನೀವು ಬುಕ್ ಮಾಡಿದ ಎಲ್ಲವೂ",
       "viewAll": "ಎಲ್ಲವನ್ನೂ ವೀಕ್ಷಿಸಿ",
       "id": "ಬುಕಿಂಗ್ ಐಡಿ",
       "date": "ದಿನಾಂಕ",
@@ -1750,8 +1750,36 @@
         "refunded": "ಮರುಪಾವತಿಸಲಾಗಿದೆ"
       },
       "empty": {
-        "title": "ಇನ್ನೂ ಯಾವುದೇ ಬುಕಿಂಗ್ ಇಲ್ಲ",
-        "subtitle": "ನಿಮ್ಮ ಮುಂಬರುವ ಮತ್ತು ಹಿಂದಿನ ಬುಕಿಂಗ್‌ಗಳು ಇಲ್ಲಿ ಕಾಣಿಸುತ್ತವೆ.",
+        "byTab": {
+          "all": {
+            "title": "ಇನ್ನೂ ಯಾವುದೇ ಬುಕಿಂಗ್ ಇಲ್ಲ",
+            "subtitle": "ನಿಮ್ಮ ಮುಂಬರುವ ಮತ್ತು ಹಿಂದಿನ ಬುಕಿಂಗ್‌ಗಳು ಇಲ್ಲಿ ಕಾಣಿಸುತ್ತವೆ."
+          },
+          "upcoming": {
+            "title": "ಯಾವುದೇ ಮುಂಬರುವ ಬುಕಿಂಗ್ ಇಲ್ಲ",
+            "subtitle": "ನಿಮ್ಮ ಮುಂಬರುವ ಬುಕಿಂಗ್‌ಗಳು ಇಲ್ಲಿ ಕಾಣಿಸುತ್ತವೆ."
+          },
+          "completed": {
+            "title": "ಯಾವುದೇ ಪೂರ್ಣಗೊಂಡ ಬುಕಿಂಗ್ ಇಲ್ಲ",
+            "subtitle": "ನೀವು ಪೂರ್ಣಗೊಳಿಸಿದ ಬುಕಿಂಗ್‌ಗಳು ಇಲ್ಲಿ ಕಾಣಿಸುತ್ತವೆ."
+          },
+          "cancelled": {
+            "title": "ಯಾವುದೇ ರದ್ದಾದ ಬುಕಿಂಗ್ ಇಲ್ಲ",
+            "subtitle": "ನೀವು ರದ್ದುಗೊಳಿಸಿದ ಬುಕಿಂಗ್‌ಗಳು ಇಲ್ಲಿ ಕಾಣಿಸುತ್ತವೆ."
+          },
+          "reservation": {
+            "title": "ಇನ್ನೂ ಯಾವುದೇ ಕಾಯ್ದಿರಿಸುವಿಕೆ ಇಲ್ಲ",
+            "subtitle": "ದೃಢಪಡಿಸಿದ ಬುಕಿಂಗ್‌ಗಳು ಇಲ್ಲಿ ಕಾಣಿಸುತ್ತವೆ."
+          },
+          "enquiry": {
+            "title": "ಯಾವುದೇ ವಿಚಾರಣೆ ಕಳುಹಿಸಿಲ್ಲ",
+            "subtitle": "ನೀವು ವಿಚಾರಿಸಿದ ಪ್ರಾಪರ್ಟಿಗಳು ಇಲ್ಲಿ ಕಾಣಿಸುತ್ತವೆ."
+          },
+          "drafted": {
+            "title": "ಯಾವುದೇ ಡ್ರಾಫ್ಟ್ ಬುಕಿಂಗ್ ಇಲ್ಲ",
+            "subtitle": "ನೀವು ಪ್ರಾರಂಭಿಸಿ ಪೂರ್ಣಗೊಳಿಸದ ಬುಕಿಂಗ್‌ಗಳು ಇಲ್ಲಿ ಕಾಣಿಸುತ್ತವೆ."
+          }
+        },
         "cta": "ವೆನ್ಯೂಗಳನ್ನು ಬ್ರೌಸ್ ಮಾಡಿ"
       },
       "statusLabel": "ಸ್ಥಿತಿ",
@@ -1774,11 +1802,14 @@
         "tabs": {
           "main": "ಮುಖ್ಯ ಇನ್‌ವಾಯ್ಸ್",
           "venue": "ವೆನ್ಯೂ ಇನ್‌ವಾಯ್ಸ್",
-          "fee": "ಶುಲ್ಕ ಇನ್‌ವಾಯ್ಸ್"
+          "fee": "ಶುಲ್ಕ ಇನ್‌ವಾಯ್ಸ್",
+          "tax": "ತೆರಿಗೆ ಇನ್‌ವಾಯ್ಸ್",
+          "combined": "ಸಂಯೋಜಿತ ಇನ್‌ವಾಯ್ಸ್"
         },
         "download": "ಡೌನ್‌ಲೋಡ್ ಮಾಡಿ",
+        "print": "ಮುದ್ರಿಸಿ",
         "main": {
-          "docTitle": "Venuebook.in ನಿಂದ ಗ್ರಾಹಕರಿಗೆ ಇನ್‌ವಾಯ್ಸ್",
+          "docTitle": "venuebook.in ನಿಂದ ಗ್ರಾಹಕರಿಗೆ ಇನ್‌ವಾಯ್ಸ್",
           "docSubtitle": "ಮುಖ್ಯ ಬುಕಿಂಗ್ ಇನ್‌ವಾಯ್ಸ್",
           "bookingId": "ಬುಕಿಂಗ್ ಐಡಿ",
           "invoiceDate": "ಇನ್‌ವಾಯ್ಸ್ ದಿನಾಂಕ",
@@ -1796,14 +1827,23 @@
           "paymentSummary": "ಪಾವತಿ ಸಾರಾಂಶ",
           "particular": "ವಿವರ",
           "amount": "ಮೊತ್ತ",
-          "venueCharges": "ವೆನ್ಯೂ/ಫಾರ್ಮ್‌ಸ್ಟೇ ಶುಲ್ಕ (ಜಿಎಸ್‌ಟಿ ಸೇರಿ)",
           "convenienceFee": "ಅನುಕೂಲ ಶುಲ್ಕ",
           "gstOnFee": "ಅನುಕೂಲ ಶುಲ್ಕದ ಮೇಲೆ ಜಿಎಸ್‌ಟಿ @18%",
-          "grandTotal": "ಒಟ್ಟು ಪಾವತಿಸಿದ ಮೊತ್ತ"
+          "grandTotal": "ಒಟ್ಟು ಪಾವತಿಸಿದ ಮೊತ್ತ",
+          "footerNote": "ಇದು ನಿಮ್ಮ ಪಾವತಿಯ ಸಾರಾಂಶ. ಈ ಪಾವತಿಯ ಹಿಂದಿನ ಜಿಎಸ್‌ಟಿ ಇನ್‌ವಾಯ್ಸ್(ಗಳ) ಗಾಗಿ ತೆರಿಗೆ ಇನ್‌ವಾಯ್ಸ್ ಟ್ಯಾಬ್ ನೋಡಿ.",
+          "taxableValueLabel": "{category} ಶುಲ್ಕ (ತೆರಿಗೆಗೆ ಒಳಪಡುವ ಮೌಲ್ಯ)",
+          "gstIncludedLabel": "ಜಿಎಸ್‌ಟಿ ಸೇರಿದೆ @18%",
+          "grossInvoiceValue": "ಒಟ್ಟು ಇನ್‌ವಾಯ್ಸ್ ಮೌಲ್ಯ",
+          "netPayable": "ನಿವ್ವಳ ಪಾವತಿಸಬೇಕಾದ ಮೌಲ್ಯ",
+          "discount": "ರಿಯಾಯಿತಿ",
+          "vbDiscount": "ಲಾಯಲ್ಟಿ ರಿಡೀಮ್ ಮಾಡಲಾಗಿದೆ",
+          "invoiceNo": "ಇನ್‌ವಾಯ್ಸ್ ಸಂಖ್ಯೆ",
+          "groupInvoice": "ಇನ್‌ವಾಯ್ಸ್ ಮಾಹಿತಿ",
+          "groupCustomer": "ಗ್ರಾಹಕರ ಮಾಹಿತಿ",
+          "groupBooking": "ಬುಕಿಂಗ್ ಮಾಹಿತಿ",
+          "groupPayment": "ಪಾವತಿ ಮಾಹಿತಿ"
         },
         "tax": {
-          "venueHeading": "ತೆರಿಗೆ ಇನ್‌ವಾಯ್ಸ್ – ವೆನ್ಯೂ/ಫಾರ್ಮ್‌ಸ್ಟೇ ಸೇವೆ",
-          "feeHeading": "ತೆರಿಗೆ ಇನ್‌ವಾಯ್ಸ್ – VenueBook ಅನುಕೂಲ ಶುಲ್ಕ",
           "supplier": "ಪೂರೈಕೆದಾರ",
           "invoiceNo": "ಇನ್‌ವಾಯ್ಸ್ ಸಂಖ್ಯೆ",
           "invoiceDate": "ಇನ್‌ವಾಯ್ಸ್ ದಿನಾಂಕ",
@@ -1812,18 +1852,22 @@
           "description": "ವಿವರ",
           "qty": "ಪ್ರಮಾಣ",
           "amount": "ಮೊತ್ತ",
-          "farmstayBooking": "ಫಾರ್ಮ್‌ಸ್ಟೇ ಬುಕಿಂಗ್",
-          "venueBooking": "ವೆನ್ಯೂ ಬುಕಿಂಗ್",
           "convenienceFee": "ಅನುಕೂಲ ಶುಲ್ಕ",
           "taxableValue": "ತೆರಿಗೆಗೆ ಒಳಪಡುವ ಮೌಲ್ಯ",
           "cgst": "ಸಿಜಿಎಸ್‌ಟಿ @9%",
           "sgst": "ಎಸ್‌ಜಿಎಸ್‌ಟಿ @9%",
           "invoiceTotal": "ಒಟ್ಟು ಇನ್‌ವಾಯ್ಸ್ ಮೊತ್ತ",
           "venueFooter": "ಈ ತೆರಿಗೆ ಇನ್‌ವಾಯ್ಸ್ ಅನ್ನು {vendor} ನೀಡಿದೆ, ಇದು ವಸತಿ ಸೇವೆಯ ಪೂರೈಕೆದಾರರಾಗಿದೆ.",
-          "feeFooter": "ಈ ತೆರಿಗೆ ಇನ್‌ವಾಯ್ಸ್ ಅನ್ನು ಬುಕಿಂಗ್ ಮೇಲೆ ವಿಧಿಸಲಾದ ಅನುಕೂಲ ಶುಲ್ಕಕ್ಕಾಗಿ VenueBook.in ನೀಡಿದೆ.",
-          "inclusiveOfGst": "ಜಿಎಸ್‌ಟಿ ಸೇರಿ"
+          "feeFooter": "ಈ ತೆರಿಗೆ ಇನ್‌ವಾಯ್ಸ್ ಅನ್ನು ಬುಕಿಂಗ್ ಮೇಲೆ ವಿಧಿಸಲಾದ ಅನುಕೂಲ ಶುಲ್ಕಕ್ಕಾಗಿ venuebook.in ನೀಡಿದೆ.",
+          "combinedFooter": "{vendor} ಜಿಎಸ್‌ಟಿ ನೋಂದಾಯಿತವಾಗಿಲ್ಲ. ಈ ಏಕೈಕ ತೆರಿಗೆ ಇನ್‌ವಾಯ್ಸ್ ಅನ್ನು venuebook.in ನೀಡಿದೆ, ಇದು {category} ಶುಲ್ಕ ಮತ್ತು ಅನುಕೂಲ ಶುಲ್ಕ ಎರಡನ್ನೂ ಒಳಗೊಂಡಿದೆ.",
+          "notRegisteredBadge": "ಮಾರಾಟಗಾರರು ಜಿಎಸ್‌ಟಿ ನೋಂದಾಯಿತರಲ್ಲ",
+          "inclusiveOfGst": "ಜಿಎಸ್‌ಟಿ ಸೇರಿ",
+          "categoryBookingLabel": "{category} ಬುಕಿಂಗ್",
+          "igst": "ಐಜಿಎಸ್‌ಟಿ @18%"
         },
-        "unavailable": "ಪಾವತಿ ಪೂರ್ಣಗೊಂಡ ನಂತರ ಇನ್‌ವಾಯ್ಸ್ ಲಭ್ಯವಿರುತ್ತದೆ."
+        "unavailable": "ಪಾವತಿ ಪೂರ್ಣಗೊಂಡ ನಂತರ ಇನ್‌ವಾಯ್ಸ್ ಲಭ್ಯವಿರುತ್ತದೆ.",
+        "generating": "ರಚಿಸಲಾಗುತ್ತಿದೆ…",
+        "downloadError": "PDF ರಚಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಲು ಟ್ಯಾಪ್ ಮಾಡಿ."
       }
     },
     "collections": {
@@ -1860,7 +1904,7 @@
     },
     "settings": {
       "title": "ಖಾತೆ",
-      "subtitle": "VenueBook ನಿಮಗಾಗಿ ಹೇಗೆ ಕಾರ್ಯನಿರ್ವಹಿಸುತ್ತದೆ ಎಂಬುದನ್ನು ನಿರ್ವಹಿಸಿ",
+      "subtitle": "venuebook.in ನಿಮಗಾಗಿ ಹೇಗೆ ಕಾರ್ಯನಿರ್ವಹಿಸುತ್ತದೆ ಎಂಬುದನ್ನು ನಿರ್ವಹಿಸಿ",
       "personalInfo": "ವೈಯಕ್ತಿಕ ಮಾಹಿತಿ",
       "emailPreferences": "ಇಮೇಲ್ ಆದ್ಯತೆಗಳು",
       "notificationSettings": "ಅಧಿಸೂಚನೆ ಸೆಟ್ಟಿಂಗ್‌ಗಳು",
@@ -1902,7 +1946,6 @@
       "editTooltip": "ಪ್ರೊಫೈಲ್ ಸಂಪಾದಿಸಿ"
     },
     "upcomingBooking": {
-      "title": "ಮುಂಬರುವ",
       "openItinerary": "ಪ್ರಯಾಣ ವಿವರ ತೆರೆಯಿರಿ",
       "messageHost": "ಹೋಸ್ಟ್‌ಗೆ ಸಂದೇಶ ಕಳುಹಿಸಿ",
       "empty": "ಯಾವುದೇ ಮುಂಬರುವ ಬುಕಿಂಗ್ ಇಲ್ಲ"
@@ -1913,6 +1956,16 @@
       "close": "ಮುಚ್ಚಿ",
       "rewardsTitle": "ಸದಸ್ಯತ್ವ ಮತ್ತು ರಿವಾರ್ಡ್ಸ್",
       "notificationsTitle": "ಅಧಿಸೂಚನೆಗಳು"
+    },
+    "likedProperties": {
+      "title": "ಇಷ್ಟಪಟ್ಟ ಪ್ರಾಪರ್ಟಿಗಳು",
+      "viewAll": "ಎಲ್ಲಾ ವೀಕ್ಷಿಸಿ",
+      "empty": "ನೀವು ಇಷ್ಟಪಟ್ಟ ಪ್ರಾಪರ್ಟಿಗಳು ಇಲ್ಲಿ ಕಾಣಿಸುತ್ತವೆ"
+    },
+    "messagesNav": {
+      "title": "ಸಂದೇಶಗಳು",
+      "subtitle": "ಹೋಸ್ಟ್ ಮತ್ತು ಬೆಂಬಲದೊಂದಿಗೆ ಚಾಟ್ ಮಾಡಿ",
+      "cta": "ಇನ್‌ಬಾಕ್ಸ್ ತೆರೆಯಿರಿ"
     }
   }
 }

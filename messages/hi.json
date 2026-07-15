@@ -70,7 +70,7 @@
   "auth": {
     "welcomeBack": "वापसी पर स्वागत है",
     "createAccount": "खाता बनाएं",
-    "newToVenueBook": "venuebook पर नए हैं?",
+    "newToVenueBook": "venuebook.in पर नए हैं?",
     "alreadyHaveAccount": "क्या आपके पास पहले से खाता है?",
     "signUpFree": "मुफ़्त में साइन अप करें",
     "login": "लॉग इन करें",
@@ -810,7 +810,7 @@
   "checkout": {
     "title": "Complete Your Booking",
     "wallet": {
-      "title": "Your VenueBook Rewards",
+      "title": "Your venuebook.in Rewards",
       "tier": "Membership Tier",
       "points": "Reward Points",
       "wallet_value": "Wallet Value",
@@ -1012,7 +1012,7 @@
       "nights": "nights",
       "night": "night",
       "earning_points": "This booking earns you",
-      "points_label": "VenueBook Points",
+      "points_label": "venuebook.in Points",
       "tier_progress": "Progress to {tier}",
       "tier_progress_already": "Highest tier reached",
       "event_date": "Event Date",
@@ -1719,7 +1719,7 @@
     },
     "bookings": {
       "title": "बुकिंग",
-      "subtitle": "VenueBook के साथ आपकी सभी बुकिंग",
+      "subtitle": "venuebook.in के साथ आपकी सभी बुकिंग",
       "viewAll": "सभी देखें",
       "id": "बुकिंग आईडी",
       "date": "तारीख़",
@@ -1750,8 +1750,36 @@
         "refunded": "वापस किया गया"
       },
       "empty": {
-        "title": "अभी तक कोई बुकिंग नहीं",
-        "subtitle": "आपकी आगामी और पिछली बुकिंग यहां दिखाई देंगी।",
+        "byTab": {
+          "all": {
+            "title": "अभी कोई बुकिंग नहीं",
+            "subtitle": "आपकी आगामी और पिछली बुकिंग यहाँ दिखाई देंगी।"
+          },
+          "upcoming": {
+            "title": "कोई आगामी बुकिंग नहीं",
+            "subtitle": "आपकी आने वाली बुकिंग यहाँ दिखाई देंगी।"
+          },
+          "completed": {
+            "title": "कोई पूर्ण बुकिंग नहीं",
+            "subtitle": "आपकी पूर्ण की गई बुकिंग यहाँ दिखाई देंगी।"
+          },
+          "cancelled": {
+            "title": "कोई रद्द बुकिंग नहीं",
+            "subtitle": "आपकी रद्द की गई बुकिंग यहाँ दिखाई देंगी।"
+          },
+          "reservation": {
+            "title": "अभी कोई आरक्षण नहीं",
+            "subtitle": "पुष्ट बुकिंग यहाँ दिखाई देंगी।"
+          },
+          "enquiry": {
+            "title": "कोई पूछताछ नहीं भेजी गई",
+            "subtitle": "जिन प्रॉपर्टी के बारे में आपने पूछताछ की है, वे यहाँ दिखाई देंगी।"
+          },
+          "drafted": {
+            "title": "कोई ड्राफ्ट बुकिंग नहीं",
+            "subtitle": "अधूरी छोड़ी गई बुकिंग प्रक्रियाएँ यहाँ दिखाई देंगी।"
+          }
+        },
         "cta": "वेन्यू ब्राउज़ करें"
       },
       "statusLabel": "स्थिति",
@@ -1774,11 +1802,14 @@
         "tabs": {
           "main": "मुख्य इनवॉइस",
           "venue": "वेन्यू इनवॉइस",
-          "fee": "शुल्क इनवॉइस"
+          "fee": "शुल्क इनवॉइस",
+          "tax": "कर चालान",
+          "combined": "संयुक्त इनवॉइस"
         },
         "download": "डाउनलोड करें",
+        "print": "प्रिंट करें",
         "main": {
-          "docTitle": "Venuebook.in से ग्राहक को इनवॉइस",
+          "docTitle": "venuebook.in से ग्राहक को इनवॉइस",
           "docSubtitle": "मुख्य बुकिंग इनवॉइस",
           "bookingId": "बुकिंग आईडी",
           "invoiceDate": "इनवॉइस तारीख़",
@@ -1796,14 +1827,23 @@
           "paymentSummary": "भुगतान सारांश",
           "particular": "विवरण",
           "amount": "राशि",
-          "venueCharges": "वेन्यू/फ़ार्मस्टे शुल्क (जीएसटी सहित)",
           "convenienceFee": "सुविधा शुल्क",
           "gstOnFee": "सुविधा शुल्क पर जीएसटी @18%",
-          "grandTotal": "कुल भुगतान की गई राशि"
+          "grandTotal": "कुल भुगतान की गई राशि",
+          "footerNote": "यह आपके भुगतान का सारांश है। इस भुगतान के पीछे की जीएसटी इनवॉइस(ओं) के लिए टैक्स इनवॉइस टैब देखें।",
+          "taxableValueLabel": "{category} शुल्क (कर योग्य राशि)",
+          "gstIncludedLabel": "जीएसटी शामिल @18%",
+          "grossInvoiceValue": "सकल इनवॉइस मूल्य",
+          "netPayable": "शुद्ध देय राशि",
+          "discount": "छूट",
+          "vbDiscount": "लॉयल्टी रिडीम की गई",
+          "invoiceNo": "इनवॉइस नंबर",
+          "groupInvoice": "इनवॉइस जानकारी",
+          "groupCustomer": "ग्राहक जानकारी",
+          "groupBooking": "बुकिंग जानकारी",
+          "groupPayment": "भुगतान जानकारी"
         },
         "tax": {
-          "venueHeading": "कर चालान – वेन्यू/फ़ार्मस्टे सेवा",
-          "feeHeading": "कर चालान – VenueBook सुविधा शुल्क",
           "supplier": "आपूर्तिकर्ता",
           "invoiceNo": "इनवॉइस नंबर",
           "invoiceDate": "इनवॉइस तारीख़",
@@ -1812,18 +1852,22 @@
           "description": "विवरण",
           "qty": "मात्रा",
           "amount": "राशि",
-          "farmstayBooking": "फ़ार्मस्टे बुकिंग",
-          "venueBooking": "वेन्यू बुकिंग",
           "convenienceFee": "सुविधा शुल्क",
           "taxableValue": "कर योग्य मूल्य",
           "cgst": "सीजीएसटी @9%",
           "sgst": "एसजीएसटी @9%",
           "invoiceTotal": "कुल इनवॉइस राशि",
           "venueFooter": "यह कर चालान {vendor} द्वारा जारी किया गया है, जो आवास सेवा का आपूर्तिकर्ता है।",
-          "feeFooter": "यह कर चालान VenueBook.in द्वारा बुकिंग पर लगाए गए सुविधा शुल्क के लिए जारी किया गया है।",
-          "inclusiveOfGst": "जीएसटी सहित"
+          "feeFooter": "यह कर चालान venuebook.in द्वारा बुकिंग पर लगाए गए सुविधा शुल्क के लिए जारी किया गया है।",
+          "combinedFooter": "{vendor} जीएसटी पंजीकृत नहीं है। यह एकल टैक्स इनवॉइस venuebook.in द्वारा जारी की गई है, जिसमें {category} शुल्क और सुविधा शुल्क दोनों शामिल हैं।",
+          "notRegisteredBadge": "विक्रेता जीएसटी पंजीकृत नहीं है",
+          "inclusiveOfGst": "जीएसटी सहित",
+          "categoryBookingLabel": "{category} बुकिंग",
+          "igst": "आईजीएसटी @18%"
         },
-        "unavailable": "भुगतान पूरा होने के बाद इनवॉइस उपलब्ध होगा।"
+        "unavailable": "भुगतान पूरा होने के बाद इनवॉइस उपलब्ध होगा।",
+        "generating": "बनाया जा रहा है…",
+        "downloadError": "PDF नहीं बन सका। फिर से कोशिश करने के लिए टैप करें।"
       }
     },
     "collections": {
@@ -1860,7 +1904,7 @@
     },
     "settings": {
       "title": "खाता",
-      "subtitle": "VenueBook आपके लिए कैसे काम करता है, प्रबंधित करें",
+      "subtitle": "venuebook.in आपके लिए कैसे काम करता है, प्रबंधित करें",
       "personalInfo": "व्यक्तिगत जानकारी",
       "emailPreferences": "ईमेल प्राथमिकताएं",
       "notificationSettings": "सूचना सेटिंग्स",
@@ -1902,7 +1946,6 @@
       "editTooltip": "प्रोफ़ाइल संपादित करें"
     },
     "upcomingBooking": {
-      "title": "आगामी",
       "openItinerary": "यात्रा विवरण खोलें",
       "messageHost": "होस्ट को संदेश भेजें",
       "empty": "कोई आगामी बुकिंग नहीं"
@@ -1913,6 +1956,16 @@
       "close": "बंद करें",
       "rewardsTitle": "सदस्यता और रिवॉर्ड्स",
       "notificationsTitle": "सूचनाएं"
+    },
+    "likedProperties": {
+      "title": "पसंदीदा प्रॉपर्टी",
+      "viewAll": "सभी देखें",
+      "empty": "आपकी पसंदीदा प्रॉपर्टी यहाँ दिखाई देंगी"
+    },
+    "messagesNav": {
+      "title": "संदेश",
+      "subtitle": "होस्ट और सपोर्ट से चैट करें",
+      "cta": "इनबॉक्स खोलें"
     }
   }
 }

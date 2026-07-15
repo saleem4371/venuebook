@@ -1,5 +1,5 @@
 {
-  "welcome": "Welcome to VenueBook",
+  "welcome": "Welcome to venuebook.in",
   "book_now": "Book Now",
   "search_placeholder": "Search venues, locations...",
   "explore": "Explore",
@@ -70,7 +70,7 @@
   "auth": {
     "welcomeBack": "Welcome back",
     "createAccount": "Create account",
-    "newToVenueBook": "New to VenueBook?",
+    "newToVenueBook": "New to venuebook.in?",
     "alreadyHaveAccount": "Already have an account?",
     "signUpFree": "Sign up free",
     "login": "Log in",
@@ -195,7 +195,7 @@
   "footer": {
     "sr_label": "Footer",
     "brand": {
-      "sr_home": "VenueBook home",
+      "sr_home": "venuebook.in home",
       "IN": {
         "description": "Discover and book amazing venues for weddings, corporate events, and serene farmstays. Your perfect celebration starts here."
       },
@@ -266,7 +266,7 @@
       "change_region_sr": "Change language and region"
     },
     "legal": {
-      "copyright": "© {year} VenueBook, Inc.",
+      "copyright": "© {year} venuebook.in",
       "privacy": "Privacy",
       "terms": "Terms",
       "sitemap": "Sitemap",
@@ -978,7 +978,7 @@
   "checkout": {
     "title": "Complete Your Booking",
     "wallet": {
-      "title": "Your VenueBook Rewards",
+      "title": "Your venuebook.in Rewards",
       "tier": "Membership Tier",
       "points": "Reward Points",
       "wallet_value": "Wallet Value",
@@ -1180,7 +1180,7 @@
       "nights": "nights",
       "night": "night",
       "earning_points": "This booking earns you",
-      "points_label": "VenueBook Points",
+      "points_label": "venuebook.in Points",
       "tier_progress": "Progress to {tier}",
       "tier_progress_already": "Highest tier reached",
       "event_date": "Event Date",
@@ -1887,7 +1887,7 @@
     },
     "bookings": {
       "title": "Bookings",
-      "subtitle": "Everything you've booked with VenueBook",
+      "subtitle": "Everything you've booked with venuebook.in",
       "viewAll": "View All",
       "id": "Booking ID",
       "date": "Date",
@@ -1918,8 +1918,36 @@
         "refunded": "Refunded"
       },
       "empty": {
-        "title": "No bookings yet",
-        "subtitle": "Your upcoming and past bookings will show up here.",
+        "byTab": {
+          "all": {
+            "title": "No bookings yet",
+            "subtitle": "Your upcoming and past bookings will show up here."
+          },
+          "upcoming": {
+            "title": "No upcoming bookings",
+            "subtitle": "Bookings you have coming up will show up here."
+          },
+          "completed": {
+            "title": "No completed bookings",
+            "subtitle": "Stays and events you've completed will show up here."
+          },
+          "cancelled": {
+            "title": "No cancelled bookings",
+            "subtitle": "Bookings you've cancelled will show up here."
+          },
+          "reservation": {
+            "title": "No reservations yet",
+            "subtitle": "Confirmed bookings will show up here."
+          },
+          "enquiry": {
+            "title": "No enquiries sent",
+            "subtitle": "Properties you've enquired about will show up here."
+          },
+          "drafted": {
+            "title": "No drafted bookings",
+            "subtitle": "Booking flows you started but didn't finish will show up here."
+          }
+        },
         "cta": "Browse Venues"
       },
       "statusLabel": "Status",
@@ -1942,11 +1970,14 @@
         "tabs": {
           "main": "Main Invoice",
           "venue": "Venue Invoice",
-          "fee": "Fee Invoice"
+          "fee": "Fee Invoice",
+          "tax": "Tax Invoice",
+          "combined": "Combined Invoice"
         },
         "download": "Download",
+        "print": "Print",
         "main": {
-          "docTitle": "Venuebook.in Invoice to Customer",
+          "docTitle": "venuebook.in Invoice to Customer",
           "docSubtitle": "Main Booking Invoice",
           "bookingId": "Booking ID",
           "invoiceDate": "Invoice Date",
@@ -1964,14 +1995,23 @@
           "paymentSummary": "Payment Summary",
           "particular": "Particular",
           "amount": "Amount",
-          "venueCharges": "Venue/Farmstay Charges (Inclusive of GST)",
           "convenienceFee": "Convenience Fee",
           "gstOnFee": "GST @18% on Convenience Fee",
-          "grandTotal": "Grand Total Paid"
+          "grandTotal": "Grand Total Paid",
+          "footerNote": "This is a summary of your payment. See the Tax Invoice tab for the GST invoice(s) that back this payment.",
+          "taxableValueLabel": "{category} Charges (Taxable Value)",
+          "gstIncludedLabel": "GST Included @18%",
+          "grossInvoiceValue": "Gross Invoice Value",
+          "netPayable": "Net Payable Value",
+          "discount": "Discount",
+          "vbDiscount": "Loyalty Redeemed",
+          "invoiceNo": "Invoice Number",
+          "groupInvoice": "Invoice Info",
+          "groupCustomer": "Customer Info",
+          "groupBooking": "Booking Info",
+          "groupPayment": "Payment Info"
         },
         "tax": {
-          "venueHeading": "Tax Invoice – Venue/Farmstay Service",
-          "feeHeading": "Tax Invoice – VenueBook Convenience Fee",
           "supplier": "Supplier",
           "invoiceNo": "Invoice No.",
           "invoiceDate": "Invoice Date",
@@ -1980,18 +2020,22 @@
           "description": "Description",
           "qty": "Qty",
           "amount": "Amount",
-          "farmstayBooking": "Farmstay Booking",
-          "venueBooking": "Venue Booking",
           "convenienceFee": "Convenience Fee",
           "taxableValue": "Taxable Value",
           "cgst": "CGST @9%",
           "sgst": "SGST @9%",
           "invoiceTotal": "Invoice Total",
           "venueFooter": "This tax invoice is issued by {vendor}, the supplier of the accommodation service.",
-          "feeFooter": "This tax invoice is issued by VenueBook.in for the convenience fee charged on the booking.",
-          "inclusiveOfGst": "Inclusive of GST"
+          "feeFooter": "This tax invoice is issued by venuebook.in for the convenience fee charged on the booking.",
+          "combinedFooter": "{vendor} is not GST registered. This single tax invoice is issued by venuebook.in, covering both the {category} charge and the convenience fee.",
+          "notRegisteredBadge": "Vendor not GST registered",
+          "inclusiveOfGst": "Inclusive of GST",
+          "categoryBookingLabel": "{category} Booking",
+          "igst": "IGST @18%"
         },
-        "unavailable": "Invoice will be available once payment is completed."
+        "unavailable": "Invoice will be available once payment is completed.",
+        "generating": "Generating…",
+        "downloadError": "Couldn't generate PDF. Tap to retry."
       }
     },
     "collections": {
@@ -2028,7 +2072,7 @@
     },
     "settings": {
       "title": "Account",
-      "subtitle": "Manage how VenueBook works for you",
+      "subtitle": "Manage how venuebook.in works for you",
       "personalInfo": "Personal Information",
       "emailPreferences": "Email Preferences",
       "notificationSettings": "Notification Settings",
@@ -2070,7 +2114,6 @@
       "editTooltip": "Edit profile"
     },
     "upcomingBooking": {
-      "title": "Upcoming",
       "openItinerary": "Open itinerary",
       "messageHost": "Message host",
       "empty": "No upcoming bookings"
@@ -2081,6 +2124,16 @@
       "close": "Close",
       "rewardsTitle": "Membership & Rewards",
       "notificationsTitle": "Notifications"
+    },
+    "likedProperties": {
+      "title": "Liked Properties",
+      "viewAll": "View All",
+      "empty": "Properties you like will show up here"
+    },
+    "messagesNav": {
+      "title": "Messages",
+      "subtitle": "Chat with hosts and support",
+      "cta": "Open Inbox"
     }
   }
 }

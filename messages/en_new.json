@@ -1,5 +1,5 @@
 {
-  "welcome": "Welcome to VenueBook",
+  "welcome": "Welcome to venuebook.in",
   "book_now": "Book Now",
   "search_placeholder": "Search venues, locations...",
   "explore": "Explore",
@@ -69,7 +69,7 @@
   "auth": {
     "welcomeBack": "Welcome back",
     "createAccount": "Create account",
-    "newToVenueBook": "New to VenueBook?",
+    "newToVenueBook": "New to venuebook.in?",
     "alreadyHaveAccount": "Already have an account?",
     "signUpFree": "Sign up free",
     "login": "Log in",
@@ -194,7 +194,7 @@
   "footer": {
     "sr_label": "Footer",
     "brand": {
-      "sr_home": "VenueBook home",
+      "sr_home": "venuebook.in home",
       "IN": {
         "description": "Discover and book amazing venues for weddings, corporate events, and serene farmstays. Your perfect celebration starts here."
       },
@@ -265,7 +265,7 @@
       "change_region_sr": "Change language and region"
     },
     "legal": {
-      "copyright": "© {year} VenueBook, Inc.",
+      "copyright": "© {year} venuebook.in",
       "privacy": "Privacy",
       "terms": "Terms",
       "sitemap": "Sitemap",
@@ -977,7 +977,7 @@
   "checkout": {
     "title": "Complete Your Booking",
     "wallet": {
-      "title": "Your VenueBook Rewards",
+      "title": "Your venuebook.in Rewards",
       "tier": "Membership Tier",
       "points": "Reward Points",
       "wallet_value": "Wallet Value",
@@ -1179,7 +1179,7 @@
       "nights": "nights",
       "night": "night",
       "earning_points": "This booking earns you",
-      "points_label": "VenueBook Points",
+      "points_label": "venuebook.in Points",
       "tier_progress": "Progress to {tier}",
       "tier_progress_already": "Highest tier reached",
       "event_date": "Event Date",
