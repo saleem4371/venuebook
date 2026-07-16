@@ -12,6 +12,20 @@
  *   No other file needs changing.
  */
 
+import { Building2, TreePine } from "lucide-react";
+
+/**
+ * Canonical category icon registry.
+ * venues → Building2, farmstays → TreePine, PLATFORM-WIDE. Never introduce a
+ * different icon for these two categories — every component that needs a
+ * venue or farmstay glyph should import from here instead of picking its own.
+ * (Other categories aren't centralized yet — out of scope for this change.)
+ */
+export const CATEGORY_ICONS = {
+  venues: Building2,
+  farmstays: TreePine,
+};
+
 /**
  * Per-category glass tint tokens.
  * Applied dynamically to hero search bar, tabs, active chips, dropdowns.

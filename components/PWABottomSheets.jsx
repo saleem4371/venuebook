@@ -237,7 +237,7 @@ function InstallSheet({ onDone }) {
             </svg>
           </div>
           <div>
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#7c3aed", marginBottom: 2 }}>VenueBook</div>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#7c3aed", marginBottom: 2 }}>venuebook.in</div>
             <div style={{ fontSize: 18, fontWeight: 700, color: "#111827", lineHeight: 1.2 }}>
               Add to Home Screen
             </div>
@@ -366,7 +366,7 @@ function NotificationSheet({ onDone }) {
             </svg>
           </div>
           <div>
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#f43f5e", marginBottom: 2 }}>VenueBook</div>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#f43f5e", marginBottom: 2 }}>venuebook.in</div>
             <div style={{ fontSize: 18, fontWeight: 700, color: "#111827", lineHeight: 1.2 }}>Stay in the Loop</div>
           </div>
         </div>
