@@ -1,14 +1,15 @@
 "use client";
 
 import { motion } from "framer-motion";
-import VenueCard from "./VenueCard";
+import PropertyCard from "./PropertyCard";
 import HorizontalRail from "./HorizontalRail";
 import ViewAllCard from "./ViewAllCard";
+import SkeletonRail from "./SkeletonRail";
 import { useCategory } from "@/context/CategoryContext";
 
 const BASE_URL = process.env.NEXT_PUBLIC_AWS_BUCKET_URL;
 
-/* Same image-resolution rule VenueCard uses, just for the "See all" collage thumbs */
+/* Same image-resolution rule PropertyCard uses, just for the "See all" collage thumbs */
 function resolveThumb(venue, dataSource) {
   const raw = venue.images?.[0] ?? venue.image;
   const src = typeof raw === "string" ? raw : raw?.image || raw?.url || "";
@@ -20,16 +21,28 @@ function resolveThumb(venue, dataSource) {
 /*
  * VenueSection
  * ─────────────────────────────────────────────────────────────
- * Same rail behaviour everywhere on the homepage:
- *   Mobile        → swipe, ~1.3 cards visible
- *   Tablet        → 3 cards
- *   Desktop       → 5 cards
+ * Same rail mechanics everywhere on the homepage (arrows beside
+ * the title, swipe on mobile, "View all" as the trailing card),
+ * and now the same card WIDTH everywhere too — every section shows
+ * 5-up at desktop (HorizontalRail's own default basis). Sections
+ * still get their own personality via the card `variant` (image
+ * aspect ratio + type scale on PropertyCard), just not via width.
+ *   editorial → Recommended: taller hero image
+ *   medium    → Recently Viewed: a step down from editorial
  *
- * "View all" is the trailing card in the row itself; hidden when
- * the row isn't scrollable / has 5 or fewer venues.
+ * `loading` — true while the real API-backed venues (Recommended /
+ * Recently Viewed are the only two sections actually fetched async;
+ * everything else on the homepage is static config) are still in
+ * flight. Renders a skeleton rail with the same header + card
+ * proportions instead of returning null, so the section doesn't
+ * just silently pop into existence once data lands.
  */
-export default function VenueSection({ title, subtitle, venues, dataSource, tint }) {
+export default function VenueSection({ title, subtitle, venues, dataSource, tint, variant = "medium", loading = false }) {
   const { activeCategory } = useCategory();
+
+  if (loading) {
+    return <SkeletonRail title={title} subtitle={subtitle} accent={tint?.hex ?? "#7c3aed"} variant={variant} />;
+  }
 
   if (!venues?.length) return null;
 
@@ -42,7 +55,7 @@ export default function VenueSection({ title, subtitle, venues, dataSource, tint
         subtitle={subtitle}
         count={venues.length}
         accent={tint?.hex ?? "#7c3aed"}
-        viewAllCard={<ViewAllCard images={collageThumbs} />}
+        viewAllCard={<ViewAllCard images={collageThumbs} accent={tint?.hex ?? "#7c3aed"} variant={variant} />}
       >
         {venues.map((venue, i) => (
           <motion.div
@@ -52,7 +65,13 @@ export default function VenueSection({ title, subtitle, venues, dataSource, tint
             viewport={{ once: true }}
             transition={{ delay: i * 0.04, duration: 0.22 }}
           >
-            <VenueCard venue={venue} dataSource={dataSource} category={activeCategory} />
+            <PropertyCard
+              venue={venue}
+              dataSource={dataSource}
+              category={activeCategory}
+              badge={venue.badge}
+              variant={variant}
+            />
           </motion.div>
         ))}
       </HorizontalRail>

@@ -39,13 +39,18 @@ export default function RecentlyViewedPanel({ recentViews = [], loading = false,
   return (
     <SectionCard>
       <SectionHeading
+        compact
         title={t("title")}
         icon={
-          <span className="flex items-center justify-center w-7 h-7 rounded-xl bg-violet-50 dark:bg-violet-900/30">
-            <Clock size={14} className="text-violet-600" />
+          <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-violet-50 dark:bg-violet-900/30">
+            <Clock size={12} className="text-violet-600" />
           </span>
         }
-        action={<ViewAllLink href={`/${locale}/${country}/collections?tab=recent`}>{t("viewAll")}</ViewAllLink>}
+        action={
+          <ViewAllLink href={`/${locale}/${country}/collections?tab=recent`} small>
+            {t("viewAll")}
+          </ViewAllLink>
+        }
       />
 
       {loading ? (

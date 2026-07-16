@@ -7,13 +7,17 @@ import HeroSection from "./components/HeroSection";
 import MobileSearchSheet from "./components/MobileSearchSheet";
 import CategorySection from "./components/Categories";
 import VenueSection from "./components/VenueSection";
+import AdCarousel from "./components/AdCarousel";
+import SkeletonRail from "./components/SkeletonRail";
+import SkeletonBanner from "./components/SkeletonBanner";
+import SkeletonAdCarousel from "./components/SkeletonAdCarousel";
+import SkeletonTopDestinations from "./components/SkeletonTopDestinations";
 // import AdvertiseBanner    from "./components/AdvertiseBanner";
 // import DestinationSection from "./components/DestinationSection";
 import {
   PremiumBanner,
   SponsoredCategoryRow,
   PopularCategoryRow,
-  HostSpotlight,
   TopDestinations,
 } from "./components/InlineAdSection";
 
@@ -46,7 +50,7 @@ const CATEGORY_CONTENT = {
     ],
     premiumBanner: {
       badge: "Premium Partner",
-      headline: "Exclusive Five-Star Event Spaces Now on VenueBook",
+      headline: "Exclusive Five-Star Event Spaces Now on venuebook.in",
       subtext:
         "Curated luxury venues for weddings, corporate galas & private celebrations.",
       cta: "Explore Luxury",
@@ -689,7 +693,7 @@ const CATEGORY_CONTENT = {
   },
   experiences: {
     categoryLabel: "Experiences",
-    adHeading: "Offer an experience on VenueBook",
+    adHeading: "Offer an experience on venuebook.in",
     adSubtext:
       "Join thousands of hosts offering curated activities, tours & events.",
     sections: [],
@@ -759,6 +763,13 @@ export default function Home() {
   const [loadData, setLoadData]  = useState([]);
   const [recent, setRecent]  = useState([]);
   const [recommeded, setRecommeded]  = useState([]);
+  // The two real API-backed fetches on this page: Recommended/Recently
+  // Viewed venues, and the category chip row (findPropertyname). Popular/
+  // Sponsored/Banner/TopDestinations are static config and technically
+  // available synchronously, but they're gated on loadingVenues too (below)
+  // so the whole page arrives as one coherent frame.
+  const [loadingVenues, setLoadingVenues] = useState(true);
+  const [loadingCategories, setLoadingCategories] = useState(true);
 
   const { user } = useAuth();
 
@@ -774,19 +785,25 @@ export default function Home() {
   }, [openSearch]);
 
   useEffect(() => {
+    let cancelled = false;
     const load = async () => {
+      if (!activeCategory) return; // 🔒 prevent undefined call
+      setLoadingCategories(true);
       try {
-        if (!activeCategory) return; // 🔒 prevent undefined call
-
         const res = await findPropertyname(activeCategory);
 
-        setLoadData(res?.data?.data ?? []);
+        if (!cancelled) setLoadData(res?.data?.data ?? []);
       } catch (err) {
         console.error(err);
+      } finally {
+        if (!cancelled) setLoadingCategories(false);
       }
     };
 
     load();
+    return () => {
+      cancelled = true;
+    };
   }, [activeCategory]);
 
 
@@ -806,7 +823,9 @@ const getRecentViews = async () => {
 };
 
 useEffect(() => {
+  let cancelled = false;
   const loadData = async () => {
+    setLoadingVenues(true);
     try {
       await Promise.all([
         getRecommendedVenues(),
@@ -814,10 +833,17 @@ useEffect(() => {
       ]);
     } catch (error) {
       console.error(error);
+    } finally {
+      // Guards against setting state after the effect's own cleanup ran
+      // (e.g. `user` flips again before the first fetch settles).
+      if (!cancelled) setLoadingVenues(false);
     }
   };
 
   loadData();
+  return () => {
+    cancelled = true;
+  };
 }, [user]);
 
   return (
@@ -828,7 +854,7 @@ useEffect(() => {
       <AnimatePresence mode="wait">
         <motion.div key={activeCategory} {...FADE}>
           {/* Sub-category chips */}
-          {!isComingSoon && <CategorySection  loadData= {loadData}/>}
+          {!isComingSoon && <CategorySection loadData={loadData} loading={loadingCategories} />}
 
           {!isComingSoon && content.sections.length > 0 && (
             // pt-16: guarantees the gap from the category strip to whichever
@@ -836,7 +862,7 @@ useEffect(() => {
             // there's no recent-view data) — independent of which one that
             // is, instead of relying on Categories' own bottom padding.
             <div className="w-full mx-auto lg:max-w-[1400px] px-4 sm:px-6 lg:px-8 pt-8">
-              {/* Section 2 — Recently Viewed (moved above Recommended) */}
+              {/* Section 2 — Recently Viewed (moved above Recommended) — medium cards */}
               {content.sections[1] && (
                 <VenueSection
                   title={content.sections[1].title}
@@ -844,10 +870,12 @@ useEffect(() => {
                    venues={recent}
                   dataSource="api"
                   tint={tint}
+                  variant="medium"
+                  loading={loadingVenues}
                 />
               )}
 
-              {/* Section 1 — Recommended */}
+              {/* Section 1 — Recommended — large editorial cards */}
               {content.sections[0] && (
                 <VenueSection
                   title={content.sections[0].title}
@@ -855,44 +883,72 @@ useEffect(() => {
                   venues={recommeded}
                   tint={tint}
                     dataSource="api"
+                  variant="editorial"
+                  loading={loadingVenues}
                 />
               )}
 
-              {/* Inline ad — Premium banner */}
+              {/* Inline ad — Premium banner. Popular/Sponsored/TopDestinations
+                  are static config (always available instantly), but they're
+                  gated on the same loadingVenues flag as Recommended/Recently
+                  Viewed so the whole homepage arrives as one coherent frame
+                  instead of some sections popping in before others. */}
               {content.premiumBanner && (
-                <PremiumBanner tint={tint} {...content.premiumBanner} />
+                loadingVenues ? <SkeletonBanner /> : <PremiumBanner tint={tint} {...content.premiumBanner} />
               )}
 
-              {/* Popular {category} — above sponsored, VenueCard style, mobile 2-col */}
+              {/* Popular {category} — landscape PropertyCard variant, above sponsored */}
               {content.popularItems?.length > 0 && (
-                <PopularCategoryRow
-                  tint={tint}
-                  categoryLabel={content.categoryLabel ?? "Venues"}
-                  items={content.popularItems}
-                />
+                loadingVenues ? (
+                  <SkeletonRail
+                    title={`Popular ${content.categoryLabel ?? "Venues"}`}
+                    subtitle={`Trending picks in ${(content.categoryLabel ?? "Venues").toLowerCase()}`}
+                    eyebrow="Popular"
+                    accent={tint?.hex ?? "#7c3aed"}
+                    variant="landscape"
+                  />
+                ) : (
+                  <PopularCategoryRow
+                    tint={tint}
+                    categoryLabel={content.categoryLabel ?? "Venues"}
+                    items={content.popularItems}
+                  />
+                )
               )}
 
               {/* Sponsored {category} — scrollable carousel with arrows */}
               {content.sponsoredItems?.length > 0 && (
-                <SponsoredCategoryRow
-                  tint={tint}
-                  categoryLabel={content.categoryLabel ?? "Venues"}
-                  items={content.sponsoredItems}
-                />
+                loadingVenues ? (
+                  <SkeletonRail
+                    title={`Sponsored ${content.categoryLabel ?? "Venues"}`}
+                    subtitle="Featured partner listings"
+                    eyebrow="Sponsored"
+                    accent={tint?.hex ?? "#7c3aed"}
+                    variant="compact"
+                  />
+                ) : (
+                  <SponsoredCategoryRow
+                    tint={tint}
+                    categoryLabel={content.categoryLabel ?? "Venues"}
+                    items={content.sponsoredItems}
+                  />
+                )
               )}
 
-              {/* Host spotlight */}
-              {content.host && (
-                <HostSpotlight tint={tint} host={content.host} />
-              )}
+              {/* Ad carousel — replaces the old Featured Host card */}
+              {loadingVenues ? <SkeletonAdCarousel /> : <AdCarousel />}
 
               {/* Top Destinations */}
               {content.luxuryItems?.length > 0 && (
-                <TopDestinations
-                  tint={tint}
-                  title="Top Destinations"
-                  items={content.luxuryItems}
-                />
+                loadingVenues ? (
+                  <SkeletonTopDestinations />
+                ) : (
+                  <TopDestinations
+                    tint={tint}
+                    title="Top Destinations"
+                    items={content.luxuryItems}
+                  />
+                )
               )}
             </div>
           )}

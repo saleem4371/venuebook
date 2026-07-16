@@ -96,7 +96,7 @@ export const MOCK_CONVERSATIONS = [
   {
     id: "5",
     category: "support",
-    contact: { name: "VenueBook Support", initials: "VB", color: "from-sky-500 to-cyan-400", isOnline: true },
+    contact: { name: "venuebook.in Support", initials: "VB", color: "from-sky-500 to-cyan-400", isOnline: true },
     venue:   null,
     subject: "Refund status — booking #VB-24710",
     lastMessage: "Your refund has been processed and should reflect in 3–5 days.",
@@ -112,7 +112,7 @@ export const MOCK_CONVERSATIONS = [
   {
     id: "6",
     category: "support",
-    contact: { name: "VenueBook Support", initials: "VB", color: "from-sky-500 to-cyan-400", isOnline: false },
+    contact: { name: "venuebook.in Support", initials: "VB", color: "from-sky-500 to-cyan-400", isOnline: false },
     venue:   null,
     subject: "Update invoice details",
     lastMessage: "Done — your updated GST invoice has been emailed to you.",

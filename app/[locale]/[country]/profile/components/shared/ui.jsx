@@ -32,11 +32,15 @@ export function SectionCard({ children, className = "", padded = true }) {
   );
 }
 
-export function SectionHeading({ title, subtitle, icon, action }) {
+export function SectionHeading({ title, subtitle, icon, action, compact = false }) {
   return (
-    <div className="flex items-start justify-between gap-3 mb-3.5">
+    <div className={`flex items-start justify-between gap-3 ${compact ? "mb-3" : "mb-3.5"}`}>
       <div className="min-w-0">
-        <h2 className="flex items-center gap-2 text-[14.5px] sm:text-[15.5px] font-semibold text-gray-900 dark:text-gray-50">
+        <h2
+          className={`flex items-center font-semibold text-gray-900 dark:text-gray-50 ${
+            compact ? "gap-1.5 text-[13px]" : "gap-2 text-[14.5px] sm:text-[15.5px]"
+          }`}
+        >
           {icon}
           {title}
         </h2>
@@ -87,8 +91,8 @@ export function GhostButton({ children, className = "", as: As = "button", ...pr
   );
 }
 
-export function ViewAllLink({ href, onClick, children }) {
-  const className = "text-[12.5px] font-semibold text-violet-600 hover:text-violet-700 dark:text-violet-400 transition-colors";
+export function ViewAllLink({ href, onClick, children, small = false }) {
+  const className = `${small ? "text-[11px]" : "text-[12.5px]"} font-semibold text-violet-600 hover:text-violet-700 dark:text-violet-400 transition-colors`;
   if (href) {
     return (
       <Link href={href} className={className}>

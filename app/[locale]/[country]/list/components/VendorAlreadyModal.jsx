@@ -179,7 +179,7 @@ export default function VendorAlreadyModal({ open, onDashboard, onHome }) {
 
               {/* Description */}
               <p className="text-[13.5px] text-gray-500 dark:text-gray-400 leading-relaxed mb-3">
-                You're already managing properties on VenueBook. You can continue to your property
+                You're already managing properties on venuebook.in. You can continue to your property
                 dashboard to manage properties, create new listings, edit existing listings, manage
                 availability, pricing, bookings and property settings.
               </p>

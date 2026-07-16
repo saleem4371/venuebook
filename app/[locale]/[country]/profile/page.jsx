@@ -70,7 +70,6 @@ import PasswordCard from "./components/PasswordCard";
 
 /* Compact widgets — desktop fixed dashboard only. */
 import IdentityPanel from "./components/widgets/IdentityPanel";
-import UpcomingBookingCard from "./components/widgets/UpcomingBookingCard";
 import BookingsPanel from "./components/widgets/BookingsPanel";
 import CollectionsPanel from "./components/widgets/CollectionsPanel";
 import RecentlyViewedPanel from "./components/widgets/RecentlyViewedPanel";
@@ -225,7 +224,7 @@ export default function ProfilePage() {
            ════════════════════════════════════════════════════════════════ */
         <div className="flex flex-col h-screen pt-20 pb-3 px-3 xl:px-4 overflow-hidden">
           <div className="grid grid-cols-[260px_1fr_280px] xl:grid-cols-[300px_1fr_320px] gap-3 flex-1 min-h-0 min-w-0">
-            {/* LEFT — identity + upcoming booking + messages shortcut.
+            {/* LEFT — identity + messages shortcut + offers ribbon.
                 overflow-y-auto guards against a shorter viewport clipping
                 the new MessagesNavCard — same pattern the right column
                 already uses for the same reason. */}
@@ -238,14 +237,13 @@ export default function ProfilePage() {
                 onOpenSettings={() => setSettingsOpen(true)}
                 onOpenRewards={() => setRewardsOpen(true)}
               />
-              <UpcomingBookingCard />
               <MessagesNavCard locale={locale} country={country} />
+              <OffersPanel />
             </div>
 
-            {/* CENTER — bookings (most important section) + offers ribbon */}
+            {/* CENTER — bookings (most important section) */}
             <div className="flex flex-col gap-3 min-h-0 min-w-0">
               <BookingsPanel />
-              <OffersPanel />
             </div>
 
             {/* RIGHT — collections, liked properties, recently viewed, notifications */}
@@ -253,7 +251,7 @@ export default function ProfilePage() {
               <CollectionsPanel collections={collections} wishlist={wishlist} loading={dataLoading} locale={locale} country={country} />
               <LikedPropertiesPanel liked={liked} loading={dataLoading} locale={locale} country={country} />
               <RecentlyViewedPanel recentViews={recentViews} loading={dataLoading} locale={locale} country={country} />
-              <NotificationsSection />
+              <NotificationsSection compact />
             </div>
           </div>
         </div>

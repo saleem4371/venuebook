@@ -75,9 +75,11 @@ const MOCK_REAL_INVOICE_ID = 64;
  *     NOT drive the tax math there — with no vendor tax invoice, only
  *     venuebook.in's own state (VENUEBOOK_STATE) vs customerState matters.
  *
- * Amounts are deliberately round multiples of 118 so `amountINR / 1.18`
- * (backing the GST-inclusive taxable value out of the sticker price) lands
- * on a whole rupee every time — easy to eyeball-verify on each invoice.
+ * `amountINR` is a PRE-TAX base price — GST is added on top of it, not backed
+ * out of it. It is deliberately a round number so `amountINR * 0.18` (GST),
+ * `amountINR * 0.09` (CGST/SGST half-split), and post-discount variants of
+ * the same lands on a whole rupee every time — easy to eyeball-verify on
+ * each invoice.
  */
 export const MOCK_BOOKINGS = [
   // ── VENUES ──────────────────────────────────────────────────────────
@@ -89,7 +91,11 @@ export const MOCK_BOOKINGS = [
     date: "2026-08-14",
     nights: 1,
     guests: 120,
-    amountINR: 11800, // taxable 10,000 + GST 1,800 (CGST 900 + SGST 900)
+    shiftLabel: "Evening",
+    shiftTime: "6:00 PM – 11:00 PM",
+    amountINR: 11800, // pre-tax price; after ₹300 discount → 11,500 taxable, GST 18% = 2,070 (CGST 1,035 + SGST 1,035)
+    address: "142 MG Road, Bengaluru, Karnataka 560001",
+    specialRequest: "Please arrange a floral welcome arch at the entrance.",
     paymentStatus: "paid",
     bookingType: "reservation",
     bookingStatus: "upcoming",
@@ -109,7 +115,11 @@ export const MOCK_BOOKINGS = [
     date: "2026-09-02",
     nights: 1,
     guests: 200,
-    amountINR: 23600, // taxable 20,000 + GST 3,600 (IGST)
+    shiftLabel: "Full Day",
+    shiftTime: "9:00 AM – 6:00 PM",
+    amountINR: 23600, // pre-tax price; after ₹300 discount → 23,300 taxable, GST 18% = 4,194 (IGST)
+    address: "88 Marine Drive, Mumbai, Maharashtra 400002",
+    specialRequest: null,
     paymentStatus: "paid",
     bookingType: "reservation",
     bookingStatus: "upcoming",
@@ -129,7 +139,11 @@ export const MOCK_BOOKINGS = [
     date: "2026-07-28",
     nights: 1,
     guests: 80,
-    amountINR: 5900, // taxable 5,000 + GST 900 (CGST 450 + SGST 450)
+    shiftLabel: "Afternoon",
+    shiftTime: "1:00 PM – 5:00 PM",
+    amountINR: 5900, // pre-tax price; after ₹300 discount → 5,600 taxable, GST 18% = 1,008 (CGST 504 + SGST 504)
+    address: "21 Necklace Road, Hyderabad, Telangana 500001",
+    specialRequest: "Need extra parking space for 20 cars.",
     paymentStatus: "paid",
     bookingType: "reservation",
     bookingStatus: "completed",
@@ -149,7 +163,11 @@ export const MOCK_BOOKINGS = [
     date: "2026-10-10",
     nights: 1,
     guests: 60,
-    amountINR: 17700, // taxable 15,000 + GST 2,700 (IGST)
+    shiftLabel: "Evening",
+    shiftTime: "7:00 PM – 12:00 AM",
+    amountINR: 17700, // pre-tax price; after ₹300 discount → 17,400 taxable, GST 18% = 3,132 (IGST)
+    address: "5 Rooftop Lane, Amritsar, Punjab 143001",
+    specialRequest: null,
     paymentStatus: "partial",
     bookingType: "reservation",
     bookingStatus: "upcoming",
@@ -171,7 +189,11 @@ export const MOCK_BOOKINGS = [
     date: "2026-06-02",
     nights: 3,
     guests: 8,
-    amountINR: 8260, // taxable 7,000 + GST 1,260 (CGST 630 + SGST 630)
+    checkInTime: "2:00 PM",
+    checkOutTime: "11:00 AM",
+    amountINR: 8200, // pre-tax price; after ₹300 discount → 7,900 taxable, GST 18% = 1,422 (CGST 711 + SGST 711)
+    address: "Pine Ridge Estate, Coorg, Karnataka 571201",
+    specialRequest: "Vegetarian meals only for all guests.",
     paymentStatus: "paid",
     bookingType: "reservation",
     bookingStatus: "completed",
@@ -191,7 +213,11 @@ export const MOCK_BOOKINGS = [
     date: "2026-09-05",
     nights: 2,
     guests: 4,
-    amountINR: 15340, // taxable 13,000 + GST 2,340 (IGST)
+    checkInTime: "1:00 PM",
+    checkOutTime: "10:00 AM",
+    amountINR: 15300, // pre-tax price; after ₹300 discount → 15,000 taxable, GST 18% = 2,700 (IGST)
+    address: "Birch Valley Road, Kutch, Gujarat 370001",
+    specialRequest: null,
     paymentStatus: "paid",
     bookingType: "reservation",
     bookingStatus: "upcoming",
@@ -211,7 +237,11 @@ export const MOCK_BOOKINGS = [
     date: "2026-08-20",
     nights: 2,
     guests: 6,
-    amountINR: 4720, // taxable 4,000 + GST 720 (CGST 360 + SGST 360)
+    checkInTime: "12:00 PM",
+    checkOutTime: "11:00 AM",
+    amountINR: 4700, // pre-tax price; after ₹300 discount → 4,400 taxable, GST 18% = 792 (CGST 396 + SGST 396)
+    address: "Meadow Trail, Munnar, Kerala 685612",
+    specialRequest: "Early check-in requested if possible.",
     paymentStatus: "paid",
     bookingType: "reservation",
     bookingStatus: "upcoming",
@@ -231,7 +261,11 @@ export const MOCK_BOOKINGS = [
     date: "2026-07-15",
     nights: 1,
     guests: 5,
-    amountINR: 10620, // taxable 9,000 + GST 1,620 (IGST)
+    checkInTime: "2:00 PM",
+    checkOutTime: "11:00 AM",
+    amountINR: 10600, // pre-tax price; after ₹300 discount → 10,300 taxable, GST 18% = 1,854 (IGST)
+    address: "Cedar Creek Road, Manali, Himachal Pradesh 175131",
+    specialRequest: null,
     paymentStatus: "partial",
     bookingType: "reservation",
     bookingStatus: "upcoming",
@@ -267,14 +301,18 @@ export const VENUEBOOK_GSTIN = "29AAFCV1234B1Z8";
 export const VENUEBOOK_STATE = "Karnataka";
 
 /**
- * Flat mock "coupon"-style discount shown on the Main Invoice only — real
- * discount codes are usually a flat amount rather than a percentage, so
- * this stays flat across every booking rather than scaling with price.
- * Doesn't appear on any GST tax invoice: those documents report the
- * actual taxable value/GST the vendor and/or venuebook.in charged, and a
- * customer-facing discount isn't part of that tax calculation.
+ * Flat mock "coupon"-style discount — real discount codes are usually a
+ * flat amount rather than a percentage, so this stays flat across every
+ * booking rather than scaling with price. Reduces the taxable base on
+ * BOTH the Main Invoice and the Tax Invoice tab: "Net {category} Value" /
+ * "Net {category} Price" is always `amountINR - MOCK_DISCOUNT_INR`, and
+ * every CGST/SGST/IGST figure is computed off that discounted base, not
+ * the pre-tax sticker price. A round ₹300 (a multiple of 100) so it
+ * doesn't break the whole-rupee GST math described above — every mock
+ * `amountINR` is itself a multiple of 100, so `amountINR - 300` stays a
+ * multiple of 100 too.
  */
-export const MOCK_DISCOUNT_INR = 250;
+export const MOCK_DISCOUNT_INR = 300;
 
 /**
  * Flat mock value of loyalty points redeemed against this booking (see
@@ -301,6 +339,24 @@ export function deriveInvoiceNumbers(bookingId) {
     transactionId: `TXNVB${digits}IN`,
   };
 }
+
+/**
+ * Cancellation refund tier schedule shown on ManageBookingView's
+ * Cancellation tab — a standard tiered policy (further out = more
+ * refunded), same shape as a real cancellation-policy API would return
+ * (`daysFrom`/`daysTo`/`refundPercent`) so swapping this mock constant for
+ * a real per-vendor policy later is a data-source change, not a component
+ * rewrite. `daysTo: Infinity` on the top tier reads as "30+ days" in the UI.
+ * Applies uniformly to venue and farmstay bookings alike (no real per-
+ * category cancellation policy exists yet on the backend to differentiate
+ * them).
+ */
+export const MOCK_CANCELLATION_TIERS = [
+  { daysFrom: 30, daysTo: Infinity, refundPercent: 90 },
+  { daysFrom: 15, daysTo: 29, refundPercent: 50 },
+  { daysFrom: 7, daysTo: 14, refundPercent: 25 },
+  { daysFrom: 0, daysTo: 6, refundPercent: 0 },
+];
 
 export const MOCK_OFFERS = [
   {
@@ -341,7 +397,7 @@ export const MOCK_NOTIFICATIONS = [
     id: "n2",
     type: "payment",
     title: "Payment received",
-    body: "₹8,260 for Whispering Pines Farmstay",
+    body: "₹8,200 for Whispering Pines Farmstay",
     time: "1d ago",
   },
   {

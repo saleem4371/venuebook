@@ -17,9 +17,12 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
  *   the wrapper, so card hover lift/shadow/zoom never gets clipped
  *   (overflow-x:auto silently forces overflow-y to "auto" too — a
  *   CSS spec quirk — so the clipping box needs extra room).
- * - Card width is controlled by the caller via `basisClassName`;
- *   the default matches the spec: ~1.3 cards on mobile, 3 on
- *   tablet, 5–6 on desktop, 6–7 on large monitors.
+ * - Card width is controlled by the caller via `basisClassName`; the
+ *   default peeks (max ~2 cards + a sliver) everywhere below md, since
+ *   that range has no arrows — only touch/swipe — so the peek is the
+ *   only "there's more" signal. From md up, arrows exist, so the
+ *   default snaps to an exact fit (3/4/5 cards, no peek) instead of a
+ *   sliver next to a control that already says the same thing.
  *
  * Props
  *   title, subtitle, eyebrow  – header copy (eyebrow optional, small label)
@@ -89,9 +92,17 @@ export default function HorizontalRail({
   // "View all" now lives as the trailing card in the row itself.
   const trackItems = showViewAll ? [...items, viewAllCard] : items;
   const isScrollable = canLeft || canRight;
-  // 5 cards per view from lg up (was stepping to 6, then 7, on xl/2xl).
+  // Peeking is only useful where there's no other "there's more" signal.
+  // Below md (768px) there are no arrows (touch/swipe only), so one
+  // consistent ~43% basis keeps a max of ~2 cards on screen with a
+  // genuinely noticeable peeking slice (~30% of the 3rd card, not a
+  // thin sliver), at every width from the smallest phone up to just
+  // under tablet. From md up, arrows are visible (`hidden md:block`
+  // below) and already communicate scrollability, so those tiers go
+  // back to an exact fit — no peek — instead of leaving a redundant
+  // sliver next to a control that already does the same job.
   const defaultBasis =
-    "basis-[76%] sm:basis-[58%] md:basis-[31%] lg:basis-[calc(20%-13px)]";
+    "basis-[43%] md:basis-[calc(33.333%-11px)] lg:basis-[calc(25%-12px)] xl:basis-[calc(20%-13px)]";
 
   return (
     // flow-root: the track below uses a negative margin (-my-3) to give

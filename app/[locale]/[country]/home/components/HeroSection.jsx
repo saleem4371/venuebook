@@ -49,9 +49,8 @@ const SEARCH_CONFIG = {
     { id: "guests",    label: "Guests",      type: "guests",    guestType: "guests"          },
   ],
   farmstays: [
-    { id: "location",  label: "Destination", type: "location",  placeholder: "Where to?"    },
-    { id: "checkin",   label: "Check In",    type: "date"                                    },
-    { id: "checkout",  label: "Check Out",   type: "date"                                    },
+    { id: "location", label: "Destination", type: "location", placeholder: "Where to?" },
+    { id: "dates",     type: "daterange", startId: "checkin",   endId: "checkout",   startLabel: "Check In",   endLabel: "Check Out" },
     { id: "guests",    label: "Guests",      type: "guests",    guestType: "guests_detailed" },
   ],
   studios: [
@@ -61,15 +60,13 @@ const SEARCH_CONFIG = {
     { id: "guests",    label: "Team Size",   type: "guests",    guestType: "attendees"       },
   ],
   rentals: [
-    { id: "location",  label: "Location",   type: "location",  placeholder: "City or area" },
-    { id: "startdate", label: "Start Date",  type: "date"                                    },
-    { id: "enddate",   label: "End Date",    type: "date"                                    },
+    { id: "location", label: "Location",    type: "location", placeholder: "City or area" },
+    { id: "dates",     type: "daterange", startId: "startdate", endId: "enddate", startLabel: "Start Date", endLabel: "End Date" },
     { id: "guests",    label: "Guests",      type: "guests",    guestType: "guests"          },
   ],
   workspaces: [
-    { id: "location",  label: "Location",   type: "location",  placeholder: "City or area" },
-    { id: "startdate", label: "Start Date",  type: "date"                                    },
-    { id: "enddate",   label: "End Date",    type: "date"                                    },
+    { id: "location", label: "Location",    type: "location", placeholder: "City or area" },
+    { id: "dates",     type: "daterange", startId: "startdate", endId: "enddate", startLabel: "Start Date", endLabel: "End Date" },
     { id: "guests",    label: "Team Size",   type: "guests",    guestType: "attendees"       },
   ],
   experiences: null,
@@ -108,10 +105,20 @@ const country = params?.country || "in";
   const [isMobile,    setIsMobile]    = useState(false);
   const [mounted,     setMounted]     = useState(false);
   const [openSearch,  setOpenSearch]  = useState(false);
+  // Mirrors MobileSearchSheet's current selection so the collapsed "Where
+  // to?" trigger button below reflects it too, not just the sheet's own
+  // sticky summary bar.
+  const [mobileSummary, setMobileSummary] = useState({ location: "", dateSummary: "", guestSummary: "" });
   const [wordIdx,     setWordIdx]     = useState(0);
   const [loadData,    setLoadData]    = useState([]);
   const [dates,       setDates]       = useState({});
   const [mediaMap,    setMediaMap]    = useState({});
+  // True until the actual background video/image has visually loaded.
+  // Previously there was nothing behind it while country_of_category()
+  // was in flight (or while the video file itself was still buffering) —
+  // just the dark overlay sitting on a blank frame, which read as the
+  // section having silently failed rather than still loading.
+  const [mediaReady,  setMediaReady]  = useState(false);
 
   /* Refs to each search field container — used for auto-advance on location select */
   const fieldRefs = useRef([]);
@@ -247,6 +254,16 @@ console.log(mediaMap)
     setMediaMap(map);
   }, [loadData]);
 
+  /* Re-arm the skeleton whenever the resolved media actually changes
+     (category switch, or the real data arriving after the fallback) —
+     keyed on the resolved src values themselves, not the whole `mediaMap`
+     object, so an unrelated category's data landing doesn't spuriously
+     re-trigger the skeleton for the one currently on screen. */
+  const activeMedia = mediaMap[activeCategory] || {};
+  useEffect(() => {
+    setMediaReady(false);
+  }, [activeMedia.image, activeMedia.video]);
+
 const handleSearch = () => {
   const params = new URLSearchParams();
 
@@ -266,6 +283,16 @@ const handleSearch = () => {
     // Location
    if (key === "location") {
   if (typeof value === "object") {
+    // Property-mode free-text payload from LocationAutoComplete (typed a
+    // name, hit Enter, no specific suggestion picked) — distinct shape
+    // from a location pick (no city/lat/lng), so it's routed to its own
+    // param instead of being silently dropped by the city/address
+    // fallback below.
+    if (value.mode === "property") {
+      if (value.propertyQuery) params.set("q", value.propertyQuery);
+      return;
+    }
+
     params.set("location", value.city || value.address || "");
 
     if (value.lat) params.set("lat", value.lat);
@@ -320,8 +347,9 @@ const handleSearch = () => {
     boxShadow:   `0 8px 40px rgba(0,0,0,0.35), ${tint.glow}`,
   };
 
- const currentMedia = mediaMap[activeCategory] || {};
-
+  // Same value as `activeMedia` computed earlier (needed there so the
+  // mediaReady-reset effect above could run before the mount check).
+  const currentMedia = activeMedia;
 
   return (
     <>
@@ -333,16 +361,27 @@ const handleSearch = () => {
 
         {/* Background — overflow-hidden scoped here so video scale-105 doesn't bleed */}
         <div className="absolute inset-0 overflow-hidden">
+  {/* Skeleton — shown until the actual video/image has visually loaded.
+      Previously there was nothing behind the overlay while
+      country_of_category() was in flight (or while the fallback video
+      was still buffering): just the dark gradient sitting on a blank
+      black frame, which read as the whole section having silently
+      failed rather than still loading. */}
+  {!mediaReady && (
+    <div className="absolute inset-0 bg-gradient-to-br from-gray-300 via-gray-200 to-gray-300 dark:from-gray-800 dark:via-gray-700 dark:to-gray-800 animate-pulse" />
+  )}
+
   {isMobile ? (
-    <div
-      className="absolute inset-0 bg-cover bg-center"
-      style={{
-        backgroundImage: `url(${
-          currentMedia.image
-            ? `${process.env.NEXT_PUBLIC_AWS_BUCKET_URL}/${currentMedia.image}`
-            : "https://www.venuebook.in/img/sintra.6885ed95.png"
-        })`,
-      }}
+    <img
+      key={currentMedia.image || "default-image"}
+      src={
+        currentMedia.image
+          ? `${process.env.NEXT_PUBLIC_AWS_BUCKET_URL}/${currentMedia.image}`
+          : "https://www.venuebook.in/img/sintra.6885ed95.png"
+      }
+      alt=""
+      onLoad={() => setMediaReady(true)}
+      className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${mediaReady ? "opacity-100" : "opacity-0"}`}
     />
   ) : (
     <video
@@ -357,12 +396,15 @@ const handleSearch = () => {
       loop
       playsInline
       preload="auto"
-      className="absolute inset-0 w-full h-full object-cover scale-105"
+      onLoadedData={() => setMediaReady(true)}
+      className={`absolute inset-0 w-full h-full object-cover scale-105 transition-opacity duration-500 ${mediaReady ? "opacity-100" : "opacity-0"}`}
     />
   )}
 
-  {/* Overlay */}
-  <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/55 to-black/80" />
+  {/* Overlay — a touch darker than the previous pass (45/25/55 read as too
+      washed out); still well short of the original 70/55/80 that flattened
+      the video into a dull, muddy wash. */}
+  <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/35 to-black/65" />
 </div>
 
         {/* Content */}
@@ -550,9 +592,9 @@ const handleSearch = () => {
                             category={activeCategory}
                             countryCode={String(country || "in").toLowerCase()}
                             isLast={i === fields.length - 1}
-                            dateValue={dates[field.id] ?? null}
-                            onDateChange={(v) =>
-                              setDates((p) => ({ ...p, [field.id]: v }))
+                            dates={dates}
+                            onDateChange={(key, v) =>
+                              setDates((p) => ({ ...p, [key]: v }))
                             }
                             setSearchData={setSearchData}
                             /* register this field's DOM node so previous field can advance to it */
@@ -579,7 +621,10 @@ const handleSearch = () => {
                     </div>
                   </div>
 
-                  {/* Mobile search trigger */}
+                  {/* Mobile search trigger — reflects the sheet's current
+                      selection (see mobileSummary/onSummaryChange) instead
+                      of staying on a static placeholder once the user has
+                      picked a location/date/guests inside it. */}
                   <button
                     onClick={() => setOpenSearch(true)}
                     className="md:hidden w-full flex items-center justify-between backdrop-blur-xl border text-white rounded-xl px-4 py-3.5 transition active:scale-[0.98]"
@@ -589,15 +634,17 @@ const handleSearch = () => {
                       boxShadow:    tint.glow,
                     }}
                   >
-                    <div className="flex flex-col items-start gap-0.5">
-                      <span className="text-[10px] font-semibold uppercase tracking-widest text-white/40">
-                        Where to?
+                    <div className="flex flex-col items-start gap-0.5 min-w-0 flex-1 text-start">
+                      <span className="text-[10px] font-semibold uppercase tracking-widest text-white/40 truncate w-full">
+                        {mobileSummary.location || "Where to?"}
                       </span>
-                      <span className="text-sm text-white/70">
-                        Search location, date, guests…
+                      <span className="text-sm text-white/70 truncate w-full">
+                        {mobileSummary.location
+                          ? [mobileSummary.dateSummary, mobileSummary.guestSummary].filter(Boolean).join(" · ") || "Tap to edit your search"
+                          : "Search location, date, guests…"}
                       </span>
                     </div>
-                    <div className="p-2 rounded-lg text-white" style={{ background: tint.hex }}>
+                    <div className="p-2 rounded-lg text-white shrink-0" style={{ background: tint.hex }}>
                       <MagnifyingGlassIcon className="w-4 h-4" />
                     </div>
                   </button>
@@ -609,26 +656,42 @@ const handleSearch = () => {
         </div>
       </section>
 
-      <MobileSearchSheet open={openSearch} setOpen={setOpenSearch} />
+      <MobileSearchSheet open={openSearch} setOpen={setOpenSearch} onSummaryChange={setMobileSummary} />
     </>
   );
 }
 
 /* ─── Search field renderer ─────────────────────────────────── */
-function SearchField({ field, tint, category, isLast, dateValue, onDateChange, setSearchData, countryCode, nextRef, selfRefCb }) {
+function SearchField({ field, tint, category, isLast, dates, onDateChange, setSearchData, countryCode, nextRef, selfRefCb }) {
+  // The header label above the location field used to be permanently
+  // "LOCATION" (straight from SEARCH_CONFIG) even after switching to
+  // Property mode inside the dropdown — only the placeholder changed,
+  // which read as half-finished. LocationAutoComplete reports its live
+  // label ("Location" or the active category's word, e.g. "Venue") via
+  // onModeChange; this mirrors it so the header swaps too.
+  const [locationLabel, setLocationLabel] = useState(field.label);
+  useEffect(() => { setLocationLabel(field.label); }, [field.label]);
+
   return (
     <div
       ref={selfRefCb}
-      /* overflow-visible so dropdowns escape the flex row */
+      /* overflow-visible so dropdowns escape the flex row. daterange gets
+         double width — it replaces what used to be two separate columns
+         (Check In + Check Out / Start + End Date). */
       className={[
-        "relative flex-1 min-w-0 px-5 py-3.5 overflow-visible",
+        "relative min-w-0 px-5 py-3.5 overflow-visible",
+        field.type === "daterange" ? "flex-[2]" : "flex-1",
         !isLast ? "border-e" : "",
       ].join(" ")}
       style={!isLast ? { borderColor: "rgba(255,255,255,0.1)" } : {}}
     >
-      <p className="text-[10px] font-semibold uppercase tracking-widest text-white/40 mb-1.5 whitespace-nowrap">
-        {field.label}
-      </p>
+      {/* daterange renders its own two mini-labels (Check In / Check Out)
+         internally — one shared label here would just be redundant. */}
+      {field.type !== "daterange" && (
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-white/40 mb-1.5 whitespace-nowrap">
+          {field.type === "location" ? locationLabel : field.label}
+        </p>
+      )}
 
       {field.type === "location" && (
         <LocationAutoComplete
@@ -644,6 +707,7 @@ function SearchField({ field, tint, category, isLast, dateValue, onDateChange, s
             const trigger = nextRef?.current?.querySelector("button, input");
             if (trigger) trigger.click();
           }}
+          onModeChange={setLocationLabel}
         />
       )}
 
@@ -651,16 +715,12 @@ function SearchField({ field, tint, category, isLast, dateValue, onDateChange, s
         <DatePicker
           mode="single"
           tint={tint}
-          startDate={dateValue}
-          // onChangeStart={onDateChange}
+          startDate={dates[field.id] ?? null}
           placeholder="Select date"
-           onChangeStart={(v) => {
-    onDateChange(v);
-    setSearchData((p) => ({
-      ...p,
-      [field.id]: v,
-    }));
-  }}
+          onChangeStart={(v) => {
+            onDateChange(field.id, v);
+            setSearchData((p) => ({ ...p, [field.id]: v }));
+          }}
         />
       )}
 
@@ -668,16 +728,35 @@ function SearchField({ field, tint, category, isLast, dateValue, onDateChange, s
         <DatePicker
           mode="datetime"
           tint={tint}
-          startDate={dateValue}
-          // onChangeStart={onDateChange}
+          startDate={dates[field.id] ?? null}
           placeholder="Select date & time"
-           onChangeStart={(v) => {
-    onDateChange(v);
-    setSearchData((p) => ({
-      ...p,
-      [field.id]: v,
-    }));
-  }}
+          onChangeStart={(v) => {
+            onDateChange(field.id, v);
+            setSearchData((p) => ({ ...p, [field.id]: v }));
+          }}
+        />
+      )}
+
+      {/* Single connected range calendar — was two independent single-date
+         pickers (Check In / Check Out), which let checkout land before
+         check-in with no validation. One DatePicker in mode="range" (same
+         component the mobile sheet already uses for farmstays) enforces
+         start-before-end and highlights the span between them. */}
+      {field.type === "daterange" && (
+        <DatePicker
+          mode="range"
+          tint={tint}
+          startDate={dates[field.startId] ?? null}
+          endDate={dates[field.endId] ?? null}
+          splitLabels={{ start: field.startLabel ?? "Start", end: field.endLabel ?? "End" }}
+          onChangeStart={(v) => {
+            onDateChange(field.startId, v);
+            setSearchData((p) => ({ ...p, [field.startId]: v }));
+          }}
+          onChangeEnd={(v) => {
+            onDateChange(field.endId, v);
+            setSearchData((p) => ({ ...p, [field.endId]: v }));
+          }}
         />
       )}
 

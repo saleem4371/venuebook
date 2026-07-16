@@ -28,7 +28,7 @@ const TYPE_ICON = {
   offer: TagIcon,
 };
 
-export default function NotificationsSection() {
+export default function NotificationsSection({ compact = false }) {
   const t = useTranslations("profile.notifications");
   const tDrawer = useTranslations("profile.drawer");
   const [open, setOpen] = useState(false);
@@ -38,10 +38,15 @@ export default function NotificationsSection() {
   return (
     <SectionCard>
       <SectionHeading
+        compact={compact}
         title={t("title")}
         icon={
-          <span className="flex items-center justify-center w-8 h-8 rounded-xl bg-violet-50 dark:bg-violet-900/30">
-            <Bell size={16} className="text-violet-600" />
+          <span
+            className={`flex items-center justify-center bg-violet-50 dark:bg-violet-900/30 ${
+              compact ? "w-6 h-6 rounded-lg" : "w-8 h-8 rounded-xl"
+            }`}
+          >
+            <Bell size={compact ? 12 : 16} className="text-violet-600" />
           </span>
         }
         action={
@@ -49,7 +54,7 @@ export default function NotificationsSection() {
             <button
               type="button"
               onClick={() => setOpen(true)}
-              className="text-[12.5px] font-semibold text-violet-600 hover:text-violet-700 dark:text-violet-400 transition-colors"
+              className={`${compact ? "text-[11px]" : "text-[12.5px]"} font-semibold text-violet-600 hover:text-violet-700 dark:text-violet-400 transition-colors`}
             >
               {t("viewAll")}
             </button>

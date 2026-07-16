@@ -11,20 +11,40 @@
  * — photo, both status badges, date/guests/amount, actions — directly here.
  * It still scrolls WITHIN the panel (not the page), so this stays correct
  * at real scale (a customer's 47 bookings won't blow out the fixed layout).
+ *
+ * "Manage Booking" is an in-place VIEW SWAP, not a modal — per direct
+ * feedback that a modal-over-modal-feeling overlay for something this
+ * routine was heavier than it needed to be. Clicking it replaces this
+ * panel's own header (title/subtitle/tabs) with a back button + the
+ * booking's name/id/status badge, and swaps the card list for the full
+ * ManageBookingView (Overview/Edit/Payment/Cancellation tabs + sidebar —
+ * see shared/ManageBookingView.jsx), still inside this same SectionCard —
+ * the center column never navigates to a real Next.js route or opens an
+ * overlay for this. "Invoice" is unchanged and still opens
+ * BookingDetailModal: an invoice is a real document meant to be
+ * read/printed/downloaded on its own, which is a much better fit for a
+ * focused overlay than a list-replacing inline view.
+ *
+ * `onBookingPatch` lets ManageBookingView push local payment/cancellation
+ * state changes (e.g. paymentStatus flipping to "paid", bookingStatus
+ * flipping to "cancelled") back up so this header's StatusBadge stays in
+ * sync live — it does NOT mutate MOCK_BOOKINGS itself (same mock-only
+ * limitation documented in ManageBookingView.jsx's own header comment).
  */
 
 import { useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { AnimatePresence } from "framer-motion";
-import { CalendarRange, PackageSearch } from "lucide-react";
+import { CalendarRange, PackageSearch, ArrowLeft } from "lucide-react";
 
 import { useCurrency } from "@/hooks/useCurrency";
-import { SectionCard, SectionHeading, EmptyState } from "../shared/ui";
-import { BookingDetailModal } from "../shared/BookingDetailModal";
+import { SectionCard, SectionHeading, EmptyState, StatusBadge } from "../shared/ui";
+import { BookingDetailModal, STATUS_TONE } from "../shared/BookingDetailModal";
 import { BookingCard } from "../shared/BookingCard";
+import { ManageBookingView } from "../shared/ManageBookingView";
 import BookingTabs, { filterBookingsByTab } from "../shared/BookingTabs";
-import { MOCK_BOOKINGS } from "../../data/mockProfileData";
+import { MOCK_BOOKINGS, CATEGORY_COLORS } from "../../data/mockProfileData";
 
 export default function BookingsPanel() {
   const t = useTranslations("profile.bookings");
@@ -33,6 +53,7 @@ export default function BookingsPanel() {
   const { format } = useCurrency();
 
   const [modal, setModal] = useState(null);
+  const [manageBooking, setManageBooking] = useState(null);
   const [activeTab, setActiveTab] = useState("all");
 
   const allBookings = useMemo(
@@ -43,20 +64,63 @@ export default function BookingsPanel() {
 
   return (
     <SectionCard className="flex flex-col min-h-0 flex-1" padded={false}>
-      <div className="p-4 pb-0">
-        <SectionHeading
-          title={t("title")}
-          subtitle={t("subtitle")}
-          icon={
-            <span className="flex items-center justify-center w-7 h-7 rounded-xl bg-violet-50 dark:bg-violet-900/30">
-              <CalendarRange size={14} className="text-violet-600" />
-            </span>
-          }
-        />
-        <BookingTabs active={activeTab} onChange={setActiveTab} t={t} compact />
-      </div>
+      {manageBooking ? (
+        <div className="p-4 pb-0 flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setManageBooking(null)}
+            className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors shrink-0"
+          >
+            <ArrowLeft size={16} />
+          </button>
+          <div className="min-w-0 flex-1">
+            <p
+              className="text-[10px] font-semibold uppercase tracking-wide"
+              style={{ color: CATEGORY_COLORS[manageBooking.category] || CATEGORY_COLORS.venues }}
+            >
+              {t("manage")}
+            </p>
+            <h3 className="text-[14.5px] font-semibold text-gray-900 dark:text-gray-50 truncate">
+              {manageBooking.propertyName}
+            </h3>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{manageBooking.bookingId}</p>
+          </div>
+          <StatusBadge
+            label={t(`status.${manageBooking.bookingStatus}`)}
+            tone={STATUS_TONE[manageBooking.bookingStatus]}
+            className="shrink-0"
+          />
+        </div>
+      ) : (
+        <div className="p-4 pb-0">
+          <SectionHeading
+            title={t("title")}
+            subtitle={t("subtitle")}
+            icon={
+              <span className="flex items-center justify-center w-7 h-7 rounded-xl bg-violet-50 dark:bg-violet-900/30">
+                <CalendarRange size={14} className="text-violet-600" />
+              </span>
+            }
+          />
+          <BookingTabs active={activeTab} onChange={setActiveTab} t={t} compact />
+        </div>
+      )}
 
-      {bookings.length === 0 ? (
+      {manageBooking ? (
+        <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-4 pt-3">
+          <ManageBookingView
+            booking={manageBooking}
+            t={t}
+            tCat={tCat}
+            format={format}
+            locale={locale}
+            country={country}
+            onInvoice={() => setModal({ booking: manageBooking, mode: "invoice" })}
+            onBack={() => setManageBooking(null)}
+            onBookingPatch={(patch) => setManageBooking((prev) => (prev ? { ...prev, ...patch } : prev))}
+          />
+        </div>
+      ) : bookings.length === 0 ? (
         // Same pt-3 top gap the populated list uses below (px-4 pb-4 pt-3),
         // and flex-1 so the dashed box stretches to fill whatever vertical
         // room the panel has instead of sitting at its own compact height —
@@ -83,7 +147,7 @@ export default function BookingsPanel() {
               format={format}
               locale={locale}
               country={country}
-              onOpen={(mode) => setModal({ booking: b, mode })}
+              onOpen={(mode) => (mode === "manage" ? setManageBooking(b) : setModal({ booking: b, mode }))}
             />
           ))}
         </div>

@@ -483,7 +483,7 @@ router.push(redirectPath);
                 <div className="mb-auto">
                   <img
                     src={darkLogo.src ?? darkLogo}
-                    alt="VenueBook"
+                    alt="venuebook.in"
                     className="h-8 w-auto select-none pointer-events-none"
                     draggable="false"
                   />
@@ -531,13 +531,13 @@ router.push(redirectPath);
                 <div className="flex items-center md:invisible">
                   <img
                     src={lightLogo.src ?? lightLogo}
-                    alt="VenueBook"
+                    alt="venuebook.in"
                     className="h-8 w-auto dark:hidden select-none pointer-events-none"
                     draggable="false"
                   />
                   <img
                     src={darkLogo.src ?? darkLogo}
-                    alt="VenueBook"
+                    alt="venuebook.in"
                     className="h-8 w-auto hidden dark:block select-none pointer-events-none"
                     draggable="false"
                   />

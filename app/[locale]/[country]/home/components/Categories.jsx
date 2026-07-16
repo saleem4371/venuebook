@@ -246,14 +246,31 @@ const CATEGORY_HEADINGS = {
   experiences: { title: "", sub: "" },
 };
 
+/* Loading placeholder for a single chip — same responsive width steps as
+   the real chip button, so nothing reflows once the real data lands. */
+function SkeletonChip() {
+  return (
+    <div className="flex flex-col items-center shrink-0 w-[38%] sm:w-[28%] md:w-36 animate-pulse">
+      <div className="w-full h-28 rounded-2xl bg-gray-200 dark:bg-gray-800" />
+      <div className="mt-2.5 h-3 w-2/3 rounded-full bg-gray-200 dark:bg-gray-800" />
+    </div>
+  );
+}
+
+const SKELETON_CHIP_COUNT = 8;
+
 export default function CategorySection(loadData) {
   const { activeCategory } = useCategory();
 
-  const chips = CATEGORY_CHIPS[activeCategory] ?? CATEGORY_CHIPS.venues;
   const heading = CATEGORY_HEADINGS[activeCategory] ?? CATEGORY_HEADINGS.venues;
   const tint = CATEGORY_TINTS[activeCategory] ?? CATEGORY_TINTS.venues;
+  const loading = loadData.loading;
 
-  if (!loadData.loadData.length) return null;
+  // findPropertyname(activeCategory) is a real API fetch — while it's in
+  // flight, show a skeleton row instead of silently rendering nothing
+  // (the previous behaviour: this whole section just vanished until data
+  // arrived, with no loading affordance at all).
+  if (!loading && !loadData.loadData.length) return null;
 
   return (
     <section className="relative py-7 bg-white dark:bg-gray-950/80">
@@ -304,7 +321,11 @@ export default function CategorySection(loadData) {
             fadeSize={0}
             arrowClass="hidden md:flex"
           >
-            {loadData.loadData.map((chip, i) => (
+            {loading
+              ? Array.from({ length: SKELETON_CHIP_COUNT }).map((_, i) => (
+                  <SkeletonChip key={i} />
+                ))
+              : loadData.loadData.map((chip, i) => (
               <motion.button
                 key={chip.id}
                 type="button"

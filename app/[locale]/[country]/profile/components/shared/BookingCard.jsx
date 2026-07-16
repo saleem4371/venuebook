@@ -43,7 +43,7 @@ export function BookingCard({ booking, t, tCat, format, locale, country, onOpen 
       transition={{ duration: 0.2 }}
       className="group rounded-2xl border border-gray-100 dark:border-gray-800 hover:shadow-[0_10px_24px_rgba(0,0,0,0.08)] transition-shadow overflow-hidden"
     >
-      <div className="flex flex-col sm:flex-row">
+      <div className="flex flex-col sm:flex-row [@media(min-width:1024px)_and_(max-width:1150px)]:!flex-col">
         {/*
           h-28 on mobile (stacked layout has no sibling to stretch against),
           sm:h-auto once the layout becomes a row so flex's cross-axis
@@ -56,8 +56,15 @@ export function BookingCard({ booking, t, tCat, format, locale, country, onOpen 
           source photo was inflating the whole card. Absolute positioning
           means the wrapper's height is decided purely by its flex sibling,
           and the photo just crops (object-cover) to whatever that is.
+
+          1024–1150px is the desktop dashboard's own narrowest window (lg
+          breakpoint kicks the fixed 3-column layout in right at 1024px),
+          where the center column left the row-layout card too squeezed for
+          a 128px-wide photo + full content — !important here overrides
+          sm:flex-row/sm:w-32 specifically in that band without touching the
+          fixed 300px/320px side columns or any other card usage.
         */}
-        <div className="relative w-full sm:w-32 h-28 sm:h-auto shrink-0 overflow-hidden">
+        <div className="relative w-full sm:w-32 h-28 sm:h-auto [@media(min-width:1024px)_and_(max-width:1150px)]:!w-full [@media(min-width:1024px)_and_(max-width:1150px)]:!h-28 shrink-0 overflow-hidden">
           <img
             src={b.image}
             alt=""

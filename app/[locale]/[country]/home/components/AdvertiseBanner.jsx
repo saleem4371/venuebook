@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 
-const DEFAULT_HEADING = "Advertise your space on VenueBook";
+const DEFAULT_HEADING = "Advertise your space on venuebook.in";
 const DEFAULT_SUBTEXT = "Reach thousands of event planners, travellers and creators on India's #1 venue hire marketplace.";
 
 export default function AdvertiseBanner({

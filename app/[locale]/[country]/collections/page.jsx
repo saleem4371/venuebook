@@ -27,10 +27,20 @@
  * handler, WishlistPopup.jsx's save/move/remove/create handlers still call
  * `logActivity(...)`) since it's inert without a reader and cheap to revive
  * later if the timeline comes back.
+ *
+ * DEEP LINKING — `?tab=liked|collections|recent` sets the initial active
+ * tab and `?collection=<id>` pre-selects a collection (only meaningful
+ * when tab=collections); both are read once on mount as the initial
+ * useState value, same "URL decides the starting state, then it's normal
+ * local state" pattern messages/page.jsx uses for `?conversation=`. Lets
+ * the profile dashboard's Collections/Recently Viewed/Liked Properties
+ * widgets link straight to the right tab instead of always landing on
+ * "Liked Properties". useSearchParams requires a Suspense boundary — see
+ * the default export at the bottom of this file.
  */
 
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { useParams } from "next/navigation";
+import { Suspense, useState, useEffect, useCallback, useMemo } from "react";
+import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -154,13 +164,18 @@ function dateBucketLabel(date) {
 /* ═══════════════════════════════════════════════════════════════════════════
    PAGE
    ═══════════════════════════════════════════════════════════════════════════ */
-export default function CollectionsPage() {
+const VALID_TABS = new Set(["liked", "collections", "recent"]);
 
+function CollectionsPageInner() {
 
   const { user } = useAuth();
   const { setLoginOpen } = useUI();
   const { locale, country } = useParams();
+  const searchParams = useSearchParams();
   const toast = useToast();
+
+  const tabParam = searchParams.get("tab");
+  const collectionParam = searchParams.get("collection");
 
   const [liked, setLiked] = useState([]);
   const [wishlist, setWishlist] = useState([]);
@@ -170,8 +185,10 @@ export default function CollectionsPage() {
   const [loading, setLoading] = useState(true);
   const [wishlistVenue, setWishlistVenue] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [selectedCollectionId, setSelectedCollectionId] = useState(null);
-  const [activeTab, setActiveTab] = useState("liked"); // "liked" | "collections" | "recent"
+  const [selectedCollectionId, setSelectedCollectionId] = useState(collectionParam || null);
+  // "liked" | "collections" | "recent" — from ?tab= when it's one of the
+  // three valid values, otherwise the same "liked" default as before.
+  const [activeTab, setActiveTab] = useState(VALID_TABS.has(tabParam) ? tabParam : "liked");
 
   const { activeCategory } = useCategory();
 
@@ -353,6 +370,7 @@ const coverFor = useCallback(
             pill switcher, for visual consistency with the rest of the app. */}
         <ScrollableTabBar
           className="mb-6"
+          sticky
           tabs={[
             { key: "liked", label: "Liked Properties", icon: Heart, count: liked.length },
             { key: "collections", label: "Collections", icon: Folder, count: collections.length },
@@ -687,6 +705,15 @@ function CreateCollectionShell({ onCancel, onCreated }) {
         </motion.div>
       </motion.div>
     </AnimatePresence>
+  );
+}
+
+/* ── Main export — Suspense boundary required for useSearchParams ── */
+export default function CollectionsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-white dark:bg-gray-950 pt-24" />}>
+      <CollectionsPageInner />
+    </Suspense>
   );
 }
 

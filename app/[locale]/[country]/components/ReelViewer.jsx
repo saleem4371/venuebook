@@ -329,7 +329,7 @@ function ReelViewerInner({
 
   const handleShare = () => {
     const url = `${window.location.origin}/${locale}/${country}/search/${category}/${venue.childVenueId}`;
-    navigator.share?.({ title: venue.title || "VenueBook", url }).catch(() => {
+    navigator.share?.({ title: venue.title || "venuebook.in", url }).catch(() => {
       navigator.clipboard?.writeText(url);
     });
   };

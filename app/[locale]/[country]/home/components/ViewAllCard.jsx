@@ -3,57 +3,130 @@
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 
+/* Straight-edged photo mosaic (Airbnb collection-cover style) instead of
+   a rotated fan of floating cards — one big photo + up to two smaller
+   ones stacked beside it, hairline gaps, no rotation. Each photo still
+   gets a subtle zoom on hover, driven off the PARENT's hover via Framer
+   Motion variant propagation: the button below sets initial="rest" /
+   whileHover="hover", and every child image sharing these variant names
+   (without its own initial/whileHover) animates automatically — no
+   per-image hover handlers needed. */
+const zoomVariants = {
+  rest: { scale: 1 },
+  hover: { scale: 1.06 },
+};
+
+const liftVariants = {
+  rest: { y: 0 },
+  hover: { y: -6 },
+};
+
+/* Same image-aspect map PropertyCard uses per variant, so the mosaic is
+   genuinely the same size as the sibling images in its row instead of
+   stretching to fill whatever space is left over. */
+const IMAGE_ASPECT = {
+  editorial: "aspect-[6/5]",
+  medium: "aspect-[5/4]",
+  landscape: "aspect-[16/10]",
+  compact: "aspect-square",
+};
+
 /**
  * ViewAllCard
  * ─────────────────────────────────────────────────────────────
- * The last card in a rail — a stacked-photo collage + "See all",
- * same footprint as its siblings so it sits naturally at the end
- * of the row instead of living only as a header link.
+ * The last card in a rail — same footprint as its PropertyCard
+ * siblings, and split the same way: the photo mosaic is its own
+ * fully-rounded image-card (same aspect ratio as `variant`, matching
+ * the sibling cards exactly), and "View all" sits centered below it.
  */
-export default function ViewAllCard({ images = [], label = "See all", onClick }) {
+export default function ViewAllCard({ images = [], label = "View all", onClick, accent = "#7c3aed", variant = "medium" }) {
   const thumbs = images.filter(Boolean).slice(0, 3);
+  const aspect = IMAGE_ASPECT[variant] ?? IMAGE_ASPECT.medium;
 
   return (
     <motion.button
       type="button"
       onClick={onClick}
-      whileHover={{ y: -6 }}
+      initial="rest"
+      whileHover="hover"
+      animate="rest"
+      variants={liftVariants}
       transition={{ duration: 0.2 }}
-      className="w-full h-full flex flex-col rounded-2xl overflow-hidden bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-[0_2px_8px_rgba(0,0,0,0.06),0_0_1px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.10),0_2px_8px_rgba(0,0,0,0.06)] hover:border-gray-200 dark:hover:border-gray-700 transition-all duration-200 text-start"
+      className="group w-full flex flex-col text-start cursor-pointer"
     >
-      {/* Collage */}
-      <div className="relative h-48 bg-gray-50 dark:bg-gray-800/60 overflow-hidden">
-        {thumbs.length ? (
-          <div className="absolute inset-0 flex items-center justify-center">
-            {thumbs.map((src, i) => {
-              const offset = i - (thumbs.length - 1) / 2;
-              return (
-                <img
-                  key={i}
-                  src={src}
-                  alt=""
-                  className="absolute w-24 h-24 rounded-xl object-cover border-2 border-white dark:border-gray-900 shadow-md"
-                  style={{
-                    transform: `translateX(${offset * 34}px) rotate(${offset * 8}deg)`,
-                    zIndex: 10 - Math.abs(offset),
-                  }}
-                />
-              );
-            })}
+      {/* Mosaic — same aspect ratio + rounding/shadow treatment as the
+          sibling PropertyCard images in this row */}
+      <div className={`relative ${aspect} rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800/60 shadow-[0_2px_8px_rgba(0,0,0,0.06)] group-hover:shadow-[0_14px_32px_rgba(0,0,0,0.12)] transition-shadow duration-300`}>
+        {thumbs.length >= 3 ? (
+          <div className="absolute inset-0 grid grid-cols-2 gap-0.5">
+            <motion.img
+              variants={zoomVariants}
+              transition={{ duration: 0.4 }}
+              src={thumbs[0]}
+              alt=""
+              className="w-full h-full object-cover"
+            />
+            <div className="grid grid-rows-2 gap-0.5">
+              <motion.img
+                variants={zoomVariants}
+                transition={{ duration: 0.4 }}
+                src={thumbs[1]}
+                alt=""
+                className="w-full h-full object-cover"
+              />
+              <motion.img
+                variants={zoomVariants}
+                transition={{ duration: 0.4 }}
+                src={thumbs[2]}
+                alt=""
+                className="w-full h-full object-cover"
+              />
+            </div>
           </div>
+        ) : thumbs.length === 2 ? (
+          <div className="absolute inset-0 grid grid-cols-2 gap-0.5">
+            {thumbs.map((src, i) => (
+              <motion.img
+                key={i}
+                variants={zoomVariants}
+                transition={{ duration: 0.4 }}
+                src={src}
+                alt=""
+                className="w-full h-full object-cover"
+              />
+            ))}
+          </div>
+        ) : thumbs.length === 1 ? (
+          <motion.img
+            variants={zoomVariants}
+            transition={{ duration: 0.4 }}
+            src={thumbs[0]}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover"
+          />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">
-            <ArrowRight className="w-8 h-8 text-gray-300 dark:text-gray-600" />
+            <ArrowRight className="w-8 h-8" style={{ color: accent }} />
           </div>
+        )}
+
+        {/* Subtle bottom scrim — same visual language as PropertyCard's own photo overlay */}
+        {thumbs.length > 0 && (
+          <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-black/0 to-black/0 pointer-events-none" />
         )}
       </div>
 
-      {/* Label */}
-      <div className="flex-1 p-3 flex items-center justify-center">
-        <span className="inline-flex items-center gap-1.5 font-semibold text-sm text-gray-900 dark:text-gray-50">
-          {label}
-          <ArrowRight className="w-4 h-4" />
+      {/* Content — centered below the mosaic, same vertical rhythm as
+          PropertyCard's content block but centered rather than left-led,
+          since there's no name/location/price to left-align against */}
+      <div className="pt-2.5 flex items-center justify-center gap-2">
+        <span
+          className="flex items-center justify-center w-7 h-7 rounded-full shrink-0 transition-transform duration-200 group-hover:translate-x-0.5"
+          style={{ background: `${accent}1a`, color: accent }}
+        >
+          <ArrowRight size={14} />
         </span>
+        <span className="font-semibold text-sm text-gray-900 dark:text-gray-50 truncate">{label}</span>
       </div>
     </motion.button>
   );

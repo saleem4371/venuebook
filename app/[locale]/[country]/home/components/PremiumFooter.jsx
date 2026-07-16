@@ -102,7 +102,7 @@ function FooterLogo({ ariaLabel }) {
     >
       <Image
         src={lightSrc}
-        alt="VenueBook"
+        alt="venuebook.in"
         width={130}
         height={30}
         priority
@@ -111,7 +111,7 @@ function FooterLogo({ ariaLabel }) {
       />
       <Image
         src={darkSrc}
-        alt="VenueBook"
+        alt="venuebook.in"
         width={130}
         height={30}
         priority

@@ -35,13 +35,18 @@ export default function LikedPropertiesPanel({ liked = [], loading = false, loca
   return (
     <SectionCard>
       <SectionHeading
+        compact
         title={t("title")}
         icon={
-          <span className="flex items-center justify-center w-7 h-7 rounded-xl bg-red-50 dark:bg-red-900/20">
-            <Heart size={14} className="text-[#FF3040]" />
+          <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-red-50 dark:bg-red-900/20">
+            <Heart size={12} className="text-[#FF3040]" />
           </span>
         }
-        action={<ViewAllLink href={`/${locale}/${country}/collections?tab=liked`}>{t("viewAll")}</ViewAllLink>}
+        action={
+          <ViewAllLink href={`/${locale}/${country}/collections?tab=liked`} small>
+            {t("viewAll")}
+          </ViewAllLink>
+        }
       />
 
       {loading ? (

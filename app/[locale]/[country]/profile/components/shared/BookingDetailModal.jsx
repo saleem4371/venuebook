@@ -130,7 +130,7 @@ export function BookingDetailModal({ booking: b, mode, t, tCat, format, locale, 
   );
 }
 
-function Row({ label, value }) {
+export function Row({ label, value }) {
   return (
     <div className="flex items-center justify-between py-1.5">
       <span className="text-gray-500 dark:text-gray-400">{label}</span>

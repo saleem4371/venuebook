@@ -24,13 +24,12 @@
 import { Fragment } from "react";
 import { Menu, Transition } from "@headlessui/react";
 import { useTranslations } from "next-intl";
-import { ChevronDown, Landmark, TreePalm, Camera, Building2, Car, Sparkles } from "lucide-react";
+import { ChevronDown, Camera, Building2, Car, Sparkles } from "lucide-react";
 import { useCategory } from "@/context/CategoryContext";
-import { CATEGORY_ORDER, CATEGORIES, CATEGORY_COLORS } from "@/config/categoryConfig";
+import { CATEGORY_ORDER, CATEGORIES, CATEGORY_COLORS, CATEGORY_ICONS as SHARED_CATEGORY_ICONS } from "@/config/categoryConfig";
 
 const CATEGORY_ICONS = {
-  venues: Landmark,
-  farmstays: TreePalm,
+  ...SHARED_CATEGORY_ICONS, // venues → Building2, farmstays → TreePine (platform standard)
   studios: Camera,
   workspaces: Building2,
   rentals: Car,

@@ -3,11 +3,11 @@
 /**
  * /app/[locale]/[country]/profile/components/widgets/OffersPanel.jsx
  *
- * Center column, bottom ribbon — compact horizontal offer chips, mirroring
- * the "EXCLUSIVE · PLATINUM ONLY" ribbon at the bottom of the reference
- * mockup. Same MOCK_OFFERS data as OffersSection.jsx (mobile fallback),
- * just laid out as a scrollable row instead of a grid to fit one short
- * strip at the bottom of the fixed layout.
+ * Left column — compact offer chips stacked one below the other (not a
+ * horizontal scroller), since the left column is a narrow fixed-width
+ * rail rather than a wide ribbon. Same MOCK_OFFERS data as
+ * OffersSection.jsx (mobile fallback), just laid out as a slim row per
+ * offer (icon + title + tag) so all three fit without feeling oversized.
  */
 
 import { useTranslations } from "next-intl";
@@ -23,28 +23,33 @@ export default function OffersPanel() {
   return (
     <SectionCard>
       <SectionHeading
+        compact
         title={t("title")}
         icon={
-          <span className="flex items-center justify-center w-7 h-7 rounded-xl bg-violet-50 dark:bg-violet-900/30">
-            <Sparkles size={14} className="text-violet-600" />
+          <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-violet-50 dark:bg-violet-900/30">
+            <Sparkles size={12} className="text-violet-600" />
           </span>
         }
       />
-      <div className="flex gap-2.5 overflow-x-auto no-scrollbar pb-0.5">
+      <div className="flex flex-col gap-2">
         {MOCK_OFFERS.map((o) => (
           <motion.div
             key={o.id}
-            whileHover={{ y: -3 }}
-            transition={{ duration: 0.2 }}
-            className="relative shrink-0 w-[190px] overflow-hidden rounded-2xl p-3 text-white"
+            whileHover={{ x: 2 }}
+            transition={{ duration: 0.15 }}
+            className="relative overflow-hidden rounded-xl px-3 py-2.5 text-white flex items-center gap-2.5"
             style={{ background: `linear-gradient(135deg, ${o.colorFrom}, ${o.colorTo})` }}
           >
-            <div className="absolute -top-5 -right-5 w-16 h-16 rounded-full bg-white/15 blur-lg" />
-            <Tag size={13} className="relative mb-1.5 opacity-90" />
-            <p className="relative text-[12px] font-bold leading-snug truncate">{o.title}</p>
-            <span className="relative inline-block mt-1.5 px-1.5 py-0.5 rounded bg-white/20 backdrop-blur text-[9px] font-mono font-semibold">
-              {o.tag}
+            <div className="absolute -top-4 -right-4 w-14 h-14 rounded-full bg-white/15 blur-lg" />
+            <span className="relative flex items-center justify-center w-7 h-7 rounded-lg bg-white/20 shrink-0">
+              <Tag size={12} />
             </span>
+            <div className="relative min-w-0 flex-1">
+              <p className="text-[11.5px] font-bold leading-snug truncate">{o.title}</p>
+              <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded bg-white/20 backdrop-blur text-[8.5px] font-mono font-semibold">
+                {o.tag}
+              </span>
+            </div>
           </motion.div>
         ))}
       </div>

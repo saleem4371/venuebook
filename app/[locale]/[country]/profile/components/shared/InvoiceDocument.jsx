@@ -4,23 +4,57 @@
  * /app/[locale]/[country]/profile/components/shared/InvoiceDocument.jsx
  *
  * The invoice documents behind a booking's "Invoice" action, as 2 tabs:
- * a customer-facing Main Booking Invoice, and a Tax Invoice tab.
+ * a customer-facing Invoice, and a Tax Invoice tab.
+ *
+ * PRICING MODEL: `booking.amountINR` is a PRE-TAX base price for the
+ * venue/farmstay charge — GST is added ON TOP of it, never backed out of
+ * it. `MOCK_DISCOUNT_INR` reduces that base BEFORE any GST is calculated,
+ * and — unlike the feature's first iteration — that discounted base is
+ * what EVERY document uses, including the Tax Invoice tab: "Net
+ * {category} Price" on a Tax Invoice document is always
+ * `amountINR - MOCK_DISCOUNT_INR`, and every CGST/SGST/IGST figure is
+ * computed off that same discounted figure. The convenience fee never has
+ * a discount applied to it.
  *
  * The Tax Invoice tab's shape depends on whether the vendor itself is GST
  * registered (`booking.gstRegistered`, see mockProfileData.js's
  * MOCK_BOOKINGS header comment for the full demo matrix):
- *   - registered   → TWO real tax invoices stacked: the vendor's own
- *     (for the venue/farmstay charge) and venuebook.in's (for the
- *     convenience fee) — two different suppliers, two different GSTINs,
- *     as real Indian marketplace invoicing requires.
+ *   - registered   → TWO real tax invoice cards stacked: "Tax Invoice -
+ *     {vendor}" (for the venue/farmstay charge) and "Tax Invoice -
+ *     venuebook.in" (for the convenience fee) — two different suppliers,
+ *     two different GSTINs, as real Indian marketplace invoicing requires. Neither card
+ *     carries its own running total; a shared, header-less
+ *     `TotalsFooterCard` below both cards carries the combined
+ *     Gross Invoice Value / Points Redeemed / Total Amount Paid figures.
  *   - not registered → an unregistered vendor legally cannot issue a GST
- *     tax invoice, so venuebook.in issues ONE combined tax invoice
+ *     tax invoice, so venuebook.in issues ONE combined "Tax Invoice" card
  *     covering both the venue/farmstay charge and the convenience fee
- *     (buildCombinedModel). Every intra-/inter-state (CGST+SGST vs IGST)
- *     determination in that single document uses venuebook.in's own
- *     state against the booking's customerState — there's no vendor
- *     place-of-supply to compare against once the vendor isn't the one
- *     issuing tax.
+ *     back-to-back with no heading between them (buildCombinedModel),
+ *     with the shared totals embedded in that same card. Every
+ *     intra-/inter-state (CGST+SGST vs IGST) determination in that single
+ *     document uses venuebook.in's own state against the booking's
+ *     customerState — there's no vendor place-of-supply to compare
+ *     against once the vendor isn't the one issuing tax.
+ *
+ * The Invoice tab similarly branches on `gstRegistered`: a registered
+ * vendor's card shows TWO labeled sub-sections in one card — "Invoice A -
+ * {vendor}" (the venue/farmstay charge, ending in an explicit "Total
+ * {category} Value") and "Invoice B - VB" (the convenience fee, ending in
+ * "Total Platform Fee") — while an unregistered vendor's card stays a
+ * single flat, unheaded list using slightly different row labels (e.g. an
+ * explicit "Net {category} Value" row that the registered variant leaves
+ * unlabeled). Both variants end with the same shared totals block: venues
+ * never redeem loyalty points on a booking (product rule), so they get a
+ * single bold "Total Amount Paid"; farmstays show a "Gross Invoice Value"
+ * subtotal, the loyalty redemption as its own deduction, then a final
+ * bold "Total Amount Paid".
+ *
+ * IGST consolidation: everywhere a Tax Invoice document would otherwise
+ * show a two-line CGST(@9%) + SGST(@9%) breakdown, an inter-state booking
+ * collapses that into a single indented "IGST (@ 18%)" line instead
+ * (`gstBreakdownRows` below) — never both. This only applies inside Tax
+ * Invoice blocks; the Invoice (Main) tab never splits CGST/SGST at all,
+ * it always shows one flat GST line regardless of intra-/inter-state.
  *
  * The tabs+Download/Print row is sticky at the top of the modal's
  * scrollable body, so it stays visible while a long document scrolls
@@ -31,15 +65,11 @@
  * content a finance team's reference mockups specified — not a pixel
  * clone of those mockups. Content is category-driven throughout (not a
  * venue/farmstay binary): the description line, the "stay" fields
- * (check-in/out vs. a single event date/time), and the Payment Summary's
- * charges label all read the booking's actual category via `tCat`, so a
- * studio/workspace/rental/experience booking gets correctly-worded
- * content instead of being force-fit into "Venue" or "Farmstay" wording.
- * The one deliberate venue/farmstay split left is the Main Invoice's
- * total line: venues never redeem loyalty points on a booking (product
- * rule), so they get a single bold "Grand Total Paid"; farmstays show a
- * Gross Invoice Value subtotal, the loyalty redemption as its own
- * deduction, then a final bold Net Payable Value.
+ * (check-in/out vs. a single event date/time) all read the booking's
+ * actual category via `tCat`, so a studio/workspace/rental/experience
+ * booking gets correctly-worded content instead of being force-fit into
+ * "Venue" or "Farmstay" wording. The one deliberate venue/farmstay split
+ * left is the shared totals block described above.
  *
  * Download hits the REAL backend (services/booking.service.js's
  * download_invoice → GET {NEXT_PUBLIC_API_URL}/invoice/download/:id,
@@ -75,14 +105,8 @@ import { Download, Printer, Loader2, FileText, Receipt, User, MapPin, CreditCard
 import { useAuth } from "@/context/AuthContext";
 import { download_invoice } from "@/services/booking.service";
 import { GhostButton } from "./ui";
-import {
-  MOCK_CONVENIENCE_FEE_INR,
-  MOCK_DISCOUNT_INR,
-  MOCK_VB_LOYALTY_DISCOUNT_INR,
-  VENUEBOOK_GSTIN,
-  VENUEBOOK_STATE,
-  deriveInvoiceNumbers,
-} from "../../data/mockProfileData";
+import { VENUEBOOK_GSTIN, VENUEBOOK_STATE, deriveInvoiceNumbers } from "../../data/mockProfileData";
+import { computeBookingTotals } from "../../data/bookingMath";
 import lightLogo from "@/assets/logo.svg";
 import darkLogo from "@/assets/logo.png";
 
@@ -115,6 +139,23 @@ const TABS = [
   { key: "tax", Icon: Receipt },
 ];
 
+/**
+ * A CGST(@9%)+SGST(@9%) breakdown for an intra-state supply, collapsed to
+ * a single IGST(@18%) line for an inter-state one — the one piece of tax
+ * math every Tax Invoice block shares, so it lives in one place instead
+ * of being duplicated across buildVendorModel/buildFeeModel/
+ * buildCombinedModel.
+ */
+function gstBreakdownRows({ isIntraState, base, t }) {
+  if (isIntraState) {
+    return [
+      { label: t("invoiceModal.tax.cgst"), value: formatINR2dp(base * 0.09), indent: true },
+      { label: t("invoiceModal.tax.sgst"), value: formatINR2dp(base * 0.09), indent: true },
+    ];
+  }
+  return [{ label: t("invoiceModal.tax.igst"), value: formatINR2dp(base * 0.18), indent: true }];
+}
+
 export function InvoiceDocument({ booking: b, t, tCat }) {
   const { user } = useAuth();
   const [tab, setTab] = useState("main");
@@ -137,235 +178,270 @@ export function InvoiceDocument({ booking: b, t, tCat }) {
 
   const { mainInvoiceNo, vendorInvoiceNo, feeInvoiceNo, transactionId } = deriveInvoiceNumbers(b.bookingId);
 
-  // CGST+SGST only applies when the supplier and the customer are in the
-  // SAME state; a different state means it's an inter-state supply and
-  // IGST applies instead — real GST law. `isIntraStateVendor` only ever
-  // matters when the vendor itself is the supplier issuing tax (the
-  // registered scenario's vendor document); `isIntraStateVB` covers every
-  // document venuebook.in itself issues as supplier — its own Fee
-  // invoice in the registered scenario, AND the single Combined invoice
-  // in the unregistered scenario, since venuebook.in is the one supplier
-  // either way.
-  const isIntraStateVendor = b.placeOfSupply === b.customerState;
-  const isIntraStateVB = VENUEBOOK_STATE === b.customerState;
+  // All GST/discount/loyalty math lives in the shared bookingMath.js
+  // helper now — ManageBookingView.jsx's Payment Status / Payment tab /
+  // Cancellation refund calculator needs the EXACT same "Total Amount
+  // Paid" figure this tab shows, not a second, disconnected computation.
+  const {
+    isIntraStateVendor,
+    isIntraStateVB,
+    venuePrice,
+    discount,
+    netVenueValue,
+    gstOnVenue,
+    grossTaxableVenuePrice,
+    feeBase,
+    gstOnFee,
+    grossTaxableFeePrice,
+    loyaltyDiscount,
+    totalBeforeLoyalty,
+    totalAmountPaid,
+  } = computeBookingTotals(b);
+  const finalRows = isFarmstay
+    ? [
+        { label: t("invoiceModal.main.grossInvoiceValue"), value: formatINR2dp(totalBeforeLoyalty), bold: true },
+        { label: t("invoiceModal.main.pointsRedeemed"), value: `-${formatINR2dp(loyaltyDiscount)}` },
+        { label: t("invoiceModal.main.totalAmountPaid"), value: formatINR2dp(totalAmountPaid), bold: true, large: true },
+      ]
+    : [
+        {
+          label: t("invoiceModal.main.totalAmountPaid"),
+          value: formatINR2dp(totalBeforeLoyalty),
+          bold: true,
+          large: true,
+        },
+      ];
 
-  // Venue/Farmstay charge is GST-inclusive: back out the taxable value.
-  // This undiscounted `taxableValue` is what the Tax Invoice tab's own
-  // cgst/sgst/igst math is based on below — the vendor/venuebook.in's
-  // actual declared GST invoice isn't affected by a customer-facing
-  // discount (see the discount comment further down), only the Main
-  // Invoice's own summary is.
-  const venueAmount = b.amountINR;
-  const taxableValue = venueAmount / 1.18;
-  const cgstVenue = taxableValue * 0.09;
-  const sgstVenue = taxableValue * 0.09;
-  const igstVenue = taxableValue * 0.18;
-
-  // Convenience fee is a flat amount with GST added on top (not inclusive).
-  const feeBase = MOCK_CONVENIENCE_FEE_INR;
-  const cgstFee = feeBase * 0.09;
-  const sgstFee = feeBase * 0.09;
-  const igstFee = feeBase * 0.18;
-  const feeTotal = feeBase + (isIntraStateVB ? cgstFee + sgstFee : igstFee);
-
-  // Discounts only ever appear on the Main Invoice — the GST tax
-  // invoice(s) report what the vendor/venuebook.in actually charged and
-  // taxed, unaffected by a customer-facing discount or loyalty redemption.
-  const discount = MOCK_DISCOUNT_INR;
-  const loyaltyDiscount = MOCK_VB_LOYALTY_DISCOUNT_INR;
-
-  // Main Invoice only: GST is computed on the taxable value AFTER the
-  // discount is applied (the discount reduces the pre-tax base, not just
-  // the final total) — with no discount this is identical to taxing the
-  // full taxableValue, so nothing special is needed for that case.
-  const discountedTaxableValue = Math.max(taxableValue - discount, 0);
-  const gstOnVenue = discountedTaxableValue * 0.18;
-  const venueChargeAfterDiscount = discountedTaxableValue + gstOnVenue;
-
-  // "Gross Invoice Value" = the discounted, taxed venue/farmstay charge
-  // plus the (undiscounted) convenience fee, before loyalty. Venues stop
-  // there (bold "Grand Total Paid" — no loyalty redemption on a venue
-  // booking, ever, per product rule); farmstays subtract loyaltyDiscount
-  // on top for a final "Net Payable Value".
-  const grossInvoiceValue = venueChargeAfterDiscount + feeTotal;
-  const netPayable = grossInvoiceValue - loyaltyDiscount;
-
-  const buildMainModel = () => ({
-    docType: t("invoiceModal.tabs.main"),
-    title: t("invoiceModal.main.docTitle"),
-    subtitle: t("invoiceModal.main.docSubtitle"),
-    fieldGroups: [
-      {
-        heading: t("invoiceModal.main.groupInvoice"),
-        Icon: FileText,
-        fields: [
-          { label: t("invoiceModal.main.bookingId"), value: b.bookingId },
-          { label: t("invoiceModal.main.invoiceNo"), value: mainInvoiceNo },
-          { label: t("invoiceModal.main.invoiceDate"), value: formatDDMonYYYY(invoiceDateObj) },
-        ],
-      },
-      {
-        heading: t("invoiceModal.main.groupCustomer"),
-        Icon: User,
-        fields: [
-          { label: t("invoiceModal.main.customerName"), value: user?.name || "—" },
-          { label: t("invoiceModal.main.customerMobile"), value: user?.phone || "—" },
-          { label: t("invoiceModal.main.customerEmail"), value: user?.email || "—" },
-        ],
-      },
-      {
-        heading: t("invoiceModal.main.groupBooking"),
-        Icon: MapPin,
-        fields: [
-          { label: t("invoiceModal.main.venue"), value: b.propertyName },
-          { label: t("invoiceModal.main.vendor"), value: b.vendorName },
-          isStayBased
-            ? { label: t("invoiceModal.main.checkIn"), value: formatDDMonYYYY(eventDate) }
-            : { label: t("invoiceModal.main.eventDateTime"), value: formatDDMonYYYY(eventDate) },
-          ...(isStayBased ? [{ label: t("invoiceModal.main.checkOut"), value: formatDDMonYYYY(checkOutObj) }] : []),
-        ],
-      },
-      {
-        heading: t("invoiceModal.main.groupPayment"),
-        Icon: CreditCard,
-        fields: [
-          { label: t("invoiceModal.main.paymentStatus"), value: t(`payment.${b.paymentStatus}`) },
-          { label: t("invoiceModal.main.paymentMode"), value: b.paymentMode },
-          { label: t("invoiceModal.main.transactionId"), value: transactionId },
-        ],
-      },
-    ],
-    table: null,
-    // Order matters here — DocCard renders `summary` rows in array order,
-    // only using `bold` to style a row as a subtotal/total bar, not to
-    // reshuffle it to the bottom. That's what lets the farmstay case
-    // interleave a bold subtotal (Gross Invoice Value) in the MIDDLE of
-    // the list, followed by a regular deduction row, then a second bold
-    // total — not just one bold row stuck at the very end.
-    summary: [
-      { label: t("invoiceModal.main.taxableValueLabel", { category: categoryLabel }), value: formatINR2dp(taxableValue) },
+  const buildMainModel = () => {
+    const venueRowsRegistered = [
+      { label: t("invoiceModal.main.venuePriceLabel", { category: categoryLabel }), value: formatINR2dp(venuePrice) },
       { label: t("invoiceModal.main.discount"), value: `-${formatINR2dp(discount)}` },
-      { label: t("invoiceModal.main.gstIncludedLabel"), value: formatINR2dp(gstOnVenue) },
+      { label: "", value: formatINR2dp(netVenueValue) },
+      { label: t("invoiceModal.main.gst18Label"), value: formatINR2dp(gstOnVenue) },
+      {
+        label: t("invoiceModal.main.totalCategoryValueLabel", { category: categoryLabel }),
+        value: formatINR2dp(grossTaxableVenuePrice),
+        bold: true,
+      },
+    ];
+    const feeRowsRegistered = [
+      { label: t("invoiceModal.main.feesPluralLabel"), value: formatINR2dp(feeBase) },
+      { label: t("invoiceModal.main.gstPlainLabel"), value: formatINR2dp(gstOnFee) },
+      { label: t("invoiceModal.main.totalPlatformFeeLabel"), value: formatINR2dp(grossTaxableFeePrice), bold: true },
+    ];
+    const venueRowsUnregistered = [
+      { label: t("invoiceModal.main.venuePriceLabel", { category: categoryLabel }), value: formatINR2dp(venuePrice) },
+      { label: t("invoiceModal.main.discount"), value: `-${formatINR2dp(discount)}` },
+      {
+        label: t("invoiceModal.main.netVenueValueLabel", { category: categoryLabel }),
+        value: formatINR2dp(netVenueValue),
+      },
+      {
+        label: t("invoiceModal.main.gstOnVenueLabel", { category: categoryLabel }),
+        value: formatINR2dp(gstOnVenue),
+      },
+      { label: "", value: formatINR2dp(grossTaxableVenuePrice), bold: true },
+    ];
+    const feeRowsUnregistered = [
       { label: t("invoiceModal.main.convenienceFee"), value: formatINR2dp(feeBase) },
-      { label: t("invoiceModal.main.gstOnFee"), value: formatINR2dp(feeBase * 0.18) },
-      ...(isFarmstay
-        ? [
-            { label: t("invoiceModal.main.grossInvoiceValue"), value: formatINR2dp(grossInvoiceValue), bold: true },
-            { label: t("invoiceModal.main.vbDiscount"), value: `-${formatINR2dp(loyaltyDiscount)}` },
-            { label: t("invoiceModal.main.netPayable"), value: formatINR2dp(netPayable), bold: true },
-          ]
-        : [{ label: t("invoiceModal.main.grandTotal"), value: formatINR2dp(grossInvoiceValue), bold: true }]),
-    ],
-    footer: t("invoiceModal.main.footerNote"),
-  });
+      { label: t("invoiceModal.main.gstOnFee"), value: formatINR2dp(gstOnFee) },
+      { label: "", value: formatINR2dp(grossTaxableFeePrice), bold: true },
+    ];
+
+    const blocks = isRegistered
+      ? [
+          { heading: t("invoiceModal.main.invoiceALabel", { vendor: b.vendorName }), rows: venueRowsRegistered },
+          { heading: t("invoiceModal.main.invoiceBLabel"), rows: feeRowsRegistered },
+        ]
+      : [{ heading: null, rows: [...venueRowsUnregistered, ...feeRowsUnregistered] }];
+
+    return {
+      docType: t("invoiceModal.badgeInvoice"),
+      title: t("invoiceModal.main.docTitle"),
+      fieldGroups: [
+        {
+          heading: t("invoiceModal.main.groupInvoice"),
+          Icon: FileText,
+          fields: [
+            { label: t("invoiceModal.main.invoiceDate"), value: formatDDMonYYYY(invoiceDateObj) },
+            { label: t("invoiceModal.main.invoiceNo"), value: mainInvoiceNo },
+            { label: t("invoiceModal.main.bookingId"), value: b.bookingId },
+          ],
+        },
+        {
+          heading: t("invoiceModal.main.groupCustomer"),
+          Icon: User,
+          fields: [
+            { label: t("invoiceModal.main.customerName"), value: user?.name || "—" },
+            { label: t("invoiceModal.main.customerMobile"), value: user?.phone || "—" },
+            { label: t("invoiceModal.main.customerEmail"), value: user?.email || "—" },
+          ],
+        },
+        {
+          heading: t("invoiceModal.main.groupBooking"),
+          Icon: MapPin,
+          fields: [
+            { label: t("invoiceModal.main.venue"), value: b.propertyName },
+            { label: t("invoiceModal.main.vendor"), value: b.vendorName },
+            isStayBased
+              ? {
+                  label: t("invoiceModal.main.checkIn"),
+                  value: b.checkInTime ? `${formatDDMonYYYY(eventDate)} · ${b.checkInTime}` : formatDDMonYYYY(eventDate),
+                }
+              : {
+                  label: t("invoiceModal.main.eventDateTime"),
+                  value: b.shiftLabel
+                    ? `${formatDDMonYYYY(eventDate)} · ${b.shiftLabel}${b.shiftTime ? ` (${b.shiftTime})` : ""}`
+                    : formatDDMonYYYY(eventDate),
+                },
+            ...(isStayBased
+              ? [
+                  {
+                    label: t("invoiceModal.main.checkOut"),
+                    value: b.checkOutTime
+                      ? `${formatDDMonYYYY(checkOutObj)} · ${b.checkOutTime}`
+                      : formatDDMonYYYY(checkOutObj),
+                  },
+                ]
+              : []),
+          ],
+        },
+        {
+          heading: t("invoiceModal.main.groupPayment"),
+          Icon: CreditCard,
+          fields: [
+            { label: t("invoiceModal.main.paymentStatus"), value: t(`payment.${b.paymentStatus}`) },
+            { label: t("invoiceModal.main.paymentMode"), value: b.paymentMode },
+            { label: t("invoiceModal.main.transactionId"), value: transactionId },
+            ...(b.paymentStatus === "partial"
+              ? [{ label: t("invoiceModal.main.remainingAmount"), value: formatINR2dp(totalAmountPaid / 2) }]
+              : []),
+          ],
+        },
+      ],
+      blocks,
+      finalRows,
+      footer: t("invoiceModal.main.footerNote"),
+    };
+  };
 
   // Registered scenario only — the vendor's own tax invoice for the
-  // venue/farmstay charge.
+  // venue/farmstay charge. No running total of its own: the combined
+  // total lives in the shared TotalsFooterCard below both stacked cards.
   const buildVendorModel = () => ({
     docType: t("invoiceModal.tabs.venue"),
-    title: t("invoiceModal.tabs.tax"),
-    subtitle: `${t("invoiceModal.tax.supplier")}: ${b.vendorName}`,
+    title: `${t("invoiceModal.tabs.tax")} - ${b.vendorName}`,
     fields: [
+      { label: t("invoiceModal.main.bookingId"), value: b.bookingId },
       { label: t("invoiceModal.tax.invoiceNo"), value: vendorInvoiceNo },
       { label: t("invoiceModal.tax.invoiceDate"), value: formatLongDate(invoiceDateObj) },
       { label: t("invoiceModal.tax.gstin"), value: b.vendorGSTIN },
       { label: t("invoiceModal.tax.placeOfSupply"), value: b.placeOfSupply },
     ],
-    table: {
-      headers: [t("invoiceModal.tax.description"), t("invoiceModal.tax.amount")],
-      rows: [
-        [
-          t("invoiceModal.tax.categoryBookingLabel", { category: categoryLabel }),
-          1,
-          `${formatINR2dp(venueAmount)} (${t("invoiceModal.tax.inclusiveOfGst")})`,
+    blocks: [
+      {
+        heading: null,
+        rows: [
+          {
+            label: t("invoiceModal.tax.netVenuePriceLabel", { category: categoryLabel }),
+            value: formatINR2dp(netVenueValue),
+          },
+          { label: t("invoiceModal.tax.gstHeaderLabel"), value: null },
+          ...gstBreakdownRows({ isIntraState: isIntraStateVendor, base: netVenueValue, t }),
+          {
+            label: t("invoiceModal.tax.grossTaxableVenueLabel", { category: categoryLabel }),
+            value: formatINR2dp(grossTaxableVenuePrice),
+            bold: true,
+          },
         ],
-      ],
-    },
-    summary: [
-      { label: t("invoiceModal.tax.taxableValue"), value: formatINR2dp(taxableValue) },
-      ...(isIntraStateVendor
-        ? [
-            { label: t("invoiceModal.tax.cgst"), value: formatINR2dp(cgstVenue) },
-            { label: t("invoiceModal.tax.sgst"), value: formatINR2dp(sgstVenue) },
-          ]
-        : [{ label: t("invoiceModal.tax.igst"), value: formatINR2dp(igstVenue) }]),
-      { label: t("invoiceModal.tax.invoiceTotal"), value: formatINR2dp(venueAmount), bold: true },
+      },
     ],
+    finalRows: [],
     footer: t("invoiceModal.tax.venueFooter", { vendor: b.vendorName }),
   });
 
   // Registered scenario only — venuebook.in's own tax invoice for the
-  // convenience fee (the vendor's charge is taxed separately above).
+  // convenience fee (the vendor's charge is taxed separately above). No
+  // running total of its own, same reason as buildVendorModel.
   const buildFeeModel = () => ({
     docType: t("invoiceModal.tabs.fee"),
-    title: t("invoiceModal.tabs.tax"),
-    subtitle: `${t("invoiceModal.tax.supplier")}: venuebook.in`,
+    title: `${t("invoiceModal.tabs.tax")} - venuebook.in`,
     fields: [
+      { label: t("invoiceModal.main.bookingId"), value: b.bookingId },
       { label: t("invoiceModal.tax.invoiceNo"), value: feeInvoiceNo },
       { label: t("invoiceModal.tax.invoiceDate"), value: formatLongDate(invoiceDateObj) },
       { label: t("invoiceModal.tax.gstin"), value: VENUEBOOK_GSTIN },
+      { label: t("invoiceModal.tax.placeOfSupply"), value: VENUEBOOK_STATE },
     ],
-    table: {
-      headers: [t("invoiceModal.tax.description"), t("invoiceModal.tax.amount")],
-      rows: [[t("invoiceModal.tax.convenienceFee"), formatINR2dp(feeBase)]],
-    },
-    summary: [
-      ...(isIntraStateVB
-        ? [
-            { label: t("invoiceModal.tax.cgst"), value: formatINR2dp(cgstFee) },
-            { label: t("invoiceModal.tax.sgst"), value: formatINR2dp(sgstFee) },
-          ]
-        : [{ label: t("invoiceModal.tax.igst"), value: formatINR2dp(igstFee) }]),
-      { label: t("invoiceModal.tax.invoiceTotal"), value: formatINR2dp(feeTotal), bold: true },
+    blocks: [
+      {
+        heading: null,
+        rows: [
+          { label: t("invoiceModal.tax.netFeeLabel"), value: formatINR2dp(feeBase) },
+          { label: t("invoiceModal.tax.gstHeaderLabel"), value: null },
+          ...gstBreakdownRows({ isIntraState: isIntraStateVB, base: feeBase, t }),
+          {
+            label: t("invoiceModal.tax.grossTaxableFeeLabel"),
+            value: formatINR2dp(grossTaxableFeePrice),
+            bold: true,
+          },
+        ],
+      },
     ],
+    finalRows: [],
     footer: t("invoiceModal.tax.feeFooter"),
   });
 
   // Unregistered scenario only — an unregistered vendor can't issue GST
   // tax, so venuebook.in issues ONE tax invoice covering both the
-  // venue/farmstay charge (as the first line, per product spec — "venue
-  // name, venue price, tax") and the convenience fee, one supplier, one
-  // intra-/inter-state determination (isIntraStateVB) for the whole thing.
-  const buildCombinedModel = () => {
-    const combinedTotal = venueAmount + feeTotal;
-    return {
-      docType: t("invoiceModal.tabs.combined"),
-      title: t("invoiceModal.tabs.tax"),
-      subtitle: `${t("invoiceModal.tax.supplier")}: venuebook.in`,
-      badge: t("invoiceModal.tax.notRegisteredBadge"),
-      fields: [
-        { label: t("invoiceModal.tax.invoiceNo"), value: feeInvoiceNo },
-        { label: t("invoiceModal.tax.invoiceDate"), value: formatLongDate(invoiceDateObj) },
-        { label: t("invoiceModal.tax.gstin"), value: VENUEBOOK_GSTIN },
-      ],
-      table: {
-        headers: [t("invoiceModal.tax.description"), t("invoiceModal.tax.amount")],
+  // venue/farmstay charge (first, per product spec) and the convenience
+  // fee, back-to-back with no heading between them, one supplier, one
+  // intra-/inter-state determination (isIntraStateVB) for both — with the
+  // shared totals embedded in this same card.
+  const buildCombinedModel = () => ({
+    docType: t("invoiceModal.tabs.tax"),
+    title: `${t("invoiceModal.tabs.tax")} - venuebook.in`,
+    fields: [
+      { label: t("invoiceModal.main.bookingId"), value: b.bookingId },
+      { label: t("invoiceModal.tax.invoiceNo"), value: feeInvoiceNo },
+      { label: t("invoiceModal.tax.invoiceDate"), value: formatLongDate(invoiceDateObj) },
+      { label: t("invoiceModal.tax.gstin"), value: VENUEBOOK_GSTIN },
+      { label: t("invoiceModal.tax.placeOfSupply"), value: VENUEBOOK_STATE },
+    ],
+    blocks: [
+      {
+        heading: null,
         rows: [
-          [
-            t("invoiceModal.tax.categoryBookingLabel", { category: categoryLabel }),
-            1,
-            `${formatINR2dp(venueAmount)} (${t("invoiceModal.tax.inclusiveOfGst")})`,
-          ],
-          [t("invoiceModal.tax.convenienceFee"), 1, formatINR2dp(feeBase)],
+          {
+            label: t("invoiceModal.tax.netVenuePriceLabel", { category: categoryLabel }),
+            value: formatINR2dp(netVenueValue),
+          },
+          { label: t("invoiceModal.tax.gstHeaderLabel"), value: null },
+          ...gstBreakdownRows({ isIntraState: isIntraStateVB, base: netVenueValue, t }),
+          {
+            label: t("invoiceModal.tax.grossTaxableVenueLabel", { category: categoryLabel }),
+            value: formatINR2dp(grossTaxableVenuePrice),
+            bold: true,
+          },
+          { label: t("invoiceModal.tax.netFeeLabel"), value: formatINR2dp(feeBase) },
+          { label: t("invoiceModal.tax.gstHeaderLabel"), value: null },
+          ...gstBreakdownRows({ isIntraState: isIntraStateVB, base: feeBase, t }),
+          {
+            label: t("invoiceModal.tax.grossTaxableFeeLabel"),
+            value: formatINR2dp(grossTaxableFeePrice),
+            bold: true,
+          },
         ],
       },
-      summary: [
-        { label: t("invoiceModal.tax.taxableValue"), value: formatINR2dp(taxableValue + feeBase) },
-        ...(isIntraStateVB
-          ? [
-              { label: t("invoiceModal.tax.cgst"), value: formatINR2dp(cgstVenue + cgstFee) },
-              { label: t("invoiceModal.tax.sgst"), value: formatINR2dp(sgstVenue + sgstFee) },
-            ]
-          : [{ label: t("invoiceModal.tax.igst"), value: formatINR2dp(igstVenue + igstFee) }]),
-        { label: t("invoiceModal.tax.invoiceTotal"), value: formatINR2dp(combinedTotal), bold: true },
-      ],
-      footer: t("invoiceModal.tax.combinedFooter", { vendor: b.vendorName, category: categoryLabel }),
-    };
-  };
+    ],
+    finalRows,
+    footer: t("invoiceModal.tax.combinedFooter", { vendor: b.vendorName, category: categoryLabel }),
+  });
 
-  // "tax" is either two real documents (registered vendor) or one
-  // combined document (unregistered vendor) stacked under one tab;
-  // "main" is always just the one.
+  // "tax" is either two real documents (registered vendor, plus a shared
+  // TotalsFooterCard appended below both) or one combined document
+  // (unregistered vendor, totals embedded) stacked under one tab; "main"
+  // is always just the one.
   const models =
     tab === "tax" ? (isRegistered ? [buildVendorModel(), buildFeeModel()] : [buildCombinedModel()]) : [buildMainModel()];
 
@@ -397,6 +473,9 @@ export function InvoiceDocument({ booking: b, t, tCat }) {
   }
 
   const docCards = models.map((model, i) => <DocCard key={i} model={model} t={t} />);
+  if (tab === "tax" && isRegistered) {
+    docCards.push(<TotalsFooterCard key="totals-footer" rows={finalRows} t={t} />);
+  }
 
   return (
     <>
@@ -478,21 +557,13 @@ function DocCard({ model, t }) {
   return (
     <div className="rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
       <div className="h-1 bg-gradient-to-r from-cyan-400 via-fuchsia-500 to-violet-600" />
-      <div className="flex items-center justify-between gap-3 px-4 py-3 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
+      <div className="flex items-center px-4 py-3 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
         <img src={lightLogo.src ?? lightLogo} alt="venuebook.in" className="h-5 w-auto dark:hidden" />
         <img src={darkLogo.src ?? darkLogo} alt="venuebook.in" className="h-5 w-auto hidden dark:block" />
-        <span className="px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wide bg-violet-50 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300 border border-violet-200 dark:border-violet-700/40 shrink-0">
-          {model.docType}
-        </span>
       </div>
       <div className="px-4 pt-3 pb-3.5 bg-gray-50/60 dark:bg-gray-800/30">
         <p className="text-[13px] font-bold text-gray-900 dark:text-gray-50">{model.title}</p>
         {model.subtitle && <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{model.subtitle}</p>}
-        {model.badge && (
-          <span className="inline-flex items-center mt-1.5 px-2 py-0.5 rounded-full text-[9.5px] font-semibold bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 border border-amber-200 dark:border-amber-700/40">
-            {model.badge}
-          </span>
-        )}
       </div>
 
       <div className="p-4 bg-white dark:bg-gray-900 space-y-4">
@@ -513,50 +584,80 @@ function DocCard({ model, t }) {
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 rounded-xl bg-gray-50/60 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800 p-3.5">
-            {model.fields.map((f, i) => (
-              <Field key={i} label={f.label} value={f.value} />
+          model.fields && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 rounded-xl bg-gray-50/60 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800 p-3.5">
+              {model.fields.map((f, i) => (
+                <Field key={i} label={f.label} value={f.value} />
+              ))}
+            </div>
+          )
+        )}
+
+        {/* Each block is its own bordered rows box — a Main Invoice with
+            two blocks (registered vendor's charge + VB's fee) simply
+            stacks two of these with no heading between them. Rows render
+            in array order — `bold` only changes a row's styling (a
+            top-bordered, bold "subtotal/total" bar), it does NOT bucket
+            bold rows to the end, which is what lets a bold subtotal sit
+            in the MIDDLE of a block's row list. */}
+        {model.blocks?.map((block, bi) => (
+          <div key={bi} className="rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <RowsHeader t={t} />
+            {block.rows.map((r, ri) => (
+              <SummaryRow key={ri} {...r} />
+            ))}
+          </div>
+        ))}
+
+        {/* Shared Gross Invoice Value / Points Redeemed / Total Amount
+            Paid totals — only rendered here when the model embeds them
+            (Main Invoice, and the unregistered Combined Tax Invoice); the
+            registered Tax Invoice's two per-supplier cards leave this
+            empty and rely on the standalone TotalsFooterCard instead. */}
+        {model.finalRows && model.finalRows.length > 0 && (
+          <div className="rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <RowsHeader t={t} />
+            {model.finalRows.map((r, ri) => (
+              <SummaryRow key={ri} {...r} />
             ))}
           </div>
         )}
 
-        {model.table && (
-          <DescriptionTable
-            t={t}
-            showQty={model.table.rows[0]?.length === 3}
-            rows={model.table.rows.map((r) =>
-              r.length === 3 ? { description: r[0], qty: r[1], amount: r[2] } : { description: r[0], amount: r[1] },
-            )}
-          />
-        )}
-
-        {/* Rows render in array order — `bold` only changes a row's
-            styling (a top-bordered, bold "subtotal/total" bar), it does
-            NOT bucket bold rows to the end. That's required for the
-            farmstay Main Invoice case: a bold "Gross Invoice Value"
-            subtotal sits in the MIDDLE of this list, followed by a
-            regular "Loyalty Redeemed" deduction, then a second bold
-            "Net Payable Value" — order has to survive exactly as built. */}
-        <div className="rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 overflow-hidden">
-          {model.summary.map((r, i) =>
-            r.bold ? (
-              <div
-                key={i}
-                className="flex items-center justify-between px-3 py-2.5 border-t border-gray-200 dark:border-gray-700 font-bold text-[13px] text-gray-900 dark:text-gray-50"
-              >
-                <span>{r.label}</span>
-                <span>{r.value}</span>
-              </div>
-            ) : (
-              <div key={i} className="px-3">
-                <AmountRow label={r.label} value={r.value} />
-              </div>
-            ),
-          )}
-        </div>
-
         {model.footer && <p className="text-[10.5px] text-gray-400 dark:text-gray-500 italic pt-1">{model.footer}</p>}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Standalone card (no logo/title header, unlike DocCard) carrying the
+ * shared Gross Invoice Value / Points Redeemed / Total Amount Paid rows —
+ * shown below the registered Tax Invoice tab's two stacked per-supplier
+ * cards, since neither of those individually represents "what the
+ * customer paid in total".
+ */
+function TotalsFooterCard({ rows, t }) {
+  return (
+    <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden">
+      <RowsHeader t={t} />
+      {rows.map((r, i) => (
+        <SummaryRow key={i} {...r} />
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Column header ("DESCRIPTION" / "AMOUNT") shown above every rows box —
+ * blocks, finalRows, and TotalsFooterCard alike — so every row's label
+ * and amount line up under a labeled column, matching the original
+ * line-item table's header styling.
+ */
+function RowsHeader({ t }) {
+  return (
+    <div className="flex items-center gap-2 px-3 py-2 text-[10.5px] font-semibold text-violet-700 dark:text-violet-300 uppercase tracking-wide bg-violet-50/70 dark:bg-violet-900/20 border-b border-gray-200 dark:border-gray-700">
+      <span className="flex-1">{t("invoiceModal.tax.description")}</span>
+      <span className="w-32 text-right shrink-0">{t("invoiceModal.main.amount")}</span>
     </div>
   );
 }
@@ -572,30 +673,39 @@ function Field({ label, value }) {
   );
 }
 
-function AmountRow({ label, value }) {
-  return (
-    <div className="flex items-center justify-between py-1.5 text-[12px]">
-      <span className="text-gray-600 dark:text-gray-300">{label}</span>
-      <span className="font-medium text-gray-900 dark:text-gray-50">{value}</span>
-    </div>
-  );
-}
-
-function DescriptionTable({ t, rows, showQty }) {
-  return (
-    <div className="rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 overflow-hidden">
-      <div className="flex items-center gap-2 px-3 py-2 text-[10.5px] font-semibold text-violet-700 dark:text-violet-300 uppercase tracking-wide bg-violet-50/70 dark:bg-violet-900/20 border-b border-gray-200 dark:border-gray-700">
-        <span className="flex-1">{t("invoiceModal.tax.description")}</span>
-        {showQty && <span className="w-10 text-right">{t("invoiceModal.tax.qty")}</span>}
-        <span className="w-32 text-right">{t("invoiceModal.tax.amount")}</span>
+/**
+ * A single row inside a `blocks`/`finalRows` box. Three shapes:
+ *   - `value === null` → header-only row (e.g. "(+)GST" introducing an
+ *     indented CGST/SGST/IGST breakdown right below it) — a small muted
+ *     label with no amount.
+ *   - `bold` → a top-bordered, bold subtotal/total bar.
+ *   - otherwise → a plain label/value line; `indent` pushes it in
+ *     (pl-7) for the CGST/SGST/IGST lines nested under a "(+)GST" header.
+ */
+function SummaryRow({ label, value, bold, indent, large }) {
+  if (value == null) {
+    return (
+      <div className="px-3 pt-2 pb-0.5">
+        <span className="text-[10.5px] font-semibold text-gray-500 dark:text-gray-400">{label}</span>
       </div>
-      {rows.map((r, i) => (
-        <div key={i} className="flex items-center gap-2 px-3 py-2 text-[12px]">
-          <span className="flex-1 text-gray-800 dark:text-gray-200">{r.description}</span>
-          {showQty && <span className="w-10 text-right text-gray-600 dark:text-gray-300">{r.qty}</span>}
-          <span className="w-32 text-right font-medium text-gray-900 dark:text-gray-50">{r.amount}</span>
-        </div>
-      ))}
+    );
+  }
+  if (bold) {
+    return (
+      <div
+        className={`flex items-center gap-2 px-3 border-t border-gray-200 dark:border-gray-700 font-bold text-gray-900 dark:text-gray-50 ${
+          large ? "py-3.5 text-[16px]" : "py-2.5 text-[13px]"
+        }`}
+      >
+        <span className="flex-1">{label}</span>
+        <span className="w-32 text-right shrink-0">{value}</span>
+      </div>
+    );
+  }
+  return (
+    <div className={`flex items-center gap-2 py-1.5 px-3 text-[12px] ${indent ? "pl-7" : ""}`}>
+      <span className="flex-1 text-gray-600 dark:text-gray-300">{label}</span>
+      <span className="w-32 text-right shrink-0 font-medium text-gray-900 dark:text-gray-50">{value}</span>
     </div>
   );
 }

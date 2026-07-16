@@ -3,13 +3,12 @@
 /**
  * /app/[locale]/[country]/profile/components/widgets/MessagesNavCard.jsx
  *
- * Left column, below UpcomingBookingCard — a single always-visible shortcut
+ * Left column, above the Offers ribbon — a single always-visible shortcut
  * into the real Messages inbox (app/[locale]/[country]/messages/page.jsx),
- * independent of any one booking. UpcomingBookingCard already has a
- * "Message host" action, but that's scoped to the soonest booking only —
- * this is the general entry point so a customer with no upcoming booking
- * (or a question unrelated to one) can still reach their inbox from the
- * dashboard glance view.
+ * independent of any one booking. Individual bookings in BookingsPanel
+ * already have their own "Message host" action, but that's scoped to one
+ * booking at a time — this is the general entry point so a customer can
+ * still reach their inbox from the dashboard glance view regardless.
  *
  * The unread count is read from the same MOCK_CONVERSATIONS the Messages
  * page itself renders (messages/_data.js) — not a second, disconnected
