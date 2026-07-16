@@ -28,6 +28,11 @@
  *
  * Tab shape:
  *   { key: string, label: string, icon?: LucideIcon, count?: number }
+ *
+ * Sticky (opt-in — default behavior for all existing callers is unchanged):
+ *   <ScrollableTabBar sticky tabs={TABS} active={activeKey} onChange={setActiveKey} />
+ *   `stickyTop` defaults to clearing the site Navbar (h-16 / md:h-[72px] —
+ *   see home/components/Navbar.jsx); override if a page's header differs.
  */
 
 import { useRef, useEffect, useState, useCallback } from "react";
@@ -116,6 +121,9 @@ export default function ScrollableTabBar({
   trailingAction,      // optional node pinned at the right end of the bar (outside scroll area)
   className       = "",
   snap            = false,
+  sticky          = false,                       // opt-in: pins the bar under the Navbar on scroll
+  stickyTop       = "top-16 md:top-[72px]",       // matches Navbar's h-16 / md:h-[72px]
+  stickyClassName = "bg-white/95 dark:bg-gray-950/95 backdrop-blur-sm shadow-[0_1px_0_rgba(0,0,0,0.04)]",
 }) {
   const scrollRef  = useRef(null);
   const [canLeft,  setCanLeft]  = useState(false);
@@ -157,7 +165,13 @@ export default function ScrollableTabBar({
      * The inner wrapper (flex-1 min-w-0) contains the overflow + arrows
      * so trailingAction is pinned at the right and never scrolls away.
      */
-    <div className={`relative flex items-end border-b border-gray-200 dark:border-white/[0.07] ${className}`}>
+    <div
+      className={[
+        "relative flex items-end border-b border-gray-200 dark:border-white/[0.07]",
+        sticky ? `sticky z-30 ${stickyTop} ${stickyClassName}` : "",
+        className,
+      ].join(" ").trim()}
+    >
 
       {/* Scrollable section — arrows + tab list */}
       <div className="relative flex-1 min-w-0">

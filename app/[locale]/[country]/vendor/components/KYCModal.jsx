@@ -727,7 +727,7 @@ function KYCFooter({ step, loading, canAdvance, onBack, onNext, onSubmit }) {
 function Step0Category({ category, setCategory }) {
   return (
     <StepShell icon={Shield} title="Select account type"
-      desc="Choose how you'll be using VenueBook. This determines which documents we need to verify.">
+      desc="Choose how you'll be using venuebook.in. This determines which documents we need to verify.">
       <div className="max-w-md space-y-3">
 
         {[
@@ -1583,7 +1583,7 @@ function Step4Doc({ docData, setDocData, panData }) {
                     Document uploaded successfully
                   </p>
                   <p className="text-[11.5px] text-emerald-700/70 dark:text-emerald-400/70 leading-snug">
-                    This will be reviewed by the VenueBook verification team during KYC approval.
+                    This will be reviewed by the venuebook.in verification team during KYC approval.
                   </p>
                 </div>
               </motion.div>
@@ -1647,7 +1647,7 @@ function Step5Review({ panData, aadhaarData, bankData, docData, category }) {
             "text-[13.5px] font-bold",
             allDone ? "text-emerald-800 dark:text-emerald-300" : "text-violet-800 dark:text-violet-300",
           ].join(" ")}>
-            {allDone ? "Ready for VenueBook review" : "Verification in progress"}
+            {allDone ? "Ready for venuebook.in review" : "Verification in progress"}
           </p>
           <p className="text-xs text-gray-500 dark:text-gray-400">
             {checks.filter(c=>c.done).length} of {checks.length} verifications completed
@@ -1683,7 +1683,7 @@ function Step5Review({ panData, aadhaarData, bankData, docData, category }) {
       </div>
 
       <p className="text-[11px] text-gray-400 dark:text-gray-500 leading-relaxed">
-        By submitting you confirm all information is accurate and authorise VenueBook to verify
+        By submitting you confirm all information is accurate and authorise venuebook.in to verify
         your business identity for compliance purposes under Indian law.
       </p>
     </StepShell>

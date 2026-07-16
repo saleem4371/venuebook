@@ -1040,12 +1040,12 @@ function Brandlogo({ href, isDark }) {
   return (
     <Link
       href={href}
-      aria-label="VenueBook Vendor"
+      aria-label="venuebook.in Vendor"
       className="shrink-0 inline-flex items-center rounded-md transition-opacity hover:opacity-75 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2"
     >
       <img
         src={logoSrc}
-        alt="VenueBook"
+        alt="venuebook.in"
         width={140}
         height={28}
         loading="eager"

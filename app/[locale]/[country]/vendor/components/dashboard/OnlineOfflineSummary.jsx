@@ -12,7 +12,7 @@ const SUMMARY = [
 ];
 
 const LEAD_SOURCES = [
-  { name: "VenueBook",    value: 45, color: "#7c3aed" },
+  { name: "venuebook.in", value: 45, color: "#7c3aed" },
   { name: "Direct Calls", value: 20, color: "#0ea5e9" },
   { name: "Walk-ins",     value: 10, color: "#10b981" },
   { name: "Referrals",    value: 15, color: "#f59e0b" },

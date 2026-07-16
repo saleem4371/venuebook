@@ -294,7 +294,7 @@ export default function TermsStep({ form, setForm, category = "venues" }) {
           <div>
             <p className="text-[13px] font-semibold" style={{ color: tk.text }}>Platform Agreement</p>
             <p className="text-[12px] mt-1 leading-relaxed" style={{ color: tk.muted }}>
-              By listing on VenueBook, you agree to our{" "}
+              By listing on venuebook.in, you agree to our{" "}
               <span style={{ color: theme.accent, cursor: "pointer" }}>Host Terms of Service</span>,{" "}
               <span style={{ color: theme.accent, cursor: "pointer" }}>Non-Discrimination Policy</span>, and{" "}
               <span style={{ color: theme.accent, cursor: "pointer" }}>Community Guidelines</span>.
@@ -326,7 +326,7 @@ export default function TermsStep({ form, setForm, category = "venues" }) {
             </AnimatePresence>
           </div>
           <span className="text-[13px] font-medium leading-relaxed" style={{ color: tk.text }}>
-            I confirm that I have read and agree to VenueBook's Host Terms of Service, and all information in this listing is accurate.
+            I confirm that I have read and agree to venuebook.in's Host Terms of Service, and all information in this listing is accurate.
           </span>
         </motion.button>
 
