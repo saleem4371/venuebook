@@ -12,6 +12,7 @@ import {
 } from "next/font/google";
 import { headers }           from "next/headers";
 import { RTL_LOCALES, locales, defaultLocale } from "@/config/i18n";
+import { APP_NAME } from "@/config/constants";
 
 /* ── Primary: Airbnb-style font for Latin/Latin-ext ── */
 const jakarta = Plus_Jakarta_Sans({
@@ -22,7 +23,7 @@ const jakarta = Plus_Jakarta_Sans({
 }); 
 
 export const metadata = {
-  title: 'venuebook.in',
+  title: APP_NAME,
   description:
     'Discover and book venues, farmstays, studios, workspaces & rentals',
 
@@ -115,7 +116,7 @@ export default async function RootLayout({ children }) {
         <link rel="icon" type="image/png" href="/icon-192x192.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="apple-mobile-web-app-title" content="NextPWA" />
+        <meta name="apple-mobile-web-app-title" content={APP_NAME} />
         <meta name="description" content="Progressive Web App with Notifications" />
        <script
           src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAzQBQV6-t21jRrYTU9WGOnAO0iz-fpGEI&libraries=places"
