@@ -4,8 +4,8 @@ import { useState } from "react";
 import {
   Bell,
   User,
-  Home,
-  Compass,
+  Building2,
+  TreePine,
   Briefcase,
   ArrowLeft,
   Search,
@@ -39,8 +39,8 @@ export default function SearchBar({ openFilter }) {
   };
 
   const tabs = [
-    { id: "venues", label: "Venue", icon: Home },
-    { id: "Framstay", label: "Framstay", icon: Compass },
+    { id: "venues", label: "Venue", icon: Building2 },
+    { id: "Farmstay", label: "Farmstay", icon: TreePine },
   ];
 
   return (
@@ -186,7 +186,7 @@ export default function SearchBar({ openFilter }) {
       onClick={() => setActiveTab("venues")}
       className="flex flex-col items-center text-xs flex-1"
     >
-      <Home
+      <Building2
         size={20}
         className={activeTab === "venues" ? "text-black" : "text-gray-400"}
       />
@@ -197,14 +197,14 @@ export default function SearchBar({ openFilter }) {
 
     {/* FARMSTAY */}
     <button
-      onClick={() => setActiveTab("Framstay")}
+      onClick={() => setActiveTab("Farmstay")}
       className="flex flex-col items-center text-xs flex-1"
     >
-      <Compass
+      <TreePine
         size={20}
-        className={activeTab === "Framstay" ? "text-black" : "text-gray-400"}
+        className={activeTab === "Farmstay" ? "text-black" : "text-gray-400"}
       />
-      <span className={activeTab === "Framstay" ? "font-semibold" : "text-gray-500"}>
+      <span className={activeTab === "Farmstay" ? "font-semibold" : "text-gray-500"}>
         Farmstay
       </span>
     </button>

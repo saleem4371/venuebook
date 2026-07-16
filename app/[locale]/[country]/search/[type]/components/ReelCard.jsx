@@ -175,7 +175,7 @@ if (!hasVideo) {
       ? `${window.location.origin}/${locale}/${country}/search/${category}/${venue.childVenueId}`
       : "";
     if (navigator.share) {
-      navigator.share({ title: venue.title || venue.venueName || "VenueBook", url }).catch(() => {});
+      navigator.share({ title: venue.title || venue.venueName || "venuebook.in", url }).catch(() => {});
     } else {
       navigator.clipboard?.writeText(url).catch(() => {});
     }

@@ -23,7 +23,7 @@
 
 import {
   Heart,
-  Trees,
+  TreePine,
   Umbrella,
   PartyPopper,
   Camera,
@@ -38,7 +38,7 @@ import {
 // Curated presets shown in the icon picker (Create Collection modal).
 export const ICON_PRESETS = [
   { key: "weddings", label: "Weddings", Icon: Heart, color: "#E11D48" },
-  { key: "farmstays", label: "Farmstays", Icon: Trees, color: "#16A34A" },
+  { key: "farmstays", label: "Farmstays", Icon: TreePine, color: "#16A34A" },
   { key: "beach", label: "Beach", Icon: Umbrella, color: "#0EA5E9" },
   { key: "events", label: "Events", Icon: PartyPopper, color: "#F59E0B" },
   { key: "studio", label: "Studio", Icon: Camera, color: "#8B5CF6" },

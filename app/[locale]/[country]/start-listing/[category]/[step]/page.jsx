@@ -14,8 +14,8 @@ export async function generateMetadata({ params }) {
     CATEGORY_LABELS[category] || "Property";
 
   return {
-    title: `List your ${label} — VenueBook`,
-    description: `Create your ${label} listing on VenueBook in just a few steps.`,
+    title: `List your ${label} — venuebook.in`,
+    description: `Create your ${label} listing on venuebook.in in just a few steps.`,
   };
 }
 

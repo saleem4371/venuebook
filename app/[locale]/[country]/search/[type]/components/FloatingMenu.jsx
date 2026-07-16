@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Home, Scale, Building2, X } from "lucide-react";
+import { Home, Scale, Building2, TreePine, X } from "lucide-react";
 import { useUI } from "@/context/UIContext";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 
@@ -133,7 +133,7 @@ export default function FloatingMenu({ compareList, setCompareList }) {
                     onClick={() => handleNavigate("venues")}
                   />
                   <MenuItem
-                    icon={<Home size={15} />}
+                    icon={<TreePine size={15} />}
                     label="Farmstay"
                     active={lastSegment === "farmstay"}
                     onClick={() => handleNavigate("farmstay")}

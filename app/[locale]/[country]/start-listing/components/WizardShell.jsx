@@ -762,12 +762,12 @@ if (Array.isArray(resp_check.data) && resp_check.data.length > 0) {
           <div className="flex items-center gap-3 sm:gap-6">
             {/* Logo is non-navigable inside the listing wizard (Rule 1) */}
             <div
-              aria-label="VenueBook"
+              aria-label="venuebook.in"
               className="flex-shrink-0 select-none"
             >
               <Image
                 src={isDark ? darkLogo : lightLogo}
-                alt="VenueBook"
+                alt="venuebook.in"
                 height={32}
                 className="h-7 sm:h-8 w-auto object-contain min-w-[88px]"
                 priority

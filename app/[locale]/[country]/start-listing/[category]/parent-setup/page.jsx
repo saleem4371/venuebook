@@ -366,10 +366,10 @@ export default function ParentSetupPage() {
         <div className="w-full px-5 sm:px-10 py-3.5 sm:py-4">
           <div className="flex items-center gap-3 sm:gap-6">
 
-            <div className="flex-shrink-0 select-none" aria-label="VenueBook">
+            <div className="flex-shrink-0 select-none" aria-label="venuebook.in">
               <Image
                 src={isDark ? darkLogo : lightLogo}
-                alt="VenueBook"
+                alt="venuebook.in"
                 height={32}
                 className="h-7 sm:h-8 w-auto object-contain min-w-[88px]"
                 priority

@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 
 import MapView from "./components/MapView";
-import VenueCard from "./components/VenueCard";
+import VenueCard, { CATEGORY_SOLID, CATEGORY_SOLID_DARK } from "./components/VenueCard";
 import FilterDrawer from "./components/FilterDrawer";
 import WishlistPopup from "./components/WishlistPopup";
 import FilterRow from "./components/FilterRow";
@@ -29,6 +29,7 @@ import { useUI } from "@/context/UIContext";
 import { useAuth } from "@/context/AuthContext";
 import { usePreferredLocation } from "@/hooks/usePreferredLocation";
 import { useMobileReels } from "@/context/MobileReelsContext";
+import { useToast } from "@/components/ToastProvider";
 
 import {
   LoadProperty,
@@ -79,6 +80,7 @@ export default function SearchPage() {
     useUI();
   const { activeCategory } = useCategory();
   const { openReels, registerSource, unregisterSource } = useMobileReels();
+  const toast = useToast();
 
   /* ── data ──────────────────────────────────────────────────── */
   const [hoverVenue, setHoverVenue] = useState(null);
@@ -502,12 +504,31 @@ export default function SearchPage() {
         setLoginOpen(true);
         return;
       }
+
+      // Comparing across categories doesn't make sense — a Venue and a
+      // Farmstay don't share the metadata the compare table is built
+      // around. Only enforced when the existing compare-list rows actually
+      // carry a resolvable category (defensive — see the popup's field
+      // reads below for why that's not guaranteed), so this can only ever
+      // block a real mismatch, never a false positive from missing data.
+      if (action) {
+        const nextCategory = venue.category || activeCategory;
+        const mismatch = compares.some((item) => {
+          const existingCategory = item.category || item.property_type;
+          return existingCategory && nextCategory && existingCategory !== nextCategory;
+        });
+        if (mismatch) {
+          toast.error("You can only compare properties within the same category.");
+          return;
+        }
+      }
+
       const payload = { venue_id: venue.childVenueId };
       action ? await addCompareAPI(payload) : await removeCompareAPI(payload);
       loadUser();
       // eslint-disable-next-line react-hooks/exhaustive-deps
     },
-    [user, load],
+    [user, load, compares, activeCategory, toast],
   );
 
   /* ── LIKED PROPERTY  ───────────────────────────────────────────────── */
@@ -607,10 +628,46 @@ useEffect(() => {
 }, [searchData]);
 
 const compare = () =>{
- 
+
    router.push(`/${locale}/${country}/compare`);
   // ${locale}/${country}
 }
+
+  // The compare list is now guaranteed single-category by handleCompare's
+  // mismatch guard above, so the FAB/badge/popup can safely theme
+  // themselves off whatever's already in it instead of a fixed purple.
+  const compareCategory =
+    compares[0]?.category || compares[0]?.property_type || activeCategory;
+  const compareSolid = CATEGORY_SOLID[compareCategory] || CATEGORY_SOLID.venues;
+  const compareSolidDark =
+    CATEGORY_SOLID_DARK[compareCategory] || CATEGORY_SOLID_DARK.venues;
+
+  // Compare rows have the same thin/unconfirmed-shape problem documented
+  // elsewhere in this app (see collections/page.jsx's header comment) —
+  // `item.image`/`item.title` were silently wrong, which is why the popup
+  // showed a blank thumbnail and blank name for some rows. Read every
+  // plausible field name defensively instead of trusting one.
+  const compareThumb = (item) => {
+    const img = item.images?.[0] || item.image || item.thumbnail || item.coverImage || null;
+    if (!img) return null;
+    return img.startsWith("http") ? img : `${BASE_URL}/${img}`;
+  };
+  const compareName = (item) =>
+    item.venueName || item.title || item.name || "Property";
+
+  const hexToRgba = (hex, alpha) => {
+    const h = (hex || "").replace("#", "");
+    const bigint = parseInt(
+      h.length === 3 ? h.split("").map((c) => c + c).join("") : h,
+      16
+    );
+    if (Number.isNaN(bigint)) return `rgba(124,58,237,${alpha})`;
+    const r = (bigint >> 16) & 255;
+    const g = (bigint >> 8) & 255;
+    const b = bigint & 255;
+    return `rgba(${r},${g},${b},${alpha})`;
+  };
+
   /* ══════════════════════════════════════════════════════════════
      RENDER
      ══════════════════════════════════════════════════════════════ */
@@ -682,7 +739,7 @@ const compare = () =>{
             />
           </div>
 
-          <div className="flex-1 flex flex-col min-h-0 px-4 pt-3 pb-4 lg:pb-4">
+          <div className="flex-1 flex flex-col min-h-0 px-4 pt-3">
             {isLoadingVenues ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                 {Array.from({ length: 6 }).map((_, i) => (
@@ -902,11 +959,8 @@ const compare = () =>{
               {viewMode === "map" && (
                 <div className="absolute top-3 left-3 z-10 pointer-events-none">
                   <span
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold text-gray-800 dark:text-gray-100 shadow-md"
-                    style={{
-                      background: "rgba(255,255,255,0.92)",
-                      backdropFilter: "blur(8px)",
-                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold text-gray-800 dark:text-gray-100 bg-white/92 dark:bg-gray-900/92 border border-white/60 dark:border-gray-700/80 shadow-md dark:shadow-black/30"
+                    style={{ backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}
                   >
                     <span className="font-bold">{displayCards.length}</span>
                     {t("venues_in_this_area")}
@@ -952,16 +1006,16 @@ const compare = () =>{
 
       {/* ── Floating Compare FAB ── */}
       <style>{`
-        @keyframes vb-fab-glow {
-          0%, 100% { box-shadow: 0 8px 28px rgba(124,58,237,0.22), 0 2px 8px rgba(0,0,0,0.10); }
-          50%       { box-shadow: 0 8px 32px rgba(124,58,237,0.42), 0 2px 8px rgba(0,0,0,0.10); }
+        @keyframes vb-fab-glow-${compareCategory} {
+          0%, 100% { box-shadow: 0 8px 28px ${hexToRgba(compareSolid, 0.22)}, 0 2px 8px rgba(0,0,0,0.10); }
+          50%       { box-shadow: 0 8px 32px ${hexToRgba(compareSolid, 0.42)}, 0 2px 8px rgba(0,0,0,0.10); }
         }
         @keyframes vb-badge-pop {
           0%, 100% { transform: scale(1); }
           40%       { transform: scale(1.25); }
           60%       { transform: scale(0.95); }
         }
-        .vb-fab-pulse { animation: vb-fab-glow 2.8s ease-in-out infinite; }
+        .vb-fab-pulse { animation: vb-fab-glow-${compareCategory} 2.8s ease-in-out infinite; }
         .vb-badge-anim { animation: vb-badge-pop 2.8s ease-in-out infinite; }
       `}</style>
 
@@ -990,13 +1044,13 @@ const compare = () =>{
                 className={!showComparePanel ? "vb-fab-pulse" : ""}
                 style={{
                   background: showComparePanel
-                    ? "linear-gradient(135deg,#7c3aed 0%,#6d28d9 100%)"
+                    ? `linear-gradient(135deg,${compareSolid} 0%,${compareSolidDark} 100%)`
                     : "rgba(255,255,255,0.90)",
                   backdropFilter: "blur(16px)",
                   WebkitBackdropFilter: "blur(16px)",
                   border: showComparePanel
-                    ? "1.5px solid rgba(124,58,237,0.55)"
-                    : "1.5px solid rgba(124,58,237,0.25)",
+                    ? `1.5px solid ${hexToRgba(compareSolid, 0.55)}`
+                    : `1.5px solid ${hexToRgba(compareSolid, 0.25)}`,
                   borderRadius: 999,
                   padding: "11px 20px",
                   display: "inline-flex",
@@ -1005,7 +1059,7 @@ const compare = () =>{
                   cursor: "pointer",
                   transition:
                     "background 0.22s ease, border 0.22s ease, transform 0.15s ease",
-                  color: showComparePanel ? "#fff" : "#4c1d95",
+                  color: showComparePanel ? "#fff" : compareSolidDark,
                   minWidth: 0,
                 }}
                 onMouseEnter={(e) => {
@@ -1040,12 +1094,12 @@ const compare = () =>{
                     fontWeight: 800,
                     background: showComparePanel
                       ? "rgba(255,255,255,0.28)"
-                      : "linear-gradient(135deg,#7c3aed 0%,#a855f7 100%)",
+                      : `linear-gradient(135deg,${compareSolid} 0%,${compareSolidDark} 100%)`,
                     color: "#fff",
                     flexShrink: 0,
                     boxShadow: showComparePanel
                       ? "none"
-                      : "0 2px 6px rgba(124,58,237,0.45)",
+                      : `0 2px 6px ${hexToRgba(compareSolid, 0.45)}`,
                   }}
                 >
                   {compares.length}
@@ -1059,59 +1113,91 @@ const compare = () =>{
                     onClick={() => setShowComparePanel(false)}
                   />
                   <div
-                    className="absolute bottom-full left-0 mb-3 w-72 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl z-[46] overflow-hidden"
+                    className="absolute bottom-full left-0 mb-3 w-80 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl z-[46] overflow-hidden"
                     style={{
                       boxShadow:
                         "0 16px 48px rgba(0,0,0,0.16), 0 4px 16px rgba(0,0,0,0.08)",
                     }}
                   >
-                    <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center">
-                      <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">
-                        Compare ({compares.length})
-                      </h3>
+                    <div
+                      className="px-4 py-3.5 flex justify-between items-center"
+                      style={{
+                        background: `linear-gradient(135deg,${hexToRgba(compareSolid, 0.10)} 0%,${hexToRgba(compareSolid, 0.03)} 100%)`,
+                        borderBottom: `1px solid ${hexToRgba(compareSolid, 0.14)}`,
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="inline-flex items-center justify-center w-6 h-6 rounded-full flex-shrink-0"
+                          style={{ background: compareSolid, color: "#fff" }}
+                        >
+                          <Scale size={13} strokeWidth={2.25} />
+                        </span>
+                        <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+                          Compare ({compares.length}
+                          <span className="text-gray-400 dark:text-gray-500 font-normal">/4</span>)
+                        </h3>
+                      </div>
                       <button
                         onClick={() => setShowComparePanel(false)}
-                        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-lg leading-none"
+                        className="w-6 h-6 inline-flex items-center justify-center rounded-full text-gray-400 hover:text-gray-600 hover:bg-black/5 dark:hover:text-gray-300 dark:hover:bg-white/10 text-base leading-none transition-colors"
                       >
                         ✕
                       </button>
                     </div>
                     <div className="max-h-64 overflow-y-auto">
-                      {compares.map((item, i) => (
-                        <div
-                          key={i}
-                          className="flex gap-3 p-3 hover:bg-gray-50 dark:hover:bg-gray-800 border-b border-gray-100 dark:border-gray-800 last:border-none"
-                        >
-                          <img
-                            src={`${BASE_URL}/${item.image}`}
-                            className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
-                            alt=""
-                          />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-800 dark:text-gray-100 line-clamp-1">
-                              {item.title}
-                            </p>
-                            <button
-                              onClick={() => handleCompare(item, false)}
-                              className="text-xs text-red-500 hover:underline mt-0.5"
+                      {compares.map((item, i) => {
+                        const thumb = compareThumb(item);
+                        return (
+                          <div
+                            key={item.childVenueId || item.venue_id || i}
+                            className="flex gap-3 p-3 hover:bg-gray-50 dark:hover:bg-gray-800/60 border-b border-gray-100 dark:border-gray-800 last:border-none transition-colors"
+                          >
+                            {thumb ? (
+                              <img
+                                src={thumb}
+                                className="w-12 h-12 rounded-lg object-cover flex-shrink-0 bg-gray-100 dark:bg-gray-800"
+                                alt=""
+                                onError={(e) => {
+                                  e.currentTarget.style.display = "none";
+                                  e.currentTarget.nextSibling.style.display = "flex";
+                                }}
+                              />
+                            ) : null}
+                            <div
+                              className="w-12 h-12 rounded-lg flex-shrink-0 items-center justify-center text-gray-300 dark:text-gray-600"
+                              style={{ display: thumb ? "none" : "flex", background: hexToRgba(compareSolid, 0.08) }}
                             >
-                              Remove
-                            </button>
+                              <Scale size={16} strokeWidth={1.75} />
+                            </div>
+                            <div className="flex-1 min-w-0 flex flex-col justify-center">
+                              <p className="text-sm font-medium text-gray-800 dark:text-gray-100 line-clamp-1">
+                                {compareName(item)}
+                              </p>
+                              <button
+                                onClick={() => handleCompare(item, false)}
+                                className="text-xs text-red-500 hover:text-red-600 hover:underline mt-0.5 self-start"
+                              >
+                                Remove
+                              </button>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                     <div className="p-3 border-t border-gray-100 dark:border-gray-800">
                       <button
-                        className="w-full text-white text-sm font-semibold py-2.5 rounded-xl transition hover:opacity-90 active:scale-[0.98]"
+                        disabled={compares.length < 2}
+                        className="w-full text-white text-sm font-semibold py-2.5 rounded-xl transition hover:opacity-90 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100"
                         style={{
-                          background:
-                            "linear-gradient(135deg,#7c3aed 0%,#6d28d9 100%)",
-                          boxShadow: "0 4px 14px rgba(124,58,237,0.35)",
+                          background: `linear-gradient(135deg,${compareSolid} 0%,${compareSolidDark} 100%)`,
+                          boxShadow: `0 4px 14px ${hexToRgba(compareSolid, 0.35)}`,
                         }}
                         onClick={compare}
                       >
-                        Compare Now
+                        {compares.length < 2
+                          ? "Add 1 more to compare"
+                          : "Compare Now"}
                       </button>
                     </div>
                   </div>

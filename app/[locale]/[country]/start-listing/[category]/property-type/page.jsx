@@ -292,7 +292,7 @@ export default function PropertyTypePage() {
         <Link href={`/${locale}/${country}/vendor/listing`} className="flex items-center">
           <Image
             src={isDark ? darkLogo : lightLogo}
-            alt="VenueBook"
+            alt="venuebook.in"
             height={28}
             className="h-7 w-auto"
           />

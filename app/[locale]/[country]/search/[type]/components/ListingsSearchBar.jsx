@@ -40,9 +40,8 @@ const SEARCH_CONFIG = {
     { id: "guests",    label: "Guests",      type: "guests",    guestType: "guests"                },
   ],
   farmstays: [
-    { id: "location",  label: "Destination", type: "location",  placeholder: "Where to?"          },
-    { id: "checkin",   label: "Check In",    type: "date"                                          },
-    { id: "checkout",  label: "Check Out",   type: "date"                                          },
+    { id: "location", label: "Destination", type: "location", placeholder: "Where to?" },
+    { id: "dates",     type: "daterange", startId: "checkin",   endId: "checkout",   startLabel: "Check In",   endLabel: "Check Out" },
     { id: "guests",    label: "Guests",      type: "guests",    guestType: "guests_detailed"       },
   ],
   studios: [
@@ -52,15 +51,13 @@ const SEARCH_CONFIG = {
     { id: "guests",    label: "Team Size",   type: "guests",    guestType: "attendees"             },
   ],
   rentals: [
-    { id: "location",  label: "Location",    type: "location",  placeholder: "City or area"       },
-    { id: "startdate", label: "Start Date",  type: "date"                                          },
-    { id: "enddate",   label: "End Date",    type: "date"                                          },
+    { id: "location", label: "Location",    type: "location", placeholder: "City or area" },
+    { id: "dates",     type: "daterange", startId: "startdate", endId: "enddate", startLabel: "Start Date", endLabel: "End Date" },
     { id: "guests",    label: "Guests",      type: "guests",    guestType: "guests"                },
   ],
   workspaces: [
-    { id: "location",  label: "Location",    type: "location",  placeholder: "City or area"       },
-    { id: "startdate", label: "Start Date",  type: "date"                                          },
-    { id: "enddate",   label: "End Date",    type: "date"                                          },
+    { id: "location", label: "Location",    type: "location", placeholder: "City or area" },
+    { id: "dates",     type: "daterange", startId: "startdate", endId: "enddate", startLabel: "Start Date", endLabel: "End Date" },
     { id: "guests",    label: "Team Size",   type: "guests",    guestType: "attendees"             },
   ],
   experiences: [
@@ -71,10 +68,23 @@ const SEARCH_CONFIG = {
 };
 
 /* ── Light-mode input overrides
-   Applied to the INPUT ELEMENT only — dropdowns stay dark (homepage behavior) ── */
+   Applied to the INPUT ELEMENT only — dropdowns stay dark (homepage behavior) ──
+   All four fields (Location / Date / Guests) now share one label color and one
+   placeholder color so the bar reads consistently instead of each field
+   picking its own shade. */
 const TEXT_CLS        = "text-gray-800 dark:text-white";
+/* Real <input> (LocationAutoComplete): `placeholder-*` targets the native
+   ::placeholder pseudo-element, which only exists on form controls. */
 const PLACEHOLDER_CLS = "placeholder-gray-400 dark:placeholder-white/35";
+/* DatePicker / GuestPicker fake their placeholder with a <span>, which has
+   no ::placeholder pseudo-element — `placeholder-*` silently no-ops on it.
+   Same visual shade as PLACEHOLDER_CLS above, expressed as a real text color
+   so it actually renders on a span. */
+const SPAN_PLACEHOLDER_CLS = "text-gray-400 dark:text-white/35";
 const CLEAR_CLS       = "text-gray-400 hover:text-gray-600 dark:text-white/40 dark:hover:text-white/80";
+/* Field label ("DESTINATION", "CHECK IN", …) — was text-gray-400/80, too
+   washed out to read as a label against the value text below it. */
+const LABEL_CLS       = "text-gray-500 dark:text-white/45";
 
 /* ════════════════════════════════════════════════════════════════
    Main component
@@ -113,6 +123,10 @@ export default function ListingsSearchBar({
 
   const [searchData,  setSearchData]  = useState({ location: defaultValues.location || "" });
   const [sheetOpen,   setSheetOpen]   = useState(false);
+  // Mirrors MobileSearchSheet's current selection so the collapsed "Where
+  // to?" trigger button above reflects it too, not just the sheet's own
+  // sticky summary bar (same pattern as HeroSection.jsx's mobileSummary).
+  const [summary,     setSummary]     = useState({ location: "", dateSummary: "", guestSummary: "" });
 
   // const handleSearch = () => onSearch?.({ ...searchData, dates });
 
@@ -189,8 +203,8 @@ export default function ListingsSearchBar({
             tint={tint}
             category={activeCategory}
             isLast={i === visibleFields.length - 1}
-            dateValue={dates[field.id] ?? null}
-            onDateChange={(v) => setDates((p) => ({ ...p, [field.id]: v }))}
+            dates={dates}
+            onDateChange={(key, v) => setDates((p) => ({ ...p, [key]: v }))}
             setSearchData={setSearchData}
             searchData={searchData}
             countryCode={countryCode}
@@ -223,21 +237,27 @@ export default function ListingsSearchBar({
         </div>
       </div>
 
-      {/* ── MOBILE compact trigger → MobileSearchSheet ─────────── */}
+      {/* ── MOBILE compact trigger → MobileSearchSheet ───────────
+          Reflects the sheet's current selection (see summary/onSummaryChange)
+          instead of staying on a static placeholder once the user has
+          picked a location/date/guests inside it — same fix as HeroSection's
+          own mobile trigger. */}
       <button
         onClick={() => setSheetOpen(true)}
         disabled={busy}
         className="md:hidden mx-4 mt-3 mb-0 w-[calc(100%-2rem)] flex items-center justify-between border text-left rounded-xl px-4 py-3.5 transition active:scale-[0.98] bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 shadow-sm hover:border-gray-300 dark:hover:border-gray-600 disabled:opacity-70"
       >
-        <div className="flex flex-col items-start gap-0.5">
-          <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-white/40">
-            Where to?
+        <div className="flex flex-col items-start gap-0.5 min-w-0 flex-1 text-start">
+          <span className={`text-[10px] font-semibold uppercase tracking-widest truncate w-full ${LABEL_CLS}`}>
+            {summary.location || "Where to?"}
           </span>
-          <span className="text-sm text-gray-500 dark:text-white/70">
-            Search location, date, guests…
+          <span className="text-sm text-gray-500 dark:text-white/70 truncate w-full">
+            {summary.location
+              ? [summary.dateSummary, summary.guestSummary].filter(Boolean).join(" · ") || "Tap to edit your search"
+              : "Search location, date, guests…"}
           </span>
         </div>
-        <div className="p-2 rounded-lg text-white" style={{ background: tint.hex }}>
+        <div className="p-2 rounded-lg text-white shrink-0" style={{ background: tint.hex }}>
           {busy ? (
             <span className="w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin block" />
           ) : (
@@ -246,7 +266,7 @@ export default function ListingsSearchBar({
         </div>
       </button>
 
-      <MobileSearchSheet open={sheetOpen} setOpen={setSheetOpen} />
+      <MobileSearchSheet open={sheetOpen} setOpen={setSheetOpen} onSummaryChange={setSummary} />
     </>
   );
 }
@@ -255,18 +275,33 @@ export default function ListingsSearchBar({
    Mirrors HeroSection's SearchField exactly.
    Container colors adapted for white page; picker components unchanged.
    ────────────────────────────────────────────────────────────────── */
-function SearchField({ field, tint, category, isLast, dateValue, onDateChange,searchData, setSearchData, countryCode, defaultLocation = "", defaultGuests = "" }) {
+function SearchField({ field, tint, category, isLast, dates, onDateChange,searchData, setSearchData, countryCode, defaultLocation = "", defaultGuests = "" }) {
+  // Header label above the location field used to stay permanently
+  // "DESTINATION"/"LOCATION" (straight from SEARCH_CONFIG) even after
+  // switching to Property mode inside the dropdown — only the placeholder
+  // changed, which read as half-finished. LocationAutoComplete reports its
+  // live label ("Location" or the active category's word, e.g. "Farmstay")
+  // via onModeChange; this mirrors it so the header swaps too — same fix
+  // already applied to HeroSection.jsx's SearchField.
+  const [locationLabel, setLocationLabel] = useState(field.label);
+  useEffect(() => { setLocationLabel(field.label); }, [field.label]);
+
   return (
     <div
       className={[
-        "relative flex-1 min-w-0 px-4 py-2.5 overflow-visible",
+        "relative min-w-0 px-4 py-2.5 overflow-visible",
+        field.type === "daterange" ? "flex-[2]" : "flex-1",
         !isLast ? "border-e border-gray-100 dark:border-white/10" : "",
       ].join(" ")}
     >
-      {/* Field label — smaller, lighter; value text below should dominate */}
-      <p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-gray-400/80 dark:text-white/30 mb-1 whitespace-nowrap">
-        {field.label}
-      </p>
+      {/* Field label — smaller, lighter; value text below should dominate.
+         daterange renders its own two mini-labels (Check In / Check Out)
+         internally, so a shared label here would be redundant. */}
+      {field.type !== "daterange" && (
+        <p className={`text-[9px] font-semibold uppercase tracking-[0.1em] mb-1 whitespace-nowrap ${LABEL_CLS}`}>
+          {field.type === "location" ? locationLabel : field.label}
+        </p>
+      )}
 
       {field.type === "location" && (
         <LocationAutoComplete
@@ -284,6 +319,7 @@ function SearchField({ field, tint, category, isLast, dateValue, onDateChange,se
              Seed from the string so the Home-page location is visible here. */
           defaultValue={defaultLocation || (typeof searchData.location === "string" ? searchData.location : searchData.location?.city)}
           onSelect={(value) => setSearchData((p) => ({ ...p, location: value }))}
+          onModeChange={setLocationLabel}
         />
       )}
 
@@ -291,13 +327,13 @@ function SearchField({ field, tint, category, isLast, dateValue, onDateChange,se
         <DatePicker
           mode="single"
           tint={tint}
-          startDate={dateValue}
+          startDate={dates[field.id] ?? null}
           placeholder="Select date"
           textClass={TEXT_CLS}
-          placeholderClass={PLACEHOLDER_CLS}
+          placeholderClass={SPAN_PLACEHOLDER_CLS}
           lightMode={true}
           onChangeStart={(v) => {
-            onDateChange(v);
+            onDateChange(field.id, v);
             setSearchData((p) => ({ ...p, [field.id]: v }));
           }}
         />
@@ -307,14 +343,41 @@ function SearchField({ field, tint, category, isLast, dateValue, onDateChange,se
         <DatePicker
           mode="datetime"
           tint={tint}
-          startDate={dateValue}
+          startDate={dates[field.id] ?? null}
           placeholder="Select date & time"
           textClass={TEXT_CLS}
-          placeholderClass={PLACEHOLDER_CLS}
+          placeholderClass={SPAN_PLACEHOLDER_CLS}
           lightMode={true}
           onChangeStart={(v) => {
-            onDateChange(v);
+            onDateChange(field.id, v);
             setSearchData((p) => ({ ...p, [field.id]: v }));
+          }}
+        />
+      )}
+
+      {/* Single connected range calendar — replaces two independent
+         single-date Check In / Check Out (or Start/End Date) pickers that
+         let checkout land before check-in with no validation. One
+         DatePicker in mode="range" (same component the mobile sheet
+         already uses for farmstays) enforces start-before-end and
+         highlights the span between them. */}
+      {field.type === "daterange" && (
+        <DatePicker
+          mode="range"
+          tint={tint}
+          startDate={dates[field.startId] ?? null}
+          endDate={dates[field.endId] ?? null}
+          splitLabels={{ start: field.startLabel ?? "Start", end: field.endLabel ?? "End" }}
+          textClass={TEXT_CLS}
+          placeholderClass={SPAN_PLACEHOLDER_CLS}
+          lightMode={true}
+          onChangeStart={(v) => {
+            onDateChange(field.startId, v);
+            setSearchData((p) => ({ ...p, [field.startId]: v }));
+          }}
+          onChangeEnd={(v) => {
+            onDateChange(field.endId, v);
+            setSearchData((p) => ({ ...p, [field.endId]: v }));
           }}
         />
       )}
@@ -325,6 +388,7 @@ function SearchField({ field, tint, category, isLast, dateValue, onDateChange,se
           tint={tint}
           lightMode={true}
           textClass={TEXT_CLS}
+          placeholderClass={SPAN_PLACEHOLDER_CLS}
           chevronClass="text-gray-400 hover:text-gray-600 dark:text-white/50"
           placeholder="How many guests?"
           defaultValue={defaultGuests}

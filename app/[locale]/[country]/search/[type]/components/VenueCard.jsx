@@ -22,6 +22,7 @@ import {
   ExternalLink,
   Bookmark,
   Heart,
+  Check,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
@@ -75,6 +76,44 @@ const BADGE_CONFIG = {
     border: "border-pink-200 dark:border-pink-700/50",
   },
 };
+
+// Solid per-category brand colors — BADGE_CONFIG above is pastel/light
+// (for the little category chip), but the "Compared" pill needs a vivid
+// solid fill, so this is a separate, deliberately punchier palette on the
+// same hue mapping (Venue=Purple, Farmstay=Green, Studio=Blue, Rental=
+// Orange, Workspace=Indigo, Experience=Pink).
+const CATEGORY_SOLID = {
+  venues: "#7c3aed",
+  farmstays: "#16a34a",
+  studios: "#2563eb",
+  rentals: "#ea580c",
+  workspaces: "#4f46e5",
+  experiences: "#db2777",
+};
+
+// One shade darker than CATEGORY_SOLID, same hue — for gradients (e.g. the
+// floating Compare FAB) that need a light→dark sweep instead of a flat fill.
+const CATEGORY_SOLID_DARK = {
+  venues: "#6d28d9",
+  farmstays: "#15803d",
+  studios: "#1d4ed8",
+  rentals: "#c2410c",
+  workspaces: "#4338ca",
+  experiences: "#be185d",
+};
+
+// hex → rgba, used to derive light category-tinted backgrounds (e.g. the
+// Saved chip) from the same CATEGORY_SOLID palette the Compare badge uses,
+// instead of picking separate ad-hoc colors that drift out of sync.
+function hexToRgba(hex, alpha) {
+  const h = (hex || "").replace("#", "");
+  const bigint = parseInt(h.length === 3 ? h.split("").map((c) => c + c).join("") : h, 16);
+  if (Number.isNaN(bigint)) return `rgba(124,58,237,${alpha})`;
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+  return `rgba(${r},${g},${b},${alpha})`;
+}
 
 // The only category keys this card's category-specific rendering
 // (PRICE_SUFFIX, CategoryMeta, parent-name slot) actually understands.
@@ -314,7 +353,7 @@ function PriceBlock({ venue, category }) {
    opens with the current collection pre-checked). No instant remove here,
    no card-height change — it sits inline with the price, same row.
    ═══════════════════════════════════════════════════════════════════════════ */
-function SaveButton({ saved, onClick }) {
+function SaveButton({ saved, onClick, color = CATEGORY_SOLID.venues }) {
   return (
     <motion.button
       type="button"
@@ -323,10 +362,13 @@ function SaveButton({ saved, onClick }) {
       aria-label={saved ? "Manage collections" : "Save to collection"}
       aria-pressed={saved}
       className={`flex-shrink-0 flex items-center gap-1 pl-2 pr-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors ${
-        saved
-          ? "text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-500/10"
-          : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+        saved ? "" : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
       }`}
+      style={
+        saved
+          ? { color, backgroundColor: hexToRgba(color, 0.1) }
+          : undefined
+      }
     >
       <motion.span
         animate={{ scale: saved ? [1, 1.3, 1] : 1 }}
@@ -866,18 +908,30 @@ const VenueCard = ({
             )}
           </AnimatePresence>
 
-          {/* COMPARE BUTTON */}
+          {/* COMPARE BUTTON — z-[2] (same stacking level as the like
+              button/count) so it sits cleanly above the like-count's
+              bottom tint (z-[1]) instead of the dark gradient bleeding
+              through its translucent background and dulling it. Compared
+              state uses the card's own category color (CATEGORY_SOLID)
+              instead of a fixed purple, so it stays consistent with that
+              category's theme everywhere else on the card. */}
           {venue.minPrice && (
             <motion.button
               onClick={handleCompare}
               animate={{ scale: compareAnim ? 1.15 : 1 }}
-              className={`absolute bottom-3 right-3 px-3 py-1 rounded-full text-xs font-semibold shadow ${
-                isCompared
-                  ? "bg-purple-600 text-white"
-                  : "bg-white/80 text-gray-800"
+              className={`absolute bottom-3 right-3 z-[2] flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold shadow-[0_2px_8px_rgba(0,0,0,0.18)] ${
+                isCompared ? "text-white pl-2.5" : "bg-white/95 text-gray-800"
               }`}
+              style={
+                isCompared
+                  ? { backgroundColor: CATEGORY_SOLID[cardCategory] || CATEGORY_SOLID.venues }
+                  : undefined
+              }
             >
-              {isCompared ? "Compared ✓" : "Compare"}
+              {isCompared && (
+                <Check size={12} strokeWidth={3} className="flex-shrink-0" />
+              )}
+              {isCompared ? "Compared" : "Compare"}
             </motion.button>
           )}
 
@@ -935,7 +989,8 @@ const VenueCard = ({
               <Link
                 href={`/${locale || "en"}/${country || "in"}/venue/${parentId}?from=${cardCategory}`}
                 onClick={(e) => e.stopPropagation()}
-                className="inline-flex items-center gap-1 text-xs text-violet-500 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 hover:underline truncate -mt-0.5 font-medium w-fit max-w-full"
+                className="inline-flex items-center gap-1 text-xs hover:underline truncate -mt-0.5 font-medium w-fit max-w-full"
+                style={{ color: CATEGORY_SOLID[cardCategory] || CATEGORY_SOLID.venues }}
               >
                 <span className="truncate">{parentName}</span>
                 <ExternalLink size={9} className="flex-shrink-0 opacity-70" />
@@ -960,7 +1015,8 @@ const VenueCard = ({
                      `/${locale || "en"}/${country || "in"}/venue/${parentId}/?from=${cardCategory}&id=${venue.created_by}`,
                   );
                 }}
-                className="inline-flex items-center gap-1 text-xs text-violet-500 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 hover:underline truncate -mt-0.5 font-medium w-fit max-w-full"
+                className="inline-flex items-center gap-1 text-xs hover:underline truncate -mt-0.5 font-medium w-fit max-w-full"
+                style={{ color: CATEGORY_SOLID[cardCategory] || CATEGORY_SOLID.venues }}
               >
                 <span className="truncate">{parentName}</span>
                 <ExternalLink size={9} className="flex-shrink-0 opacity-70" />
@@ -1011,7 +1067,11 @@ const VenueCard = ({
               centered, never increasing card height. */}
           <div className="mt-1.5 pt-2 border-t border-gray-100 dark:border-gray-800/60 flex items-center justify-between gap-2">
             <PriceBlock venue={venue} category={cardCategory} />
-            <SaveButton saved={!!collections} onClick={openSaveModal} />
+            <SaveButton
+              saved={!!collections}
+              onClick={openSaveModal}
+              color={CATEGORY_SOLID[cardCategory] || CATEGORY_SOLID.venues}
+            />
           </div>
         </div>
       </div>
@@ -1019,4 +1079,5 @@ const VenueCard = ({
   );
 };
 
+export { CATEGORY_SOLID, CATEGORY_SOLID_DARK };
 export default React.memo(VenueCard);
