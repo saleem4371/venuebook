@@ -36,7 +36,7 @@ export default function WalletSection({
   return (
     <section
       className="rounded-2xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 overflow-hidden"
-      aria-label="VenueBook Rewards Wallet"
+      aria-label="venuebook.in Rewards Wallet"
     >
       {/* Header stripe */}
       <div
