@@ -25,7 +25,7 @@ const C = {
 // ─── Static mock data ─────────────────────────────────────────────────────────
 
 const QUICK_FACTS = [
-  { Icon: Users,         label: "Sleeps 12 Guests"  },
+  { Icon: Users,         label: "Sleeps 12 Guests"   },
   { Icon: BedDouble,     label: "4 Bedrooms"         },
   { Icon: Bath,          label: "3 Bathrooms"        },
   { Icon: PawPrint,      label: "Pet Friendly"       },

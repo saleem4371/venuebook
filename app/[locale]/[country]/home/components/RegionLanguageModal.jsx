@@ -28,6 +28,7 @@ import { useCurrency }                          from "@/hooks/useCurrency";
 
 
 import { getCountry  } from '@/services/global.service';
+import { SyncDestination  } from '@/services/listing.service';
 import useCountryStore from "@/store/useCountryStore";
 import useGlobalCountryStore from "@/store/useGlobalCountryStore";
 
@@ -270,8 +271,11 @@ export default function RegionLanguageModal({ open, onClose }) {
     }
     setLocError(false);
 
-    const applyChanges = (loc) => {
+    const applyChanges = async (loc) => {
       if (loc !== undefined) setLocation(loc);
+
+      console.log(loc)
+     
 
       if (pendingRegion) {
         const isoCode = pendingRegion.iso_code.toLowerCase();
@@ -280,9 +284,15 @@ export default function RegionLanguageModal({ open, onClose }) {
         setCountry(regionData);
         localStorage.setItem("country", JSON.stringify(regionData));
         handleRegion(isoCode); // calls onClose() + router.push
+
+        //Call Sync Destination API 
+       
+
       } else {
         onClose();
       }
+        // await SyncDestination(loc.label)
+        void SyncDestination(loc.label).catch(console.error);
     };
 
     if (locDirty) {

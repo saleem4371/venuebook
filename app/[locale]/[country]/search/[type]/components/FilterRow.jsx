@@ -475,7 +475,7 @@ export default function FilterRow({
             style={{ fontSize: LABEL_SIZE, color: accent }}
             className="font-semibold whitespace-nowrap leading-none tracking-wide"
           >
-            Filters
+            Filters 
           </span>
         </button>
       </div>

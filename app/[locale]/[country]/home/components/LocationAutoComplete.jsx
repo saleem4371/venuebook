@@ -146,9 +146,13 @@ const POPULAR_BY_CATEGORY_AE = {
 };
 
 /* ── Pick popular destinations based on country code ─────────── */
-function getPopular(category, countryCode) {
-  const map = countryCode === "ae" ? POPULAR_BY_CATEGORY_AE : POPULAR_BY_CATEGORY_IN;
-  return map[category] ?? map.venues;
+// function getPopular(category, countryCode,itemDest) {
+//   const map = itemDest//countryCode === "ae" ? POPULAR_BY_CATEGORY_AE : POPULAR_BY_CATEGORY_IN;
+//   // return map[category] ?? map.venues;
+//   return map;
+// }
+function getPopular(category, countryCode, itemDest) {
+  return itemDest ?? [];
 }
 
 /* ── Destination card gradients ───────────────────────────────
@@ -535,6 +539,7 @@ export default function LocationAutoComplete({
    *  parent's field header swap from "LOCATION" to "VENUE" etc, not just
    *  the input's placeholder. */
   onModeChange,
+  itemDest
 }) {
   const router = useRouter();
   const params = useParams();
@@ -553,7 +558,7 @@ export default function LocationAutoComplete({
   const [propertyRecents, setPropertyRecents] = useState([]);
   const [activeIndex, setActiveIndex] = useState(-1);
 
-  const popular = getPopular(category, countryCode);
+  const popular = getPopular(category, countryCode,itemDest);
 
   /* Reload both recents lists whenever countryCode changes */
   useEffect(() => {
@@ -1063,6 +1068,9 @@ export default function LocationAutoComplete({
           flat = flat.concat(items);
         }
 
+        console.log('Log Details');
+        console.log(itemDest)
+
         // Popular Destinations — photo cards only on the mobile sheet
         // (inline mode). Every *popup* variant — including the search
         // page's ListingsSearchBar, which sets lightDropdown={true} for
@@ -1070,21 +1078,21 @@ export default function LocationAutoComplete({
         // rows (same shape as every other row group here: icon + primary
         // + secondary). `inline`, not `lightDropdown`, is what actually
         // means "the mobile embedded sheet".
-        const popularItems = inline
-          ? popular.map((loc) => ({
-              key: `popular-${loc.city}`,
-              img: loc.img,
-              city: loc.city,
-              cardSubtitle: loc.desc,
-              onSelect: () => handleSelect(loc.city),
-            }))
-          : popular.map((loc) => ({
-              key: `popular-${loc.city}`,
-              icon: MapPin,
-              primary: loc.city,
-              secondary: loc.desc,
-              onSelect: () => handleSelect(loc.city),
-            }));
+       const popularItems = inline
+  ? popular.map((loc) => ({
+      key: `popular-${loc.id}`,
+      img: `${process.env.NEXT_PUBLIC_AWS_BUCKET_URL}/${loc.image}`,
+      city: loc.district,
+      cardSubtitle: loc.name,
+      onSelect: () => handleSelect(loc.district),
+    }))
+  : popular.map((loc) => ({
+      key: `popular-${loc.id}`,
+      icon: MapPin,
+      primary: loc.district,
+      secondary: loc.name,
+      onSelect: () => handleSelect(loc.district),
+    }));
         groups.push({ header: "Popular Destinations", kind: inline ? "cards" : "rows", items: popularItems });
         flat = flat.concat(popularItems);
 

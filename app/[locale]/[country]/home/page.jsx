@@ -27,7 +27,7 @@ import { CATEGORIES, CATEGORY_TINTS } from "@/config/categoryConfig";
 import { useAuth } from "@/context/AuthContext";
 
 import { findPropertyname } from "@/services/global.service";
-import { recent_views , Api_recommeded} from "@/services/home.service";
+import { recent_views , Api_recommeded , topDestination} from "@/services/home.service";
 
 /* ── Category page content ──────────────────────────────────── */
 const CATEGORY_CONTENT = {
@@ -763,6 +763,7 @@ export default function Home() {
   const [loadData, setLoadData]  = useState([]);
   const [recent, setRecent]  = useState([]);
   const [recommeded, setRecommeded]  = useState([]);
+  const [destination, setDestination]  = useState([]);
   // The two real API-backed fetches on this page: Recommended/Recently
   // Viewed venues, and the category chip row (findPropertyname). Popular/
   // Sponsored/Banner/TopDestinations are static config and technically
@@ -810,6 +811,11 @@ export default function Home() {
   const getRecommendedVenues = async () => {
   const res = await Api_recommeded();
   setRecommeded(res?.data ?? []);
+  
+  const resp = await topDestination();
+  setDestination(resp?.data ?? []);
+
+
 };
 
 const getRecentViews = async () => {
@@ -848,8 +854,8 @@ useEffect(() => {
 
   return (
     <>
-      <HeroSection setOpenSearch={setOpenSearch} />
-      <MobileSearchSheet open={openSearch} setOpen={setOpenSearch} />
+      <HeroSection setOpenSearch={setOpenSearch}   itemDest={destination}/>
+      <MobileSearchSheet open={openSearch} setOpen={setOpenSearch} itemDest={destination} />
 
       <AnimatePresence mode="wait">
         <motion.div key={activeCategory} {...FADE}>
@@ -940,16 +946,22 @@ useEffect(() => {
 
               {/* Top Destinations */}
               {content.luxuryItems?.length > 0 && (
-                loadingVenues ? (
-                  <SkeletonTopDestinations />
-                ) : (
-                  <TopDestinations
-                    tint={tint}
-                    title="Top Destinations"
-                    items={content.luxuryItems}
-                  />
-                )
-              )}
+  loadingVenues ? (
+    <SkeletonTopDestinations />
+  ) : destination?.length > 0 ? (
+    <TopDestinations
+      tint={tint}
+      title="Top Destinations"
+      items={content.luxuryItems}
+      itemDest={destination}
+    />
+  ) : (
+    <div className="py-8 text-center text-gray-500">
+       <SkeletonTopDestinations />
+      {/* No destinations found. */}
+    </div>
+  )
+)}
             </div>
           )}
 

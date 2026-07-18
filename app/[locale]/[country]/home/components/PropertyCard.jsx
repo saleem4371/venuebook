@@ -163,7 +163,8 @@ export default function PropertyCard({ venue, dataSource, category, badge, varia
   };
 
   return (
-    <motion.div whileHover={{ y: -6 }} transition={{ duration: 0.2 }} className="group w-full cursor-pointer">
+    <motion.div whileHover={{ y: -6 }} 
+    transition={{ duration: 0.2 }} className="group w-full cursor-pointer">
       {/* Hero image — its own fully-rounded card, the whole thing clickable */}
       <div className={`relative ${v.imageAspect} rounded-2xl overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.06)] group-hover:shadow-[0_14px_32px_rgba(0,0,0,0.14)] transition-shadow duration-300`}>
         <motion.img

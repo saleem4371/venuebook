@@ -75,6 +75,37 @@ function getMeta(category) {
   return CATEGORY_META[normalizeCategory(category)] ?? DEFAULT_META;
 }
 
+function getWeekendCount(start, end) {
+  if (!start || !end) {
+    return {
+      saturday: 0,
+      sunday: 0,
+      weekend: 0,
+    };
+  }
+
+  let saturday = 0;
+  let sunday = 0;
+
+  const current = new Date(start);
+  const last = new Date(end);
+
+  while (current <= last) {
+    const day = current.getDay(); // 0 = Sunday, 6 = Saturday
+
+    if (day === 6) saturday++;
+    if (day === 0) sunday++;
+
+    current.setDate(current.getDate() + 1);
+  }
+
+  return {
+    saturday,
+    sunday,
+    weekend: saturday + sunday,
+  };
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const fmtDate = (d) =>
   d ? d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : null;
@@ -113,12 +144,16 @@ function scrollToCalendar() {
 }
 
 // ─── Custom event type dropdown ───────────────────────────────────────────────
-function EventTypeDropdown({ value, onChange, options, colors, open, onOpenChange }) {
+function EventTypeDropdown({ value, onChange, options,venueEvents, colors, open, onOpenChange }) {
   const [search, setSearch] = useState("");
-  const showSearch = options.length > 5;
-  const filtered = showSearch && search.trim()
-    ? options.filter((o) => o.toLowerCase().includes(search.toLowerCase()))
-    : options;
+  const showSearch = venueEvents.length > 5;
+
+ const filtered =
+  showSearch && search.trim()
+    ? venueEvents.filter((o) =>
+        o.event_name.toLowerCase().includes(search.toLowerCase())
+      )
+    : venueEvents;
 
   // Reset search whenever dropdown closes
   useEffect(() => { if (!open) setSearch(""); }, [open]);
@@ -170,39 +205,53 @@ function EventTypeDropdown({ value, onChange, options, colors, open, onOpenChang
 
               {/* List */}
               <div className="relative max-h-44 overflow-y-scroll [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-gray-100 dark:[&::-webkit-scrollbar-track]:bg-gray-800 [&::-webkit-scrollbar-thumb]:bg-gray-400 dark:[&::-webkit-scrollbar-thumb]:bg-gray-500 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border [&::-webkit-scrollbar-thumb]:border-gray-100 dark:[&::-webkit-scrollbar-thumb]:border-gray-800">
-                {filtered.length > 0 ? filtered.map((opt) => (
-                  <button
-                    key={opt}
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); onChange(opt); onOpenChange(false); }}
-                    className={`w-full text-left px-3 py-2.5 text-sm transition-colors
-                      ${value === opt
-                        ? `${colors.light} ${colors.accentBold} font-semibold`
-                        : "hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"
-                      }`}
-                  >
-                    {opt}
-                  </button>
-                )) : (
-                  <>
-                    <p className="px-3 pt-3 pb-1 text-xs text-gray-400 text-center">
-                      No match for &ldquo;{search}&rdquo;
-                    </p>
-                    {options.includes("Other") && (
-                      <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); onChange("Other"); onOpenChange(false); }}
-                        className={`w-full text-left px-3 py-2.5 text-sm transition-colors
-                          ${value === "Other"
-                            ? `${colors.light} ${colors.accentBold} font-semibold`
-                            : "hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"
-                          }`}
-                      >
-                        Other
-                      </button>
-                    )}
-                  </>
-                )}
+               {filtered.length > 0 ? (
+  filtered.map((event) => (
+    <button
+      key={event.id}
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onChange(event.event_name); // or onChange(event) if you need the full object
+        onOpenChange(false);
+      }}
+      className={`w-full text-left px-3 py-2.5 text-sm transition-colors ${
+        value === event.event_name
+          ? `${colors.light} ${colors.accentBold} font-semibold`
+          : "hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"
+      }`}
+    >
+      <div className="flex items-center gap-2">
+        <span>{event.icon}</span>
+        <span>{event.event_name}</span>
+      </div>
+    </button>
+  ))
+) : (
+  <>
+    <p className="px-3 pt-3 pb-1 text-xs text-gray-400 text-center">
+      No match for &ldquo;{search}&rdquo;
+    </p>
+
+    {options.includes("Other") && (
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onChange("Other");
+          onOpenChange(false);
+        }}
+        className={`w-full text-left px-3 py-2.5 text-sm transition-colors ${
+          value === "Other"
+            ? `${colors.light} ${colors.accentBold} font-semibold`
+            : "hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"
+        }`}
+      >
+        Other
+      </button>
+    )}
+  </>
+)}
 
                 {/* Scroll fade hint */}
                 {filtered.length > 4 && (
@@ -365,7 +414,8 @@ function TrustBadges({ badges }) {
 }
 
 // ─── Venue card ───────────────────────────────────────────────────────────────
-function VenueCard({ meta, gradient, colors, onAction, venueSelection, guestValues, setGuestValues, onScrollToCalendar, onClearVenueSelection, onClearShift, capacity }) {
+function VenueCard({ venueData, meta, gradient, colors, onAction, venueSelection, guestValues, setGuestValues, onScrollToCalendar, onClearVenueSelection,
+   onClearShift, capacity,venueEvents,shiftAmount,venue_settings }) {
   const [eventType,       setEventType]     = useState(null);
   const [eventTypeOpen,   setEventTypeOpen] = useState(false);
   const [showGuestPicker, setShowGuestPicker] = useState(false);
@@ -381,24 +431,50 @@ function VenueCard({ meta, gradient, colors, onAction, venueSelection, guestValu
   // Both modes require all four fields; only the CTA action differs
   const isComplete = Boolean(date && shiftLabel && eventType && guestCount);
 
+  useEffect(() => {
+  if (venueData?.venue_mode) {
+    const mode = venueData?.venue_mode =='both' ? 'venue' : venueData.venue_mode;
+    setBookingMode(mode);
+  }
+}, [venueData?.venue_mode]);
+
+const propertySettings = venue_settings
+  .filter(item => item.group === bookingMode)
+  .reduce((acc, item) => {
+    acc[item.key] = item.value;
+    return acc;
+  }, {});
+
   return (
     <div className="space-y-3">
 
       {/* Price (left) + Badge + Toggle stacked (right) */}
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">₹20,00,000</p>
-          <p className="text-xs text-gray-400 mt-0.5">{meta.priceLabel}</p>
+        { bookingMode ==='venue' ? (
+ <div>
+          <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{shiftAmount==0 ? venueData.minPrice : shiftAmount}</p>
+          <p className="text-xs text-gray-400 mt-0.5">{shiftAmount==0 ?  meta.priceLabel :'Your Venue price '}</p>
         </div>
+        ):(
+          <>
+ <div>
+          <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{propertySettings.pack_amt}</p>
+          <p className="text-xs text-gray-400 mt-0.5">Starting Package</p>
+        </div>
+          </>
+        )}
+       
 
         <div className="flex flex-col items-end gap-2 flex-none">
           {/* Badge with PAX info tooltip */}
+          {venueData.venue_mode ==='both' ? ( <>
           <div className={`inline-flex items-center gap-0.5 text-xs font-semibold px-2.5 py-1 rounded-full ${meta.badge.bg}`}>
             {meta.badge.label}
             <PaxTooltip
               iconClassName="flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity focus:outline-none focus-visible:ring-1 focus-visible:ring-current focus-visible:ring-offset-1"
             />
           </div>
+          
 
           {/* Compact Booking Mode Toggle */}
           <div
@@ -430,6 +506,11 @@ function VenueCard({ meta, gradient, colors, onAction, venueSelection, guestValu
               </button>
             ))}
           </div>
+          </>
+          ):(<>
+          {venueData.venue_mode}
+          </>)
+          }
         </div>
       </div>
 
@@ -508,6 +589,7 @@ function VenueCard({ meta, gradient, colors, onAction, venueSelection, guestValu
                   value={eventType}
                   onChange={setEventType}
                   options={meta.eventTypes}
+                  venueEvents={venueEvents}
                   colors={colors}
                   open={eventTypeOpen}
                   onOpenChange={setEventTypeOpen}
@@ -572,7 +654,9 @@ function VenueCard({ meta, gradient, colors, onAction, venueSelection, guestValu
             initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.18 }}
           >
-            <div className="flex items-stretch gap-2">
+            { venueData.property ==='regitered' ? (
+              <>
+              <div className="flex items-stretch gap-2">
               <button
                 onClick={() => onAction({ eventType, type: "reserve", guestCount })}
                 className={`flex-1 py-3 rounded-xl font-semibold text-sm ${colors.pill} hover:opacity-80 active:scale-[0.98] transition-all`}
@@ -592,6 +676,19 @@ function VenueCard({ meta, gradient, colors, onAction, venueSelection, guestValu
                 Enquire
               </button>
             </div>
+            </>
+          ):(<>
+            <div className="flex items-stretch">
+             
+              <button
+                onClick={() => onAction({ eventType, type: "enquiry", guestCount })}
+                className="flex-1 py-3 rounded-xl font-medium text-sm border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 active:scale-[0.98] transition-all"
+              >
+                Enquire
+              </button>
+            </div>
+          </>)}
+          
           </motion.div>
 
         ) : (
@@ -615,12 +712,12 @@ function VenueCard({ meta, gradient, colors, onAction, venueSelection, guestValu
 }
 
 // ─── Reserve card (farmstay / other) ─────────────────────────────────────────
-function ReserveCard({ meta, gradient, colors, guestValues, setGuestValues, guestType, catKey, onAction, calendarRange, onScrollToCalendar, onClearCalendarRange, onClearCheckout, highlightGuests }) {
+function ReserveCard({ venueData,meta, gradient, colors, guestValues, setGuestValues,shiftAmount, guestType, catKey, onAction, calendarRange, onScrollToCalendar, onClearCalendarRange, onClearCheckout, highlightGuests }) {
   const [showGuestPicker, setShowGuestPicker] = useState(false);
   const ctaButtons = getDefaultCTA(catKey);
   const { start, end } = calendarRange ?? {};
   const nights = start && end ? Math.round((end - start) / 86400000) : 0;
-
+  const weekends = getWeekendCount(start, end).weekend;
   const hasRange = Boolean(start && end);
 
   // Farmstay: dates alone unlock the CTAs — guest count is bonus context
@@ -632,8 +729,7 @@ function ReserveCard({ meta, gradient, colors, guestValues, setGuestValues, gues
       <div className="flex items-end justify-between">
         <div>
           <div className="flex items-baseline gap-1.5">
-            <span className="line-through text-gray-400 text-xs sm:text-sm">₹23,976</span>
-            <span className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">₹19,181</span>
+            <span className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">₹{venueData.minPrice}</span>
           </div>
           <p className="text-xs text-gray-400">
             per {meta.priceLabel}{nights > 0 ? ` · ${nights} night${nights > 1 ? "s" : ""}` : ""}
@@ -742,9 +838,24 @@ function ReserveCard({ meta, gradient, colors, guestValues, setGuestValues, gues
             transition={{ duration: 0.18 }}
             className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/40 rounded-xl px-3.5 py-2.5"
           >
-            <span>₹19,181 × {nights} night{nights > 1 ? "s" : ""}</span>
+            <span>₹{venueData.minPrice} × {nights} night{nights > 1 ? "s" : ""}</span>
             <span className="font-semibold text-gray-700 dark:text-gray-300">
-              ₹{(19181 * nights).toLocaleString("en-IN")}
+              ₹{(venueData.minPrice * nights).toLocaleString("en-IN")}
+            </span>
+          </motion.div>
+        )}
+        {weekends > 0 && (
+          <motion.div
+            key="weekend-summary"
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 4 }}
+            transition={{ duration: 0.18 }}
+            className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/40 rounded-xl px-3.5 py-2.5"
+          >
+            <span>₹{venueData.weekly_amount} × {weekends} weekend{weekends > 1 ? "s" : ""}</span>
+            <span className="font-semibold text-gray-700 dark:text-gray-300">
+              ₹{(venueData.weekly_amount * weekends).toLocaleString("en-IN")}
             </span>
           </motion.div>
         )}
@@ -773,7 +884,7 @@ function ReserveCard({ meta, gradient, colors, guestValues, setGuestValues, gues
               buttons={ctaButtons}
               gradient={gradient}
               onAction={(t) => onAction({ guestValues, type: t })}
-            />
+            /> 
           </motion.div>
         )}
       </AnimatePresence>
@@ -966,16 +1077,20 @@ function EnquiryModal({ isOpen, onClose, gradient, propertyName }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function BookingCard({
+  venueData,
   category = "venues",
   mobileOnly = false,
   propertyName,
   capacity,
   calendarRange,
   venueSelection,
+  venueEvents,
   onClearVenueSelection,
   onClearShift,
   onClearCalendarRange,
   onClearCheckout,
+  shiftAmount,
+  venue_settings
 }) {
   const catKey    = normalizeCategory(category);
   const meta      = getMeta(category);
@@ -1051,28 +1166,68 @@ export default function BookingCard({
     }
 
     if (type === "paxEnquiry") {
-      const gCount = guestValues?.guests ?? guestValues?.adults ?? "";
-      const qs = new URLSearchParams({
+      const guests = guestValues?.guests ?? guestValues?.adults ?? data.guestCount ?? "";
+
+      const paxParams = new URLSearchParams({
         ...(data.eventType && { eventType: data.eventType }),
-        ...(gCount         && { guests: String(gCount) }),
+        ...(guests && { guests: String(guests) }),
         ...(venueSelection?.date && {
-          date:  venueSelection.date.toISOString().split("T")[0],
-          shift: venueSelection.shift ?? "",
+          date: venueSelection.date.toISOString().split("T")[0],
+        }),
+        ...(venueSelection?.shift && {
+          shift: venueSelection.shift,
         }),
         ...(propertyName && { venueName: propertyName }),
       });
+
       router.push(
-        `/${locale}/${country}/search/${catKey}/${propertyId}/pax-enquiry${qs.toString() ? `?${qs}` : ""}`
+        `/${locale}/${country}/search/${catKey}/${propertyId}/pax-enquiry?${paxParams.toString()}`
       );
+
       return;
     }
 
-    router.push(`/${locale}/${country}/checkout/${catKey}/${propertyId}`);
+    // Checkout — "reserve" | "book" | (farmstay/other CTAs from getDefaultCTA)
+    const guestCount = guestValues?.guests ?? guestValues?.adults ?? data.guestCount ?? "";
+
+    const checkoutParams = new URLSearchParams({
+      ...(data.eventType && { eventType: data.eventType }),
+      ...(type && { bookingType: type }),
+
+      ...(guestCount && {
+        guests: String(guestCount),
+      }),
+
+      ...(venueSelection?.date && {
+        date: venueSelection.date.toISOString().split("T")[0],
+      }),
+
+      ...(venueSelection?.shift && {
+        shift: venueSelection.shift,
+      }),
+
+      ...(calendarRange?.start && {
+        checkIn: calendarRange.start.toISOString().split("T")[0],
+      }),
+
+      ...(calendarRange?.end && {
+        checkOut: calendarRange.end.toISOString().split("T")[0],
+      }),
+
+      ...(propertyName && { venueName: propertyName }),
+      ...(propertyId && { venueId: propertyId }),
+      ...(catKey && { category: catKey }),
+    });
+
+    router.push(
+      `/${locale}/${country}/checkout/${catKey}/${propertyId}?${checkoutParams.toString()}`
+    );
   };
 
   const cardContent = (onAction) =>
     meta.mode === "enquiry"
       ? <VenueCard
+          venueData={venueData}
           meta={meta}
           gradient={gradient}
           colors={colors}
@@ -1085,8 +1240,12 @@ export default function BookingCard({
           onClearVenueSelection={onClearVenueSelection}
           onClearShift={onClearShift}
           capacity={capacity}
+          venueEvents={venueEvents}
+          shiftAmount={shiftAmount}
+          venue_settings={venue_settings}
         />
       : <ReserveCard
+          venueData={venueData}
           meta={meta}
           gradient={gradient}
           colors={colors}
@@ -1096,6 +1255,7 @@ export default function BookingCard({
           catKey={catKey}
           onAction={onAction}
           calendarRange={calendarRange}
+          shiftAmount={shiftAmount}
           onScrollToCalendar={onScrollToCalendar}
           onClearCalendarRange={onClearCalendarRange}
           onClearCheckout={onClearCheckout}
@@ -1142,7 +1302,7 @@ export default function BookingCard({
               className="flex-1 text-left min-w-0"
             >
               <p className="font-bold text-gray-900 dark:text-white text-base leading-tight">
-                {isFarmstay ? "₹19,181" : "₹20,00,000"}
+                {isFarmstay ? `₹${venueData?.minPrice ?? ""}` : `₹${venueData?.minPrice ?? ""}`}
               </p>
               <p className="text-xs text-gray-400 mt-0.5 truncate">
                 {isFarmstay

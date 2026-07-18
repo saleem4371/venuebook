@@ -93,7 +93,7 @@ const CATEGORY_KEY_MAP = {
 const WORDS = CATEGORY_ORDER.map((id) => WORD_LABEL[id]);
 
 /* ─── Component ─────────────────────────────────────────────── */
-export default function HeroSection() {
+export default function HeroSection({itemDest}) {
    const router = useRouter();
 const params = useParams();
 
@@ -131,7 +131,6 @@ const country = params?.country || "in";
   guests: "",
 });
 
-console.log(mediaMap)
 
   /* Category tab scroll state */
   const tabsRef                       = useRef(null);
@@ -600,7 +599,8 @@ const handleSearch = () => {
                             /* register this field's DOM node so previous field can advance to it */
                             selfRefCb={(el) => { fieldRefs.current[i] = { current: el }; }}
                             nextRef={i + 1 < fields.length ? { get current() { return fieldRefs.current[i + 1]?.current ?? null; } } : null}
-                          />
+                         itemDest={itemDest}
+                            />
                         );
                       })}
 
@@ -656,13 +656,15 @@ const handleSearch = () => {
         </div>
       </section>
 
-      <MobileSearchSheet open={openSearch} setOpen={setOpenSearch} onSummaryChange={setMobileSummary} />
+      <MobileSearchSheet open={openSearch} setOpen={setOpenSearch} 
+      onSummaryChange={setMobileSummary}  itemDest={itemDest}/>
     </>
   );
 }
 
 /* ─── Search field renderer ─────────────────────────────────── */
-function SearchField({ field, tint, category, isLast, dates, onDateChange, setSearchData, countryCode, nextRef, selfRefCb }) {
+function SearchField({ field, tint, category, isLast, dates, onDateChange, setSearchData,
+   countryCode, nextRef, selfRefCb , itemDest }) {
   // The header label above the location field used to be permanently
   // "LOCATION" (straight from SEARCH_CONFIG) even after switching to
   // Property mode inside the dropdown — only the placeholder changed,
@@ -708,6 +710,7 @@ function SearchField({ field, tint, category, isLast, dates, onDateChange, setSe
             if (trigger) trigger.click();
           }}
           onModeChange={setLocationLabel}
+          itemDest={itemDest}
         />
       )}
 

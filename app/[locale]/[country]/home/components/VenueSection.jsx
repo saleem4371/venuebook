@@ -7,6 +7,8 @@ import ViewAllCard from "./ViewAllCard";
 import SkeletonRail from "./SkeletonRail";
 import { useCategory } from "@/context/CategoryContext";
 
+import { useRouter, useParams } from "next/navigation";
+
 const BASE_URL = process.env.NEXT_PUBLIC_AWS_BUCKET_URL;
 
 /* Same image-resolution rule PropertyCard uses, just for the "See all" collage thumbs */
@@ -40,9 +42,21 @@ function resolveThumb(venue, dataSource) {
 export default function VenueSection({ title, subtitle, venues, dataSource, tint, variant = "medium", loading = false }) {
   const { activeCategory } = useCategory();
 
+  const router = useRouter();
+    const params = useParams();
+    const locale  = params?.locale  || "en";
+    const country = params?.country || countryCode || "in";
+
   if (loading) {
     return <SkeletonRail title={title} subtitle={subtitle} accent={tint?.hex ?? "#7c3aed"} variant={variant} />;
   }
+
+  const proprty_click = ( id) => {
+  router.replace(
+    `/${locale}/${country}/search/${activeCategory}/${id}`,
+    { scroll: false }
+  );
+};
 
   if (!venues?.length) return null;
 
@@ -64,6 +78,9 @@ export default function VenueSection({ title, subtitle, venues, dataSource, tint
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: i * 0.04, duration: 0.22 }}
+
+            onClick={() => proprty_click(venue.child_venue_id || venue.childVenueId)}
+
           >
             <PropertyCard
               venue={venue}

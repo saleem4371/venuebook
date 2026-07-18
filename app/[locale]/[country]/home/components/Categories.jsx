@@ -8,219 +8,7 @@ import ScrollCarousel from "./ScrollCarousel";
 /* ── Realistic Unsplash images per category chip ──────────────────
    Replace img URLs with DB images once available.
 ───────────────────────────────────────────────────────────────── */
-const CATEGORY_CHIPS = {
-  venues: [
-    {
-      title: "Banquet Halls",
-      icon: "🏛️",
-      img: "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=400&q=75&fit=crop",
-    },
-    {
-      title: "Conference Rooms",
-      icon: "🎤",
-      img: "https://images.unsplash.com/photo-1582192730841-2a682d7375f9?w=400&q=75&fit=crop",
-    },
-    {
-      title: "Resorts & Hotels",
-      icon: "🌴",
-      img: "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400&q=75&fit=crop",
-    },
-    {
-      title: "Community Halls",
-      icon: "🏘️",
-      img: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=400&q=75&fit=crop",
-    },
-    {
-      title: "Convention Centres",
-      icon: "🏢",
-      img: "https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=400&q=75&fit=crop",
-    },
-    {
-      title: "Auditoriums",
-      icon: "🎭",
-      img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&q=75&fit=crop",
-    },
-    {
-      title: "Outdoor Lawns",
-      icon: "🌿",
-      img: "https://images.unsplash.com/photo-1469371670807-013ccf25f16a?w=400&q=75&fit=crop",
-    },
-    {
-      title: "Wedding Venues",
-      icon: "💒",
-      img: "https://images.unsplash.com/photo-1519741497674-611481863552?w=400&q=75&fit=crop",
-    },
-  ],
-  farmstays: [
-    {
-      title: "Nature Stays",
-      icon: "🌿",
-      img: "https://images.unsplash.com/photo-1587061949409-02df41d5e562?w=400&q=75&fit=crop",
-    },
-    {
-      title: "Weekend Escapes",
-      icon: "🏕️",
-      img: "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=400&q=75&fit=crop",
-    },
-    {
-      title: "Private Farms",
-      icon: "🌾",
-      img: "https://images.unsplash.com/photo-1500076656116-558758c991c1?w=400&q=75&fit=crop",
-    },
-    {
-      title: "Heritage Estates",
-      icon: "🏰",
-      img: "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400&q=75&fit=crop",
-    },
-    {
-      title: "Riverside Retreats",
-      icon: "🏞️",
-      img: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&q=75&fit=crop",
-    },
-    {
-      title: "Mountain Stays",
-      icon: "⛰️",
-      img: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=400&q=75&fit=crop",
-    },
-    {
-      title: "Lakeside Cabins",
-      icon: "🏊",
-      img: "https://images.unsplash.com/photo-1439066290691-3b6f5b6b9b1d?w=400&q=75&fit=crop",
-    },
-    {
-      title: "Forest Camps",
-      icon: "🌲",
-      img: "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=400&q=75&fit=crop",
-    },
-  ],
-  studios: [
-    {
-      title: "Photography",
-      icon: "📸",
-      img: "https://images.unsplash.com/photo-1542038784456-1ea8e935640e?w=400&q=75&fit=crop",
-    },
-    {
-      title: "Podcast Studios",
-      icon: "🎙️",
-      img: "https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=400&q=75&fit=crop",
-    },
-    {
-      title: "Video Production",
-      icon: "🎬",
-      img: "https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=400&q=75&fit=crop",
-    },
-    {
-      title: "Music Recording",
-      icon: "🎵",
-      img: "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=400&q=75&fit=crop",
-    },
-    {
-      title: "Content Creation",
-      icon: "✨",
-      img: "https://images.unsplash.com/photo-1499750310107-5fef28a66643?w=400&q=75&fit=crop",
-    },
-    {
-      title: "Art Studios",
-      icon: "🎨",
-      img: "https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=400&q=75&fit=crop",
-    },
-    {
-      title: "Editing Suites",
-      icon: "💻",
-      img: "https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?w=400&q=75&fit=crop",
-    },
-    {
-      title: "Green Screen",
-      icon: "🟩",
-      img: "https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=400&q=75&fit=crop",
-    },
-  ],
-  rentals: [
-    {
-      title: "Party Venues",
-      icon: "🎉",
-      img: "https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=400&q=75&fit=crop",
-    },
-    {
-      title: "Pop-up Spaces",
-      icon: "🛍️",
-      img: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400&q=75&fit=crop",
-    },
-    {
-      title: "Event Halls",
-      icon: "🏛️",
-      img: "https://images.unsplash.com/photo-1515187029135-18ee286d815b?w=400&q=75&fit=crop",
-    },
-    {
-      title: "Terraces",
-      icon: "🌇",
-      img: "https://images.unsplash.com/photo-1445991842772-097fea258e7b?w=400&q=75&fit=crop",
-    },
-    {
-      title: "Private Grounds",
-      icon: "🌳",
-      img: "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=400&q=75&fit=crop",
-    },
-    {
-      title: "Banquet Rooms",
-      icon: "🍽️",
-      img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400&q=75&fit=crop",
-    },
-    {
-      title: "Showrooms",
-      icon: "🏪",
-      img: "https://images.unsplash.com/photo-1555421689-d68471e189f2?w=400&q=75&fit=crop",
-    },
-    {
-      title: "Rooftops",
-      icon: "🌆",
-      img: "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=400&q=75&fit=crop",
-    },
-  ],
-  workspaces: [
-    {
-      title: "Hot Desks",
-      icon: "💺",
-      img: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=400&q=75&fit=crop",
-    },
-    {
-      title: "Private Offices",
-      icon: "🏢",
-      img: "https://images.unsplash.com/photo-1497366412874-3415097a27e7?w=400&q=75&fit=crop",
-    },
-    {
-      title: "Meeting Rooms",
-      icon: "📋",
-      img: "https://images.unsplash.com/photo-1582192730841-2a682d7375f9?w=400&q=75&fit=crop",
-    },
-    {
-      title: "Conference Halls",
-      icon: "🎤",
-      img: "https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=400&q=75&fit=crop",
-    },
-    {
-      title: "Training Rooms",
-      icon: "📚",
-      img: "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=400&q=75&fit=crop",
-    },
-    {
-      title: "Virtual Offices",
-      icon: "💻",
-      img: "https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?w=400&q=75&fit=crop",
-    },
-    {
-      title: "Creative Hubs",
-      icon: "💡",
-      img: "https://images.unsplash.com/photo-1556761175-b413da4baf72?w=400&q=75&fit=crop",
-    },
-    {
-      title: "Event Spaces",
-      icon: "📅",
-      img: "https://images.unsplash.com/photo-1515187029135-18ee286d815b?w=400&q=75&fit=crop",
-    },
-  ],
-  experiences: [],
-};
+import { useRouter, useParams } from "next/navigation";
 
 const CATEGORY_HEADINGS = {
   venues: {
@@ -260,6 +48,12 @@ function SkeletonChip() {
 const SKELETON_CHIP_COUNT = 8;
 
 export default function CategorySection(loadData) {
+
+  const router = useRouter();
+  const params = useParams();
+  const locale  = params?.locale  || "en";
+  const country = params?.country || countryCode || "in";
+
   const { activeCategory } = useCategory();
 
   const heading = CATEGORY_HEADINGS[activeCategory] ?? CATEGORY_HEADINGS.venues;
@@ -270,6 +64,16 @@ export default function CategorySection(loadData) {
   // flight, show a skeleton row instead of silently rendering nothing
   // (the previous behaviour: this whole section just vanished until data
   // arrived, with no loading affordance at all).
+
+const category_click = (e, id) => {
+  e.preventDefault();
+
+  router.replace(
+    `/${locale}/${country}/search/${activeCategory}?id=${id}`,
+    { scroll: false }
+  );
+};
+
   if (!loading && !loadData.loadData.length) return null;
 
   return (
@@ -333,6 +137,7 @@ export default function CategorySection(loadData) {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.03, duration: 0.22 }}
                 whileTap={{ scale: 0.96 }}
+               onClick={(e) => category_click(e, chip.id)}
                 /* Fixed w-36 only holds from md up (where arrows exist, so a
                    flush fit is fine). Below md it's a % of the track width
                    instead — with a fixed 144px card, whether the next one

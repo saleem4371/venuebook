@@ -2,7 +2,8 @@
 
 import { motion } from "framer-motion";
 
-export default function TopDesignation({ users }) {
+export default function TopDesignation({ users,itemDest }) {
+
   return (
     <section className="my-10 px-4 md:px-16">
       <h2 className="text-2xl font-bold mb-6">Top Designations in India</h2>

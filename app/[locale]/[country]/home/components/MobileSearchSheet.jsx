@@ -106,7 +106,7 @@ function FieldSection({ icon: Icon, label, value, isOpen, onToggle, tint, childr
 }
 
 /* ── Main sheet ─────────────────────────────────────────────── */
-export default function MobileSearchSheet({ open, setOpen, onSummaryChange }) {
+export default function MobileSearchSheet({ open, setOpen, onSummaryChange , itemDest}) {
   const { activeCategory } = useCategory();
   const params              = useParams();
   const countryCode         = String(params?.country || "in").toLowerCase();
@@ -322,6 +322,7 @@ export default function MobileSearchSheet({ open, setOpen, onSummaryChange }) {
                     if (summary) setOpenSection("date");
                   }}
                   onModeChange={setLocationLabel}
+                  itemDest={itemDest}
                 />
               </FieldSection>
 

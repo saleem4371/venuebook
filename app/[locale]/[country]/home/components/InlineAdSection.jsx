@@ -7,7 +7,8 @@ import SponsoredPropertyCard from "./SponsoredPropertyCard";
 import ViewAllCard from "./ViewAllCard";
 
 /* ── Premium full-width banner ──────────────────────────────── */
-export function PremiumBanner({ tint, badge, headline, subtext, cta, image }) {
+export function PremiumBanner({ tint, badge, headline, subtext, cta, image}) {
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -125,10 +126,12 @@ export function SponsoredCategoryRow({ tint, categoryLabel = "Venues", items }) 
  *  intentionally a responsive CSS grid, per spec. These are places,
  *  not bookable listings, so they don't use PropertyCard either.
  */
-export function TopDestinations({ tint, title = "Top Destinations", items }) {
+export function TopDestinations({ tint, title = "Top Destinations", items, itemDest }) {
   if (!items?.length) return null;
   const showViewAll = items.length > 5;
   const accent = tint?.hex ?? "#7c3aed";
+
+   const BASE_URL = process.env.NEXT_PUBLIC_AWS_BUCKET_URL;
 
   return (
     <section className="mb-8">
@@ -153,7 +156,7 @@ export function TopDestinations({ tint, title = "Top Destinations", items }) {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-        {items.map((item, i) => (
+        {itemDest.map((item, i) => (
           <motion.div
             key={i}
             whileHover={{ y: -6 }}
@@ -163,7 +166,7 @@ export function TopDestinations({ tint, title = "Top Destinations", items }) {
             <motion.img
               whileHover={{ scale: 1.03 }}
               transition={{ duration: 0.4 }}
-              src={item.image}
+              src={`${BASE_URL}/${item.image}`}
               alt={item.name}
               className="absolute inset-0 w-full h-full object-cover"
               loading="lazy"
@@ -172,7 +175,7 @@ export function TopDestinations({ tint, title = "Top Destinations", items }) {
 
             <div className="absolute bottom-3 start-3 end-3 min-w-0">
               <p className="text-white font-bold text-sm leading-snug truncate">{item.name}</p>
-              <p className="text-white/65 text-xs mt-0.5 leading-snug truncate">{item.location}</p>
+              <p className="text-white/65 text-xs mt-0.5 leading-snug truncate">{item.district}</p>
             </div>
           </motion.div>
         ))}
