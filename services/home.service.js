@@ -9,4 +9,7 @@ export const vendor_category = () => {
 export const Api_recommeded = () => {
   return api.get("/home/recommeded");
 };
+export const topDestination = () => {
+  return api.get("/home/topDestination");
+};
 

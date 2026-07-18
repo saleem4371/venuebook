@@ -24,3 +24,7 @@ export const listing_sub_check = async (id) => {
 export const child_of_category = async (id) => {
   return api.put(`/listing/child_of_category/${id}`,id);
 };
+
+export const SyncDestination = async (id) => {
+  return api.get(`/listing/syncDestination/${id}`);
+};
