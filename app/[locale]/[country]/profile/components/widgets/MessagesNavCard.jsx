@@ -22,7 +22,7 @@ import { MessageCircle, ChevronRight } from "lucide-react";
 
 import { MOCK_CONVERSATIONS } from "@/app/[locale]/[country]/messages/_data";
 
-export default function MessagesNavCard({ locale, country }) {
+export default function MessagesNavCard({ locale, country, flat = false }) {
   const t = useTranslations("profile.messagesNav");
 
   const unreadCount = MOCK_CONVERSATIONS.reduce((sum, c) => sum + (c.unread || 0), 0);
@@ -30,7 +30,11 @@ export default function MessagesNavCard({ locale, country }) {
   return (
     <Link
       href={`/${locale}/${country}/messages`}
-      className="group flex items-center gap-3 rounded-3xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_10px_24px_rgba(0,0,0,0.08)] transition-shadow p-3.5"
+      className={`group flex items-center gap-3 transition-all p-3.5 ${
+        flat
+          ? "hover:bg-gray-50 dark:hover:bg-gray-800/50"
+          : "rounded-3xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_10px_24px_rgba(0,0,0,0.08)]"
+      }`}
     >
       <span className="relative flex items-center justify-center w-10 h-10 rounded-2xl bg-violet-50 dark:bg-violet-900/30 shrink-0">
         <MessageCircle size={17} className="text-violet-600" />

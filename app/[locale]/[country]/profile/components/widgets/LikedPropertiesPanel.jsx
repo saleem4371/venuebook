@@ -21,19 +21,26 @@ import { Heart, ImageOff } from "lucide-react";
 import { SectionCard, SectionHeading, ViewAllLink } from "../shared/ui";
 import { resolveVenue } from "@/lib/resolveVenue";
 
-export default function LikedPropertiesPanel({ liked = [], loading = false, locale, country }) {
+export default function LikedPropertiesPanel({ liked = [], loading = false, locale, country, flat = false }) {
   const t = useTranslations("profile.likedProperties");
 
-  // Same 4-thumbnail cap as RecentlyViewedPanel for the same reason — the
-  // narrowest right-column width only fits about 4 of these 48px tiles.
-  const venues = useMemo(() => liked.map(resolveVenue).filter(Boolean).slice(0, 4), [liked]);
+  // Same 5-thumbnail cap as RecentlyViewedPanel for the same reason — a
+  // 5-col grid (not a fixed-width flex row) shrinks each tile just enough
+  // to fit one more real preview than a 4-col row would, while still
+  // stretching to fill the card's actual width instead of leaving dead
+  // space to the right on a wider (xl breakpoint, 320px) right column.
+  // When there are more than 5, the last tile dims and shows "+N" instead
+  // of silently cutting off — see RecentlyViewedPanel.jsx's Thumb comment.
+  const resolved = useMemo(() => liked.map(resolveVenue).filter(Boolean), [liked]);
+  const venues = resolved.slice(0, 5);
+  const moreCount = resolved.length - venues.length;
 
   // Nothing to show and nothing loading — skip the section rather than
   // taking up a card just to say "properties you like will show up here."
   if (!loading && venues.length === 0) return null;
 
   return (
-    <SectionCard>
+    <SectionCard flat={flat}>
       <SectionHeading
         compact
         title={t("title")}
@@ -50,18 +57,19 @@ export default function LikedPropertiesPanel({ liked = [], loading = false, loca
       />
 
       {loading ? (
-        <div className="flex gap-2">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="w-12 h-12 rounded-xl bg-gray-100 dark:bg-gray-800 animate-pulse" />
+        <div className="grid grid-cols-5 gap-1.5">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="aspect-square rounded-xl bg-gray-100 dark:bg-gray-800 animate-pulse" />
           ))}
         </div>
       ) : (
-        <div className="flex gap-2">
-          {venues.map((v) => (
+        <div className="grid grid-cols-5 gap-1.5">
+          {venues.map((v, i) => (
             <Thumb
               key={v.childVenueId}
               venue={v}
               href={`/${locale}/${country}/search/${v.category || "venues"}/${v.childVenueId}`}
+              moreCount={i === venues.length - 1 ? moreCount : 0}
             />
           ))}
         </div>
@@ -72,8 +80,9 @@ export default function LikedPropertiesPanel({ liked = [], loading = false, loca
 
 /** Same broken-image fallback as RecentlyViewedPanel.jsx's Thumb — see
  *  that file's comment for why onError swaps to an icon instead of letting
- *  a 404'd <img> overflow the 48px box with its alt text. */
-function Thumb({ venue: v, href }) {
+ *  a 404'd <img> overflow the 48px box with its alt text. `moreCount` > 0
+ *  on the last tile dims it and overlays "+N" — same convention. */
+function Thumb({ venue: v, href, moreCount = 0 }) {
   const [errored, setErrored] = useState(false);
   const showImage = Boolean(v.images?.[0]) && !errored;
 
@@ -81,7 +90,7 @@ function Thumb({ venue: v, href }) {
     <Link
       href={href}
       title={v.venueName}
-      className="w-12 h-12 rounded-xl overflow-hidden shrink-0 bg-gray-100 dark:bg-gray-800 ring-1 ring-transparent hover:ring-[#FF3040]/40 transition-all flex items-center justify-center"
+      className="relative w-full aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 ring-1 ring-transparent hover:ring-[#FF3040]/40 transition-all flex items-center justify-center"
     >
       {showImage ? (
         <img
@@ -92,6 +101,11 @@ function Thumb({ venue: v, href }) {
         />
       ) : (
         <ImageOff size={16} className="text-gray-400 dark:text-gray-500" />
+      )}
+      {moreCount > 0 && (
+        <span className="absolute inset-0 flex items-center justify-center bg-black/70 backdrop-blur-[1px] text-white text-[14px] font-bold tracking-tight">
+          +{moreCount}
+        </span>
       )}
     </Link>
   );

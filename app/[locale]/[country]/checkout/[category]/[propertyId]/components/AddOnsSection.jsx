@@ -24,7 +24,7 @@
  * see toggleAddOn-snippet.js for the matching implementation.
  */
 
-import { useMemo,useEffect } from "react";
+import { useMemo, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
 
@@ -53,16 +53,15 @@ function AddOnCard({ addOn, isSelected, qty, onToggle, format, tint, t }) {
     <motion.div
       variants={cardVariants}
       layout
-      className="relative rounded-2xl overflow-hidden border bg-white dark:bg-neutral-900 border-gray-200 dark:border-neutral-800"
+      className="relative rounded-2xl overflow-hidden border bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800"
       animate={{
         borderColor: isSelected ? tint.hex : undefined,
         boxShadow: isSelected ? tint.glow ?? "0 0 0 1px rgba(0,0,0,0)" : "0 0 0 0 rgba(0,0,0,0)",
       }}
       transition={{ duration: 0.25 }}
-      whileHover={{ y: -2 }}
     >
       {/* Image */}
-      <div className="h-40 bg-gray-100 dark:bg-neutral-800 overflow-hidden">
+      <div className="h-40 bg-gray-100 dark:bg-gray-800 overflow-hidden">
         <img
           src={`${process.env.NEXT_PUBLIC_AWS_BUCKET_URL}/${addOn.attachment}`}
           alt={addOn.add_on_name}
@@ -70,21 +69,16 @@ function AddOnCard({ addOn, isSelected, qty, onToggle, format, tint, t }) {
         />
       </div>
 
-      {/* Selected Badge */}
-      <AnimatePresence>
-        {isSelected && (
-          <motion.div
-            initial={{ scale: 0, rotate: -45, opacity: 0 }}
-            animate={{ scale: 1, rotate: 0, opacity: 1 }}
-            exit={{ scale: 0, rotate: -45, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 500, damping: 25 }}
-            className="absolute top-3 right-3 w-7 h-7 rounded-full flex items-center justify-center text-white text-xs shadow-lg"
-            style={{ backgroundColor: tint.hex }}
-          >
-            ✓
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Popular Badge */}
+      {addOn.popular && (
+        <div
+          className="absolute top-3 start-3 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-white shadow-lg"
+          style={{ background: `linear-gradient(135deg, ${tint.hex}, ${tint.activeBg ?? tint.hex})` }}
+        >
+          {t("popular")}
+        </div>
+      )}
+
 
       {/* Content */}
       <div className="p-4">
@@ -93,42 +87,42 @@ function AddOnCard({ addOn, isSelected, qty, onToggle, format, tint, t }) {
         </h3>
 
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
-          {addOn.more_details || "No description available"}
+          {addOn.more_details || t("no_description")}
         </p>
 
-        <div className="flex items-center justify-between mt-3 text-xs">
-          <span className="px-2 py-1 rounded-full bg-gray-100 dark:bg-neutral-800">
-            {isUnit ? "Per Unit" : "Total"}
+        <div className="flex items-center justify-between gap-2 mt-3 text-xs">
+          <span className="shrink-0 px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-800">
+            {isUnit ? t("per_unit_badge") : t("flat_badge")}
           </span>
 
           {isUnit && addOn.stock > 0 && (
-            <span className="text-green-600">{addOn.stock} Available</span>
+            <span className="text-green-600 truncate">{t("available", { count: addOn.stock })}</span>
           )}
-          {outOfStock && <span className="text-red-500">Out of stock</span>}
+          {outOfStock && <span className="text-red-500 truncate">{t("out_of_stock")}</span>}
         </div>
 
         {/* Price + action — single footer, one source of truth */}
-        <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-100 dark:border-neutral-800">
-          <div>
-            <p className="text-lg font-bold text-gray-900 dark:text-white">
+        <div className="flex items-center justify-between gap-3 mt-4 pt-3 border-t border-gray-100 dark:border-gray-800">
+          <div className="min-w-0">
+            <p className="text-lg font-bold text-gray-900 dark:text-white truncate">
               {format(addOn.price)}
               {isUnit && <span className="text-xs font-normal text-gray-400"> /unit</span>}
             </p>
             {isUnit && qty > 0 && (
-              <p className="text-xs text-gray-400 mt-0.5">
+              <p className="text-xs text-gray-400 mt-0.5 truncate">
                 {qty} × {format(addOn.price)} = <span className="font-semibold">{format(addOn.price * qty)}</span>
               </p>
             )}
           </div>
 
           {isUnit ? (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <motion.button
                 type="button"
                 whileTap={{ scale: 0.9 }}
                 onClick={() => onToggle(addOn, "remove")}
                 disabled={qty === 0}
-                className="w-8 h-8 rounded-lg bg-gray-200 dark:bg-neutral-800 disabled:opacity-40 font-semibold"
+                className="w-8 h-8 rounded-lg bg-gray-200 dark:bg-gray-800 disabled:opacity-40 font-semibold"
               >
                 −
               </motion.button>
@@ -164,15 +158,33 @@ function AddOnCard({ addOn, isSelected, qty, onToggle, format, tint, t }) {
               type="button"
               whileTap={{ scale: 0.96 }}
               onClick={() => onToggle(addOn, "toggle")}
-              className="px-4 py-2 rounded-lg text-sm font-semibold text-white transition-colors"
+              className="shrink-0 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-colors"
               style={{ backgroundColor: isSelected ? "#ef4444" : tint.hex }}
             >
-              {isSelected ? "Remove" : "Add"}
+              {isSelected ? t("remove") : t("add")}
             </motion.button>
           )}
         </div>
       </div>
     </motion.div>
+  );
+}
+
+/* ─── Skeleton card (loading state) ─────────────────────────────────── */
+function AddOnSkeletonCard() {
+  return (
+    <div className="rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+      <div className="h-40 bg-gray-100 dark:bg-gray-800 animate-pulse" />
+      <div className="p-4 space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="h-4 w-2/3 rounded bg-gray-100 dark:bg-gray-800 animate-pulse" />
+          <div className="h-4 w-12 rounded bg-gray-100 dark:bg-gray-800 animate-pulse" />
+        </div>
+        <div className="h-3 w-full rounded bg-gray-100 dark:bg-gray-800 animate-pulse" />
+        <div className="h-3 w-3/4 rounded bg-gray-100 dark:bg-gray-800 animate-pulse" />
+        <div className="h-9 w-full rounded-lg bg-gray-100 dark:bg-gray-800 animate-pulse mt-2" />
+      </div>
+    </div>
   );
 }
 
@@ -185,12 +197,31 @@ export default function AddOnsSection({
   selectedAddOns,
   onToggle,
   format,
-  onTotalChange
+  onTotalChange,
+  loading = false,
 }) {
   const t = useTranslations("checkout.addons");
+  const [categoryFilter, setCategoryFilter] = useState("all");
 
   // Accept either prop name for the list; prefer `addons` if both are given.
   const items = addons ?? addOns ?? [];
+
+  // Distinct addon categories (falls back to a single implicit group when
+  // the data doesn't carry one) — purely additive, doesn't require every
+  // addon source to supply `category_name`.
+  const addonCategories = useMemo(() => {
+    const names = new Set();
+    items.forEach((addon) => {
+      const name = addon.category_name || addon.category;
+      if (name) names.add(name);
+    });
+    return Array.from(names);
+  }, [items]);
+
+  const filteredItems = useMemo(() => {
+    if (categoryFilter === "all") return items;
+    return items.filter((addon) => (addon.category_name || addon.category) === categoryFilter);
+  }, [items, categoryFilter]);
 
   // Split totals: unit-priced add-ons vs one-time/"total" add-ons, plus grand total
   // const { unitTotal, flatTotal, grandTotal } = useMemo(() => {
@@ -235,29 +266,29 @@ useEffect(() => {
   });
 }, [unitTotal, flatTotal, grandTotal, selectedAddOns, onTotalChange]);
 
-  if (!items || items.length === 0) return null;
+  if (!loading && (!items || items.length === 0)) return null;
 
   return (
     <section
-      className="rounded-2xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 overflow-hidden"
+      className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden"
       aria-label="Recommended Add-ons"
     >
       {/* Header */}
-      <div className="px-6 py-5 border-b border-gray-100 dark:border-neutral-800 flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
           <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-white"
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0"
             style={{ backgroundColor: tint.hex }}
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
           </div>
-          <div>
-            <h2 className="text-base font-semibold text-gray-900 dark:text-neutral-100">
+          <div className="min-w-0">
+            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 truncate">
               {t("title")}
             </h2>
-            <p className="text-xs text-gray-400 dark:text-neutral-500 mt-0.5">
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate">
               {t("subtitle")}
             </p>
           </div>
@@ -270,84 +301,93 @@ useEffect(() => {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.85 }}
               transition={{ duration: 0.2 }}
-              className="px-2.5 py-1 rounded-full text-xs font-semibold text-white"
+              className="shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold text-white whitespace-nowrap"
               style={{ backgroundColor: tint.hex }}
             >
-              {selectedAddOns.size} added
+              {t("added_count", { count: selectedAddOns.size })}
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
-      {/* Grid */}
-      <motion.div
-        variants={gridVariants}
-        initial="hidden"
-        animate="show"
-        layout
-        className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4"
-      >
-        {items.map((addon) => {
-          const selected = selectedAddOns?.get(addon.add_on_id);
-          return (
-            <AddOnCard
-              key={addon.add_on_id}
-              addOn={addon}
-              isSelected={Boolean(selected)}
-              qty={selected?.qty || 0}
-              onToggle={onToggle}
-              format={format}
-              tint={tint}
-              t={t}
-            />
-          );
-        })}
-      </motion.div>
-
-      {/* Totals — unit subtotal, one-time subtotal, and grand total */}
-      <AnimatePresence>
-        {selectedAddOns?.size > 0 && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
-            className="overflow-hidden"
-          >
-            <div className="px-6 py-4 border-t border-gray-100 dark:border-neutral-800 bg-gray-50 dark:bg-neutral-800/40 space-y-1.5">
-              {unitTotal > 0 && (
-                <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
-                  <span>Per-unit add-ons</span>
-                  <span>{format(unitTotal)}</span>
-                </div>
-              )}
-              {flatTotal > 0 && (
-                <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
-                  <span>One-time add-ons</span>
-                  <span>{format(flatTotal)}</span>
-                </div>
-              )}
-              <div className="flex items-center justify-between pt-1.5 border-t border-gray-200 dark:border-neutral-700">
-                <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                  Add-ons total
-                </span>
-                <AnimatePresence mode="popLayout" initial={false}>
-                  <motion.span
-                    key={grandTotal}
-                    initial={{ y: 8, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    exit={{ y: -8, opacity: 0 }}
-                    transition={{ duration: 0.18 }}
-                    className="text-base font-bold text-gray-900 dark:text-white"
-                  >
-                    {format(grandTotal)}
-                  </motion.span>
-                </AnimatePresence>
-              </div>
+      {loading ? (
+        <>
+          {/* Skeleton tabs */}
+          <div className="px-4 sm:px-6 pt-4 sm:pt-5 flex gap-2 overflow-x-auto">
+            {[0, 1, 2, 3].map((n) => (
+              <div key={n} className="h-9 w-20 shrink-0 rounded-lg bg-gray-100 dark:bg-gray-800 animate-pulse" />
+            ))}
+          </div>
+          {/* Skeleton grid */}
+          <div className="p-4 sm:p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {[0, 1, 2, 3].map((n) => (
+              <AddOnSkeletonCard key={n} />
+            ))}
+          </div>
+        </>
+      ) : (
+        <>
+          {/* Category tabs — only shown when the data actually carries categories */}
+          {addonCategories.length > 1 && (
+            <div className="px-4 sm:px-6 pt-4 sm:pt-5 flex flex-wrap gap-2">
+              <button
+                onClick={() => setCategoryFilter("all")}
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors ${
+                  categoryFilter === "all"
+                    ? "text-white"
+                    : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
+                }`}
+                style={categoryFilter === "all" ? { backgroundColor: tint.hex } : {}}
+              >
+                {t("all_categories")}
+              </button>
+              {addonCategories.map((catName) => (
+                <button
+                  key={catName}
+                  onClick={() => setCategoryFilter(catName)}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors ${
+                    categoryFilter === catName
+                      ? "text-white"
+                      : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
+                  }`}
+                  style={categoryFilter === catName ? { backgroundColor: tint.hex } : {}}
+                >
+                  {catName}
+                </button>
+              ))}
             </div>
+          )}
+
+          {/* Grid */}
+          <motion.div
+            variants={gridVariants}
+            initial="hidden"
+            animate="show"
+            layout
+            className="p-4 sm:p-6 grid grid-cols-1 sm:grid-cols-2 gap-4"
+          >
+            {filteredItems.map((addon) => {
+              const selected = selectedAddOns?.get(addon.add_on_id);
+              return (
+                <AddOnCard
+                  key={addon.add_on_id}
+                  addOn={addon}
+                  isSelected={Boolean(selected)}
+                  qty={selected?.qty || 0}
+                  onToggle={onToggle}
+                  format={format}
+                  tint={tint}
+                  t={t}
+                />
+              );
+            })}
           </motion.div>
-        )}
-      </AnimatePresence>
+        </>
+      )}
+
+      {/* Add-ons subtotal/grand-total intentionally not repeated here — the
+          sidebar's "Add-ons" breakdown group (BookingSummary.jsx) is the
+          single source of truth for pricing, this section only selects. */}
     </section>
   );
 }

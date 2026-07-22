@@ -77,7 +77,7 @@ import LikedPropertiesPanel from "./components/widgets/LikedPropertiesPanel";
 import MessagesNavCard from "./components/widgets/MessagesNavCard";
 import OffersPanel from "./components/widgets/OffersPanel";
 
-import { computeMockWalletPoints, hasFarmstayBooking } from "./data/mockProfileData";
+import { computeMockWalletPoints, hasFarmstayBooking, MOCK_BOOKINGS } from "./data/mockProfileData";
 
 function unwrapList(res) {
   const d = res?.data;
@@ -131,6 +131,13 @@ export default function ProfilePage() {
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [rewardsOpen, setRewardsOpen] = useState(false);
+
+  // TEMPORARY — dev-only preview toggle (see IdentityPanel.jsx's header
+  // comment), for reviewing the Bookings↔Offers layout swap below without
+  // actually emptying MOCK_BOOKINGS. Remove alongside that toggle once the
+  // swapped layout has been reviewed.
+  const [previewNoBookings, setPreviewNoBookings] = useState(false);
+  const hasBookings = !previewNoBookings && MOCK_BOOKINGS.length > 0;
 
   const isDesktop = useIsDesktop();
 
@@ -203,10 +210,10 @@ export default function ProfilePage() {
     return <SignedOutState onLogin={() => setLoginOpen(true)} />;
   }
 
-  /* isDesktop === null → not measured yet (first paint). Render nothing
-     rather than guessing, to avoid a flash of the wrong layout. */
-  if (isDesktop === null) {
-    return <div className="min-h-screen bg-white dark:bg-gray-950" />;
+  /* isDesktop === null → not measured yet (first paint). Show a skeleton
+     that approximates the desktop layout on lg+ and the mobile stack below. */
+  if (isDesktop === null || authLoading) {
+    return <ProfileSkeleton />;
   }
 
   return (
@@ -221,37 +228,60 @@ export default function ProfilePage() {
            can silently blow the 1fr center track past the viewport instead
            of wrapping/truncating — that's what was cutting the right column
            off-screen on real laptop widths.
+
+           The whole grid used to be 3 SEPARATE cards (each with its own
+           rounded corners/border/shadow) sitting in a `gap-3` grid — which
+           looked fine when every column's content filled its height, but
+           the moment one didn't (e.g. only 3 offers in the expanded Offers
+           view, or a short bookings list) that column read as a floating
+           box with dead space around it, disconnected from its neighbors.
+           Per direct feedback, this is now ONE shared card (rounded-3xl
+           border/shadow on the OUTER wrapper only) with `divide-x` between
+           Left/Center/Right in place of the gap, and each widget passes
+           `flat` so it renders as a plain section (no nested card chrome)
+           separated from its neighbors by a `divide-y` line instead of its
+           own border+shadow+gap. A short section now just reads as empty
+           space within one continuous surface, not a mismatched card.
            ════════════════════════════════════════════════════════════════ */
         <div className="flex flex-col h-screen pt-20 pb-3 px-3 xl:px-4 overflow-hidden">
-          <div className="grid grid-cols-[260px_1fr_280px] xl:grid-cols-[300px_1fr_320px] gap-3 flex-1 min-h-0 min-w-0">
-            {/* LEFT — identity + messages shortcut + offers ribbon.
-                overflow-y-auto guards against a shorter viewport clipping
-                the new MessagesNavCard — same pattern the right column
-                already uses for the same reason. */}
-            <div className="flex flex-col gap-3 min-h-0 min-w-0 overflow-y-auto no-scrollbar">
-              <IdentityPanel
-                user={user}
-                walletPoints={walletPoints}
-                collectionsCount={collections.length}
-                memberSinceYear={memberSinceYear}
-                onOpenSettings={() => setSettingsOpen(true)}
-                onOpenRewards={() => setRewardsOpen(true)}
-              />
-              <MessagesNavCard locale={locale} country={country} />
-              <OffersPanel />
-            </div>
+          <div className="rounded-3xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-[0_2px_8px_rgba(0,0,0,0.04)] flex-1 min-h-0 min-w-0 overflow-hidden">
+            <div className="grid grid-cols-[260px_1fr_280px] xl:grid-cols-[300px_1fr_320px] h-full divide-x divide-gray-100 dark:divide-gray-800">
+              {/* LEFT — identity + messages shortcut + offers ribbon (or, when
+                  there are no bookings anywhere, Bookings itself moves here
+                  in compact form and Offers takes over the center — see
+                  `hasBookings` above). overflow-y-auto guards against a
+                  shorter viewport clipping the new MessagesNavCard — same
+                  pattern the right column already uses for the same reason. */}
+              <div className="flex flex-col divide-y divide-gray-100 dark:divide-gray-800 min-h-0 min-w-0 overflow-y-auto no-scrollbar">
+                <IdentityPanel
+                  flat
+                  user={user}
+                  walletPoints={walletPoints}
+                  collectionsCount={collections.length}
+                  memberSinceYear={memberSinceYear}
+                  onOpenSettings={() => setSettingsOpen(true)}
+                  onOpenRewards={() => setRewardsOpen(true)}
+                  previewNoBookings={previewNoBookings}
+                  onTogglePreview={() => setPreviewNoBookings((v) => !v)}
+                />
+                <MessagesNavCard flat locale={locale} country={country} />
+                {hasBookings ? <OffersPanel flat /> : <BookingsPanel compact flat />}
+              </div>
 
-            {/* CENTER — bookings (most important section) */}
-            <div className="flex flex-col gap-3 min-h-0 min-w-0">
-              <BookingsPanel />
-            </div>
+              {/* CENTER — bookings (most important section), or Offers
+                  expanded to fill this spot when there are no bookings at
+                  all to show. */}
+              <div className="flex flex-col min-h-0 min-w-0">
+                {hasBookings ? <BookingsPanel flat /> : <OffersPanel expanded flat />}
+              </div>
 
-            {/* RIGHT — collections, liked properties, recently viewed, notifications */}
-            <div className="flex flex-col gap-3 min-h-0 min-w-0 overflow-y-auto no-scrollbar">
-              <CollectionsPanel collections={collections} wishlist={wishlist} loading={dataLoading} locale={locale} country={country} />
-              <LikedPropertiesPanel liked={liked} loading={dataLoading} locale={locale} country={country} />
-              <RecentlyViewedPanel recentViews={recentViews} loading={dataLoading} locale={locale} country={country} />
-              <NotificationsSection compact />
+              {/* RIGHT — collections, liked properties, recently viewed, notifications */}
+              <div className="flex flex-col divide-y divide-gray-100 dark:divide-gray-800 min-h-0 min-w-0 overflow-y-auto no-scrollbar">
+                <CollectionsPanel flat collections={collections} wishlist={wishlist} loading={dataLoading} locale={locale} country={country} />
+                <LikedPropertiesPanel flat liked={liked} loading={dataLoading} locale={locale} country={country} />
+                <RecentlyViewedPanel flat recentViews={recentViews} loading={dataLoading} locale={locale} country={country} />
+                <NotificationsSection compact flat />
+              </div>
             </div>
           </div>
         </div>
@@ -310,8 +340,8 @@ export default function ProfilePage() {
           DRAWERS — only reachable from the desktop layout's triggers.
           ══════════════════════════════════════════════════════════════════ */}
       <SlideOverPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} title={tDrawer("settingsTitle")}>
-        <div className="space-y-4">
-          <AccountSettingsGrid user={user} />
+        <div className="space-y-5">
+          <AccountSettingsGrid user={user} showHeader={false} />
           <PasswordCard user={user} />
         </div>
       </SlideOverPanel>
@@ -336,6 +366,149 @@ export default function ProfilePage() {
           load();
         }}
       />
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   PROFILE SKELETON
+   Shown while auth is loading or isDesktop hasn't resolved yet.
+   Mirrors the real layout's column structure so the swap is seamless.
+   Uses the global .sk-base class (CSS-variable shimmer, dark-mode aware,
+   GPU-accelerated — defined in app/globals.css).
+───────────────────────────────────────────────────────────────────────────── */
+function Sk({ className }) {
+  return <div className={`sk-base rounded-xl ${className}`} />;
+}
+
+function ProfileSkeleton() {
+  return (
+    <div className="bg-white dark:bg-gray-950 min-h-screen overflow-x-hidden">
+
+      {/* ── DESKTOP skeleton (lg+) ── 3-column mirroring the real dashboard */}
+      <div className="hidden lg:flex flex-col h-screen pt-20 pb-3 px-3 xl:px-4 overflow-hidden">
+        <div className="rounded-3xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm flex-1 min-h-0 overflow-hidden">
+          <div className="grid grid-cols-[260px_1fr_280px] xl:grid-cols-[300px_1fr_320px] h-full divide-x divide-gray-100 dark:divide-gray-800">
+
+            {/* Left — identity */}
+            <div className="flex flex-col gap-5 p-5 overflow-hidden">
+              <div className="flex items-center gap-3">
+                <Sk className="w-14 h-14 rounded-full flex-none" />
+                <div className="flex-1 space-y-2">
+                  <Sk className="h-4 w-32" />
+                  <Sk className="h-3 w-24" />
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {[...Array(3)].map((_, i) => <Sk key={i} className="h-14 rounded-2xl" />)}
+              </div>
+              <div className="space-y-2">
+                <Sk className="h-3 w-24 rounded-full" />
+                <Sk className="h-2.5 rounded-full" />
+              </div>
+              <div className="mt-auto space-y-2.5">
+                {[...Array(3)].map((_, i) => <Sk key={i} className="h-12 rounded-2xl" />)}
+              </div>
+            </div>
+
+            {/* Center — bookings */}
+            <div className="flex flex-col gap-3 p-5 overflow-hidden">
+              <Sk className="h-5 w-36 rounded-full" />
+              <div className="space-y-3 flex-1">
+                {[...Array(4)].map((_, i) => <Sk key={i} className="h-24 rounded-2xl" />)}
+              </div>
+            </div>
+
+            {/* Right — collections / liked / recent */}
+            <div className="flex flex-col divide-y divide-gray-100 dark:divide-gray-800 overflow-hidden">
+              {/* Collections block */}
+              <div className="flex-1 p-4 space-y-3">
+                <Sk className="h-4 w-28 rounded-full" />
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <Sk className="w-10 h-10 rounded-xl flex-none" />
+                    <div className="flex-1 space-y-1.5">
+                      <Sk className="h-3 w-full" />
+                      <Sk className="h-2.5 w-2/3" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {/* Liked block */}
+              <div className="flex-1 p-4 space-y-3">
+                <Sk className="h-4 w-24 rounded-full" />
+                {[...Array(2)].map((_, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <Sk className="w-10 h-10 rounded-xl flex-none" />
+                    <div className="flex-1 space-y-1.5">
+                      <Sk className="h-3 w-full" />
+                      <Sk className="h-2.5 w-3/4" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {/* Recent block */}
+              <div className="flex-1 p-4 space-y-3">
+                <Sk className="h-4 w-32 rounded-full" />
+                {[...Array(2)].map((_, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <Sk className="w-10 h-10 rounded-xl flex-none" />
+                    <div className="flex-1 space-y-1.5">
+                      <Sk className="h-3 w-full" />
+                      <Sk className="h-2.5 w-1/2" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      {/* ── MOBILE skeleton (below lg) ── vertical stack */}
+      <div className="lg:hidden pt-20 pb-14 px-4 space-y-4">
+        {/* Profile header */}
+        <div className="flex items-center gap-4 p-4 rounded-2xl border border-gray-100 dark:border-gray-800">
+          <Sk className="w-16 h-16 rounded-full flex-none" />
+          <div className="flex-1 space-y-2">
+            <Sk className="h-5 w-40" />
+            <Sk className="h-3.5 w-28" />
+            <Sk className="h-3 w-20" />
+          </div>
+        </div>
+
+        {/* Quick stats */}
+        <div className="grid grid-cols-4 gap-2.5">
+          {[...Array(4)].map((_, i) => <Sk key={i} className="h-16 rounded-2xl" />)}
+        </div>
+
+        {/* Member card */}
+        <Sk className="h-28 rounded-2xl" />
+
+        {/* Bookings */}
+        <div className="space-y-3">
+          <Sk className="h-4 w-28 rounded-full" />
+          {[...Array(3)].map((_, i) => <Sk key={i} className="h-24 rounded-2xl" />)}
+        </div>
+
+        {/* Collections */}
+        <div className="space-y-3">
+          <Sk className="h-4 w-32 rounded-full" />
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {[...Array(4)].map((_, i) => <Sk key={i} className="h-32 rounded-2xl" />)}
+          </div>
+        </div>
+
+        {/* Recently viewed */}
+        <div className="space-y-3">
+          <Sk className="h-4 w-36 rounded-full" />
+          <div className="grid grid-cols-2 gap-3">
+            {[...Array(4)].map((_, i) => <Sk key={i} className="h-28 rounded-2xl" />)}
+          </div>
+        </div>
+      </div>
+
     </div>
   );
 }

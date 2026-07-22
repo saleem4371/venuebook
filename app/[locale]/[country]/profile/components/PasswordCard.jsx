@@ -23,7 +23,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { Lock } from "lucide-react";
+import { Lock, Eye, EyeOff } from "lucide-react";
 
 import { useToast } from "@/components/ToastProvider";
 import { SectionCard, SectionHeading, PrimaryButton } from "./shared/ui";
@@ -57,11 +57,11 @@ export default function PasswordCard({ user }) {
       />
       <form onSubmit={submit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <PasswordField
+          className="sm:col-span-2"
           label={t("currentPassword")}
           value={fields.current}
           onChange={(v) => setFields((f) => ({ ...f, current: v }))}
         />
-        <div />
         <PasswordField
           label={t("newPassword")}
           value={fields.next}
@@ -80,16 +80,28 @@ export default function PasswordCard({ user }) {
   );
 }
 
-function PasswordField({ label, value, onChange }) {
+function PasswordField({ label, value, onChange, className = "" }) {
+  const [visible, setVisible] = useState(false);
+
   return (
-    <div>
+    <div className={className}>
       <label className="block text-[11.5px] font-medium text-gray-500 dark:text-gray-400 mb-1">{label}</label>
-      <input
-        type="password"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3.5 py-2.5 text-[13px] text-gray-900 dark:text-gray-100 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:focus:ring-violet-900/30 transition-colors"
-      />
+      <div className="relative">
+        <input
+          type={visible ? "text" : "password"}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 pl-3.5 pr-10 py-2.5 text-[13px] text-gray-900 dark:text-gray-100 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:focus:ring-violet-900/30 transition-colors"
+        />
+        <button
+          type="button"
+          onClick={() => setVisible((v) => !v)}
+          tabIndex={-1}
+          className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+        >
+          {visible ? <EyeOff size={15} /> : <Eye size={15} />}
+        </button>
+      </div>
     </div>
   );
 }

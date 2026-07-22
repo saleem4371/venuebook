@@ -21,15 +21,22 @@ import { Clock, ImageOff } from "lucide-react";
 import { SectionCard, SectionHeading, ViewAllLink } from "../shared/ui";
 import { resolveVenue } from "@/lib/resolveVenue";
 
-export default function RecentlyViewedPanel({ recentViews = [], loading = false, locale, country }) {
+export default function RecentlyViewedPanel({ recentViews = [], loading = false, locale, country, flat = false }) {
   const t = useTranslations("profile.recentlyViewed");
 
-  // Capped at 4 — the narrowest right-column width (260px, lg breakpoint)
-  // only has room for about 4 of these 48px thumbnails after SectionCard's
-  // own padding. Scroll-to-see-more looked like an overflow bug with no
-  // visible scroll affordance, so this shows fewer, but every one of them
-  // is fully visible with no clipping or horizontal scroll needed.
-  const venues = useMemo(() => recentViews.map(resolveVenue).filter(Boolean).slice(0, 4), [recentViews]);
+  // Capped at 5 — a 5-col grid (not a fixed-width flex row) shrinks each
+  // tile just enough to fit one more real preview than a 4-col row would,
+  // while stretching to fill the card's actual width instead of leaving
+  // dead space to the right on a wider (xl breakpoint, 320px) right
+  // column. Scroll-to-see-more looked like an overflow bug with no visible
+  // scroll affordance, so this shows fewer, but every one of them is fully
+  // visible with no clipping or horizontal scroll needed. When there are
+  // more than 5, the last tile dims and shows a "+N" count instead of just
+  // cutting off silently — a plain 6th-and-beyond photo with no visual cue
+  // read as broken/blank rather than "there's more, click View All."
+  const resolved = useMemo(() => recentViews.map(resolveVenue).filter(Boolean), [recentViews]);
+  const venues = resolved.slice(0, 5);
+  const moreCount = resolved.length - venues.length;
 
   // Nothing to show and nothing loading — skip the section entirely
   // instead of taking up a whole card in the right column just to say
@@ -37,7 +44,7 @@ export default function RecentlyViewedPanel({ recentViews = [], loading = false,
   if (!loading && venues.length === 0) return null;
 
   return (
-    <SectionCard>
+    <SectionCard flat={flat}>
       <SectionHeading
         compact
         title={t("title")}
@@ -54,18 +61,19 @@ export default function RecentlyViewedPanel({ recentViews = [], loading = false,
       />
 
       {loading ? (
-        <div className="flex gap-2">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="w-12 h-12 rounded-xl bg-gray-100 dark:bg-gray-800 animate-pulse" />
+        <div className="grid grid-cols-5 gap-1.5">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="aspect-square rounded-xl bg-gray-100 dark:bg-gray-800 animate-pulse" />
           ))}
         </div>
       ) : (
-        <div className="flex gap-2">
-          {venues.map((v) => (
+        <div className="grid grid-cols-5 gap-1.5">
+          {venues.map((v, i) => (
             <Thumb
               key={v.childVenueId}
               venue={v}
               href={`/${locale}/${country}/search/${v.category || "venues"}/${v.childVenueId}`}
+              moreCount={i === venues.length - 1 ? moreCount : 0}
             />
           ))}
         </div>
@@ -82,8 +90,12 @@ export default function RecentlyViewedPanel({ recentViews = [], loading = false,
  * a 48px box no matter what the parent's overflow-hidden says. Catching
  * the load failure and swapping to a plain icon avoids that overflow
  * instead of fighting it with CSS.
+ *
+ * `moreCount` > 0 on the last tile dims its own photo and overlays "+N" —
+ * same "there's more behind this" convention as a gallery's last thumbnail,
+ * so a full row doesn't read as the end of the list when it isn't.
  */
-function Thumb({ venue: v, href }) {
+function Thumb({ venue: v, href, moreCount = 0 }) {
   const [errored, setErrored] = useState(false);
   const showImage = Boolean(v.images?.[0]) && !errored;
 
@@ -91,7 +103,7 @@ function Thumb({ venue: v, href }) {
     <Link
       href={href}
       title={v.venueName}
-      className="w-12 h-12 rounded-xl overflow-hidden shrink-0 bg-gray-100 dark:bg-gray-800 ring-1 ring-transparent hover:ring-violet-300 dark:hover:ring-violet-700 transition-all flex items-center justify-center"
+      className="relative w-full aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 ring-1 ring-transparent hover:ring-violet-300 dark:hover:ring-violet-700 transition-all flex items-center justify-center"
     >
       {showImage ? (
         <img
@@ -102,6 +114,11 @@ function Thumb({ venue: v, href }) {
         />
       ) : (
         <ImageOff size={16} className="text-gray-400 dark:text-gray-500" />
+      )}
+      {moreCount > 0 && (
+        <span className="absolute inset-0 flex items-center justify-center bg-black/70 backdrop-blur-[1px] text-white text-[14px] font-bold tracking-tight">
+          +{moreCount}
+        </span>
       )}
     </Link>
   );

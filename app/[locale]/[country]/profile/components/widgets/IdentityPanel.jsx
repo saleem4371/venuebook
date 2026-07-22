@@ -12,7 +12,7 @@
 
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { CheckCircle2, Pencil, Settings, Crown } from "lucide-react";
+import { CheckCircle2, Pencil, Settings, Crown, FlaskConical } from "lucide-react";
 
 import { MEMBERSHIP_TIERS, getMembershipTier } from "@/config/checkoutConfig";
 import { ProgressBar } from "../shared/ui";
@@ -41,6 +41,9 @@ export default function IdentityPanel({
   memberSinceYear,
   onOpenSettings,
   onOpenRewards,
+  previewNoBookings = false,
+  onTogglePreview,
+  flat = false,
 }) {
   const t = useTranslations("profile.header");
   const tIdentity = useTranslations("profile.identity");
@@ -66,7 +69,13 @@ export default function IdentityPanel({
   const tier = getMembershipTier(walletPoints);
 
   return (
-    <div className="rounded-3xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-[0_2px_8px_rgba(0,0,0,0.04)] p-4">
+    <div
+      className={
+        flat
+          ? "p-4"
+          : "rounded-3xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-[0_2px_8px_rgba(0,0,0,0.04)] p-4"
+      }
+    >
         <div className="flex items-start justify-between">
           <div
             className="relative shrink-0 group"
@@ -98,13 +107,33 @@ export default function IdentityPanel({
             </button>
           </div>
 
-          <button
-            onClick={onOpenSettings}
-            title={tIdentity("settingsTooltip")}
-            className="w-8 h-8 rounded-full border border-gray-200 dark:border-gray-700 flex items-center justify-center text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors shrink-0"
-          >
-            <Settings size={14} />
-          </button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {/* TEMPORARY — dev-only preview toggle, not a real user-facing
+                control. Simulates "zero bookings anywhere" so the
+                Bookings↔Offers layout swap (see page.jsx) can be checked
+                without emptying MOCK_BOOKINGS. Remove once that layout has
+                been reviewed. */}
+            {onTogglePreview && (
+              <button
+                onClick={onTogglePreview}
+                title="Preview: no bookings anywhere (temporary, dev-only)"
+                className={`w-8 h-8 rounded-full border flex items-center justify-center transition-colors ${
+                  previewNoBookings
+                    ? "bg-violet-600 border-violet-600 text-white"
+                    : "border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800"
+                }`}
+              >
+                <FlaskConical size={14} />
+              </button>
+            )}
+            <button
+              onClick={onOpenSettings}
+              title={tIdentity("settingsTooltip")}
+              className="w-8 h-8 rounded-full border border-gray-200 dark:border-gray-700 flex items-center justify-center text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors shrink-0"
+            >
+              <Settings size={14} />
+            </button>
+          </div>
         </div>
 
         <div className="mt-2.5 min-w-0">

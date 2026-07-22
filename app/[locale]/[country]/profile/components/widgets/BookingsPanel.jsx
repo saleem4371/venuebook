@@ -30,6 +30,12 @@
  * flipping to "cancelled") back up so this header's StatusBadge stays in
  * sync live — it does NOT mutate MOCK_BOOKINGS itself (same mock-only
  * limitation documented in ManageBookingView.jsx's own header comment).
+ *
+ * `compact` — used when page.jsx's Bookings↔Offers layout swap puts this
+ * in the LEFT column instead of the center (see page.jsx's header comment):
+ * a small icon+title card with a single empty-state message, matching its
+ * new neighbors (Identity/Messages/Offers) instead of trying to fill a
+ * whole column the way the center placement does.
  */
 
 import { useMemo, useState } from "react";
@@ -46,7 +52,7 @@ import { ManageBookingView } from "../shared/ManageBookingView";
 import BookingTabs, { filterBookingsByTab } from "../shared/BookingTabs";
 import { MOCK_BOOKINGS, CATEGORY_COLORS } from "../../data/mockProfileData";
 
-export default function BookingsPanel() {
+export default function BookingsPanel({ compact = false, flat = false }) {
   const t = useTranslations("profile.bookings");
   const tCat = useTranslations("card.badge");
   const { locale, country } = useParams();
@@ -62,8 +68,32 @@ export default function BookingsPanel() {
   );
   const bookings = useMemo(() => filterBookingsByTab(allBookings, activeTab), [allBookings, activeTab]);
 
+  if (compact) {
+    return (
+      <SectionCard flat={flat}>
+        <SectionHeading
+          compact
+          title={t("title")}
+          icon={
+            <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-violet-50 dark:bg-violet-900/30">
+              <CalendarRange size={12} className="text-violet-600" />
+            </span>
+          }
+        />
+        <EmptyState
+          icon={<PackageSearch size={18} className="text-violet-600" />}
+          title={t("empty.byTab.all.title")}
+          subtitle={t("empty.byTab.all.subtitle")}
+          ctaLabel={t("empty.cta")}
+          ctaHref={`/${locale}/${country}/search/venues`}
+          compact
+        />
+      </SectionCard>
+    );
+  }
+
   return (
-    <SectionCard className="flex flex-col min-h-0 flex-1" padded={false}>
+    <SectionCard flat={flat} className="flex flex-col min-h-0 flex-1" padded={false}>
       {manageBooking ? (
         <div className="p-4 pb-0 flex items-center gap-3">
           <button

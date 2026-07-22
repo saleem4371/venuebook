@@ -35,71 +35,71 @@ export default function WalletSection({
 
   return (
     <section
-      className="rounded-2xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 overflow-hidden"
+      className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden"
       aria-label="venuebook.in Rewards Wallet"
     >
       {/* Header stripe */}
       <div
-        className="px-6 py-4 flex items-center justify-between"
+        className="px-4 sm:px-6 py-4 flex items-center justify-between gap-3"
         style={{ background: `linear-gradient(135deg, ${tint.bg}, ${tint.activeBg})`, borderBottom: `1px solid ${tint.border}` }}
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 min-w-0">
           {/* Coin icon */}
           <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-lg font-bold shadow-sm"
+            className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-lg font-bold shadow-sm shrink-0"
             style={{ backgroundColor: tint.hex }}
           >
             ✦
           </div>
-          <div>
-            <p className="text-sm font-semibold text-gray-900 dark:text-neutral-100">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
               {t("title")}
             </p>
             <div className={`mt-0.5 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${tc.bg} ${tc.text}`}>
               <span
-                className="w-1.5 h-1.5 rounded-full"
+                className="w-1.5 h-1.5 rounded-full shrink-0"
                 style={{ backgroundColor: currentTier?.color ?? tc.dot }}
               />
-              {currentTier?.label} {t("tier")}
+              <span className="truncate">{currentTier?.label} {t("tier")}</span>
             </div>
           </div>
         </div>
 
         {/* Points badge */}
-        <div className="text-end">
-          <p className="text-2xl font-bold text-gray-900 dark:text-neutral-100">
+        <div className="text-end shrink-0">
+          <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
             {pointsTotal.toLocaleString()}
           </p>
-          <p className="text-xs text-gray-500 dark:text-neutral-400">{t("points")}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">{t("points")}</p>
         </div>
       </div>
 
       {/* Stats grid */}
-      <div className="grid grid-cols-2 divide-x divide-gray-100 dark:divide-neutral-800 border-b border-gray-100 dark:border-neutral-800">
-        <div className="px-6 py-4">
-          <p className="text-xs text-gray-500 dark:text-neutral-400 mb-1">{t("wallet_value")}</p>
-          <p className="text-lg font-semibold text-gray-900 dark:text-neutral-100">
+      <div className="grid grid-cols-2 divide-x divide-gray-100 dark:divide-gray-800 border-b border-gray-100 dark:border-gray-800">
+        <div className="px-4 sm:px-6 py-4 min-w-0">
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{t("wallet_value")}</p>
+          <p className="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate">
             {format(walletValueINR)}
           </p>
         </div>
-        <div className="px-6 py-4">
-          <p className="text-xs text-gray-500 dark:text-neutral-400 mb-1">{t("max_redeemable")}</p>
-          <p className="text-lg font-semibold" style={{ color: tint.hex }}>
+        <div className="px-4 sm:px-6 py-4 min-w-0">
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{t("max_redeemable")}</p>
+          <p className="text-lg font-semibold truncate" style={{ color: tint.hex }}>
             {format(maxRedeemableINR)}
           </p>
         </div>
       </div>
 
       {/* Toggle row */}
-      <div className="px-6 py-4 flex items-center justify-between gap-4">
+      <div className="px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
         <div className="flex-1">
-          <p className="text-sm font-medium text-gray-900 dark:text-neutral-100">
+          <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
             {t("apply_toggle")}
           </p>
           {walletApplied && (
-            <p className="text-xs text-gray-500 dark:text-neutral-400 mt-0.5">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
               {t("remaining_after")}:{" "}
-              <span className="font-medium text-gray-700 dark:text-neutral-200">
+              <span className="font-medium text-gray-700 dark:text-gray-200">
                 {remainingPoints.toLocaleString()} {t("points_suffix")}
               </span>
             </p>
@@ -128,7 +128,7 @@ export default function WalletSection({
       {/* Applied feedback */}
       {walletApplied && (
         <div
-          className="mx-6 mb-4 px-4 py-3 rounded-xl text-sm font-medium flex items-center gap-2"
+          className="mx-4 sm:mx-6 mb-4 px-4 py-3 rounded-xl text-sm font-medium flex items-center gap-2"
           style={{ backgroundColor: tint.light, color: tint.hex }}
         >
           <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>

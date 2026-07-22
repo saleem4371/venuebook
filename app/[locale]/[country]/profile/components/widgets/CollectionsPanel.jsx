@@ -23,13 +23,16 @@ import { Folder } from "lucide-react";
 import { SectionCard, SectionHeading, ViewAllLink } from "../shared/ui";
 import { resolveCollectionIcon } from "@/app/[locale]/[country]/search/[type]/components/collectionIcons";
 
-export default function CollectionsPanel({ collections = [], wishlist = [], loading = false, locale, country }) {
+export default function CollectionsPanel({ collections = [], wishlist = [], loading = false, locale, country, flat = false }) {
   const t = useTranslations("profile.collections");
-  const preview = useMemo(() => collections.slice(0, 4), [collections]);
+  // Capped at 3 (was 4) — enough to show real content without the list
+  // itself doing the "browse everything" job View All is already there
+  // for.
+  const preview = useMemo(() => collections.slice(0, 3), [collections]);
   const collectionsHref = `/${locale}/${country}/collections?tab=collections`;
 
   return (
-    <SectionCard>
+    <SectionCard flat={flat}>
       <SectionHeading
         compact
         title={t("title")}

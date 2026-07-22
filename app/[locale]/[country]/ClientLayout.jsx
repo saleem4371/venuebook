@@ -111,6 +111,14 @@ export default function ClientLayout({ children }) {
   // space, so the floating category pill/FAB shouldn't overlay it.
   const isVenueParentPage = /\/venue\/[^/]+\/?$/.test(pathname);
 
+  // Checkout flow — the floating category switcher pill has no purpose
+  // mid-booking and overlaps the checkout header on smaller viewports.
+  const isCheckoutRoute = pathname.includes("/checkout");
+
+  // Extract category from /search/[type] or /search/[type]/[id] for footer copy
+  const searchTypeMatch = pathname.match(/\/search\/([^/?#]+)/);
+  const pageCategory    = searchTypeMatch?.[1] ?? null;
+
   /*
    * fabBreakpoint controls when CategoryNavigator switches from the
    * desktop pill to the floating circular FAB + bottom-sheet:
@@ -147,7 +155,7 @@ export default function ClientLayout({ children }) {
             <MobileReelsProvider>
 
               {!hideChrome && <Navbar />}
-              {!hideChrome && !isListingDetailPage && !isVenueParentPage && !isMessagesRoute && !isProfileRoute && (
+              {!hideChrome && !isListingDetailPage && !isVenueParentPage && !isMessagesRoute && !isProfileRoute && !isCheckoutRoute && (
                 <CategoryNavigator
                   loadData={loadData}
                   fabBreakpoint={fabBreakpoint}
@@ -157,7 +165,9 @@ export default function ClientLayout({ children }) {
               {children}
 
               {!hideChrome && <BottomMenu />}
-              {!hideChrome && !isSearchListPage && !isMessagesRoute && !isProfileRoute && <Footer />}
+              {!hideChrome && !isSearchListPage && !isMessagesRoute && !isProfileRoute && (
+                isCheckoutRoute ? <Footer variant="compact" /> : <Footer category={pageCategory} />
+              )}
 
               {/* Consumes showReels signal from BottomMenu — works on every page */}
               <GlobalReelsBridge />

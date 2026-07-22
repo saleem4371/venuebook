@@ -46,7 +46,7 @@ import RegionLanguageModal from "@/app/[locale]/[country]/home/components/Region
 
 import { SectionCard, SectionHeading, PrimaryButton } from "./shared/ui";
 
-export default function AccountSettingsGrid({ user }) {
+export default function AccountSettingsGrid({ user, showHeader = true }) {
   const t = useTranslations("profile.settings");
   const toast = useToast();
   const { regionConfig } = useRegion();
@@ -67,7 +67,15 @@ export default function AccountSettingsGrid({ user }) {
 
   return (
     <SectionCard>
-      <SectionHeading title={t("title")} subtitle={t("subtitle")} icon={<User size={16} className="text-violet-600" />} />
+      {/* Skipped when embedded in the desktop Settings drawer — that
+          SlideOverPanel already shows its own "Account" title bar, so this
+          internal heading was rendering the exact same title/subtitle a
+          second time right underneath it. Still shown on the mobile
+          full-detail stack, where this IS the page's only "Account"
+          heading. */}
+      {showHeader && (
+        <SectionHeading title={t("title")} subtitle={t("subtitle")} icon={<User size={16} className="text-violet-600" />} />
+      )}
 
       {/*
         Deliberately capped at 2 columns (no lg:grid-cols-4). This grid also

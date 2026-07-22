@@ -20,12 +20,14 @@ import { X } from "lucide-react";
 /* ═══════════════════════════════════════════════════════════════════════
    SECTION CARD — the base "premium card" wrapper every section sits in.
    ═══════════════════════════════════════════════════════════════════════ */
-export function SectionCard({ children, className = "", padded = true }) {
+export function SectionCard({ children, className = "", padded = true, flat = false }) {
   return (
     <div
-      className={`rounded-3xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-[0_2px_8px_rgba(0,0,0,0.04)] ${
-        padded ? "p-4 sm:p-5" : ""
-      } ${className}`}
+      className={`${
+        flat
+          ? ""
+          : "rounded-3xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-[0_2px_8px_rgba(0,0,0,0.04)]"
+      } ${padded ? "p-4 sm:p-5" : ""} ${className}`}
     >
       {children}
     </div>

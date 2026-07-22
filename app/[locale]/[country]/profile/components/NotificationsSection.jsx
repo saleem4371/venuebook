@@ -28,7 +28,18 @@ const TYPE_ICON = {
   offer: TagIcon,
 };
 
-export default function NotificationsSection({ compact = false }) {
+// Every row used to render with the same violet icon regardless of type,
+// which made a 3-row list of differently-shaped-but-same-colored icons
+// look flat/samey. Color-coded per type instead — same "each kind gets its
+// own tone" convention STATUS_TONE/PAYMENT_TONE already use elsewhere.
+const TYPE_TONE = {
+  booking: { bg: "bg-violet-50 dark:bg-violet-900/30", text: "text-violet-600" },
+  payment: { bg: "bg-green-50 dark:bg-green-900/30", text: "text-green-600" },
+  reply: { bg: "bg-blue-50 dark:bg-blue-900/30", text: "text-blue-600" },
+  offer: { bg: "bg-orange-50 dark:bg-orange-900/30", text: "text-orange-600" },
+};
+
+export default function NotificationsSection({ compact = false, flat = false }) {
   const t = useTranslations("profile.notifications");
   const tDrawer = useTranslations("profile.drawer");
   const [open, setOpen] = useState(false);
@@ -36,7 +47,7 @@ export default function NotificationsSection({ compact = false }) {
   const preview = MOCK_NOTIFICATIONS.slice(0, 3);
 
   return (
-    <SectionCard>
+    <SectionCard flat={flat}>
       <SectionHeading
         compact={compact}
         title={t("title")}
@@ -85,18 +96,29 @@ export default function NotificationsSection({ compact = false }) {
 
 function NotificationRow({ n, roomy = false }) {
   const Icon = TYPE_ICON[n.type] || Bell;
+  const tone = TYPE_TONE[n.type] || TYPE_TONE.booking;
   return (
     <li
-      className={`flex items-start gap-2.5 ${
-        roomy ? "py-3 border-b border-gray-100 dark:border-gray-800 last:border-0" : ""
-      }`}
+      className={
+        roomy
+          ? "flex items-start gap-3 py-3.5 border-b border-gray-100 dark:border-gray-800 last:border-0"
+          : "flex items-start gap-2.5 p-1.5 -mx-1.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+      }
     >
-      <span className="shrink-0 w-8 h-8 rounded-xl bg-gray-50 dark:bg-gray-800 flex items-center justify-center">
-        <Icon size={13} className="text-violet-600" />
+      <span
+        className={`shrink-0 flex items-center justify-center ${tone.bg} ${
+          roomy ? "w-9 h-9 rounded-xl" : "w-7 h-7 rounded-lg"
+        }`}
+      >
+        <Icon size={roomy ? 15 : 13} className={tone.text} />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-[12px] font-semibold text-gray-900 dark:text-gray-50">{n.title}</p>
-        <p className={`text-[11px] text-gray-500 dark:text-gray-400 ${roomy ? "" : "truncate"}`}>{n.body}</p>
+        <p className={`font-semibold text-gray-900 dark:text-gray-50 ${roomy ? "text-[13px]" : "text-[12px]"}`}>
+          {n.title}
+        </p>
+        <p className={`text-gray-500 dark:text-gray-400 ${roomy ? "text-[12px] mt-0.5" : "text-[11px] truncate"}`}>
+          {n.body}
+        </p>
       </div>
       <span className="shrink-0 text-[10px] text-gray-400 dark:text-gray-500 whitespace-nowrap">{n.time}</span>
     </li>
