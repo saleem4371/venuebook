@@ -23,6 +23,16 @@ import { useCurrency } from "@/hooks/useCurrency";
 
 import { startPayment } from "@/services/cashfree.service";
 
+
+
+import {
+  createOrder,
+  verifyPayment,
+  createOnlineBooking,
+} from "@/services/payment.service";
+
+import Script from "next/script";
+
 import {
   loadVenues,
   loadAddons,
@@ -310,45 +320,166 @@ const toggleAddOn = (addon, action = "toggle") => {
   }, [currentStep, goToStep, router]);
 
   /* ── Handle submit ───────────────────────────────────────────────── */
+// const handlePayment = async () => {
+//   if (!isContactValid) {
+//     validateContactField("fullName");
+//     validateContactField("email");
+//     validateContactField("phone");
+//     return;
+//   }
+
+//   const grandTotal = paymentSummarys?.grandTotal ?? financials.totalINR;
+//   const amount =
+//     paymentType === "advance"
+//       ? Math.round(grandTotal * ((catConfig?.advancePercent ?? 30) / 100))
+//       : grandTotal;
+
+//   if (!amount) {
+//     console.error("Payment amount not ready yet");
+//     return;
+//   }
+
+//   setIsProcessing(true);
+
+//   try {
+//     await startPayment({
+//       bookingId: `${propertyId}-${Date.now()}`,
+//       amount,
+//       customer: {
+//         id: propertyId ?? `guest-${Date.now()}`,
+//         name: contactForm.fullName,
+//         email: contactForm.email,
+//         phone: contactForm.phone,
+//       },
+//       url:`${locale}/${country}/checkout/${category}/${propertyId}/success`
+//     });
+
+//     setTimeout(() => {
+//       router.push(`/${locale}/${country}/checkout/${category}/${propertyId}/success`);
+//     }, 1800);
+//   } catch (err) {
+//     console.error("Payment error:", err);
+//     setIsProcessing(false);
+//   }
+// };
+
 const handlePayment = async () => {
-  if (!isContactValid) {
-    validateContactField("fullName");
-    validateContactField("email");
-    validateContactField("phone");
-    return;
-  }
 
-  const grandTotal = paymentSummarys?.grandTotal ?? financials.totalINR;
-  const amount =
-    paymentType === "advance"
-      ? Math.round(grandTotal * ((catConfig?.advancePercent ?? 30) / 100))
-      : grandTotal;
+  const payload = {
+  booking: {
+    booking_id: propertyId,
+    venue_id: booking.venueId,
+    venue_name: booking.venueName,
+    category: booking.category,
+     guests: booking.guests,
+    date: booking.date,
+    shift: booking.shift,
 
-  if (!amount) {
-    console.error("Payment amount not ready yet");
-    return;
-  }
+    event_type: booking.eventType,
+    booking_type: booking.bookingType,
+   
+    check_in: booking.checkIn,
+    check_out: booking.checkOut,
+  },
 
-  setIsProcessing(true);
+  customer: {
+    // name: bookingDetails.name,
+    // email: bookingDetails.email,
+    // phone: bookingDetails.phone,
+    // address: bookingDetails.address,
+    name: 'Saleem',
+    email: 'vb.develop1@gmail.com',
+    phone: '8147484371',
+    address: 'Address',
+  },
 
+  addons: Array.from(selectedAddOns.values()).map((item) => ({
+    add_on_id: item.addon.add_on_id,
+    name: item.addon.name,
+    qty: item.qty,
+    price: item.addon.price,
+    total: item.qty * item.addon.price,
+  })),
+
+  pricing: {
+    baseAmount: paymentSummarys?.baseAmount,
+    cleaningAmount: paymentSummarys.cleaningAmount,
+    convenienceFee: paymentSummarys.convenienceFee,
+    addon_amount: addonSummary.grandTotal,
+    gstAmount: paymentSummarys.gstAmount,
+    gstPercent: paymentSummarys?.gstPercent,
+    securityDeposit: paymentSummarys?.securityDeposit,
+    wallet_discount: financials.rewardDiscountINR,
+    grand_total: paymentSummarys?.grandTotal,
+  },
+};
   try {
-    await startPayment({
-      bookingId: `${propertyId}-${Date.now()}`,
+    setIsProcessing(true);
+
+    const amount = paymentSummarys?.grandTotal ?? financials.totalINR;
+
+    const order = await createOrder({
       amount,
-      customer: {
-        id: propertyId ?? `guest-${Date.now()}`,
-        name: contactForm.fullName,
-        email: contactForm.email,
-        phone: contactForm.phone,
-      },
-      url:`${locale}/${country}/checkout/${category}/${propertyId}/success`
+      booking_id: propertyId,
     });
 
-    setTimeout(() => {
-      router.push(`/${locale}/${country}/checkout/${category}/${propertyId}/success`);
-    }, 1800);
+    if (!window.Razorpay) {
+      throw new Error("Razorpay SDK not loaded");
+    }
+
+    const options = {
+      key: process.env.NEXT_PUBLIC_RAZORPAY_KEY,
+
+      amount: order.amount,
+      currency: order.currency,
+
+      order_id: order.id, // IMPORTANT
+
+      name: "VenueBook",
+      description: "Venue Booking",
+
+      handler: async function (response) {
+        try {
+          await verifyPayment({
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_signature: response.razorpay_signature,
+            booking_id: propertyId,
+          });
+
+         
+ const responses = await createOnlineBooking(payload);
+
+          router.push(
+            `/${locale}/${country}/checkout/${category}/${responses.data.invoice_number}/success`
+          );
+        } catch (err) {
+          console.error(err);
+          alert("Payment verification failed");
+        }
+      },
+
+      prefill: {
+        name: "Saleem",
+        email: "vb.develop1@gmail.com",
+        contact: "8147484371",
+      },
+
+      theme: {
+        color: "#2563EB",
+      },
+
+      modal: {
+        ondismiss() {
+          setIsProcessing(false);
+        },
+      },
+    };
+
+    const razorpay = new window.Razorpay(options);
+    razorpay.open();
   } catch (err) {
-    console.error("Payment error:", err);
+    console.error(err);
     setIsProcessing(false);
   }
 };
@@ -389,6 +520,11 @@ const handlePayment = async () => {
 
   return (
     <div className="min-h-screen pt-16 md:pt-[72px] bg-white dark:bg-gray-950">
+
+       <Script
+        src="https://checkout.razorpay.com/v1/checkout.js"
+        strategy="lazyOnload"
+      />
       {/* ── Main content ───────────────────────────────────────────────
           Back button + title live inline with the content column instead
           of a separate bordered/backdrop-blurred bar — no boxed strip,

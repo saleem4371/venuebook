@@ -20,6 +20,10 @@ import { CATEGORY_TINTS } from "@/config/categoryConfig";
 import { getMembershipTier, MEMBERSHIP_TIERS } from "@/config/checkoutConfig";
 import { useCurrency } from "@/hooks/useCurrency";
 
+import { useParams , usePathname} from "next/navigation";
+
+import { checkoutSuccess } from '@/services/checkout.service'
+
 /* ─── Mock booking data (replace with session/API in production) ────── */
 const MOCK_BOOKING = {
   ref: "VB-2025-XKJM7",
@@ -128,37 +132,18 @@ function ExperienceDetails({ t }) {
   );
 }
 
-/* ─── Payment summary card ──────────────────────────────────────────── */
-function PaymentSummaryCard({ t, format, tint }) {
-  return (
-    <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden">
-      <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{t("payment_summary")}</h3>
-      </div>
-      <div className="px-5 py-4">
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-sm text-gray-500 dark:text-gray-400">{t("amount_paid")}</span>
-          <span className="text-base font-bold whitespace-nowrap" style={{ color: tint.hex }}>
-            {format(MOCK_BOOKING.totalINR)}
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function InfoCard({ icon, title, items }) {
   return (
-    <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden">
-      <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center gap-3">
+    <div className="rounded-2xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 overflow-hidden">
+      <div className="px-5 py-4 border-b border-gray-100 dark:border-neutral-800 flex items-center gap-3">
         <span className="text-xl">{icon}</span>
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-neutral-100">{title}</h3>
       </div>
       <div className="px-5 py-4 space-y-3">
         {items.map((item) => (
           <div key={item.label} className="flex justify-between text-sm">
-            <span className="text-gray-400 dark:text-gray-500">{item.label}</span>
-            <span className={`font-medium text-end ${item.link ? "text-blue-600 dark:text-blue-400 underline cursor-pointer" : "text-gray-700 dark:text-gray-300"}`}>
+            <span className="text-gray-400 dark:text-neutral-500">{item.label}</span>
+            <span className={`font-medium text-end ${item.link ? "text-blue-600 dark:text-blue-400 underline cursor-pointer" : "text-gray-700 dark:text-neutral-300"}`}>
               {item.value}
             </span>
           </div>
@@ -259,10 +244,10 @@ function LoyaltyCelebration({ t, format }) {
             {newTier.label[0]}
           </div>
           <div>
-            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+            <p className="text-sm font-semibold text-gray-900 dark:text-neutral-100">
               {newTier.label} Member
             </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
+            <p className="text-xs text-gray-500 dark:text-neutral-400">
               {t("achievements")}: {newTier.label} Status Maintained
             </p>
           </div>
@@ -297,6 +282,15 @@ export default function SuccessClient({ locale, country, category, propertyId })
   const router = useRouter();
   const { format } = useCurrency();
 
+  const pathname = usePathname();
+  const venueId = pathname.split("/")[5];
+
+  const [ checkout , SetCheckout] =  useState(null);
+
+
+
+
+
   const normCat = normalizeCategory(category);
   const tint = CATEGORY_TINTS[normCat] ?? CATEGORY_TINTS.venues;
   const CategoryDetails = DETAIL_MAP[normCat] ?? VenueDetails;
@@ -309,8 +303,31 @@ export default function SuccessClient({ locale, country, category, propertyId })
     setTimeout(() => setCopied(false), 2000);
   };
 
+
+  useEffect(() => {
+       if (!venueId) return;
+    let cancelled = false;
+       const load = async () => {
+         try {
+           const [res] = await Promise.all([
+               checkoutSuccess(venueId)
+           ]);
+           if (res?.data) SetCheckout(res.data);
+         } catch (err) {
+           if (!cancelled) console.error("Listing load error:", err);
+         } finally {
+           // if (!cancelled) setIsPageLoading(false);
+         }
+       };
+ 
+   
+   
+       load();
+       return () => { cancelled = true; };
+     }, [venueId]);
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+    <div className="min-h-screen bg-gray-50 dark:bg-neutral-950">
       {/* Subtle top accent */}
       <div className="h-1 w-full" style={{ backgroundColor: tint.hex }} />
 
@@ -321,10 +338,10 @@ export default function SuccessClient({ locale, country, category, propertyId })
           <SuccessCheck tint={tint} />
 
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-neutral-100">
               {t("title")} ✨
             </h1>
-            <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">
+            <p className="text-gray-500 dark:text-neutral-400 mt-1 text-sm">
               {t("subtitle")}
             </p>
           </div>
@@ -335,14 +352,14 @@ export default function SuccessClient({ locale, country, category, propertyId })
             style={{ borderColor: tint.border, backgroundColor: tint.light }}
           >
             <div className="text-start">
-              <p className="text-xs text-gray-500 dark:text-gray-400">{t("ref_label")}</p>
+              <p className="text-xs text-gray-500 dark:text-neutral-400">{t("ref_label")}</p>
               <p className="text-base font-mono font-bold tracking-wider" style={{ color: tint.hex }}>
-                {MOCK_BOOKING.ref}
+                {venueId}
               </p>
             </div>
             <button
               onClick={copyRef}
-              className="p-2 rounded-lg hover:opacity-80 transition-opacity text-gray-500 dark:text-gray-400"
+              className="p-2 rounded-lg hover:opacity-80 transition-opacity text-gray-500 dark:text-neutral-400"
               aria-label="Copy booking reference"
             >
               {copied ? (
@@ -359,36 +376,34 @@ export default function SuccessClient({ locale, country, category, propertyId })
         </div>
 
         {/* ── Property summary strip ──────────────────────────────────── */}
-        <div className="flex items-center gap-3 p-4 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+        <div className="flex items-center gap-3 p-4 rounded-2xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900">
           <img
             src="https://images.unsplash.com/photo-1566073771259-6a8506099945?w=80&q=80"
             className="w-14 h-14 rounded-xl object-cover flex-shrink-0"
             alt={MOCK_BOOKING.property}
           />
           <div className="min-w-0">
-            <p className="font-semibold text-gray-900 dark:text-gray-100 text-sm truncate">
+            <p className="font-semibold text-gray-900 dark:text-neutral-100 text-sm truncate">
               {MOCK_BOOKING.property}
             </p>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{MOCK_BOOKING.location}</p>
+            <p className="text-xs text-gray-400 dark:text-neutral-500 mt-0.5">{MOCK_BOOKING.location}</p>
+            <p className="text-sm font-bold mt-1" style={{ color: tint.hex }}>
+              {format(MOCK_BOOKING.totalINR)} paid
+            </p>
           </div>
         </div>
 
         {/* ── Category-specific details ────────────────────────────────── */}
         <CategoryDetails t={t} />
 
-        {/* ── Payment summary ──────────────────────────────────────────── */}
-        <PaymentSummaryCard t={t} format={format} tint={tint} />
-
-        {/* ── Loyalty celebration ─────────────────────────────────────────
-             Venue bookings don't surface the loyalty/points program;
-             every other category (farmstays, etc.) keeps it. */}
-        {normCat !== "venues" && <LoyaltyCelebration t={t} format={format} />}
+        {/* ── Loyalty celebration ──────────────────────────────────────── */}
+        <LoyaltyCelebration t={t} format={format} />
 
         {/* ── Action buttons ───────────────────────────────────────────── */}
         <div className="grid grid-cols-2 gap-3">
           <button
             onClick={() => {}}
-            className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-sm font-medium text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -410,7 +425,7 @@ export default function SuccessClient({ locale, country, category, propertyId })
         <div className="grid grid-cols-2 gap-3">
           <button
             onClick={() => router.push(`/${locale}/${country}/profile`)}
-            className="py-3 px-4 rounded-xl border text-sm font-medium text-center transition-colors border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+            className="py-3 px-4 rounded-xl border text-sm font-medium text-center transition-colors border-gray-200 dark:border-neutral-700 text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-800"
           >
             {t("view_booking")}
           </button>
