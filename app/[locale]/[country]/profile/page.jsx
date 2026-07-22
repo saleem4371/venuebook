@@ -235,53 +235,53 @@ export default function ProfilePage() {
            the moment one didn't (e.g. only 3 offers in the expanded Offers
            view, or a short bookings list) that column read as a floating
            box with dead space around it, disconnected from its neighbors.
-           Per direct feedback, this is now ONE shared card (rounded-3xl
-           border/shadow on the OUTER wrapper only) with `divide-x` between
-           Left/Center/Right in place of the gap, and each widget passes
-           `flat` so it renders as a plain section (no nested card chrome)
-           separated from its neighbors by a `divide-y` line instead of its
-           own border+shadow+gap. A short section now just reads as empty
-           space within one continuous surface, not a mismatched card.
+           Per direct feedback, this is now ONE continuous full-bleed
+           surface — no outer card border/shadow/margin either, it fills
+           the entire viewport width and height below the navbar — with
+           `divide-x` between Left/Center/Right in place of the old gap,
+           and each widget passes `flat` so it renders as a plain section
+           (no nested card chrome) separated from its neighbors by a
+           `divide-y` line instead of its own border+shadow+gap. A short
+           section now just reads as empty space within one continuous
+           page, not a mismatched floating card.
            ════════════════════════════════════════════════════════════════ */
-        <div className="flex flex-col h-screen pt-20 pb-3 px-3 xl:px-4 overflow-hidden">
-          <div className="rounded-3xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-[0_2px_8px_rgba(0,0,0,0.04)] flex-1 min-h-0 min-w-0 overflow-hidden">
-            <div className="grid grid-cols-[260px_1fr_280px] xl:grid-cols-[300px_1fr_320px] h-full divide-x divide-gray-100 dark:divide-gray-800">
-              {/* LEFT — identity + messages shortcut + offers ribbon (or, when
-                  there are no bookings anywhere, Bookings itself moves here
-                  in compact form and Offers takes over the center — see
-                  `hasBookings` above). overflow-y-auto guards against a
-                  shorter viewport clipping the new MessagesNavCard — same
-                  pattern the right column already uses for the same reason. */}
-              <div className="flex flex-col divide-y divide-gray-100 dark:divide-gray-800 min-h-0 min-w-0 overflow-y-auto no-scrollbar">
-                <IdentityPanel
-                  flat
-                  user={user}
-                  walletPoints={walletPoints}
-                  collectionsCount={collections.length}
-                  memberSinceYear={memberSinceYear}
-                  onOpenSettings={() => setSettingsOpen(true)}
-                  onOpenRewards={() => setRewardsOpen(true)}
-                  previewNoBookings={previewNoBookings}
-                  onTogglePreview={() => setPreviewNoBookings((v) => !v)}
-                />
-                <MessagesNavCard flat locale={locale} country={country} />
-                {hasBookings ? <OffersPanel flat /> : <BookingsPanel compact flat />}
-              </div>
+        <div className="flex flex-col h-screen pt-20 overflow-hidden">
+          <div className="grid grid-cols-[260px_1fr_280px] xl:grid-cols-[300px_1fr_320px] flex-1 min-h-0 min-w-0 divide-x divide-gray-100 dark:divide-gray-800">
+            {/* LEFT — identity + messages shortcut + offers ribbon (or, when
+                there are no bookings anywhere, Bookings itself moves here
+                in compact form and Offers takes over the center — see
+                `hasBookings` above). overflow-y-auto guards against a
+                shorter viewport clipping the new MessagesNavCard — same
+                pattern the right column already uses for the same reason. */}
+            <div className="flex flex-col divide-y divide-gray-100 dark:divide-gray-800 min-h-0 min-w-0 overflow-y-auto no-scrollbar">
+              <IdentityPanel
+                flat
+                user={user}
+                walletPoints={walletPoints}
+                collectionsCount={collections.length}
+                memberSinceYear={memberSinceYear}
+                onOpenSettings={() => setSettingsOpen(true)}
+                onOpenRewards={() => setRewardsOpen(true)}
+                previewNoBookings={previewNoBookings}
+                onTogglePreview={() => setPreviewNoBookings((v) => !v)}
+              />
+              <MessagesNavCard flat locale={locale} country={country} />
+              {hasBookings ? <OffersPanel flat /> : <BookingsPanel compact flat />}
+            </div>
 
-              {/* CENTER — bookings (most important section), or Offers
-                  expanded to fill this spot when there are no bookings at
-                  all to show. */}
-              <div className="flex flex-col min-h-0 min-w-0">
-                {hasBookings ? <BookingsPanel flat /> : <OffersPanel expanded flat />}
-              </div>
+            {/* CENTER — bookings (most important section), or Offers
+                expanded to fill this spot when there are no bookings at
+                all to show. */}
+            <div className="flex flex-col min-h-0 min-w-0">
+              {hasBookings ? <BookingsPanel flat /> : <OffersPanel expanded flat />}
+            </div>
 
-              {/* RIGHT — collections, liked properties, recently viewed, notifications */}
-              <div className="flex flex-col divide-y divide-gray-100 dark:divide-gray-800 min-h-0 min-w-0 overflow-y-auto no-scrollbar">
-                <CollectionsPanel flat collections={collections} wishlist={wishlist} loading={dataLoading} locale={locale} country={country} />
-                <LikedPropertiesPanel flat liked={liked} loading={dataLoading} locale={locale} country={country} />
-                <RecentlyViewedPanel flat recentViews={recentViews} loading={dataLoading} locale={locale} country={country} />
-                <NotificationsSection compact flat />
-              </div>
+            {/* RIGHT — collections, liked properties, recently viewed, notifications */}
+            <div className="flex flex-col divide-y divide-gray-100 dark:divide-gray-800 min-h-0 min-w-0 overflow-y-auto no-scrollbar">
+              <CollectionsPanel flat collections={collections} wishlist={wishlist} loading={dataLoading} locale={locale} country={country} />
+              <LikedPropertiesPanel flat liked={liked} loading={dataLoading} locale={locale} country={country} />
+              <RecentlyViewedPanel flat recentViews={recentViews} loading={dataLoading} locale={locale} country={country} />
+              <NotificationsSection compact flat />
             </div>
           </div>
         </div>
