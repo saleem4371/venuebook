@@ -7,7 +7,7 @@ import {
   User, Users, X, Zap,
 } from "lucide-react";
 import { getEventIcon } from "../../utils/eventIcons";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useParams, useRouter } from "next/navigation";
@@ -1260,8 +1260,78 @@ export default function BookingCard({
     if (mobileOnly) setOpenSheet(false);
   };
 
-  const handleAction = (data) => {
-    const type = data.type ?? "";
+  // const handleAction = (data) => {
+  //   const handleAction = useCallback((data) => {
+  //   const type = data.type ?? "";
+
+
+
+  //   if (type === "enquiry") {
+  //     setEnquiryOpen(true);
+  //     setOpenSheet(false);
+  //     return;
+  //   }
+
+  //   if (type === "paxEnquiry") {
+  //     const guests = guestValues?.guests ?? guestValues?.adults ?? data.guestCount ?? "";
+
+  //     const paxParams = new URLSearchParams({
+  //       ...(data.eventType && { eventType: data.eventType }),
+  //       ...(guests && { guests: String(guests) }),
+  //       ...(venueSelection?.date && {
+  //         date: venueSelection.date.toISOString().split("T")[0],
+  //       }),
+  //       ...(venueSelection?.shift && {
+  //         shift: venueSelection.shift,
+  //       }),
+  //       ...(propertyName && { venueName: propertyName }),
+  //     });
+
+  //     router.push(
+  //       `/${locale}/${country}/search/${catKey}/${propertyId}/pax-enquiry?${paxParams.toString()}`
+  //     );
+
+  //     return;
+  //   }
+
+  //   // Checkout — "reserve" | "book" | (farmstay/other CTAs from getDefaultCTA)
+  //   const guestCount = guestValues?.guests ?? guestValues?.adults ?? data.guestCount ?? "";
+
+  //   const checkoutParams = new URLSearchParams({
+  //     ...(data.eventType && { eventType: data.eventType }),
+  //     ...(type && { bookingType: type }),
+
+  //     ...(guestCount && {
+  //       guests: String(guestCount),
+  //     }),
+
+  //     ...(venueSelection?.date && {
+  //       date: venueSelection.date.toISOString().split("T")[0],
+  //     }),
+
+  //     ...(venueSelection?.shift && {
+  //       shift: venueSelection.shift,
+  //     }),
+
+  //     ...(calendarRange?.start && {
+  //       checkIn: calendarRange.start.toISOString().split("T")[0],
+  //     }),
+
+  //     ...(calendarRange?.end && {
+  //       checkOut: calendarRange.end.toISOString().split("T")[0],
+  //     }),
+
+  //     ...(propertyName && { venueName: propertyName }),
+  //     ...(propertyId && { venueId: propertyId }),
+  //     ...(catKey && { category: catKey }),
+  //   });
+
+  //   router.push(
+  //     `/${locale}/${country}/checkout/${catKey}/${propertyId}?${checkoutParams.toString()}`
+  //   );
+  // });
+   const handleAction = useCallback((data) => {
+  const type = data.type ?? "";
 
     if (type === "enquiry") {
       setEnquiryOpen(true);
@@ -1293,6 +1363,7 @@ export default function BookingCard({
 
     // Checkout — "reserve" | "book" | (farmstay/other CTAs from getDefaultCTA)
     const guestCount = guestValues?.guests ?? guestValues?.adults ?? data.guestCount ?? "";
+    
 
     const checkoutParams = new URLSearchParams({
       ...(data.eventType && { eventType: data.eventType }),
@@ -1326,7 +1397,17 @@ export default function BookingCard({
     router.push(
       `/${locale}/${country}/checkout/${catKey}/${propertyId}?${checkoutParams.toString()}`
     );
-  };
+  },[
+  guestValues,
+  venueSelection,
+  calendarRange,
+  propertyName,
+  propertyId,
+  catKey,
+  locale,
+  country,
+  router,
+]);
 
   const cardContent = (onAction) =>
     meta.mode === "enquiry"
