@@ -94,7 +94,7 @@ function buildDefault(fields) {
  *  allowInput=false → count shown wider, no text entry
  *  lightMode=true   → dark text for light backgrounds (mobile sheet)
  */
-function StepRow({ field, value, onChange, step = 1, allowInput = false, lightMode = false }) {
+function StepRow({ field, value, onChange, step = 1, allowInput = false, lightMode = false, compact = false }) {
   const [editing, setEditing] = useState(false);
   const [draft,   setDraft]   = useState("");
   const inputRef              = useRef(null);
@@ -134,7 +134,7 @@ function StepRow({ field, value, onChange, step = 1, allowInput = false, lightMo
   const countClass = lightMode ? "text-gray-800 dark:text-white"   : "text-white";
 
   return (
-    <div className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-white/[0.07] last:border-0">
+    <div className={`flex items-center justify-between border-b border-gray-100 dark:border-white/[0.07] last:border-0 ${compact ? "py-1.5" : "py-3"}`}>
       <div className="min-w-0 pe-3">
         <p className={`text-sm font-semibold leading-snug ${labelClass}`}>{field.label}</p>
         <p className={`text-[11px] mt-0.5 ${subClass}`}>{field.sub}</p>
@@ -216,6 +216,8 @@ export default function GuestPicker({
   chevronClass,
   /** When true, renders steppers inline (no trigger/popup). Used in MobileSearchSheet. */
   inline      = false,
+  /** When true, reduces vertical padding on each stepper row. Inline only. */
+  compact     = false,
   placeholder,
   /** When true, popup uses white bg in light mode / dark bg in dark mode. */
   lightMode   = false,
@@ -285,7 +287,7 @@ export default function GuestPicker({
   /* ── Inline mode: render steppers directly (MobileSearchSheet) ── */
   if (inline) {
     return (
-      <div className="pt-1">
+      <div className={compact ? "" : "pt-1"}>
         {fields.map((field) => (
           <StepRow
             key={field.id}
@@ -295,6 +297,7 @@ export default function GuestPicker({
             step={step}
             allowInput={allowInput}
             lightMode
+            compact={compact}
           />
         ))}
 

@@ -33,6 +33,9 @@ import {
   Facebook,
   Instagram,
   Linkedin,
+  MessageSquare,
+  X as CloseIcon,
+  CheckCircle2,
 } from "lucide-react";
 
 import lightLogo from "@/assets/logo.svg";
@@ -211,8 +214,20 @@ export function SocialRow({ t }) {
    Full-footer sub-components
    ───────────────────────────────────────────────────────────────────── */
 
-/** Newsletter band — region-aware heading and subtext */
-function NewsletterBand({ t, region }) {
+/** Newsletter band — region + category-aware heading and subtext */
+function NewsletterBand({ t, region, category }) {
+  // Category-specific copy overrides the region default
+  const CATEGORY_COPY = {
+    farmstays: {
+      heading: "Discover your perfect weekend escape",
+      subtext:  "Luxury farm villas, nature retreats, and waterfront stays — straight to your inbox.",
+    },
+    venues: {
+      heading: "Get inspired for your next event",
+      subtext:  "Hand-picked venues, exclusive offers, and planning tips — straight to your inbox.",
+    },
+  };
+  const copy = CATEGORY_COPY[category] ?? null;
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState("idle");
 
@@ -239,10 +254,10 @@ function NewsletterBand({ t, region }) {
             className="text-xl font-semibold tracking-tight
                        text-gray-900 dark:text-gray-50 md:text-2xl"
           >
-            {t(`newsletter.${region}.heading`)}
+            {copy?.heading ?? t(`newsletter.${region}.heading`)}
           </h3>
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            {t(`newsletter.${region}.subtext`)}
+            {copy?.subtext ?? t(`newsletter.${region}.subtext`)}
           </p>
         </div>
 
@@ -429,10 +444,124 @@ function NavGroup({ group, t }) {
 }
 
 /* ─────────────────────────────────────────────────────────────────────
+   Feedback band — "Tell us how we can improve our site"
+   ───────────────────────────────────────────────────────────────────── */
+function FeedbackBand() {
+  const [open,    setOpen]    = useState(false);
+  const [rating,  setRating]  = useState(0);
+  const [message, setMessage] = useState("");
+  const [sent,    setSent]    = useState(false);
+
+  const handleSend = () => {
+    if (!message.trim()) return;
+    // TODO: call feedback API
+    setSent(true);
+  };
+
+  const handleClose = () => {
+    setOpen(false);
+    setTimeout(() => { setRating(0); setMessage(""); setSent(false); }, 300);
+  };
+
+  return (
+    <>
+      {/* Band */}
+      <div className="border-t border-gray-100 dark:border-gray-800 py-8">
+        <div className="mx-auto lg:max-w-[1400px] px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+            Tell us how we can improve our site
+          </p>
+          <button
+            onClick={() => setOpen(true)}
+            className="flex items-center gap-2 px-5 py-2 rounded-full border border-gray-300 dark:border-gray-600 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          >
+            <MessageSquare size={14} strokeWidth={1.8} />
+            Share feedback
+          </button>
+        </div>
+      </div>
+
+      {/* Feedback modal */}
+      {open && (
+        <div className="fixed inset-0 z-[201] flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={handleClose} />
+          <div className="relative bg-white dark:bg-gray-900 w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl shadow-2xl z-10">
+
+            {/* Drag handle (mobile) */}
+            <div className="w-10 h-1 rounded-full bg-gray-200 dark:bg-gray-700 mx-auto mt-3 sm:hidden" />
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100 dark:border-gray-800">
+              <h2 className="text-base font-semibold text-gray-900 dark:text-white">
+                Share your feedback
+              </h2>
+              <button
+                onClick={handleClose}
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                aria-label="Close"
+              >
+                <CloseIcon size={15} strokeWidth={2.2} />
+              </button>
+            </div>
+
+            <div className="px-6 py-5">
+              {sent ? (
+                <div className="text-center py-4">
+                  <CheckCircle2 size={36} className="mx-auto text-emerald-500 mb-3" strokeWidth={1.6} />
+                  <p className="font-semibold text-gray-900 dark:text-white mb-1">Thanks for your feedback!</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Your input helps us make VenueBook better for everyone.</p>
+                  <button onClick={handleClose} className="mt-5 px-6 py-2 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-semibold hover:bg-gray-700 transition-colors">Done</button>
+                </div>
+              ) : (
+                <>
+                  {/* Star rating */}
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">How would you rate your experience?</p>
+                  <div className="flex items-center gap-1 mb-5">
+                    {[1,2,3,4,5].map(n => (
+                      <button
+                        key={n}
+                        onClick={() => setRating(n)}
+                        className={`text-2xl transition-transform hover:scale-110 ${n <= rating ? "text-amber-400" : "text-gray-200 dark:text-gray-700"}`}
+                        aria-label={`${n} star`}
+                      >
+                        ★
+                      </button>
+                    ))}
+                  </div>
+
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    What can we improve?
+                  </label>
+                  <textarea
+                    value={message}
+                    onChange={e => setMessage(e.target.value)}
+                    placeholder="Tell us what you think..."
+                    rows={4}
+                    className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-transparent px-3.5 py-2.5 text-sm text-gray-700 dark:text-gray-300 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 dark:focus:ring-gray-600 resize-none"
+                  />
+
+                  <button
+                    onClick={handleSend}
+                    disabled={!message.trim()}
+                    className="mt-4 w-full py-2.5 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-semibold disabled:opacity-35 hover:bg-gray-700 dark:hover:bg-gray-100 transition-colors"
+                  >
+                    Send feedback
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────────
    Variant layouts
    ───────────────────────────────────────────────────────────────────── */
 
-function FullFooter({ t, region, currency, config, onOpenModal }) {
+function FullFooter({ t, region, currency, config, onOpenModal, category }) {
   return (
     <footer
       className="bg-gray-50 dark:bg-gray-950
@@ -443,7 +572,7 @@ function FullFooter({ t, region, currency, config, onOpenModal }) {
         {t("sr_label")}
       </h2>
 
-      <NewsletterBand t={t} region={region} />
+      <NewsletterBand t={t} region={region} category={category} />
 
       <div className="mx-auto lg:max-w-[1400px] px-4 sm:px-6 lg:px-8">
         <div
@@ -458,6 +587,49 @@ function FullFooter({ t, region, currency, config, onOpenModal }) {
           ))}
         </div>
       </div>
+
+      {/* Feedback band — above legal strip */}
+      <FeedbackBand />
+
+      <div className="border-t border-gray-100 dark:border-gray-800">
+        <div
+          className="mx-auto flex lg:max-w-[1400px] flex-col gap-4
+                        px-4 py-6 sm:px-6
+                        lg:flex-row lg:items-center lg:justify-between lg:px-8"
+        >
+          <LegalStrip t={t} />
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+            <LocalizationPill
+              t={t}
+              region={region}
+              currency={currency}
+              onOpenModal={onOpenModal}
+            />
+            <SocialRow t={t} />
+          </div>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
+/**
+ * Compact footer — used on flow pages (e.g. checkout) that want the
+ * feedback prompt and legal/social bar, but not the newsletter band or
+ * nav-link columns from the full footer.
+ */
+function CompactFooter({ t, region, currency, onOpenModal }) {
+  return (
+    <footer
+      className="border-t border-gray-100 dark:border-gray-800
+                 bg-white dark:bg-gray-950"
+      aria-labelledby="footer-compact-label"
+    >
+      <h2 id="footer-compact-label" className="sr-only">
+        {t("sr_label")}
+      </h2>
+
+      <FeedbackBand />
 
       <div className="border-t border-gray-100 dark:border-gray-800">
         <div
@@ -519,9 +691,9 @@ function MinimalFooter({ t, region, currency, onOpenModal }) {
    ───────────────────────────────────────────────────────────────────── */
 
 /**
- * @param {{ variant?: "full" | "minimal" }} props
+ * @param {{ variant?: "full" | "minimal" | "compact", category?: string | null }} props
  */
-export default function PremiumFooter({ variant = "full" }) {
+export default function PremiumFooter({ variant = "full", category = null }) {
   const t = useTranslations("footer");
   const { region } = useRegion();
   const { currency } = useCurrency();
@@ -541,6 +713,13 @@ export default function PremiumFooter({ variant = "full" }) {
           currency={currency}
           onOpenModal={onOpenModal}
         />
+      ) : variant === "compact" ? (
+        <CompactFooter
+          t={t}
+          region={region}
+          currency={currency}
+          onOpenModal={onOpenModal}
+        />
       ) : (
         <FullFooter
           t={t}
@@ -548,6 +727,7 @@ export default function PremiumFooter({ variant = "full" }) {
           currency={currency}
           config={config}
           onOpenModal={onOpenModal}
+          category={category}
         />
       )}
 
