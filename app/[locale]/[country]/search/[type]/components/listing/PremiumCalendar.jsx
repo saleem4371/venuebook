@@ -3,8 +3,20 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import {
   ChevronLeft, ChevronRight, AlertCircle, Sun, Sunrise,
-  Moon, CalendarDays, Check, Sparkles, Info,
+  Moon, CalendarDays, Check, Sparkles, Info, Clock, Coffee, Sunset,
 } from "lucide-react";
+
+// Map shift label keywords → Lucide icon
+function getShiftIcon(label = "") {
+  const l = label.toLowerCase();
+  if (l.includes("morning"))   return Sunrise;
+  if (l.includes("afternoon")) return Sun;
+  if (l.includes("evening"))   return Sunset;
+  if (l.includes("night"))     return Moon;
+  if (l.includes("full"))      return CalendarDays;
+  if (l.includes("day"))       return Sun;
+  return Clock;
+}
 import { motion, AnimatePresence } from "framer-motion";
 import { getCategoryColors, normalizeCategory, getCalendarMode } from "../../utils/categoryConfig";
 
@@ -317,7 +329,7 @@ function VenueCalendar({ venueshifts,bookingData, bookingFull,bookingParial, cat
 
               {/* Shift rows — status tag + pricing */}
               {venueshifts.map((shift) => {
-                const ShiftIcon  = shift.icon;
+                const ShiftIcon  = getShiftIcon(shift.label);
                 const status     = getShiftStatus(selectedDate, shift.id);
                 const isBooked   = status === "booked";
                 const isSelected = selectedShift === shift.id;

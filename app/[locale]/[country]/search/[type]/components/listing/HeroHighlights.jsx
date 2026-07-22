@@ -156,7 +156,7 @@ export default function HeroHighlights({ category }) {
   const remaining = highlights.length - SHOW_INITIAL;
 
   return (
-    <div id="highlights" className="border-t border-gray-100 dark:border-gray-800 py-6 sm:py-8">
+    <div id="highlights" className="border-t border-gray-100 dark:border-gray-800 py-6">
 
       {/* Section heading */}
       <div className="mb-5">

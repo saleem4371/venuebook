@@ -25,14 +25,14 @@ const C = {
 // ─── Static mock data ─────────────────────────────────────────────────────────
 
 const QUICK_FACTS = [
-  { Icon: Users,         label: "Sleeps 12 Guests"   },
-  { Icon: BedDouble,     label: "4 Bedrooms"         },
-  { Icon: Bath,          label: "3 Bathrooms"        },
-  { Icon: PawPrint,      label: "Pet Friendly"       },
-  { Icon: ParkingSquare, label: "Free Parking"       },
-  { Icon: Coffee,        label: "Breakfast Included" },
-  { Icon: Clock,         label: "Check-in 3 PM"      },
-  { Icon: Moon,          label: "Check-out 11 AM"    },
+  { Icon: Users,         value: "12 Guests",          label: "Accommodates"  },
+  { Icon: BedDouble,     value: "4 Bedrooms",         label: "Bedrooms"      },
+  { Icon: Bath,          value: "3 Bathrooms",        label: "Bathrooms"     },
+  { Icon: PawPrint,      value: "Pet Friendly",       label: "Pets"          },
+  { Icon: ParkingSquare, value: "Free Parking",       label: "Parking"       },
+  { Icon: Coffee,        value: "Included",            label: "Breakfast"     },
+  { Icon: Clock,         value: "Check-in 3 PM",      label: "Check-in"      },
+  { Icon: Moon,          value: "Check-out 11 AM",    label: "Check-out"     },
 ];
 
 const BEDROOMS = [
@@ -42,6 +42,7 @@ const BEDROOMS = [
     features: ["Ensuite Bathroom", "Garden View", "Air Conditioning", "Safe Box"],
     badge:    "Best for Couples",
     bdgCls:   "bg-rose-50 text-rose-600 dark:bg-rose-950/30 dark:text-rose-400 border border-rose-100 dark:border-rose-900",
+    image:    "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=400",
   },
   {
     name:     "Second Bedroom",
@@ -49,6 +50,7 @@ const BEDROOMS = [
     features: ["Shared Bathroom", "Mountain View", "Air Conditioning", "Wardrobe"],
     badge:    "Private Room",
     bdgCls:   "bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400 border border-blue-100 dark:border-blue-900",
+    image:    "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=400",
   },
   {
     name:     "Third Bedroom",
@@ -56,6 +58,7 @@ const BEDROOMS = [
     features: ["Shared Bathroom", "Courtyard View", "Fan Cooling", "Study Desk"],
     badge:    "Family Friendly",
     bdgCls:   "bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400 border border-amber-100 dark:border-amber-900",
+    image:    "https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=400",
   },
   {
     name:     "Fourth Bedroom",
@@ -63,6 +66,7 @@ const BEDROOMS = [
     features: ["Shared Bathroom", "Garden Access", "Natural Ventilation", "Reading Nook"],
     badge:    "Cosy & Quiet",
     bdgCls:   "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900",
+    image:    "https://images.unsplash.com/photo-1540518614846-7eded433c457?w=400",
   },
 ];
 
@@ -196,8 +200,8 @@ function SubHeading({ title, sub }) {
 
 function GoodToKnow() {
   return (
-    <div className="flex flex-wrap gap-2 pb-6">
-      {QUICK_FACTS.map(({ Icon, label }) => (
+    <div className="hidden md:flex flex-wrap gap-2 pb-6">
+      {QUICK_FACTS.map(({ Icon, value, label }) => (
         <div
           key={label}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900 text-emerald-700 dark:text-emerald-300 text-xs font-medium"
@@ -210,11 +214,41 @@ function GoodToKnow() {
   );
 }
 
+/**
+ * Exported pill row — rendered at the top of the farmstay listing page
+ * so users immediately see the key facts (guests, bedrooms, check-in, etc.)
+ */
+export function FarmstayQuickFacts() {
+  return (
+    <div className="border-t border-gray-100 dark:border-gray-800 pt-6 pb-6">
+      <h2 className="hidden md:block text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-4">
+        Property at a glance
+      </h2>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+        {QUICK_FACTS.map(({ Icon, value, label }) => (
+          <div
+            key={label}
+            className="flex items-center gap-2 p-2.5 rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-900/40 hover:border-emerald-200 dark:hover:border-emerald-800 transition-colors"
+          >
+            <div className="w-7 h-7 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center flex-none">
+              <Icon size={13} strokeWidth={1.8} className="text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-gray-900 dark:text-white leading-snug truncate">{value}</p>
+              <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">{label}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── 2. Sleeping Arrangements ─────────────────────────────────────────────────
 
-function SleepingArrangements() {
+function SleepingArrangements({ onViewAlbum }) {
   return (
-    <div id="sleeping" className="pt-8 pb-6">
+    <div id="sleeping" className="pt-6 pb-6">
       <SubHeading title="Sleeping Arrangements" sub="Detailed bedroom layout and what's inside each room" />
 
       {/* Bedroom grid — 1-col → 2-col → 4-col */}
@@ -222,26 +256,50 @@ function SleepingArrangements() {
         {BEDROOMS.map((room) => (
           <div
             key={room.name}
-            className="flex flex-col p-4 rounded-2xl border border-gray-100 dark:border-gray-800 bg-gray-50/70 dark:bg-gray-900/50 hover:shadow-md hover:border-gray-200 dark:hover:border-gray-700 transition-all duration-200"
+            className="flex flex-col rounded-2xl border border-gray-100 dark:border-gray-800 bg-gray-50/70 dark:bg-gray-900/50 hover:shadow-md hover:border-gray-200 dark:hover:border-gray-700 transition-all duration-200 overflow-hidden"
           >
-            <div className="flex items-start justify-between gap-2 mb-3">
-              <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-none ${C.iconBg}`}>
-                <BedDouble size={16} strokeWidth={1.75} />
+            {/* Room image — click opens album */}
+            <button
+              type="button"
+              onClick={onViewAlbum}
+              className="relative w-full h-36 flex-none overflow-hidden group"
+              aria-label={`View photos of ${room.name}`}
+            >
+              <img
+                src={room.image}
+                alt={room.name}
+                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+              />
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300 flex items-center justify-center">
+                <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-white text-xs font-semibold bg-black/50 backdrop-blur-sm px-3 py-1.5 rounded-full">
+                  View album
+                </span>
               </div>
-              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${room.bdgCls}`}>
+              <span className={`absolute top-2.5 right-2.5 text-[10px] font-semibold px-2 py-0.5 rounded-full ${room.bdgCls}`}>
                 {room.badge}
               </span>
+            </button>
+
+            {/* Card content */}
+            <div className="p-4 flex flex-col flex-1">
+              <div className="flex items-center gap-2 mb-2">
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-none ${C.iconBg}`}>
+                  <BedDouble size={13} strokeWidth={1.75} />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white leading-tight">{room.name}</p>
+                  <p className={`text-xs font-medium ${C.accent}`}>{room.bed}</p>
+                </div>
+              </div>
+              <ul className="space-y-1.5">
+                {room.features.map((f) => (
+                  <li key={f} className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+                    <CheckCircle2 size={10} className={`${C.check} flex-none`} />
+                    {f}
+                  </li>
+                ))}
+              </ul>
             </div>
-            <p className="text-sm font-semibold text-gray-900 dark:text-white mb-0.5">{room.name}</p>
-            <p className={`text-xs font-medium mb-3 ${C.accent}`}>{room.bed}</p>
-            <ul className="space-y-1.5">
-              {room.features.map((f) => (
-                <li key={f} className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
-                  <CheckCircle2 size={10} className={`${C.check} flex-none`} />
-                  {f}
-                </li>
-              ))}
-            </ul>
           </div>
         ))}
       </div>
@@ -277,7 +335,7 @@ function SleepingArrangements() {
 
 function HouseRules() {
   return (
-    <div id="rules" className="pt-8 pb-6">
+    <div id="rules" className="pt-6 pb-6">
       <SubHeading title="House Rules" sub="Please read these before confirming your booking" />
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
         {HOUSE_RULES.map(({ Icon, title, desc }) => (
@@ -305,7 +363,7 @@ function CancellationPolicySection() {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="pt-8 pb-6">
+    <div className="pt-6 pb-6">
       <SubHeading title="Cancellation Policy" />
       <button
         type="button"
@@ -365,7 +423,7 @@ function CancellationPolicySection() {
 
 function DamageProtectionSection() {
   return (
-    <div className="pt-8 pb-6">
+    <div className="pt-6 pb-6">
       <SubHeading
         title="Damage & Security Deposit"
         sub="Your deposit is safe and returned automatically after inspection"
@@ -398,7 +456,7 @@ function DamageProtectionSection() {
 
 function ArrivalInformationSection() {
   return (
-    <div id="arrival" className="pt-8 pb-6">
+    <div id="arrival" className="pt-6 pb-6">
       <SubHeading title="Getting Here & Arrival" sub="Everything you need on the day you arrive" />
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
         {ARRIVAL_ITEMS.map(({ Icon, title, desc }) => (
@@ -424,7 +482,7 @@ function ArrivalInformationSection() {
 
 function EstateFacilitiesSection() {
   return (
-    <div id="facilities" className="pt-8 pb-6">
+    <div id="facilities" className="pt-6 pb-6">
       <SubHeading
         title="Estate Facilities"
         sub="Unique experiences available exclusively within the property"
@@ -450,7 +508,7 @@ function EstateFacilitiesSection() {
 
 function SafetyEssentialsSection() {
   return (
-    <div className="pt-8 pb-6">
+    <div className="pt-6 pb-6">
       <SubHeading title="Safety & Essentials" sub="Everything in place for a secure and worry-free stay" />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
         {SAFETY.map(({ Icon, title, desc }) => (
@@ -479,7 +537,7 @@ function InternetConnectivitySection() {
   const speedPct = Math.min((speedMbps / 500) * 100, 100);
 
   return (
-    <div className="pt-8 pb-6">
+    <div className="pt-6 pb-6">
       <SubHeading title="Internet & Connectivity" sub="Stay connected — great for remote work too" />
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
@@ -551,7 +609,7 @@ function InternetConnectivitySection() {
 function AccessibilitySection() {
   if (!ACCESSIBILITY.length) return null;
   return (
-    <div className="pt-8 pb-6">
+    <div className="pt-6 pb-6">
       <SubHeading title="Accessibility" sub="Features available for guests with accessibility needs" />
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {ACCESSIBILITY.map((feature) => (
@@ -575,7 +633,7 @@ function ThingsToKnowSection() {
   const toggle = (i) => setOpenIdx((prev) => (prev === i ? null : i));
 
   return (
-    <div className="pt-8 pb-6">
+    <div className="pt-6 pb-6">
       <SubHeading
         title="Things to Know Before Booking"
         sub="Important policies and guidelines for a smooth stay"
@@ -627,7 +685,7 @@ function ThingsToKnowSection() {
 
 function PropertyInformationSection() {
   return (
-    <div className="pt-8 pb-6">
+    <div className="pt-6 pb-6">
       <SubHeading title="About This Property" sub="Track record and hosting credentials" />
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {PROPERTY_STATS.map(({ Icon, label, value }) => (
@@ -653,11 +711,11 @@ function PropertyInformationSection() {
 
 // ─── Main export ──────────────────────────────────────────────────────────────
 
-export default function StayInformation({ category }) {
+export default function StayInformation({ category, onViewAlbum }) {
   if (normalizeCategory(category) !== "farmstays") return null;
 
   return (
-    <section id="stay-info" className="border-t border-gray-100 dark:border-gray-800 pt-8 mt-2">
+    <section id="stay-info" className="border-t border-gray-100 dark:border-gray-800 pt-6 pb-6 mt-2">
 
       {/* Section header */}
       <div className="mb-8">
@@ -667,12 +725,14 @@ export default function StayInformation({ category }) {
         </p>
       </div>
 
-      {/* 1 — Good to Know chips */}
-      <GoodToKnow />
+      {/* Property at a glance — mobile only (desktop version lives below Highlights) */}
+      <div className="block md:hidden">
+        <FarmstayQuickFacts />
+      </div>
 
       <Divider />
       {/* 2 — Sleeping Arrangements */}
-      <SleepingArrangements />
+      <SleepingArrangements onViewAlbum={onViewAlbum} />
 
       <Divider />
       {/* 3 — House Rules */}
@@ -689,10 +749,6 @@ export default function StayInformation({ category }) {
       <Divider />
       {/* 6 — Arrival Information */}
       <ArrivalInformationSection />
-
-      <Divider />
-      {/* 7 — Estate Facilities */}
-      <EstateFacilitiesSection />
 
       <Divider />
       {/* 8 — Safety & Essentials */}
@@ -714,9 +770,6 @@ export default function StayInformation({ category }) {
       {/* 11 — Things to Know */}
       <ThingsToKnowSection />
 
-      <Divider />
-      {/* 12 — Property Information */}
-      <PropertyInformationSection />
 
 
     </section>

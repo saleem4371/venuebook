@@ -137,7 +137,7 @@ function PlaceCard({ place }) {
   return (
     <div className="group rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 hover:shadow-md transition-all duration-200 cursor-pointer">
       {/* Image */}
-      <div className="relative h-36 sm:h-40 overflow-hidden">
+      <div className="relative h-32 sm:h-40 overflow-hidden">
         <img
           src={place.image}
           alt={place.name}
@@ -186,16 +186,16 @@ export default function NearbyAttractions({ category }) {
     ? "Curated escapes and discoveries just beyond the estate"
     : "Notable spots within easy reach";
 
-  const places = (isVenue ? VENUE_PLACES : isFarmstay ? FARMSTAY_PLACES : DEFAULT_PLACES).slice(0, 3);
+  const places = (isVenue ? VENUE_PLACES : isFarmstay ? FARMSTAY_PLACES : DEFAULT_PLACES).slice(0, 4);
 
   return (
-    <div className="border-t border-gray-100 dark:border-gray-800 pt-8 pb-2">
+    <div className="border-t border-gray-100 dark:border-gray-800 pt-6 pb-6">
       <div className="mb-5">
         <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">{title}</h2>
         <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">{subtitle}</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 lg:gap-4">
         {places.map((place) => <PlaceCard key={place.name} place={place} />)}
       </div>
     </div>

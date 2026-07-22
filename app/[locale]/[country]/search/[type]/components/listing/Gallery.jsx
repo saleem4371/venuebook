@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronLeft, ChevronRight, LayoutGrid, ImageOff } from "lucide-react";
+import { LayoutGrid, ImageOff } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 
 function useImagePreloader(images, count = 10) {
@@ -31,18 +31,9 @@ function SkeletonImage({ src, alt, className, style, onClick, onMouseEnter, load
 
   return (
     <div className="relative w-full h-full" onClick={onClick} onMouseEnter={onMouseEnter}>
+      {/* sk-base uses the global ::after shimmer — synced timing, dark-mode aware, no per-instance keyframes */}
       {status !== "loaded" && (
-        <div className="absolute inset-0 overflow-hidden bg-neutral-200">
-          <div
-            className="absolute inset-0"
-            style={{
-              background:
-                "linear-gradient(90deg, rgba(0,0,0,0) 0%, rgba(255,255,255,0.55) 50%, rgba(0,0,0,0) 100%)",
-              backgroundSize: "200% 100%",
-              animation: "skeleton-shimmer 1.4s ease-in-out infinite",
-            }}
-          />
-        </div>
+        <div className="absolute inset-0 sk-base" />
       )}
       {status !== "error" && (
         <img
@@ -57,17 +48,11 @@ function SkeletonImage({ src, alt, className, style, onClick, onMouseEnter, load
           style={{ ...style, opacity: status === "loaded" ? 1 : 0, transition: "opacity 0.3s ease" }}
         />
       )}
-      <style jsx>{`
-        @keyframes skeleton-shimmer {
-          0% { background-position: 200% 0; }
-          100% { background-position: -200% 0; }
-        }
-      `}</style>
     </div>
   );
 }
 
-export default function Gallery({ images, setOpen, openTour }) {
+export default function Gallery({ images, setOpen, openTour, overlay }) {
   const [index, setIndex] = useState(0);
   const [dir,   setDir]   = useState(1);
   const preload           = useImagePreloader(images || []);
@@ -105,7 +90,7 @@ export default function Gallery({ images, setOpen, openTour }) {
       {/* ── MOBILE SLIDER ──────────────────────────────────────────────────── */}
       <div
         className="relative w-screen -mx-4 sm:-mx-6 overflow-hidden md:hidden"
-        style={{ height: "clamp(220px, 56vw, 360px)", touchAction: "pan-y" }}
+        style={{ height: "clamp(300px, 85vw, 460px)", touchAction: "pan-y" }}
         onMouseEnter={preload}
         onTouchStart={(e) => {
           preload();
@@ -139,26 +124,17 @@ export default function Gallery({ images, setOpen, openTour }) {
           </motion.div>
         </AnimatePresence>
 
-        {/* Arrow buttons */}
-        <button
-          onClick={() => navigate(-1)}
-          className="absolute left-3 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white rounded-full w-9 h-9 flex items-center justify-center transition z-10"
-          aria-label="Previous photo"
-        >
-          <ChevronLeft size={16} />
-        </button>
-        <button
-          onClick={() => navigate(1)}
-          className="absolute right-3 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white rounded-full w-9 h-9 flex items-center justify-center transition z-10"
-          aria-label="Next photo"
-        >
-          <ChevronRight size={16} />
-        </button>
-
         {/* Counter only — no dots */}
         <div className="absolute top-3 right-3 bg-black/50 backdrop-blur-sm text-white px-2.5 py-1 rounded-full text-xs font-medium z-10 tabular-nums">
           {index + 1} / {images.length}
         </div>
+
+        {/* Action overlay — top-left on mobile */}
+        {overlay && (
+          <div className="absolute top-3 left-3 z-20">
+            {overlay}
+          </div>
+        )}
 
         {/* Tap to open tour */}
         <button
@@ -172,6 +148,13 @@ export default function Gallery({ images, setOpen, openTour }) {
 
       {/* ── DESKTOP GRID ───────────────────────────────────────────────────── */}
       <div className="hidden md:grid grid-cols-[2fr_1fr_1fr] grid-rows-2 gap-2 rounded-2xl overflow-hidden relative h-[480px]">
+
+        {/* Action overlay — bottom-left of the grid, renders above all image tiles */}
+        {overlay && (
+          <div className="absolute bottom-3 left-3 z-20">
+            {overlay}
+          </div>
+        )}
 
         {/* Main image */}
         <div className="row-span-2 relative overflow-hidden cursor-pointer group">
@@ -207,21 +190,18 @@ export default function Gallery({ images, setOpen, openTour }) {
         ))}
 
         {/* Last tile — dark overlay + "Show all" label */}
-        <div className="relative overflow-hidden cursor-pointer group">
+        <div className="relative overflow-hidden cursor-pointer group" onClick={openTour}>
           <SkeletonImage
             src={sideImages[3]}
             alt="Photo 5"
             loading="eager"
             decoding="async"
-            onClick={openTour}
             onMouseEnter={preload}
             className="w-full h-full object-cover transition-transform duration-300 will-change-transform group-hover:scale-[1.01]"
           />
           <div
-            className="absolute inset-0 transition-all duration-200"
+            className="absolute inset-0 transition-all duration-200 pointer-events-none"
             style={{ background: "rgba(0,0,0,0.58)" }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.70)")}
-            onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.58)")}
           />
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 pointer-events-none">
             <LayoutGrid size={24} color="#ffffff" strokeWidth={2} />

@@ -191,7 +191,7 @@ export default function AmenitiesGrid({ category , amenities , amenitiesgroup}) 
   const hasMore = amenities.length > COLLAPSE_AT;
 
   return (
-    <div id="amenities" className="border-t border-gray-100 dark:border-gray-800 pt-8 pb-2">
+    <div id="amenities" className="border-t border-gray-100 dark:border-gray-800 pt-6 pb-6">
       <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-5 sm:mb-6">
         What this place offers
       </h2>

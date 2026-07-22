@@ -3,10 +3,13 @@
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Building2, CheckCircle2, ChevronDown, Clock,
-  Headphones, Info, Mail, Phone, Search, Tag, TreePine, User, Users, X, Zap,
+  Headphones, Info, Mail, Phone, Search, Tag, TreePine,
+  User, Users, X, Zap,
 } from "lucide-react";
+import { getEventIcon } from "../../utils/eventIcons";
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { useCurrency } from "@/hooks/useCurrency";
 import { useParams, useRouter } from "next/navigation";
 import { getCategoryColors, normalizeCategory, getDefaultCTA } from "../../utils/categoryConfig";
 import GuestPicker from "@/app/[locale]/[country]/home/components/GuestPicker";
@@ -53,7 +56,7 @@ const CATEGORY_META = {
       { icon: Zap,          text: "Instant confirmation" },
       { icon: Users,        text: "Entire farmstay" },
     ],
-    priceLabel: "night",
+    priceLabel: "per night",
     priceNote: "You won't be charged yet",
   },
 };
@@ -67,7 +70,7 @@ const DEFAULT_META = {
     { icon: Clock,        text: "Flexible timings" },
     { icon: Headphones,   text: "24/7 support" },
   ],
-  priceLabel: "night",
+  priceLabel: "per night",
   priceNote: "You won't be charged yet",
 };
 
@@ -222,7 +225,7 @@ function EventTypeDropdown({ value, onChange, options,venueEvents, colors, open,
       }`}
     >
       <div className="flex items-center gap-2">
-        <span>{event.icon}</span>
+        {(() => { const EvtIcon = getEventIcon(event.event_name); return <EvtIcon size={13} strokeWidth={1.8} className="flex-none text-gray-400" />; })()}
         <span>{event.event_name}</span>
       </div>
     </button>
@@ -415,7 +418,9 @@ function TrustBadges({ badges }) {
 
 // ─── Venue card ───────────────────────────────────────────────────────────────
 function VenueCard({ venueData, meta, gradient, colors, onAction, venueSelection, guestValues, setGuestValues, onScrollToCalendar, onClearVenueSelection,
-   onClearShift, capacity,venueEvents,shiftAmount,venue_settings }) {
+   onClearShift, capacity, venueEvents, shiftAmount, venue_settings,
+   ctaSentinelRef, onCTAChange }) {
+  const { format } = useCurrency();
   const [eventType,       setEventType]     = useState(null);
   const [eventTypeOpen,   setEventTypeOpen] = useState(false);
   const [showGuestPicker, setShowGuestPicker] = useState(false);
@@ -431,19 +436,60 @@ function VenueCard({ venueData, meta, gradient, colors, onAction, venueSelection
   // Both modes require all four fields; only the CTA action differs
   const isComplete = Boolean(date && shiftLabel && eventType && guestCount);
 
+  // Derived from bookingMode — must be above the useEffect that reads pack_amt
+  const propertySettings = venue_settings
+    .filter(item => item.group === bookingMode)
+    .reduce((acc, item) => { acc[item.key] = item.value; return acc; }, {});
+
+  // ── Push the complete action group to the sticky nav (single source of truth) ─
+  // Includes the DISPLAYED price (shift price when selected, minPrice otherwise)
+  // so the nav always mirrors exactly what the booking card shows.
+  useEffect(() => {
+    if (!onCTAChange) return;
+
+    // Price shown in the booking card header — matches the card exactly
+    const navPrice      = shiftAmount > 0 ? shiftAmount : venueData.minPrice;
+    const navPriceLabel = shiftAmount > 0 ? "Your Venue price" : meta.priceLabel;
+
+    if (!isComplete) {
+      onCTAChange({
+        badge: meta.badge,
+        price: navPrice,
+        priceLabel: navPriceLabel,
+        actions: [{ key: "check-avail", label: "Check Availability", variant: "default", onClick: null }],
+      });
+      return;
+    }
+
+    if (bookingMode === "pax") {
+      onCTAChange({
+        badge: meta.badge,
+        price: Number(propertySettings.pack_amt) || navPrice,
+        priceLabel: "Starting Package",
+        actions: [{ key: "pax", label: "PAX Enquiry", variant: "primary", onClick: () => onAction({ eventType, type: "paxEnquiry", guestCount }) }],
+      });
+      return;
+    }
+
+    // venue mode, complete — Reserve + Book Now + Enquire
+    onCTAChange({
+      badge: meta.badge,
+      price: navPrice,
+      priceLabel: navPriceLabel,
+      actions: [
+        { key: "reserve", label: "Reserve",  variant: "secondary", onClick: () => onAction({ eventType, type: "reserve",  guestCount }) },
+        { key: "book",    label: "Book Now", variant: "primary",   onClick: () => onAction({ eventType, type: "book",     guestCount }) },
+        { key: "enquiry", label: "Enquire",  variant: "ghost",     onClick: () => onAction({ eventType, type: "enquiry",  guestCount }) },
+      ],
+    });
+  }, [isComplete, bookingMode, onCTAChange, meta.badge, meta.priceLabel, eventType, guestCount, onAction, shiftAmount, venueData.minPrice, propertySettings.pack_amt]);
+
   useEffect(() => {
   if (venueData?.venue_mode) {
     const mode = venueData?.venue_mode =='both' ? 'venue' : venueData.venue_mode;
     setBookingMode(mode);
   }
 }, [venueData?.venue_mode]);
-
-const propertySettings = venue_settings
-  .filter(item => item.group === bookingMode)
-  .reduce((acc, item) => {
-    acc[item.key] = item.value;
-    return acc;
-  }, {});
 
   return (
     <div className="space-y-3">
@@ -452,13 +498,13 @@ const propertySettings = venue_settings
       <div className="flex items-start justify-between gap-3">
         { bookingMode ==='venue' ? (
  <div>
-          <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{shiftAmount==0 ? venueData.minPrice : shiftAmount}</p>
+          <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{shiftAmount==0 ? format(venueData.minPrice) : format(shiftAmount)}</p>
           <p className="text-xs text-gray-400 mt-0.5">{shiftAmount==0 ?  meta.priceLabel :'Your Venue price '}</p>
         </div>
         ):(
           <>
  <div>
-          <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{propertySettings.pack_amt}</p>
+          <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{format(propertySettings.pack_amt)}</p>
           <p className="text-xs text-gray-400 mt-0.5">Starting Package</p>
         </div>
           </>
@@ -597,35 +643,57 @@ const propertySettings = venue_settings
               </div>
 
               {/* Guest Capacity (Venue) / Expected Guests (PAX) */}
-              <div
-                role="button" tabIndex={0}
-                onClick={() => {
-                  if (!showGuestPicker && !guestValues) {
-                    setShowGuestPicker(true);
-                    setGuestValues({ guests: 50 });
-                  }
-                }}
-                className={`p-3 relative rounded-b-xl transition-colors ${!showGuestPicker && !guestValues ? "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50" : ""}`}
-              >
-                <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1 flex items-center gap-1">
-                  {bookingMode === "venue" ? "Guest Capacity" : "Expected Guests"}
-                  {guestCount && <CheckCircle2 size={9} className="text-emerald-500 flex-none" />}
-                </p>
-                {(showGuestPicker || guestValues) ? (
-                  <GuestPicker
-                    type="guests"
-                    lightMode
-                    step={50}
-                    maxCapacity={capacity}
-                    defaultValue={guestValues?.guests ?? 50}
-                    textClass="font-medium text-gray-800 dark:text-gray-200 text-sm"
-                    chevronClass="text-gray-400 hover:text-gray-600 dark:text-white/50"
-                    onChange={setGuestValues}
-                  />
-                ) : (
-                  <span className="text-sm font-medium text-gray-400 dark:text-gray-600">
-                    {bookingMode === "venue" ? "Select guest count" : "Estimated attendees"}
-                  </span>
+              {/* Header row is the click target — toggles picker open/close.
+                  GuestPicker wrapper stops propagation so stepper +/− clicks
+                  don't bubble up and accidentally close the picker.
+                  On first open we seed guestValues so isComplete resolves
+                  immediately without requiring an extra user interaction. */}
+              <div className="p-3 relative rounded-b-xl">
+                {/* Clickable header — toggles picker */}
+                <div
+                  role="button" tabIndex={0}
+                  onClick={() => {
+                    if (!showGuestPicker && !guestValues) {
+                      // Seed the initial value so isComplete can resolve right away
+                      setGuestValues({ guests: 50 });
+                    }
+                    setShowGuestPicker((o) => !o);
+                  }}
+                  className="cursor-pointer"
+                >
+                  {!showGuestPicker && (
+                    <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1 flex items-center gap-1">
+                      {bookingMode === "venue" ? "Guest Capacity" : "Expected Guests"}
+                      {guestCount && <CheckCircle2 size={9} className="text-emerald-500 flex-none" />}
+                    </p>
+                  )}
+                  {!showGuestPicker && (
+                    guestValues ? (
+                      <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                        {fmtGuests("guests", guestValues)}
+                      </span>
+                    ) : (
+                      <span className="text-sm font-medium text-gray-400 dark:text-gray-600">
+                        {bookingMode === "venue" ? "Select guest count" : "Estimated attendees"}
+                      </span>
+                    )
+                  )}
+                </div>
+
+                {/* Inline stepper — visible while picker is open */}
+                {showGuestPicker && (
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <GuestPicker
+                      type="guests"
+                      inline
+                      compact
+                      lightMode
+                      step={50}
+                      maxCapacity={capacity}
+                      defaultValue={guestValues?.guests ?? 50}
+                      onChange={setGuestValues}
+                    />
+                  </div>
                 )}
               </div>
             </motion.div>
@@ -654,9 +722,7 @@ const propertySettings = venue_settings
             initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.18 }}
           >
-            { venueData.property ==='regitered' ? (
-              <>
-              <div className="flex items-stretch gap-2">
+            <div className="flex items-stretch gap-2">
               <button
                 onClick={() => onAction({ eventType, type: "reserve", guestCount })}
                 className={`flex-1 py-3 rounded-xl font-semibold text-sm ${colors.pill} hover:opacity-80 active:scale-[0.98] transition-all`}
@@ -676,18 +742,6 @@ const propertySettings = venue_settings
                 Enquire
               </button>
             </div>
-            </>
-          ):(<>
-            <div className="flex items-stretch">
-             
-              <button
-                onClick={() => onAction({ eventType, type: "enquiry", guestCount })}
-                className="flex-1 py-3 rounded-xl font-medium text-sm border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 active:scale-[0.98] transition-all"
-              >
-                Enquire
-              </button>
-            </div>
-          </>)}
           
           </motion.div>
 
@@ -705,6 +759,11 @@ const propertySettings = venue_settings
         )}
       </AnimatePresence>
 
+      {/* Sentinel — zero-height marker placed right after the CTA buttons.
+          IntersectionObserver in page.jsx watches this to know exactly when
+          the booking action area scrolls behind the sticky nav. */}
+      {ctaSentinelRef && <div ref={ctaSentinelRef} aria-hidden="true" />}
+
       {/* Trust */}
       <TrustBadges badges={meta.trustBadges} />
     </div>
@@ -712,7 +771,9 @@ const propertySettings = venue_settings
 }
 
 // ─── Reserve card (farmstay / other) ─────────────────────────────────────────
-function ReserveCard({ venueData,meta, gradient, colors, guestValues, setGuestValues,shiftAmount, guestType, catKey, onAction, calendarRange, onScrollToCalendar, onClearCalendarRange, onClearCheckout, highlightGuests }) {
+function ReserveCard({ venueData, meta, gradient, colors, guestValues, setGuestValues, shiftAmount, guestType, catKey, onAction, calendarRange, onScrollToCalendar, onClearCalendarRange, onClearCheckout, highlightGuests,
+  ctaSentinelRef, onCTAChange }) {
+  const { format } = useCurrency();
   const [showGuestPicker, setShowGuestPicker] = useState(false);
   const ctaButtons = getDefaultCTA(catKey);
   const { start, end } = calendarRange ?? {};
@@ -723,16 +784,52 @@ function ReserveCard({ venueData,meta, gradient, colors, guestValues, setGuestVa
   // Farmstay: dates alone unlock the CTAs — guest count is bonus context
   const isComplete = hasRange;
 
+  // ── Push the complete action group to the sticky nav (mirrors DynamicCTA logic) ─
+  useEffect(() => {
+    if (!onCTAChange) return;
+
+    if (!isComplete) {
+      onCTAChange({
+        badge: meta.badge,
+        price: venueData.minPrice,
+        priceLabel: meta.priceLabel,
+        actions: [{ key: "check-avail", label: "Check Availability", variant: "default", onClick: null }],
+      });
+      return;
+    }
+
+    const fire = (t) => onAction({ guestValues, type: t });
+    let actions;
+    if (ctaButtons.length === 1) {
+      actions = [{ key: ctaButtons[0], label: CTA_LABELS[ctaButtons[0]] ?? "Continue", variant: "primary", onClick: () => fire(ctaButtons[0]) }];
+    } else if (ctaButtons.length === 2) {
+      const [secondary, primary] = ctaButtons;
+      actions = [
+        { key: secondary, label: CTA_LABELS[secondary], variant: "ghost",   onClick: () => fire(secondary) },
+        { key: primary,   label: CTA_LABELS[primary],   variant: "primary", onClick: () => fire(primary)   },
+      ];
+    } else {
+      const primary     = ctaButtons[ctaButtons.length - 1];
+      const secondaries = ctaButtons.slice(0, -1);
+      actions = [
+        ...secondaries.map((b) => ({ key: b, label: CTA_LABELS[b], variant: "ghost",   onClick: () => fire(b) })),
+        { key: primary, label: CTA_LABELS[primary], variant: "primary", onClick: () => fire(primary) },
+      ];
+    }
+
+    onCTAChange({ badge: meta.badge, price: venueData.minPrice, priceLabel: meta.priceLabel, actions });
+  }, [isComplete, onCTAChange, meta.badge, meta.priceLabel, onAction, guestValues, venueData.minPrice]);
+
   return (
     <div className="space-y-4">
       {/* Price row */}
       <div className="flex items-end justify-between">
         <div>
           <div className="flex items-baseline gap-1.5">
-            <span className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">₹{venueData.minPrice}</span>
+            <span className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{format(venueData.minPrice)}</span>
           </div>
           <p className="text-xs text-gray-400">
-            per {meta.priceLabel}{nights > 0 ? ` · ${nights} night${nights > 1 ? "s" : ""}` : ""}
+            {meta.priceLabel}{nights > 0 ? ` · ${nights} night${nights > 1 ? "s" : ""}` : ""}
           </p>
         </div>
         <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${meta.badge.bg}`}>
@@ -838,9 +935,9 @@ function ReserveCard({ venueData,meta, gradient, colors, guestValues, setGuestVa
             transition={{ duration: 0.18 }}
             className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/40 rounded-xl px-3.5 py-2.5"
           >
-            <span>₹{venueData.minPrice} × {nights} night{nights > 1 ? "s" : ""}</span>
+            <span>{format(venueData.minPrice)} × {nights} night{nights > 1 ? "s" : ""}</span>
             <span className="font-semibold text-gray-700 dark:text-gray-300">
-              ₹{(venueData.minPrice * nights).toLocaleString("en-IN")}
+              {format(venueData.minPrice * nights)}
             </span>
           </motion.div>
         )}
@@ -888,6 +985,9 @@ function ReserveCard({ venueData,meta, gradient, colors, guestValues, setGuestVa
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Sentinel — see VenueCard for explanation */}
+      {ctaSentinelRef && <div ref={ctaSentinelRef} aria-hidden="true" />}
 
       {/* Trust */}
       <TrustBadges badges={meta.trustBadges} />
@@ -1090,8 +1190,12 @@ export default function BookingCard({
   onClearCalendarRange,
   onClearCheckout,
   shiftAmount,
-  venue_settings
+  venue_settings,
+  // ── Sticky nav integration (desktop-only; ignored when mobileOnly=true) ───────
+  ctaSentinelRef, // ref placed after CTA buttons — observed by IntersectionObserver
+  onCTAChange,    // ({ label, badge }) → void — fires whenever the primary CTA changes
 }) {
+  const { format } = useCurrency();
   const catKey    = normalizeCategory(category);
   const meta      = getMeta(category);
   const gradient  = GRADIENTS[catKey]  ?? GRADIENTS.venues;
@@ -1243,6 +1347,8 @@ export default function BookingCard({
           venueEvents={venueEvents}
           shiftAmount={shiftAmount}
           venue_settings={venue_settings}
+          ctaSentinelRef={!mobileOnly ? ctaSentinelRef : undefined}
+          onCTAChange={!mobileOnly ? onCTAChange : undefined}
         />
       : <ReserveCard
           venueData={venueData}
@@ -1260,6 +1366,8 @@ export default function BookingCard({
           onClearCalendarRange={onClearCalendarRange}
           onClearCheckout={onClearCheckout}
           highlightGuests={highlightGuests}
+          ctaSentinelRef={!mobileOnly ? ctaSentinelRef : undefined}
+          onCTAChange={!mobileOnly ? onCTAChange : undefined}
         />;
 
   const headerLabel = meta.mode === "enquiry"
@@ -1302,7 +1410,7 @@ export default function BookingCard({
               className="flex-1 text-left min-w-0"
             >
               <p className="font-bold text-gray-900 dark:text-white text-base leading-tight">
-                {isFarmstay ? `₹${venueData?.minPrice ?? ""}` : `₹${venueData?.minPrice ?? ""}`}
+                {format(venueData?.minPrice ?? 0)}
               </p>
               <p className="text-xs text-gray-400 mt-0.5 truncate">
                 {isFarmstay
