@@ -28,6 +28,8 @@ export const packages_uploads = (data) => {
   return api.post(`/packages/packages_uploads`, data);
 };
 
+
+
 /** Load all categories (menu + addons) and package listings. */
 export async function loadPackageData() {
   const res = await api.get("/api/package/load", { params: { type: 10 } });
@@ -120,6 +122,18 @@ export async function togglePackagePublish({ id, status }) {
   const res = await api.post("/api/package/publish", { id, status });
   return res.data;
 }
+
+/* ─── Customer API  ──────────────────────────────────── */
+
+export const loadPackage = (id) => {
+  return api.get(`/pax/package/${id}`);
+};
+
+export const package_booking = (data) => {
+  return api.post(`/pax/package_booking`,data);
+};
+
+
 
 /* ─── Template Downloads ──────────────────────────────────── */
 
