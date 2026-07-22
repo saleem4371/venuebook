@@ -36,13 +36,7 @@ const GUEST_CONFIGS = {
  * have a spec'd field set, so they fall back to the legacy generic ones.
  */
 const CATEGORY_GUEST_CONFIGS = {
-  venues: [
-    { id: "adults",   label: "Adults",      sub: "Ages 13+",                 min: 1, max: 5000 },
-    { id: "children", label: "Children",    sub: "Ages 2–12",                min: 0, max: 1000 },
-    { id: "vip",      label: "VIP Guests",  sub: "Special arrangements",     min: 0, max: 200  },
-    { id: "staff",    label: "Staff",       sub: "Event staff on-site",      min: 0, max: 200  },
-    { id: "vendors",  label: "Vendors",     sub: "Caterers, decorators…",    min: 0, max: 100  },
-  ],
+  venues:  GUEST_CONFIGS.guests,
   farmstays: GUEST_CONFIGS.guests_detailed,
   workspaces: [
     { id: "people",       label: "People",        sub: "Total headcount",           min: 1, max: 500 },
