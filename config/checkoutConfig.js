@@ -13,11 +13,31 @@
  *   depositApplies – whether a refundable security deposit section is shown
  */
 
+/**
+ * Site-wide legal copy shown in TermsModal. Terms of Service and the
+ * Privacy Policy aren't category-specific — only the cancellation tiers
+ * below vary per category. Replace with real legal-team copy in production.
+ */
+export const LEGAL_DEFAULTS = {
+  termsText:
+    "By completing this booking, you enter into a binding agreement with the venue or property owner. The booking is confirmed once payment is received, and must be used in accordance with all applicable local laws and the property's house rules. Maximum capacity and usage restrictions stated on the listing must be followed at all times. venuebook.in acts as a booking platform connecting you with the property owner and is not a party to the underlying rental agreement.",
+  privacyText:
+    "We collect the information you provide during booking (contact details, event details, and payment information) to process your reservation and communicate with you about it. Payment details are handled by PCI-compliant payment processors and are never stored on venuebook.in servers. We do not sell your personal information to third parties; it may be shared with the property owner and service providers strictly to fulfil your booking.",
+};
+
 export const CHECKOUT_CATEGORY_CONFIG = {
   venues: {
     ctaKey: "checkout.cta.venue",
     depositApplies: false,
+    allowAdvancePayment: true,
+    advancePercent: 30,
     summaryFields: ["eventDate", "shift", "guestCount", "eventType"],
+    cancellationRule: [
+      { daysFrom: null, daysTo: null, condition: "30+ days before the event", refundPercent: 100, description: "Full refund of the amount paid, minus payment gateway charges.", color: "success" },
+      { daysFrom: 15, daysTo: 29,  refundPercent: 75,  description: "75% refund of the total amount paid.", color: "success" },
+      { daysFrom: 7,  daysTo: 14,  refundPercent: 50,  description: "50% refund of the total amount paid.", color: "warning" },
+      { daysFrom: 0,  daysTo: 6,   refundPercent: 0,   description: "No refund — the booking amount is forfeited.", color: "danger" },
+    ],
     bookingFields: [
       "eventType",
       "guestCount",
@@ -64,7 +84,14 @@ export const CHECKOUT_CATEGORY_CONFIG = {
     ctaKey: "checkout.cta.farmstay",
     depositApplies: true,
     depositAmountINR: 5000,
+    allowAdvancePayment: true,
+    advancePercent: 30,
     summaryFields: ["checkIn", "checkOut", "nights", "guests"],
+    cancellationRule: [
+      { daysFrom: null, daysTo: null, condition: "7+ days before check-in", refundPercent: 100, description: "Full refund of the amount paid, minus payment gateway charges.", color: "success" },
+      { daysFrom: 3, daysTo: 6, refundPercent: 50, description: "50% refund of the total amount paid.", color: "warning" },
+      { daysFrom: 0, daysTo: 2, refundPercent: 0,  description: "No refund — the booking amount is forfeited.", color: "danger" },
+    ],
     bookingFields: [
       "checkIn",
       "checkOut",
@@ -110,6 +137,11 @@ export const CHECKOUT_CATEGORY_CONFIG = {
     ctaKey: "checkout.cta.studio",
     depositApplies: false,
     summaryFields: ["shootDate", "timeSlot", "studioName"],
+    cancellationRule: [
+      { daysFrom: null, daysTo: null, condition: "48+ hours before the shoot", refundPercent: 100, description: "Full refund of the amount paid, minus payment gateway charges.", color: "success" },
+      { daysFrom: null, daysTo: null, condition: "24-47 hours before the shoot", refundPercent: 50, description: "50% refund of the total amount paid.", color: "warning" },
+      { daysFrom: null, daysTo: null, condition: "Less than 24 hours before the shoot", refundPercent: 0, description: "No refund — the booking amount is forfeited.", color: "danger" },
+    ],
     bookingFields: [
       "shootDate",
       "timeSlot",
@@ -154,6 +186,10 @@ export const CHECKOUT_CATEGORY_CONFIG = {
     ctaKey: "checkout.cta.workspace",
     depositApplies: false,
     summaryFields: ["bookingDate", "timeSlot", "seats"],
+    cancellationRule: [
+      { daysFrom: null, daysTo: null, condition: "24+ hours before booking", refundPercent: 100, description: "Full refund of the amount paid, minus payment gateway charges.", color: "success" },
+      { daysFrom: null, daysTo: null, condition: "Less than 24 hours before booking", refundPercent: 0, description: "No refund — the booking amount is forfeited.", color: "danger" },
+    ],
     bookingFields: [
       "bookingDate",
       "timeSlot",
@@ -195,6 +231,11 @@ export const CHECKOUT_CATEGORY_CONFIG = {
     depositApplies: true,
     depositAmountINR: 10000,
     summaryFields: ["rentalStart", "rentalEnd", "rentalDuration", "pickup", "rentalReturn"],
+    cancellationRule: [
+      { daysFrom: null, daysTo: null, condition: "48+ hours before pickup", refundPercent: 100, description: "Full refund of the amount paid, minus payment gateway charges.", color: "success" },
+      { daysFrom: null, daysTo: null, condition: "24-47 hours before pickup", refundPercent: 50, description: "50% refund of the total amount paid.", color: "warning" },
+      { daysFrom: null, daysTo: null, condition: "Less than 24 hours before pickup", refundPercent: 0, description: "No refund — the booking amount is forfeited.", color: "danger" },
+    ],
     bookingFields: [
       "rentalStart",
       "rentalEnd",
@@ -239,6 +280,11 @@ export const CHECKOUT_CATEGORY_CONFIG = {
     ctaKey: "checkout.cta.experience",
     depositApplies: false,
     summaryFields: ["experienceDate", "session", "participants"],
+    cancellationRule: [
+      { daysFrom: null, daysTo: null, condition: "48+ hours before the experience", refundPercent: 100, description: "Full refund of the amount paid, minus payment gateway charges.", color: "success" },
+      { daysFrom: null, daysTo: null, condition: "24-47 hours before the experience", refundPercent: 50, description: "50% refund of the total amount paid.", color: "warning" },
+      { daysFrom: null, daysTo: null, condition: "Less than 24 hours before the experience", refundPercent: 0, description: "No refund — the booking amount is forfeited.", color: "danger" },
+    ],
     bookingFields: [
       "experienceDate",
       "sessionTime",
