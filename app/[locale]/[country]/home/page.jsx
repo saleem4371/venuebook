@@ -808,11 +808,12 @@ export default function Home() {
   }, [activeCategory]);
 
 
-  const getRecommendedVenues = async () => {
-  const res = await Api_recommeded();
+   const getRecommendedVenues = async () => {
+  const regions =  localStorage.getItem("vb_preferred_location");
+  const res = await Api_recommeded(regions);
   setRecommeded(res?.data ?? []);
   
-  const resp = await topDestination();
+  const resp = await topDestination(regions);
   setDestination(resp?.data ?? []);
 
 
