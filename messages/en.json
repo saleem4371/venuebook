@@ -795,12 +795,33 @@
     "guest_capacity": "Guest Capacity",
     "shift": "Shift",
     "booking_type": "Booking Type",
-    "venue_style": "Venue Style",
+    "venue_style": "Venue Type",
     "amenities": "Amenities",
     "popular": "Popular",
     "advanced": "Advanced",
     "food_catering": "Food & Catering",
     "loyalty_perks": "Loyalty Perks",
+    "show_more": "Show more",
+    "show_less": "Show less",
+    "popular_sponsored": "Popular & Sponsored",
+    "sponsored": "Sponsored",
+    "rating_reviews": "Rating & Reviews",
+    "rating_4_plus": "4+ Stars",
+    "rating_45_plus": "4.5+ Stars",
+    "most_reviewed": "Most Reviewed",
+    "most_liked": "Most Liked",
+    "property_reels": "Property with Reels",
+    "has_reels": "With Reels",
+    "pricing_type": "Pricing Type",
+    "pax": "PAX (Per Person)",
+    "venue_only": "Venue Only",
+    "vendor_tier": "Vendor Tier",
+    "standard_tier": "Standard",
+    "premium_tier": "Premium",
+    "elite_tier": "Elite",
+    "standard_tier_info": "Verified listing that meets our baseline quality and service standards.",
+    "premium_tier_info": "Highly rated property with enhanced amenities and faster host response times.",
+    "elite_tier_info": "Our top-tier farmstays — exceptional guest ratings, premium service and priority support.",
     "farmstay_type": "Farmstay Type",
     "pool_experience": "Pool Experience",
     "kid_friendly": "Kid Friendly",
@@ -818,8 +839,8 @@
     "evening": "Evening",
     "full_day": "Full Day",
     "instant_book": "Instant Book",
-    "reserve_slot": "Reserve Slot",
-    "enquiry_only": "Enquiry Only",
+    "reserve_slot": "Reserve",
+    "enquiry_only": "Enquiry",
     "cap_1_50": "1–50",
     "cap_50_100": "50–100",
     "cap_100_250": "100–250",
@@ -977,6 +998,9 @@
   },
   "checkout": {
     "title": "Complete Your Booking",
+    "review_title": "Review Your Booking",
+    "review_subtitle": "Please review all details before proceeding to checkout",
+    "checkout_subtitle": "Enter your contact details and choose a payment option",
     "wallet": {
       "title": "Your venuebook.in Rewards",
       "tier": "Membership Tier",
@@ -1058,6 +1082,18 @@
       "subtitle": "Curated extras to make your booking exceptional",
       "add": "Add",
       "added": "Added",
+      "remove": "Remove",
+      "per_unit_badge": "Per Unit",
+      "flat_badge": "Total",
+      "available": "{count} Available",
+      "out_of_stock": "Out of stock",
+      "no_description": "No description available",
+      "all_categories": "All",
+      "popular": "Popular",
+      "unit_addons_subtotal": "Per-unit add-ons",
+      "flat_addons_subtotal": "One-time add-ons",
+      "addons_total": "Add-ons total",
+      "added_count": "{count} added",
       "venue": {
         "drone": {
           "name": "Drone Photography",
@@ -1199,7 +1235,26 @@
       "rental_return": "Return",
       "experience_date": "Date",
       "session": "Session",
-      "participants": "Participants"
+      "participants": "Participants",
+      "guests_value": "{count} guests",
+      "adults_short": "adults",
+      "children_short": "children",
+      "seats_value": "{count} seats",
+      "participants_value": "{count} participants",
+      "proceed_to_checkout": "Proceed to Checkout",
+      "no_charge_note": "You won't be charged until you complete the checkout",
+      "pay_now": "Pay Now",
+      "remaining_balance": "Remaining Balance",
+      "taxes_fees": "Taxes & Fees",
+      "gst_label": "GST ({percent}%)",
+      "weekend_charges": "Weekend Charges",
+      "cleaning_fee": "Cleaning Fee",
+      "points_redeemed": "Points Redeemed",
+      "rate_x_nights": "{rate} × {nights} nights",
+      "addon_line_label": "{name} (x{count})",
+      "toggle_breakdown": "Toggle {section} breakdown",
+      "platform_fee_caption": "Booking & service charges",
+      "gst_caption": "{percent}% GST on {amount}"
     },
     "payment": {
       "title": "Payment Method",
@@ -1227,6 +1282,24 @@
       "no_hidden": "No hidden charges",
       "verified": "Verified vendor"
     },
+    "terms": {
+      "title": "Terms & Conditions",
+      "description": "Please review our terms, cancellation policy, and privacy policy",
+      "close": "Close",
+      "tab_terms": "Terms of Service",
+      "tab_cancellation": "Cancellation Policy",
+      "tab_privacy": "Privacy Policy",
+      "footer_close": "Close",
+      "footer_accept": "Accept & Continue",
+      "note_label": "Note:",
+      "default_note": "Processing fees may apply. Refunds are processed within 7–10 business days. In case of force majeure events, we will work with you to reschedule or provide a full refund.",
+      "day_range": "Day {from} to Day {to}",
+      "refund_percent": "{percent}% Refund",
+      "agree_prefix": "By continuing, you agree to our",
+      "agree_terms_link": "Terms & Conditions",
+      "agree_and": "and",
+      "agree_cancellation_link": "Cancellation Policy"
+    },
     "cta": {
       "venue": "Request Booking",
       "farmstay": "Reserve Stay",
@@ -1237,7 +1310,50 @@
     },
     "step_booking": "Booking Details",
     "step_payment": "Payment",
-    "step_confirm": "Confirmed"
+    "step_confirm": "Confirmed",
+    "steps": {
+      "aria_label": "Checkout progress",
+      "review_label": "Review",
+      "review_desc": "Check booking details",
+      "checkout_label": "Checkout",
+      "checkout_desc": "Contact & payment",
+      "confirm_label": "Confirmation",
+      "confirm_desc": "Booking confirmed"
+    },
+    "review": {
+      "title": "Booking Summary",
+      "location": "Location"
+    },
+    "contact": {
+      "title": "Contact Information",
+      "subtitle": "Enter your contact details for booking confirmation",
+      "full_name": "Full Name",
+      "full_name_placeholder": "Enter your full name",
+      "email": "Email Address",
+      "email_placeholder": "your.email@example.com",
+      "phone": "Phone Number",
+      "phone_placeholder": "98765 43210",
+      "organization": "Organization (Optional)",
+      "organization_placeholder": "Company or organization name",
+      "special_requests": "Special Requests (Optional)",
+      "special_requests_placeholder": "Any special requirements or requests for your booking...",
+      "error_required": "This field is required",
+      "error_email": "Enter a valid email address",
+      "error_phone": "Enter a valid 10-digit phone number"
+    },
+    "payment_options": {
+      "title": "Payment Options",
+      "subtitle": "Choose your preferred payment method",
+      "full_title": "Full Payment",
+      "full_desc": "Pay the complete amount now and confirm your booking instantly.",
+      "advance_title": "Advance Payment",
+      "advance_desc": "Pay {percent}% now, remaining balance due later.",
+      "schedule_title": "Payment Schedule",
+      "pay_now": "Pay Now",
+      "remaining_balance": "Remaining Balance",
+      "due_date": "Due Date",
+      "reminder_note": "A payment reminder will be sent 7 days before the due date."
+    }
   },
   "checkout_success": {
     "title": "Booking Confirmed",
@@ -1274,7 +1390,9 @@
     "experience": {
       "meeting_point": "Meeting Point",
       "guide_contact": "Guide Contact"
-    }
+    },
+    "payment_summary": "Payment Summary",
+    "amount_paid": "Amount Paid"
   },
   "compare": {
     "empty": {
@@ -1967,7 +2085,12 @@
       "paymentLabel": "Payment",
       "message": "Message",
       "manageView": {
-        "tabs": { "overview": "Overview", "edit": "Edit Details", "payment": "Payment", "cancel": "Cancellation" },
+        "tabs": {
+          "overview": "Overview",
+          "edit": "Edit Details",
+          "payment": "Payment",
+          "cancel": "Cancellation"
+        },
         "overview": {
           "detailsTitle": "{category} Details",
           "dateShift": "Date and Shift",

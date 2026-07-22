@@ -756,19 +756,40 @@
     "guest_capacity": "سعة الضيوف",
     "shift": "الوردية",
     "booking_type": "نوع الحجز",
-    "venue_style": "نمط المكان",
+    "venue_style": "نوع المكان",
     "amenities": "المرافق",
     "popular": "الأكثر شيوعاً",
     "advanced": "متقدم",
     "food_catering": "الطعام والتموين",
     "loyalty_perks": "مزايا الولاء",
+    "show_more": "عرض المزيد",
+    "show_less": "عرض أقل",
+    "popular_sponsored": "الأكثر شيوعاً والمُمولة",
+    "sponsored": "Sponsored",
+    "rating_reviews": "التقييم والمراجعات",
+    "rating_4_plus": "4+ Stars",
+    "rating_45_plus": "4.5+ Stars",
+    "most_reviewed": "Most Reviewed",
+    "most_liked": "Most Liked",
+    "property_reels": "عقارات بها ريلز",
+    "has_reels": "With Reels",
+    "pricing_type": "نوع التسعير",
+    "pax": "PAX (Per Person)",
+    "venue_only": "Venue Only",
+    "vendor_tier": "فئة المزود",
+    "standard_tier": "Standard",
+    "premium_tier": "Premium",
+    "elite_tier": "Elite",
+    "standard_tier_info": "Verified listing that meets our baseline quality and service standards.",
+    "premium_tier_info": "Highly rated property with enhanced amenities and faster host response times.",
+    "elite_tier_info": "Our top-tier farmstays — exceptional guest ratings, premium service and priority support.",
     "morning": "الصباح",
     "afternoon": "بعد الظهر",
     "evening": "المساء",
     "full_day": "يوم كامل",
     "instant_book": "حجز فوري",
-    "reserve_slot": "حجز مؤقت",
-    "enquiry_only": "استفسار فقط",
+    "reserve_slot": "حجز",
+    "enquiry_only": "استفسار",
     "price_min": "الحد الأدنى",
     "price_max": "الحد الأقصى",
     "gold_perks": "مزايا الذهب",
@@ -977,6 +998,9 @@
   },
   "checkout": {
     "title": "أكمل حجزك",
+    "review_title": "راجع حجزك",
+    "review_subtitle": "يرجى مراجعة جميع التفاصيل قبل المتابعة إلى الدفع",
+    "checkout_subtitle": "أدخل بيانات التواصل واختر طريقة الدفع",
     "wallet": {
       "title": "مكافآت venuebook.in الخاصة بك",
       "tier": "مستوى العضوية",
@@ -1058,6 +1082,18 @@
       "subtitle": "إضافات مختارة لجعل حجزك استثنائياً",
       "add": "إضافة",
       "added": "تمت الإضافة",
+      "remove": "إزالة",
+      "per_unit_badge": "لكل وحدة",
+      "flat_badge": "إجمالي",
+      "available": "{count} متاح",
+      "out_of_stock": "غير متوفر",
+      "no_description": "لا يوجد وصف متاح",
+      "all_categories": "الكل",
+      "popular": "الأكثر طلباً",
+      "unit_addons_subtotal": "إضافات لكل وحدة",
+      "flat_addons_subtotal": "إضافات لمرة واحدة",
+      "addons_total": "إجمالي الإضافات",
+      "added_count": "تمت إضافة {count}",
       "venue": {
         "drone": {
           "name": "تصوير بالطائرة المسيّرة",
@@ -1199,7 +1235,26 @@
       "rental_return": "الإعادة",
       "experience_date": "التاريخ",
       "session": "الجلسة",
-      "participants": "المشاركون"
+      "participants": "المشاركون",
+      "guests_value": "{count} guests",
+      "adults_short": "adults",
+      "children_short": "children",
+      "seats_value": "{count} seats",
+      "participants_value": "{count} participants",
+      "proceed_to_checkout": "Proceed to Checkout",
+      "no_charge_note": "You won't be charged until you complete the checkout",
+      "pay_now": "Pay Now",
+      "remaining_balance": "Remaining Balance",
+      "taxes_fees": "Taxes & Fees",
+      "gst_label": "GST ({percent}%)",
+      "weekend_charges": "Weekend Charges",
+      "cleaning_fee": "Cleaning Fee",
+      "points_redeemed": "Points Redeemed",
+      "rate_x_nights": "{rate} × {nights} nights",
+      "addon_line_label": "{name} (x{count})",
+      "toggle_breakdown": "Toggle {section} breakdown",
+      "platform_fee_caption": "Booking & service charges",
+      "gst_caption": "{percent}% GST on {amount}"
     },
     "payment": {
       "title": "طريقة الدفع",
@@ -1227,6 +1282,24 @@
       "no_hidden": "لا رسوم خفية",
       "verified": "بائع موثق"
     },
+    "terms": {
+      "title": "الشروط والأحكام",
+      "description": "يرجى مراجعة شروطنا وسياسة الإلغاء وسياسة الخصوصية",
+      "close": "إغلاق",
+      "tab_terms": "شروط الخدمة",
+      "tab_cancellation": "سياسة الإلغاء",
+      "tab_privacy": "سياسة الخصوصية",
+      "footer_close": "إغلاق",
+      "footer_accept": "الموافقة والمتابعة",
+      "note_label": "ملاحظة:",
+      "default_note": "قد يتم تطبيق رسوم معالجة. تتم معالجة المبالغ المستردة خلال 7-10 أيام عمل. في حالة الظروف القاهرة، سنعمل معك على إعادة الجدولة أو تقديم استرداد كامل.",
+      "day_range": "من اليوم {from} إلى اليوم {to}",
+      "refund_percent": "استرداد {percent}%",
+      "agree_prefix": "بالمتابعة، فإنك توافق على",
+      "agree_terms_link": "الشروط والأحكام",
+      "agree_and": "و",
+      "agree_cancellation_link": "سياسة الإلغاء"
+    },
     "cta": {
       "venue": "طلب الحجز",
       "farmstay": "حجز الإقامة",
@@ -1237,7 +1310,50 @@
     },
     "step_booking": "تفاصيل الحجز",
     "step_payment": "الدفع",
-    "step_confirm": "مؤكد"
+    "step_confirm": "مؤكد",
+    "steps": {
+      "aria_label": "Checkout progress",
+      "review_label": "Review",
+      "review_desc": "Check booking details",
+      "checkout_label": "Checkout",
+      "checkout_desc": "Contact & payment",
+      "confirm_label": "Confirmation",
+      "confirm_desc": "Booking confirmed"
+    },
+    "review": {
+      "title": "Booking Summary",
+      "location": "Location"
+    },
+    "contact": {
+      "title": "Contact Information",
+      "subtitle": "Enter your contact details for booking confirmation",
+      "full_name": "Full Name",
+      "full_name_placeholder": "Enter your full name",
+      "email": "Email Address",
+      "email_placeholder": "your.email@example.com",
+      "phone": "Phone Number",
+      "phone_placeholder": "98765 43210",
+      "organization": "Organization (Optional)",
+      "organization_placeholder": "Company or organization name",
+      "special_requests": "Special Requests (Optional)",
+      "special_requests_placeholder": "Any special requirements or requests for your booking...",
+      "error_required": "This field is required",
+      "error_email": "Enter a valid email address",
+      "error_phone": "Enter a valid 10-digit phone number"
+    },
+    "payment_options": {
+      "title": "Payment Options",
+      "subtitle": "Choose your preferred payment method",
+      "full_title": "Full Payment",
+      "full_desc": "Pay the complete amount now and confirm your booking instantly.",
+      "advance_title": "Advance Payment",
+      "advance_desc": "Pay {percent}% now, remaining balance due later.",
+      "schedule_title": "Payment Schedule",
+      "pay_now": "Pay Now",
+      "remaining_balance": "Remaining Balance",
+      "due_date": "Due Date",
+      "reminder_note": "A payment reminder will be sent 7 days before the due date."
+    }
   },
   "checkout_success": {
     "title": "تم تأكيد الحجز",
@@ -1274,7 +1390,9 @@
     "experience": {
       "meeting_point": "نقطة الالتقاء",
       "guide_contact": "تواصل مع المرشد"
-    }
+    },
+    "payment_summary": "Payment Summary",
+    "amount_paid": "Amount Paid"
   },
   "compare": {
     "empty": {
@@ -1967,7 +2085,12 @@
       "paymentLabel": "الدفع",
       "message": "رسالة",
       "manageView": {
-        "tabs": { "overview": "نظرة عامة", "edit": "تعديل التفاصيل", "payment": "الدفع", "cancel": "الإلغاء" },
+        "tabs": {
+          "overview": "نظرة عامة",
+          "edit": "تعديل التفاصيل",
+          "payment": "الدفع",
+          "cancel": "الإلغاء"
+        },
         "overview": {
           "detailsTitle": "تفاصيل {category}",
           "dateShift": "التاريخ والوردية",

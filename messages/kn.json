@@ -588,19 +588,40 @@
     "guest_capacity": "ಅತಿಥಿ ಸಂಖ್ಯೆ",
     "shift": "ಪಾಳಿ",
     "booking_type": "ಬುಕಿಂಗ್ ಪ್ರಕಾರ",
-    "venue_style": "ಸ್ಥಳ ಶೈಲಿ",
+    "venue_style": "ಸ್ಥಳ ಪ್ರಕಾರ",
     "amenities": "ಸೌಲಭ್ಯಗಳು",
     "popular": "ಜನಪ್ರಿಯ",
     "advanced": "ಸುಧಾರಿತ",
     "food_catering": "ಆಹಾರ ಮತ್ತು ಕ್ಯಾಟರಿಂಗ್",
     "loyalty_perks": "ಲಾಯಲ್ಟಿ ಸವಲತ್ತುಗಳು",
+    "show_more": "ಇನ್ನಷ್ಟು ತೋರಿಸಿ",
+    "show_less": "ಕಡಿಮೆ ತೋರಿಸಿ",
+    "popular_sponsored": "ಜನಪ್ರಿಯ ಮತ್ತು ಪ್ರಾಯೋಜಿತ",
+    "sponsored": "Sponsored",
+    "rating_reviews": "ರೇಟಿಂಗ್ ಮತ್ತು ವಿಮರ್ಶೆಗಳು",
+    "rating_4_plus": "4+ Stars",
+    "rating_45_plus": "4.5+ Stars",
+    "most_reviewed": "Most Reviewed",
+    "most_liked": "Most Liked",
+    "property_reels": "ರೀಲ್ಸ್ ಹೊಂದಿರುವ ಪ್ರಾಪರ್ಟಿ",
+    "has_reels": "With Reels",
+    "pricing_type": "ಬೆಲೆ ಪ್ರಕಾರ",
+    "pax": "PAX (Per Person)",
+    "venue_only": "Venue Only",
+    "vendor_tier": "ಮಾರಾಟಗಾರ ಶ್ರೇಣಿ",
+    "standard_tier": "Standard",
+    "premium_tier": "Premium",
+    "elite_tier": "Elite",
+    "standard_tier_info": "Verified listing that meets our baseline quality and service standards.",
+    "premium_tier_info": "Highly rated property with enhanced amenities and faster host response times.",
+    "elite_tier_info": "Our top-tier farmstays — exceptional guest ratings, premium service and priority support.",
     "morning": "ಬೆಳಿಗ್ಗೆ",
     "afternoon": "ಮಧ್ಯಾಹ್ನ",
     "evening": "ಸಂಜೆ",
     "full_day": "ಇಡೀ ದಿನ",
     "instant_book": "ತಕ್ಷಣ ಬುಕ್",
-    "reserve_slot": "ಸ್ಲಾಟ್ ಕಾದಿರಿಸಿ",
-    "enquiry_only": "ವಿಚಾರಣೆ ಮಾತ್ರ",
+    "reserve_slot": "ರಿಸರ್ವ್",
+    "enquiry_only": "ವಿಚಾರಣೆ",
     "price_min": "ಕನಿಷ್ಠ",
     "price_max": "ಗರಿಷ್ಠ",
     "gold_perks": "ಗೋಲ್ಡ್ ಸವಲತ್ತುಗಳು",
@@ -809,6 +830,9 @@
   },
   "checkout": {
     "title": "Complete Your Booking",
+    "review_title": "Review Your Booking",
+    "review_subtitle": "Please review all details before proceeding to checkout",
+    "checkout_subtitle": "Enter your contact details and choose a payment option",
     "wallet": {
       "title": "Your venuebook.in Rewards",
       "tier": "Membership Tier",
@@ -890,6 +914,18 @@
       "subtitle": "Curated extras to make your booking exceptional",
       "add": "Add",
       "added": "Added",
+      "remove": "ತೆಗೆದುಹಾಕಿ",
+      "per_unit_badge": "ಪ್ರತಿ ಯುನಿಟ್",
+      "flat_badge": "ಒಟ್ಟು",
+      "available": "{count} ಲಭ್ಯವಿದೆ",
+      "out_of_stock": "ಸ್ಟಾಕ್ ಇಲ್ಲ",
+      "no_description": "ವಿವರಣೆ ಲಭ್ಯವಿಲ್ಲ",
+      "all_categories": "ಎಲ್ಲಾ",
+      "popular": "ಜನಪ್ರಿಯ",
+      "unit_addons_subtotal": "ಪ್ರತಿ-ಯುನಿಟ್ ಆಡ್-ಆನ್‌ಗಳು",
+      "flat_addons_subtotal": "ಒಂದು-ಬಾರಿ ಆಡ್-ಆನ್‌ಗಳು",
+      "addons_total": "ಆಡ್-ಆನ್‌ಗಳ ಒಟ್ಟು",
+      "added_count": "{count} ಸೇರಿಸಲಾಗಿದೆ",
       "venue": {
         "drone": {
           "name": "Drone Photography",
@@ -1031,7 +1067,26 @@
       "rental_return": "Return",
       "experience_date": "Date",
       "session": "Session",
-      "participants": "Participants"
+      "participants": "Participants",
+      "guests_value": "{count} guests",
+      "adults_short": "adults",
+      "children_short": "children",
+      "seats_value": "{count} seats",
+      "participants_value": "{count} participants",
+      "proceed_to_checkout": "Proceed to Checkout",
+      "no_charge_note": "You won't be charged until you complete the checkout",
+      "pay_now": "Pay Now",
+      "remaining_balance": "Remaining Balance",
+      "taxes_fees": "Taxes & Fees",
+      "gst_label": "GST ({percent}%)",
+      "weekend_charges": "Weekend Charges",
+      "cleaning_fee": "Cleaning Fee",
+      "points_redeemed": "Points Redeemed",
+      "rate_x_nights": "{rate} × {nights} nights",
+      "addon_line_label": "{name} (x{count})",
+      "toggle_breakdown": "Toggle {section} breakdown",
+      "platform_fee_caption": "Booking & service charges",
+      "gst_caption": "{percent}% GST on {amount}"
     },
     "payment": {
       "title": "Payment Method",
@@ -1059,6 +1114,24 @@
       "no_hidden": "No hidden charges",
       "verified": "Verified vendor"
     },
+    "terms": {
+      "title": "ನಿಯಮಗಳು ಮತ್ತು ಷರತ್ತುಗಳು",
+      "description": "ದಯವಿಟ್ಟು ನಮ್ಮ ನಿಯಮಗಳು, ರದ್ದತಿ ನೀತಿ ಮತ್ತು ಗೌಪ್ಯತಾ ನೀತಿಯನ್ನು ಪರಿಶೀಲಿಸಿ",
+      "close": "ಮುಚ್ಚಿ",
+      "tab_terms": "ಸೇವಾ ನಿಯಮಗಳು",
+      "tab_cancellation": "ರದ್ದತಿ ನೀತಿ",
+      "tab_privacy": "ಗೌಪ್ಯತಾ ನೀತಿ",
+      "footer_close": "ಮುಚ್ಚಿ",
+      "footer_accept": "ಒಪ್ಪಿಕೊಂಡು ಮುಂದುವರಿಸಿ",
+      "note_label": "ಗಮನಿಸಿ:",
+      "default_note": "ಪ್ರಕ್ರಿಯಾ ಶುಲ್ಕ ಅನ್ವಯವಾಗಬಹುದು. ಮರುಪಾವತಿಗಳನ್ನು 7-10 ಕಾರ್ಯದಿನಗಳಲ್ಲಿ ಪ್ರಕ್ರಿಯೆಗೊಳಿಸಲಾಗುತ್ತದೆ. ಅನಿವಾರ್ಯ ಸಂದರ್ಭಗಳಲ್ಲಿ, ನಾವು ನಿಮ್ಮೊಂದಿಗೆ ಮರುಹೊಂದಿಸಲು ಅಥವಾ ಪೂರ್ಣ ಮರುಪಾವತಿ ನೀಡಲು ಕೆಲಸ ಮಾಡುತ್ತೇವೆ.",
+      "day_range": "ದಿನ {from} ರಿಂದ ದಿನ {to} ವರೆಗೆ",
+      "refund_percent": "{percent}% ಮರುಪಾವತಿ",
+      "agree_prefix": "ಮುಂದುವರಿಸುವ ಮೂಲಕ, ನೀವು ನಮ್ಮ",
+      "agree_terms_link": "ನಿಯಮಗಳು ಮತ್ತು ಷರತ್ತುಗಳಿಗೆ",
+      "agree_and": "ಮತ್ತು",
+      "agree_cancellation_link": "ರದ್ದತಿ ನೀತಿಗೆ ಒಪ್ಪುತ್ತೀರಿ"
+    },
     "cta": {
       "venue": "Request Booking",
       "farmstay": "Reserve Stay",
@@ -1069,7 +1142,50 @@
     },
     "step_booking": "Booking Details",
     "step_payment": "Payment",
-    "step_confirm": "Confirmed"
+    "step_confirm": "Confirmed",
+    "steps": {
+      "aria_label": "Checkout progress",
+      "review_label": "Review",
+      "review_desc": "Check booking details",
+      "checkout_label": "Checkout",
+      "checkout_desc": "Contact & payment",
+      "confirm_label": "Confirmation",
+      "confirm_desc": "Booking confirmed"
+    },
+    "review": {
+      "title": "Booking Summary",
+      "location": "Location"
+    },
+    "contact": {
+      "title": "Contact Information",
+      "subtitle": "Enter your contact details for booking confirmation",
+      "full_name": "Full Name",
+      "full_name_placeholder": "Enter your full name",
+      "email": "Email Address",
+      "email_placeholder": "your.email@example.com",
+      "phone": "Phone Number",
+      "phone_placeholder": "98765 43210",
+      "organization": "Organization (Optional)",
+      "organization_placeholder": "Company or organization name",
+      "special_requests": "Special Requests (Optional)",
+      "special_requests_placeholder": "Any special requirements or requests for your booking...",
+      "error_required": "This field is required",
+      "error_email": "Enter a valid email address",
+      "error_phone": "Enter a valid 10-digit phone number"
+    },
+    "payment_options": {
+      "title": "Payment Options",
+      "subtitle": "Choose your preferred payment method",
+      "full_title": "Full Payment",
+      "full_desc": "Pay the complete amount now and confirm your booking instantly.",
+      "advance_title": "Advance Payment",
+      "advance_desc": "Pay {percent}% now, remaining balance due later.",
+      "schedule_title": "Payment Schedule",
+      "pay_now": "Pay Now",
+      "remaining_balance": "Remaining Balance",
+      "due_date": "Due Date",
+      "reminder_note": "A payment reminder will be sent 7 days before the due date."
+    }
   },
   "checkout_success": {
     "title": "Booking Confirmed",
@@ -1106,7 +1222,9 @@
     "experience": {
       "meeting_point": "Meeting Point",
       "guide_contact": "Guide Contact"
-    }
+    },
+    "payment_summary": "Payment Summary",
+    "amount_paid": "Amount Paid"
   },
   "compare": {
     "empty": {
@@ -1799,7 +1917,12 @@
       "paymentLabel": "ಪಾವತಿ",
       "message": "ಸಂದೇಶ",
       "manageView": {
-        "tabs": { "overview": "ಅವಲೋಕನ", "edit": "ವಿವರಗಳನ್ನು ಸಂಪಾದಿಸಿ", "payment": "ಪಾವತಿ", "cancel": "ರದ್ದತಿ" },
+        "tabs": {
+          "overview": "ಅವಲೋಕನ",
+          "edit": "ವಿವರಗಳನ್ನು ಸಂಪಾದಿಸಿ",
+          "payment": "ಪಾವತಿ",
+          "cancel": "ರದ್ದತಿ"
+        },
         "overview": {
           "detailsTitle": "{category} ವಿವರಗಳು",
           "dateShift": "ದಿನಾಂಕ ಮತ್ತು ಶಿಫ್ಟ್",

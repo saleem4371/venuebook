@@ -976,6 +976,9 @@
   },
   "checkout": {
     "title": "Complete Your Booking",
+    "review_title": "Review Your Booking",
+    "review_subtitle": "Please review all details before proceeding to checkout",
+    "checkout_subtitle": "Enter your contact details and choose a payment option",
     "wallet": {
       "title": "Your venuebook.in Rewards",
       "tier": "Membership Tier",
@@ -1198,7 +1201,26 @@
       "rental_return": "Return",
       "experience_date": "Date",
       "session": "Session",
-      "participants": "Participants"
+      "participants": "Participants",
+      "guests_value": "{count} guests",
+      "adults_short": "adults",
+      "children_short": "children",
+      "seats_value": "{count} seats",
+      "participants_value": "{count} participants",
+      "proceed_to_checkout": "Proceed to Checkout",
+      "no_charge_note": "You won't be charged until you complete the checkout",
+      "pay_now": "Pay Now",
+      "remaining_balance": "Remaining Balance",
+      "taxes_fees": "Taxes & Fees",
+      "gst_label": "GST ({percent}%)",
+      "weekend_charges": "Weekend Charges",
+      "cleaning_fee": "Cleaning Fee",
+      "points_redeemed": "Points Redeemed",
+      "rate_x_nights": "{rate} × {nights} nights",
+      "addon_line_label": "{name} (x{count})",
+      "toggle_breakdown": "Toggle {section} breakdown",
+      "platform_fee_caption": "Booking & service charges",
+      "gst_caption": "{percent}% GST on {amount}"
     },
     "payment": {
       "title": "Payment Method",
@@ -1233,6 +1255,49 @@
       "workspace": "Reserve Workspace",
       "rental": "Continue Rental",
       "experience": "Book Experience"
+    },
+    "steps": {
+      "aria_label": "Checkout progress",
+      "review_label": "Review",
+      "review_desc": "Check booking details",
+      "checkout_label": "Checkout",
+      "checkout_desc": "Contact & payment",
+      "confirm_label": "Confirmation",
+      "confirm_desc": "Booking confirmed"
+    },
+    "review": {
+      "title": "Booking Summary",
+      "location": "Location"
+    },
+    "contact": {
+      "title": "Contact Information",
+      "subtitle": "Enter your contact details for booking confirmation",
+      "full_name": "Full Name",
+      "full_name_placeholder": "Enter your full name",
+      "email": "Email Address",
+      "email_placeholder": "your.email@example.com",
+      "phone": "Phone Number",
+      "phone_placeholder": "98765 43210",
+      "organization": "Organization (Optional)",
+      "organization_placeholder": "Company or organization name",
+      "special_requests": "Special Requests (Optional)",
+      "special_requests_placeholder": "Any special requirements or requests for your booking...",
+      "error_required": "This field is required",
+      "error_email": "Enter a valid email address",
+      "error_phone": "Enter a valid 10-digit phone number"
+    },
+    "payment_options": {
+      "title": "Payment Options",
+      "subtitle": "Choose your preferred payment method",
+      "full_title": "Full Payment",
+      "full_desc": "Pay the complete amount now and confirm your booking instantly.",
+      "advance_title": "Advance Payment",
+      "advance_desc": "Pay {percent}% now, remaining balance due later.",
+      "schedule_title": "Payment Schedule",
+      "pay_now": "Pay Now",
+      "remaining_balance": "Remaining Balance",
+      "due_date": "Due Date",
+      "reminder_note": "A payment reminder will be sent 7 days before the due date."
     }
   },
   "checkout_success": {
@@ -1270,6 +1335,8 @@
     "experience": {
       "meeting_point": "Meeting Point",
       "guide_contact": "Guide Contact"
-    }
+    },
+    "payment_summary": "Payment Summary",
+    "amount_paid": "Amount Paid"
   }
 }

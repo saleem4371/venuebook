@@ -588,19 +588,40 @@
     "guest_capacity": "मेहमान क्षमता",
     "shift": "पाली",
     "booking_type": "बुकिंग प्रकार",
-    "venue_style": "स्थान शैली",
+    "venue_style": "स्थान प्रकार",
     "amenities": "सुविधाएं",
     "popular": "लोकप्रिय",
     "advanced": "उन्नत",
     "food_catering": "खाना और कैटरिंग",
     "loyalty_perks": "लॉयल्टी लाभ",
+    "show_more": "और दिखाएं",
+    "show_less": "कम दिखाएं",
+    "popular_sponsored": "लोकप्रिय और प्रायोजित",
+    "sponsored": "Sponsored",
+    "rating_reviews": "रेटिंग और समीक्षाएं",
+    "rating_4_plus": "4+ Stars",
+    "rating_45_plus": "4.5+ Stars",
+    "most_reviewed": "Most Reviewed",
+    "most_liked": "Most Liked",
+    "property_reels": "रील्स वाली प्रॉपर्टी",
+    "has_reels": "With Reels",
+    "pricing_type": "मूल्य निर्धारण प्रकार",
+    "pax": "PAX (Per Person)",
+    "venue_only": "Venue Only",
+    "vendor_tier": "विक्रेता स्तर",
+    "standard_tier": "Standard",
+    "premium_tier": "Premium",
+    "elite_tier": "Elite",
+    "standard_tier_info": "Verified listing that meets our baseline quality and service standards.",
+    "premium_tier_info": "Highly rated property with enhanced amenities and faster host response times.",
+    "elite_tier_info": "Our top-tier farmstays — exceptional guest ratings, premium service and priority support.",
     "morning": "सुबह",
     "afternoon": "दोपहर",
     "evening": "शाम",
     "full_day": "पूरा दिन",
     "instant_book": "तुरंत बुकिंग",
-    "reserve_slot": "स्लॉट आरक्षित करें",
-    "enquiry_only": "केवल पूछताछ",
+    "reserve_slot": "रिज़र्व",
+    "enquiry_only": "पूछताछ",
     "price_min": "न्यूनतम",
     "price_max": "अधिकतम",
     "gold_perks": "गोल्ड लाभ",
@@ -809,6 +830,9 @@
   },
   "checkout": {
     "title": "Complete Your Booking",
+    "review_title": "Review Your Booking",
+    "review_subtitle": "Please review all details before proceeding to checkout",
+    "checkout_subtitle": "Enter your contact details and choose a payment option",
     "wallet": {
       "title": "Your venuebook.in Rewards",
       "tier": "Membership Tier",
@@ -890,6 +914,18 @@
       "subtitle": "Curated extras to make your booking exceptional",
       "add": "Add",
       "added": "Added",
+      "remove": "हटाएं",
+      "per_unit_badge": "प्रति यूनिट",
+      "flat_badge": "कुल",
+      "available": "{count} उपलब्ध",
+      "out_of_stock": "स्टॉक में नहीं",
+      "no_description": "कोई विवरण उपलब्ध नहीं",
+      "all_categories": "सभी",
+      "popular": "लोकप्रिय",
+      "unit_addons_subtotal": "प्रति-यूनिट ऐड-ऑन",
+      "flat_addons_subtotal": "एकमुश्त ऐड-ऑन",
+      "addons_total": "ऐड-ऑन कुल",
+      "added_count": "{count} जोड़े गए",
       "venue": {
         "drone": {
           "name": "Drone Photography",
@@ -1031,7 +1067,26 @@
       "rental_return": "Return",
       "experience_date": "Date",
       "session": "Session",
-      "participants": "Participants"
+      "participants": "Participants",
+      "guests_value": "{count} guests",
+      "adults_short": "adults",
+      "children_short": "children",
+      "seats_value": "{count} seats",
+      "participants_value": "{count} participants",
+      "proceed_to_checkout": "Proceed to Checkout",
+      "no_charge_note": "You won't be charged until you complete the checkout",
+      "pay_now": "Pay Now",
+      "remaining_balance": "Remaining Balance",
+      "taxes_fees": "Taxes & Fees",
+      "gst_label": "GST ({percent}%)",
+      "weekend_charges": "Weekend Charges",
+      "cleaning_fee": "Cleaning Fee",
+      "points_redeemed": "Points Redeemed",
+      "rate_x_nights": "{rate} × {nights} nights",
+      "addon_line_label": "{name} (x{count})",
+      "toggle_breakdown": "Toggle {section} breakdown",
+      "platform_fee_caption": "Booking & service charges",
+      "gst_caption": "{percent}% GST on {amount}"
     },
     "payment": {
       "title": "Payment Method",
@@ -1059,6 +1114,24 @@
       "no_hidden": "No hidden charges",
       "verified": "Verified vendor"
     },
+    "terms": {
+      "title": "नियम एवं शर्तें",
+      "description": "कृपया हमारी शर्तें, रद्दीकरण नीति और गोपनीयता नीति की समीक्षा करें",
+      "close": "बंद करें",
+      "tab_terms": "सेवा की शर्तें",
+      "tab_cancellation": "रद्दीकरण नीति",
+      "tab_privacy": "गोपनीयता नीति",
+      "footer_close": "बंद करें",
+      "footer_accept": "स्वीकार करें और जारी रखें",
+      "note_label": "नोट:",
+      "default_note": "प्रोसेसिंग शुल्क लागू हो सकता है। रिफंड 7-10 कार्य दिवसों में प्रोसेस किए जाते हैं। अप्रत्याशित परिस्थितियों में, हम आपके साथ मिलकर पुनर्निर्धारण करेंगे या पूर्ण रिफंड प्रदान करेंगे।",
+      "day_range": "दिन {from} से दिन {to} तक",
+      "refund_percent": "{percent}% रिफंड",
+      "agree_prefix": "आगे बढ़ने पर, आप हमारी",
+      "agree_terms_link": "नियम एवं शर्तों",
+      "agree_and": "और",
+      "agree_cancellation_link": "रद्दीकरण नीति से सहमत होते हैं"
+    },
     "cta": {
       "venue": "Request Booking",
       "farmstay": "Reserve Stay",
@@ -1069,7 +1142,50 @@
     },
     "step_booking": "Booking Details",
     "step_payment": "Payment",
-    "step_confirm": "Confirmed"
+    "step_confirm": "Confirmed",
+    "steps": {
+      "aria_label": "Checkout progress",
+      "review_label": "Review",
+      "review_desc": "Check booking details",
+      "checkout_label": "Checkout",
+      "checkout_desc": "Contact & payment",
+      "confirm_label": "Confirmation",
+      "confirm_desc": "Booking confirmed"
+    },
+    "review": {
+      "title": "Booking Summary",
+      "location": "Location"
+    },
+    "contact": {
+      "title": "Contact Information",
+      "subtitle": "Enter your contact details for booking confirmation",
+      "full_name": "Full Name",
+      "full_name_placeholder": "Enter your full name",
+      "email": "Email Address",
+      "email_placeholder": "your.email@example.com",
+      "phone": "Phone Number",
+      "phone_placeholder": "98765 43210",
+      "organization": "Organization (Optional)",
+      "organization_placeholder": "Company or organization name",
+      "special_requests": "Special Requests (Optional)",
+      "special_requests_placeholder": "Any special requirements or requests for your booking...",
+      "error_required": "This field is required",
+      "error_email": "Enter a valid email address",
+      "error_phone": "Enter a valid 10-digit phone number"
+    },
+    "payment_options": {
+      "title": "Payment Options",
+      "subtitle": "Choose your preferred payment method",
+      "full_title": "Full Payment",
+      "full_desc": "Pay the complete amount now and confirm your booking instantly.",
+      "advance_title": "Advance Payment",
+      "advance_desc": "Pay {percent}% now, remaining balance due later.",
+      "schedule_title": "Payment Schedule",
+      "pay_now": "Pay Now",
+      "remaining_balance": "Remaining Balance",
+      "due_date": "Due Date",
+      "reminder_note": "A payment reminder will be sent 7 days before the due date."
+    }
   },
   "checkout_success": {
     "title": "Booking Confirmed",
@@ -1106,7 +1222,9 @@
     "experience": {
       "meeting_point": "Meeting Point",
       "guide_contact": "Guide Contact"
-    }
+    },
+    "payment_summary": "Payment Summary",
+    "amount_paid": "Amount Paid"
   },
   "compare": {
     "empty": {
@@ -1799,7 +1917,12 @@
       "paymentLabel": "भुगतान",
       "message": "संदेश",
       "manageView": {
-        "tabs": { "overview": "अवलोकन", "edit": "विवरण संपादित करें", "payment": "भुगतान", "cancel": "रद्दीकरण" },
+        "tabs": {
+          "overview": "अवलोकन",
+          "edit": "विवरण संपादित करें",
+          "payment": "भुगतान",
+          "cancel": "रद्दीकरण"
+        },
         "overview": {
           "detailsTitle": "{category} विवरण",
           "dateShift": "तिथि और शिफ्ट",
