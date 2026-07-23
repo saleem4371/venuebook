@@ -538,7 +538,6 @@ useEffect(() => {
       };
       await addLikedProperty(payload);
       loadUser();
-      load();
       // eslint-disable-next-line react-hooks/exhaustive-deps
     },
     [user],
