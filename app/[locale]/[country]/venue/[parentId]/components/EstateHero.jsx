@@ -25,7 +25,7 @@ export default function EstateHero({
   parents
 }) {
   const [saved, setSaved] = useState(false);
-  const yearsOperating = new Date().getFullYear() - estate.establishedYear;
+  const yearsOperating = new Date().getFullYear() - parents?.result?.[0]?.build_year ;
   const locationLabel = [estate.location?.city, estate.location?.state].filter(Boolean).join(", ");
 
   const cat = estate.categories?.[categoryKey];
@@ -108,7 +108,7 @@ export default function EstateHero({
             </span>
             <span className="opacity-40">·</span>
             <span>{yearsOperating} Years in Operation</span>
-            {displayRating && (
+            {parents?.result?.[0]?.rating && (
               <>
                 <span className="opacity-40">·</span>
                 <span className="flex items-center gap-1">

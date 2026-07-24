@@ -112,28 +112,30 @@ export default function EstatePublicPage() {
           categoryKeys={activeCategoryKeys}
           activeCat={activeCat}
           onSelect={handleSelectCategory}
+          parents={parents}
         />
 
-        <EstateStats stats={stats} theme={catTheme} />
+        <EstateStats stats={stats} theme={catTheme}   parents={parents}/>
 
         {/* Reel section temporarily removed — see CategoryReels.jsx, still
             intact and ready to re-enable, just not rendered here for now. */}
-        <AboutEstate estate={estate} categoryKey={activeCat} catLabel={catLabel} />
+        <AboutEstate estate={estate} categoryKey={activeCat} catLabel={catLabel}  parents={parents} />
 
-        <EstateSocialLinks estate={estate} />
+        <EstateSocialLinks estate={estate}   parents={parents} />
 
         <CategoryBlock
           estate={estate}
           categoryKey={activeCat}
           id={`category-${activeCat}`}
           filteredListings={guests > 0 || maxPrice > 0 ? filteredListings : undefined}
+          parents={parents}
         />
 
         <CategoryVideos cat={estate.categories[activeCat]} categoryKey={activeCat} label={catLabel} />
 
         <div className="border-t border-gray-100 dark:border-white/[0.08] pt-8 grid sm:grid-cols-3 gap-8 items-start">
           <div className="sm:col-span-2">
-            <EstateLocation estate={estate} categoryKey={activeCat} label={catLabel} theme={catTheme} />
+            <EstateLocation estate={estate} categoryKey={activeCat} label={catLabel} theme={catTheme}  parents={parents} />
           </div>
           <EstateOperatingHours estate={estate} />
         </div>

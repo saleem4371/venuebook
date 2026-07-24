@@ -25,28 +25,47 @@ const PLATFORMS = [
   { key: "website", label: "Website", Icon: Globe, color: "hover:bg-violet-50 hover:text-violet-600 dark:hover:bg-violet-950/20 dark:hover:text-violet-400" },
 ];
 
-export default function EstateSocialLinks({ estate }) {
-  const social = estate.social || {};
+export default function EstateSocialLinks({ estate, parents }) {
+  const social = {
+    instagram:
+      parents?.result?.[0]?.instagram_url ||
+      "https://www.instagram.com/",
+
+    facebook:
+      parents?.result?.[0]?.facebook_url ||
+      "https://www.facebook.com/",
+
+    youtube:
+      parents?.result?.[0]?.youtube_url ||
+      "https://www.youtube.com/",
+
+    twitter:
+      parents?.result?.[0]?.twitter_url ||
+      "https://x.com/",
+
+    website:
+      parents?.result?.[0]?.website_url ||
+      "https://venuebook.in",
+  };
+
   const links = PLATFORMS.filter(({ key }) => social[key]);
 
   if (links.length === 0) return null;
 
   return (
-    <div>
-      <div className="flex flex-wrap gap-2.5">
-        {links.map(({ key, label, Icon, color }) => (
-          <a
-            key={key}
-            href={social[key]}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-100 dark:border-white/[0.08] bg-gray-50 dark:bg-white/[0.03] text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors ${color}`}
-          >
-            <Icon size={16} />
-            {label}
-          </a>
-        ))}
-      </div>
+    <div className="flex flex-wrap gap-3">
+      {links.map(({ key, label, Icon, color }) => (
+        <a
+          key={key}
+          href={social[key]}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-100 dark:border-white/[0.08] bg-gray-50 dark:bg-white/[0.03] text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors ${color}`}
+        >
+          <Icon size={16} />
+          {label}
+        </a>
+      ))}
     </div>
   );
 }

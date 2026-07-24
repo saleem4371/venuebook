@@ -3,6 +3,7 @@
 import ListingCard from "./ListingCard";
 import CategoryAmenities from "./CategoryAmenities";
 import { CATEGORY_LABELS, getCategoryTheme } from "../utils/estateTheme";
+import VenueCard from "@/app/[locale]/[country]/search/[type]/components/VenueCard";
 
 /**
  * Listings + Amenities only — the category title/description now lives
@@ -10,7 +11,7 @@ import { CATEGORY_LABELS, getCategoryTheme } from "../utils/estateTheme";
  * is its own top-level section (see CategoryVideos), so this component
  * no longer repeats either.
  */
-export default function CategoryBlock({ estate, categoryKey, id, filteredListings }) {
+export default function CategoryBlock({ estate, categoryKey, id, filteredListings , parents }) {
   const cat = estate.categories[categoryKey];
   const theme = getCategoryTheme(categoryKey);
   const label = CATEGORY_LABELS[categoryKey] ?? categoryKey;
@@ -43,13 +44,14 @@ export default function CategoryBlock({ estate, categoryKey, id, filteredListing
               </p>
             </div>
             <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold shrink-0 ${theme.bg} ${theme.textBold}`}>
-              {cat.listings.length} {label}
+              {parents?.listing?.length} {label}
             </span>
           </div>
-          {listings.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-              {listings.map((l) => (
-                <ListingCard key={l.id} listing={l} estateId={estate.id} />
+          {parents?.listing?.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-4">
+              {parents?.listing.map((v) => (
+                // <ListingCard key={l.childVenueId} listing={l} estateId={estate.id} />
+                <VenueCard key={v.childVenueId} venue={v}  />
               ))}
             </div>
           ) : (
@@ -59,7 +61,7 @@ export default function CategoryBlock({ estate, categoryKey, id, filteredListing
       )}
 
       {/* Amenities */}
-      <CategoryAmenities groups={cat.amenities} theme={theme} label={label} />
+      <CategoryAmenities groups={cat.amenities} theme={theme} label={label} parents={parents} />
     </div>
   );
 }

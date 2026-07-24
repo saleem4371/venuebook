@@ -16,25 +16,40 @@ import FarmstayAreaMap from "./FarmstayAreaMap";
  * Collapses entirely if this category has no listings with a location
  * on file, per the page's empty-data rule.
  */
-export default function EstateLocation({ estate, categoryKey, label, theme }) {
-  const items = useMemo(() => {
-    return (estate.categories?.[categoryKey]?.listings ?? [])
-      .filter((l) => l.address)
-      .map((l) => ({ ...l, category: categoryKey }));
-  }, [estate, categoryKey]);
+export default function EstateLocation({ estate, categoryKey, label, theme , parents }) {
+ const items = useMemo(() => {
+  return (parents?.listing ?? [])
+    .filter((l) => l.lat && l.lng)
+    .map((l) => ({
+      id: l.childVenueId,
+      name: l.venueName,
+      address: [l.city, l.state, l.country].filter(Boolean).join(", "),
+      lat: Number(l.lat),
+      lng: Number(l.lng),
+      category: categoryKey,
+      raw: l,
+    }));
+}, [parents?.listing, categoryKey]);
 
-  const [selectedId, setSelectedId] = useState(items[0]?.id ?? null);
-  useEffect(() => {
-    setSelectedId(items[0]?.id ?? null);
-  }, [items]);
+const [selectedId, setSelectedId] = useState(items[0]?.id ?? null);
 
-  const selected = items.find((l) => l.id === selectedId) ?? null;
+useEffect(() => {
+  setSelectedId(items[0]?.id ?? null);
+}, [items]);
+
+const selected = items.find((i) => i.id === selectedId);
+
   const [modalOpen, setModalOpen] = useState(false);
 
   if (items.length === 0) return null;
 
   const isFarmstay = categoryKey === "farmstays";
-  const mapSrc = !isFarmstay ? (buildMapSrc(selected) ?? estate.mapEmbedSrc) : null;
+  // const mapSrc = !isFarmstay ? (buildMapSrc(selected) ?? estate.mapEmbedSrc) : null;
+
+  const mapSrc =
+  !isFarmstay && selected
+    ? `https://www.google.com/maps?q=${selected.lat},${selected.lng}&z=15&output=embed`
+    : null;
 
   return (
     <div>
@@ -72,12 +87,12 @@ export default function EstateLocation({ estate, categoryKey, label, theme }) {
               <FarmstayAreaMap lat={selected?.lat} lng={selected?.lng} />
             ) : (
               <iframe
-                key={mapSrc}
-                src={mapSrc}
-                className="w-full h-full border-0 block"
-                loading="lazy"
-                title="Estate location map"
-              />
+  key={selected?.id}
+  src={mapSrc}
+  className="w-full h-full border-0"
+  loading="lazy"
+  title={selected?.name}
+/>
             )}
           </div>
 
@@ -94,33 +109,40 @@ export default function EstateLocation({ estate, categoryKey, label, theme }) {
         {/* Listing picker */}
         <div className="w-full md:w-[300px] shrink-0 space-y-2">
           {items.map((l) => {
-            const isActive = l.id === selectedId;
-            return (
-              <button
-                key={l.id}
-                onClick={() => setSelectedId(l.id)}
-                className={`w-full flex items-start gap-3 p-3.5 rounded-2xl border text-left transition-colors ${
-                  isActive
-                    ? `${theme.bg} ${theme.border}`
-                    : "bg-gray-50 dark:bg-white/[0.03] border-gray-100 dark:border-white/[0.06] hover:bg-gray-100 dark:hover:bg-white/[0.06]"
-                }`}
-              >
-                <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${isActive ? theme.solid : theme.bg}`}>
-                  <MapPin size={13} className={isActive ? "text-white" : theme.text} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-bold text-gray-800 dark:text-gray-200 leading-tight truncate">{l.name}</p>
-                  <p className="text-[11px] text-gray-500 dark:text-gray-500 mt-0.5 truncate">
-                    {isFarmstay ? "Approximate area only" : l.address}
-                  </p>
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                  <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-500">Active</span>
-                </div>
-              </button>
-            );
-          })}
+  const isActive = l.id === selectedId;
+
+  return (
+    <button
+      key={l.id}
+      onClick={() => setSelectedId(l.id)}
+      className={`w-full flex items-start gap-3 p-3.5 rounded-2xl border text-left transition-colors ${
+        isActive
+          ? `${theme.bg} ${theme.border}`
+          : "bg-gray-50 dark:bg-white/[0.03] border-gray-100 dark:border-white/[0.06]"
+      }`}
+    >
+      <div
+        className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+          isActive ? theme.solid : theme.bg
+        }`}
+      >
+        <MapPin
+          size={13}
+          className={isActive ? "text-white" : theme.text}
+        />
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <p className="font-bold truncate">{l.name}</p>
+        <p className="text-xs text-gray-500 truncate">
+          {isFarmstay
+            ? "Approximate area only"
+            : l.address}
+        </p>
+      </div>
+    </button>
+  );
+})}
         </div>
       </div>
 
