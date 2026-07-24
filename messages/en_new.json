@@ -979,6 +979,7 @@
     "review_title": "Review Your Booking",
     "review_subtitle": "Please review all details before proceeding to checkout",
     "checkout_subtitle": "Enter your contact details and choose a payment option",
+    "step_of": "Step {current} of {total}",
     "wallet": {
       "title": "Your venuebook.in Rewards",
       "tier": "Membership Tier",
@@ -986,6 +987,12 @@
       "wallet_value": "Wallet Value",
       "max_redeemable": "Max Redeemable",
       "apply_toggle": "Apply Maximum Reward Points",
+      "redeem_label": "Redeem Points",
+      "redeem_none": "None",
+      "redeem_half": "50%",
+      "redeem_max": "Max",
+      "redeem_custom": "Custom",
+      "custom_max_hint": "Up to {amount}",
       "applied": "Rewards Applied",
       "saved": "You saved",
       "remaining_after": "Remaining after redemption",
@@ -1267,6 +1274,7 @@
     },
     "review": {
       "title": "Booking Summary",
+      "subtitle": "Everything you need to know about this booking",
       "location": "Location"
     },
     "contact": {

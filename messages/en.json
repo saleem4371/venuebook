@@ -1001,6 +1001,7 @@
     "review_title": "Review Your Booking",
     "review_subtitle": "Please review all details before proceeding to checkout",
     "checkout_subtitle": "Enter your contact details and choose a payment option",
+    "step_of": "Step {current} of {total}",
     "wallet": {
       "title": "Your venuebook.in Rewards",
       "tier": "Membership Tier",
@@ -1008,6 +1009,12 @@
       "wallet_value": "Wallet Value",
       "max_redeemable": "Max Redeemable",
       "apply_toggle": "Apply Maximum Reward Points",
+      "redeem_label": "Redeem Points",
+      "redeem_none": "None",
+      "redeem_half": "50%",
+      "redeem_max": "Max",
+      "redeem_custom": "Custom",
+      "custom_max_hint": "Up to {amount}",
       "applied": "Rewards Applied",
       "saved": "You saved",
       "remaining_after": "Remaining after redemption",
@@ -1298,7 +1305,8 @@
       "agree_prefix": "By continuing, you agree to our",
       "agree_terms_link": "Terms & Conditions",
       "agree_and": "and",
-      "agree_cancellation_link": "Cancellation Policy"
+      "agree_cancellation_link": "Cancellation Policy",
+      "agree_checkbox_aria": "Accept Terms & Conditions and Cancellation Policy"
     },
     "cta": {
       "venue": "Request Booking",
@@ -1322,6 +1330,7 @@
     },
     "review": {
       "title": "Booking Summary",
+      "subtitle": "Everything you need to know about this booking",
       "location": "Location"
     },
     "contact": {
@@ -2297,6 +2306,8 @@
     "offers": {
       "title": "Offers & Rewards",
       "subtitle": "Deals picked for you",
+      "viewAll": "View All Offers",
+      "allTitle": "All Offers",
       "creditWallet": "Credit Wallet",
       "coupons": "Coupons",
       "giftCards": "Gift Cards",
@@ -2374,6 +2385,272 @@
       "title": "Messages",
       "subtitle": "Chat with hosts and support",
       "cta": "Open Inbox"
+    },
+    "greeting": {
+      "morning": "Good morning, {name}",
+      "afternoon": "Good afternoon, {name}",
+      "evening": "Good evening, {name}",
+      "guest": "there",
+      "subtitle": "Here's what's new for you today",
+      "actions": {
+        "bookings": "Bookings",
+        "bookingsBack": "Back to Feed",
+        "messages": "Messages",
+        "collections": "Collections"
+      }
+    },
+    "reels": {
+      "title": "Reels for you",
+      "subtitle": "Quick video tours before you book",
+      "viewAll": "View All"
+    },
+    "suggestions": {
+      "title": "Suggestions for you",
+      "subtitle": "Handpicked based on your activity",
+      "viewAll": "View All"
+    }
+  },
+  "accountSettings": {
+    "pageSubtitle": "Manage your profile, security, payments, and preferences in one place.",
+    "breadcrumb": {
+      "profile": "Profile",
+      "settings": "Account Settings"
+    },
+    "nav": {
+      "groupAccount": "Account",
+      "personal": "Personal Information",
+      "security": "Login & Security",
+      "notifications": "Notifications",
+      "payments": "Payments",
+      "addresses": "Addresses",
+      "rewards": "Rewards & Membership",
+      "preferences": "Preferences",
+      "privacy": "Privacy",
+      "devices": "Devices & Sessions",
+      "connected": "Connected Accounts",
+      "host": "Host Settings",
+      "help": "Help & Support",
+      "delete": "Delete Account"
+    },
+    "common": {
+      "edit": "Edit",
+      "save": "Save",
+      "cancel": "Cancel",
+      "close": "Close",
+      "confirm": "Confirm",
+      "change": "Change",
+      "comingSoon": "This isn't connected to a live setting yet — coming soon.",
+      "connect": "Connect",
+      "disconnect": "Disconnect",
+      "connected": "Connected",
+      "notConnected": "Not connected",
+      "verified": "Verified",
+      "unverified": "Unverified",
+      "notVerified": "Not verified",
+      "add": "Add",
+      "remove": "Remove",
+      "viewAll": "View all",
+      "unsavedChanges": "Unsaved changes"
+    },
+    "personalInfo": {
+      "title": "Personal Information",
+      "subtitle": "Manage the personal details on your venuebook.in account.",
+      "photoLabel": "Profile photo",
+      "changePhoto": "Change photo",
+      "legalName": "Legal name",
+      "preferredName": "Preferred name",
+      "email": "Email",
+      "phone": "Phone",
+      "dob": "Date of birth",
+      "gender": "Gender",
+      "address": "Address",
+      "identityVerification": "Identity verification",
+      "residentialAddress": "Residential address",
+      "postalAddress": "Postal address",
+      "emergencyContact": "Emergency contact",
+      "bio": "Bio",
+      "notAdded": "Not provided",
+      "verificationNote": "Changing this will require re-verification.",
+      "genderOptions": {
+        "female": "Female",
+        "male": "Male",
+        "other": "Other",
+        "prefer_not_to_say": "Prefer not to say"
+      }
+    },
+    "loginSecurity": {
+      "title": "Login & Security",
+      "subtitle": "Keep your account secure and control how you sign in.",
+      "password": "Password",
+      "managedByGoogle": "Managed by Google",
+      "twoFactor": "Two-factor authentication",
+      "twoFactorDesc": "Add an extra layer of security when you sign in.",
+      "emailVerification": "Email verification",
+      "phoneVerification": "Phone verification",
+      "noPhone": "No phone number added",
+      "verifyNow": "Verify now",
+      "activeSessions": "Active sessions",
+      "activeSessionsValue": "See where you're signed in",
+      "recoveryEmail": "Recovery email",
+      "connectedProviders": "Connected login providers",
+      "connectedProvidersValue": "Google, Facebook, Apple",
+      "recentActivity": "Recent login activity",
+      "currentPassword": "Current password",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm new password"
+    },
+    "notifications": {
+      "title": "Notifications",
+      "subtitle": "Choose what you hear about, and how.",
+      "categories": {
+        "bookingUpdates": "Booking updates",
+        "offers": "Offers",
+        "marketing": "Marketing",
+        "wishlistAlerts": "Wishlist alerts",
+        "priceDropAlerts": "Price drop alerts"
+      },
+      "channels": {
+        "email": "Email",
+        "sms": "SMS",
+        "whatsapp": "WhatsApp",
+        "push": "Push"
+      }
+    },
+    "payments": {
+      "title": "Payments",
+      "subtitle": "Manage saved payment methods, invoices, and refund preferences.",
+      "savedCards": "Saved cards",
+      "addCard": "Add card",
+      "noCards": "No saved cards yet",
+      "expires": "Expires",
+      "upi": "UPI",
+      "addUpi": "Add UPI",
+      "bankAccounts": "Bank accounts",
+      "addBank": "Add bank account",
+      "gstDetails": "GST details",
+      "billingAddress": "Billing address",
+      "refundPreference": "Refund preference",
+      "refundOptions": {
+        "original": "Original payment method",
+        "wallet": "venuebook.in wallet"
+      },
+      "invoices": "Invoices",
+      "download": "Download",
+      "notAdded": "Not added yet",
+      "removeConfirmTitle": "Remove this payment method?",
+      "removeConfirmDesc": "You can add it back again anytime."
+    },
+    "addresses": {
+      "title": "Addresses",
+      "subtitle": "Save your frequent addresses for faster checkout.",
+      "addAddress": "Add address",
+      "noAddresses": "No saved addresses yet",
+      "home": "Home",
+      "office": "Office",
+      "other": "Other",
+      "defaultAddress": "Default",
+      "setDefault": "Set default"
+    },
+    "rewards": {
+      "title": "Rewards & Membership",
+      "subtitle": "Your Farmstay rewards, points, and available coupons.",
+      "currentPoints": "Current points",
+      "progressToNext": "Progress to {tier}",
+      "lifetimePoints": "Lifetime points",
+      "bookingsCounted": "Bookings counted",
+      "availableCoupons": "Available coupons",
+      "expires": "Expires",
+      "history": "Rewards history"
+    },
+    "preferences": {
+      "title": "Preferences",
+      "subtitle": "Language, region, currency, and how venuebook.in looks and feels.",
+      "language": "Language",
+      "region": "Region",
+      "currency": "Currency",
+      "theme": "Theme",
+      "themeDark": "Dark",
+      "themeLight": "Light",
+      "themeUpdated": "Theme updated",
+      "accessibility": "Reduce motion",
+      "reduceMotionDesc": "Minimize animations across the app.",
+      "distanceUnit": "Distance unit",
+      "km": "Kilometers",
+      "miles": "Miles",
+      "dateFormat": "Date format"
+    },
+    "privacy": {
+      "title": "Privacy",
+      "subtitle": "Control your visibility and manage your data.",
+      "visibility": "Profile visibility",
+      "public": "Public",
+      "private": "Private",
+      "dataDownload": "Download your data",
+      "dataDownloadDesc": "Get a copy of your account data.",
+      "dataExport": "Export data",
+      "dataExportDesc": "Export your data in a portable format.",
+      "exportRequested": "Your request has been received — we'll email you when it's ready.",
+      "deletePersonalData": "Delete personal data",
+      "deletePersonalDataDesc": "Remove personal details while keeping your account.",
+      "deletePersonalDataConfirm": "This will remove personal details from your account. This cannot be undone.",
+      "goToDeleteAccount": "Looking to delete your account instead?",
+      "request": "Request"
+    },
+    "devices": {
+      "title": "Devices & Sessions",
+      "subtitle": "See where you're signed in and manage active sessions.",
+      "active": "Active",
+      "currentDevice": "This is your current device",
+      "otherDevices": "Other devices",
+      "lastSeen": "Last seen",
+      "logoutDevice": "Log out",
+      "logoutAll": "Log out all other devices",
+      "logoutConfirm": "{device} will be signed out of your account.",
+      "logoutAllConfirm": "Every other device will be signed out of your account."
+    },
+    "connectedAccounts": {
+      "title": "Connected Accounts",
+      "subtitle": "Manage third-party accounts linked to venuebook.in.",
+      "google": "Google",
+      "facebook": "Facebook",
+      "apple": "Apple",
+      "phone": "Phone",
+      "notConnected": "Not connected",
+      "disconnectTitle": "Disconnect this account?",
+      "disconnectConfirm": "You'll need to reconnect {provider} to use it for sign-in again."
+    },
+    "hostSettings": {
+      "title": "Host Settings",
+      "subtitle": "Business details, verification, and payouts for your listings.",
+      "businessInfo": "Business information",
+      "verification": "Verification",
+      "verified": "Verified",
+      "pending": "Pending",
+      "kyc": "KYC",
+      "kycValue": "Identity documents on file",
+      "taxDetails": "Tax details",
+      "payout": "Payout account",
+      "hostPreferences": "Host preferences",
+      "hostPreferencesValue": "Booking rules and availability defaults"
+    },
+    "help": {
+      "title": "Help & Support",
+      "subtitle": "Get answers or reach our support team.",
+      "contactSupport": "Contact support",
+      "contactSupportDesc": "Our team typically replies within a day.",
+      "faqTitle": "Frequently asked questions",
+      "faq1Q": "How do I change my registered email?",
+      "faq1A": "Open Personal Information, edit your email, and confirm the verification link we send you.",
+      "faq2Q": "How do I cancel a booking?",
+      "faq2A": "Go to Bookings on your Profile page and open the booking you'd like to cancel.",
+      "faq3Q": "How do refunds work?",
+      "faq3A": "Refunds follow the preference set under Payments and are usually processed within 5-7 business days.",
+      "faq4Q": "How do I delete my account?",
+      "faq4A": "Open Delete Account from the sidebar and confirm — this permanently removes your account."
+    },
+    "deleteAccount": {
+      "title": "Delete Account",
+      "subtitle": "Permanently delete your venuebook.in account and all associated data."
     }
   }
 }

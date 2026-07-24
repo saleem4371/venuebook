@@ -1001,6 +1001,7 @@
     "review_title": "راجع حجزك",
     "review_subtitle": "يرجى مراجعة جميع التفاصيل قبل المتابعة إلى الدفع",
     "checkout_subtitle": "أدخل بيانات التواصل واختر طريقة الدفع",
+    "step_of": "الخطوة {current} من {total}",
     "wallet": {
       "title": "مكافآت venuebook.in الخاصة بك",
       "tier": "مستوى العضوية",
@@ -1008,6 +1009,12 @@
       "wallet_value": "قيمة المحفظة",
       "max_redeemable": "الحد الأقصى للاسترداد",
       "apply_toggle": "تطبيق أقصى نقاط المكافأة",
+      "redeem_label": "استرداد النقاط",
+      "redeem_none": "بدون",
+      "redeem_half": "٥٠٪",
+      "redeem_max": "الحد الأقصى",
+      "redeem_custom": "مخصص",
+      "custom_max_hint": "حتى {amount}",
       "applied": "تم تطبيق المكافآت",
       "saved": "لقد وفّرت",
       "remaining_after": "المتبقي بعد الاسترداد",
@@ -1298,7 +1305,8 @@
       "agree_prefix": "بالمتابعة، فإنك توافق على",
       "agree_terms_link": "الشروط والأحكام",
       "agree_and": "و",
-      "agree_cancellation_link": "سياسة الإلغاء"
+      "agree_cancellation_link": "سياسة الإلغاء",
+      "agree_checkbox_aria": "قبول الشروط والأحكام وسياسة الإلغاء"
     },
     "cta": {
       "venue": "طلب الحجز",
@@ -1322,6 +1330,7 @@
     },
     "review": {
       "title": "Booking Summary",
+      "subtitle": "Everything you need to know about this booking",
       "location": "Location"
     },
     "contact": {
@@ -2297,6 +2306,8 @@
     "offers": {
       "title": "العروض والمكافآت",
       "subtitle": "عروض مختارة لك",
+      "viewAll": "عرض كل العروض",
+      "allTitle": "كل العروض",
       "creditWallet": "محفظة الرصيد",
       "coupons": "القسائم",
       "giftCards": "بطاقات الهدايا",
@@ -2374,6 +2385,272 @@
       "title": "الرسائل",
       "subtitle": "تحدث مع المضيفين والدعم",
       "cta": "فتح صندوق الوارد"
+    },
+    "greeting": {
+      "morning": "صباح الخير، {name}",
+      "afternoon": "طاب يومك، {name}",
+      "evening": "مساء الخير، {name}",
+      "guest": "صديقنا",
+      "subtitle": "إليك ما هو جديد لك اليوم",
+      "actions": {
+        "bookings": "الحجوزات",
+        "bookingsBack": "العودة إلى الخلاصة",
+        "messages": "الرسائل",
+        "collections": "المجموعات"
+      }
+    },
+    "reels": {
+      "title": "ريلز لك",
+      "subtitle": "جولات فيديو سريعة قبل الحجز",
+      "viewAll": "عرض الكل"
+    },
+    "suggestions": {
+      "title": "اقتراحات لك",
+      "subtitle": "مختارة بناءً على نشاطك",
+      "viewAll": "عرض الكل"
+    }
+  },
+  "accountSettings": {
+    "pageSubtitle": "أدر ملفك الشخصي والأمان والمدفوعات والتفضيلات في مكان واحد.",
+    "breadcrumb": {
+      "profile": "الملف الشخصي",
+      "settings": "إعدادات الحساب"
+    },
+    "nav": {
+      "groupAccount": "الحساب",
+      "personal": "المعلومات الشخصية",
+      "security": "تسجيل الدخول والأمان",
+      "notifications": "الإشعارات",
+      "payments": "المدفوعات",
+      "addresses": "العناوين",
+      "rewards": "المكافآت والعضوية",
+      "preferences": "التفضيلات",
+      "privacy": "الخصوصية",
+      "devices": "الأجهزة والجلسات",
+      "connected": "الحسابات المرتبطة",
+      "host": "إعدادات المضيف",
+      "help": "المساعدة والدعم",
+      "delete": "حذف الحساب"
+    },
+    "common": {
+      "edit": "تعديل",
+      "save": "حفظ",
+      "cancel": "إلغاء",
+      "close": "إغلاق",
+      "confirm": "تأكيد",
+      "change": "تغيير",
+      "comingSoon": "هذا الإعداد غير مفعّل بعد — قريبًا.",
+      "connect": "ربط",
+      "disconnect": "فصل",
+      "connected": "مرتبط",
+      "notConnected": "غير مرتبط",
+      "verified": "موثّق",
+      "unverified": "غير موثّق",
+      "notVerified": "غير موثّق",
+      "add": "إضافة",
+      "remove": "إزالة",
+      "viewAll": "عرض الكل",
+      "unsavedChanges": "تغييرات غير محفوظة"
+    },
+    "personalInfo": {
+      "title": "المعلومات الشخصية",
+      "subtitle": "إدارة التفاصيل الشخصية لحسابك على venuebook.in.",
+      "photoLabel": "الصورة الشخصية",
+      "changePhoto": "تغيير الصورة",
+      "legalName": "الاسم القانوني",
+      "preferredName": "الاسم المفضل",
+      "email": "البريد الإلكتروني",
+      "phone": "رقم الهاتف",
+      "dob": "تاريخ الميلاد",
+      "gender": "الجنس",
+      "address": "العنوان",
+      "identityVerification": "التحقق من الهوية",
+      "residentialAddress": "عنوان الإقامة",
+      "postalAddress": "العنوان البريدي",
+      "emergencyContact": "جهة اتصال الطوارئ",
+      "bio": "نبذة تعريفية",
+      "notAdded": "لم تتم إضافته بعد",
+      "verificationNote": "تغيير هذا سيتطلب إعادة التوثيق.",
+      "genderOptions": {
+        "female": "أنثى",
+        "male": "ذكر",
+        "other": "أخرى",
+        "prefer_not_to_say": "أفضّل عدم القول"
+      }
+    },
+    "loginSecurity": {
+      "title": "تسجيل الدخول والأمان",
+      "subtitle": "حافظ على أمان حسابك وتحكم في طريقة تسجيل الدخول.",
+      "password": "كلمة المرور",
+      "managedByGoogle": "تتم إدارتها بواسطة Google",
+      "twoFactor": "المصادقة الثنائية",
+      "twoFactorDesc": "أضف طبقة أمان إضافية عند تسجيل الدخول.",
+      "emailVerification": "توثيق البريد الإلكتروني",
+      "phoneVerification": "توثيق رقم الهاتف",
+      "noPhone": "لم تتم إضافة رقم هاتف",
+      "verifyNow": "توثيق الآن",
+      "activeSessions": "الجلسات النشطة",
+      "activeSessionsValue": "اطّلع على أماكن تسجيل دخولك",
+      "recoveryEmail": "البريد الإلكتروني للاسترداد",
+      "connectedProviders": "مزوّدو تسجيل الدخول المرتبطون",
+      "connectedProvidersValue": "Google, Facebook, Apple",
+      "recentActivity": "نشاط تسجيل الدخول الأخير",
+      "currentPassword": "كلمة المرور الحالية",
+      "newPassword": "كلمة المرور الجديدة",
+      "confirmPassword": "تأكيد كلمة المرور الجديدة"
+    },
+    "notifications": {
+      "title": "الإشعارات",
+      "subtitle": "اختر ما تريد أن تُبلَغ به، وكيف.",
+      "categories": {
+        "bookingUpdates": "تحديثات الحجز",
+        "offers": "العروض",
+        "marketing": "التسويق",
+        "wishlistAlerts": "تنبيهات قائمة الأمنيات",
+        "priceDropAlerts": "تنبيهات انخفاض السعر"
+      },
+      "channels": {
+        "email": "البريد الإلكتروني",
+        "sms": "رسالة نصية",
+        "whatsapp": "واتساب",
+        "push": "إشعار فوري"
+      }
+    },
+    "payments": {
+      "title": "المدفوعات",
+      "subtitle": "إدارة طرق الدفع المحفوظة والفواتير وتفضيلات الاسترداد.",
+      "savedCards": "البطاقات المحفوظة",
+      "addCard": "إضافة بطاقة",
+      "noCards": "لا توجد بطاقات محفوظة بعد",
+      "expires": "تنتهي في",
+      "upi": "UPI",
+      "addUpi": "إضافة UPI",
+      "bankAccounts": "الحسابات البنكية",
+      "addBank": "إضافة حساب بنكي",
+      "gstDetails": "تفاصيل ضريبة السلع والخدمات",
+      "billingAddress": "عنوان الفوترة",
+      "refundPreference": "تفضيل الاسترداد",
+      "refundOptions": {
+        "original": "طريقة الدفع الأصلية",
+        "wallet": "محفظة venuebook.in"
+      },
+      "invoices": "الفواتير",
+      "download": "تنزيل",
+      "notAdded": "لم تتم إضافته بعد",
+      "removeConfirmTitle": "إزالة طريقة الدفع هذه؟",
+      "removeConfirmDesc": "يمكنك إضافتها مرة أخرى في أي وقت."
+    },
+    "addresses": {
+      "title": "العناوين",
+      "subtitle": "احفظ عناوينك المتكررة لإتمام أسرع للطلبات.",
+      "addAddress": "إضافة عنوان",
+      "noAddresses": "لا توجد عناوين محفوظة بعد",
+      "home": "المنزل",
+      "office": "المكتب",
+      "other": "أخرى",
+      "defaultAddress": "افتراضي",
+      "setDefault": "تعيين كافتراضي"
+    },
+    "rewards": {
+      "title": "المكافآت والعضوية",
+      "subtitle": "مكافآت Farmstay الخاصة بك والنقاط والكوبونات المتاحة.",
+      "currentPoints": "النقاط الحالية",
+      "progressToNext": "التقدم نحو {tier}",
+      "lifetimePoints": "إجمالي النقاط",
+      "bookingsCounted": "الحجوزات المحتسَبة",
+      "availableCoupons": "الكوبونات المتاحة",
+      "expires": "تنتهي في",
+      "history": "سجل المكافآت"
+    },
+    "preferences": {
+      "title": "التفضيلات",
+      "subtitle": "اللغة والمنطقة والعملة وشكل venuebook.in ومظهره.",
+      "language": "اللغة",
+      "region": "المنطقة",
+      "currency": "العملة",
+      "theme": "المظهر",
+      "themeDark": "داكن",
+      "themeLight": "فاتح",
+      "themeUpdated": "تم تحديث المظهر",
+      "accessibility": "تقليل الحركة",
+      "reduceMotionDesc": "تقليل الرسوم المتحركة في التطبيق.",
+      "distanceUnit": "وحدة المسافة",
+      "km": "كيلومتر",
+      "miles": "ميل",
+      "dateFormat": "تنسيق التاريخ"
+    },
+    "privacy": {
+      "title": "الخصوصية",
+      "subtitle": "تحكم في ظهورك وأدر بياناتك.",
+      "visibility": "ظهور الملف الشخصي",
+      "public": "عام",
+      "private": "خاص",
+      "dataDownload": "تنزيل بياناتك",
+      "dataDownloadDesc": "احصل على نسخة من بيانات حسابك.",
+      "dataExport": "تصدير البيانات",
+      "dataExportDesc": "تصدير بياناتك بتنسيق قابل للنقل.",
+      "exportRequested": "تم استلام طلبك — سنرسل إليك بريدًا إلكترونيًا عند جاهزيته.",
+      "deletePersonalData": "حذف البيانات الشخصية",
+      "deletePersonalDataDesc": "إزالة التفاصيل الشخصية مع الاحتفاظ بحسابك.",
+      "deletePersonalDataConfirm": "سيؤدي هذا إلى إزالة التفاصيل الشخصية من حسابك. لا يمكن التراجع عن هذا الإجراء.",
+      "goToDeleteAccount": "هل تريد حذف حسابك بدلاً من ذلك؟",
+      "request": "طلب"
+    },
+    "devices": {
+      "title": "الأجهزة والجلسات",
+      "subtitle": "اطّلع على أماكن تسجيل دخولك وأدر الجلسات النشطة.",
+      "active": "نشط",
+      "currentDevice": "هذا هو جهازك الحالي",
+      "otherDevices": "أجهزة أخرى",
+      "lastSeen": "آخر ظهور",
+      "logoutDevice": "تسجيل الخروج",
+      "logoutAll": "تسجيل الخروج من جميع الأجهزة الأخرى",
+      "logoutConfirm": "سيتم تسجيل خروج {device} من حسابك.",
+      "logoutAllConfirm": "سيتم تسجيل خروج كل جهاز آخر من حسابك."
+    },
+    "connectedAccounts": {
+      "title": "الحسابات المرتبطة",
+      "subtitle": "إدارة حسابات الجهات الخارجية المرتبطة بـ venuebook.in.",
+      "google": "Google",
+      "facebook": "Facebook",
+      "apple": "Apple",
+      "phone": "الهاتف",
+      "notConnected": "غير مرتبط",
+      "disconnectTitle": "فصل هذا الحساب؟",
+      "disconnectConfirm": "ستحتاج إلى إعادة ربط {provider} لاستخدامه في تسجيل الدخول مرة أخرى."
+    },
+    "hostSettings": {
+      "title": "إعدادات المضيف",
+      "subtitle": "تفاصيل العمل والتوثيق والمدفوعات لقوائمك.",
+      "businessInfo": "معلومات العمل",
+      "verification": "التوثيق",
+      "verified": "موثّق",
+      "pending": "قيد الانتظار",
+      "kyc": "التحقق من الهوية (KYC)",
+      "kycValue": "مستندات الهوية مسجّلة",
+      "taxDetails": "التفاصيل الضريبية",
+      "payout": "حساب الدفع",
+      "hostPreferences": "تفضيلات المضيف",
+      "hostPreferencesValue": "قواعد الحجز وإعدادات التوفر الافتراضية"
+    },
+    "help": {
+      "title": "المساعدة والدعم",
+      "subtitle": "احصل على إجابات أو تواصل مع فريق الدعم.",
+      "contactSupport": "التواصل مع الدعم",
+      "contactSupportDesc": "عادةً ما يرد فريقنا خلال يوم واحد.",
+      "faqTitle": "الأسئلة الشائعة",
+      "faq1Q": "كيف أغيّر بريدي الإلكتروني المسجّل؟",
+      "faq1A": "افتح المعلومات الشخصية، عدّل بريدك الإلكتروني، وأكّد رابط التوثيق الذي نرسله إليك.",
+      "faq2Q": "كيف ألغي حجزًا؟",
+      "faq2A": "اذهب إلى الحجوزات في صفحة ملفك الشخصي وافتح الحجز الذي تريد إلغاءه.",
+      "faq3Q": "كيف تعمل عمليات الاسترداد؟",
+      "faq3A": "تتبع عمليات الاسترداد التفضيل المحدد ضمن المدفوعات، وعادةً ما تُعالَج خلال 5-7 أيام عمل.",
+      "faq4Q": "كيف أحذف حسابي؟",
+      "faq4A": "افتح حذف الحساب من القائمة الجانبية وأكّد — سيؤدي هذا إلى إزالة حسابك بشكل دائم."
+    },
+    "deleteAccount": {
+      "title": "حذف الحساب",
+      "subtitle": "احذف حساب venuebook.in الخاص بك وجميع البيانات المرتبطة به بشكل دائم."
     }
   }
 }

@@ -833,6 +833,7 @@
     "review_title": "Review Your Booking",
     "review_subtitle": "Please review all details before proceeding to checkout",
     "checkout_subtitle": "Enter your contact details and choose a payment option",
+    "step_of": "Step {current} of {total}",
     "wallet": {
       "title": "Your venuebook.in Rewards",
       "tier": "Membership Tier",
@@ -840,6 +841,12 @@
       "wallet_value": "Wallet Value",
       "max_redeemable": "Max Redeemable",
       "apply_toggle": "Apply Maximum Reward Points",
+      "redeem_label": "Redeem Points",
+      "redeem_none": "None",
+      "redeem_half": "50%",
+      "redeem_max": "Max",
+      "redeem_custom": "Custom",
+      "custom_max_hint": "Up to {amount}",
       "applied": "Rewards Applied",
       "saved": "You saved",
       "remaining_after": "Remaining after redemption",
@@ -1130,7 +1137,8 @@
       "agree_prefix": "आगे बढ़ने पर, आप हमारी",
       "agree_terms_link": "नियम एवं शर्तों",
       "agree_and": "और",
-      "agree_cancellation_link": "रद्दीकरण नीति से सहमत होते हैं"
+      "agree_cancellation_link": "रद्दीकरण नीति से सहमत होते हैं",
+      "agree_checkbox_aria": "नियम व शर्तें और रद्दीकरण नीति स्वीकार करें"
     },
     "cta": {
       "venue": "Request Booking",
@@ -1154,6 +1162,7 @@
     },
     "review": {
       "title": "Booking Summary",
+      "subtitle": "Everything you need to know about this booking",
       "location": "Location"
     },
     "contact": {
@@ -2129,6 +2138,8 @@
     "offers": {
       "title": "ऑफ़र और रिवॉर्ड्स",
       "subtitle": "आपके लिए चुनी गई डील्स",
+      "viewAll": "सभी ऑफ़र देखें",
+      "allTitle": "सभी ऑफ़र",
       "creditWallet": "क्रेडिट वॉलेट",
       "coupons": "कूपन",
       "giftCards": "गिफ़्ट कार्ड",
@@ -2206,6 +2217,272 @@
       "title": "संदेश",
       "subtitle": "होस्ट और सपोर्ट से चैट करें",
       "cta": "इनबॉक्स खोलें"
+    },
+    "greeting": {
+      "morning": "सुप्रभात, {name}",
+      "afternoon": "शुभ दोपहर, {name}",
+      "evening": "शुभ संध्या, {name}",
+      "guest": "मित्र",
+      "subtitle": "आज आपके लिए क्या नया है",
+      "actions": {
+        "bookings": "बुकिंग",
+        "bookingsBack": "फ़ीड पर वापस जाएं",
+        "messages": "संदेश",
+        "collections": "कलेक्शन"
+      }
+    },
+    "reels": {
+      "title": "आपके लिए रील्स",
+      "subtitle": "बुक करने से पहले क्विक वीडियो टूर",
+      "viewAll": "सभी देखें"
+    },
+    "suggestions": {
+      "title": "आपके लिए सुझाव",
+      "subtitle": "आपकी गतिविधि के आधार पर चुने गए",
+      "viewAll": "सभी देखें"
+    }
+  },
+  "accountSettings": {
+    "pageSubtitle": "अपनी प्रोफ़ाइल, सुरक्षा, भुगतान और प्राथमिकताएं एक ही जगह प्रबंधित करें।",
+    "breadcrumb": {
+      "profile": "प्रोफ़ाइल",
+      "settings": "खाता सेटिंग्स"
+    },
+    "nav": {
+      "groupAccount": "खाता",
+      "personal": "व्यक्तिगत जानकारी",
+      "security": "लॉगिन और सुरक्षा",
+      "notifications": "सूचनाएं",
+      "payments": "भुगतान",
+      "addresses": "पते",
+      "rewards": "रिवॉर्ड्स और सदस्यता",
+      "preferences": "प्राथमिकताएं",
+      "privacy": "गोपनीयता",
+      "devices": "डिवाइस और सत्र",
+      "connected": "जुड़े हुए खाते",
+      "host": "होस्ट सेटिंग्स",
+      "help": "सहायता और समर्थन",
+      "delete": "खाता हटाएं"
+    },
+    "common": {
+      "edit": "संपादित करें",
+      "save": "सहेजें",
+      "cancel": "रद्द करें",
+      "close": "बंद करें",
+      "confirm": "पुष्टि करें",
+      "change": "बदलें",
+      "comingSoon": "यह अभी किसी लाइव सेटिंग से जुड़ा नहीं है — जल्द आ रहा है।",
+      "connect": "जोड़ें",
+      "disconnect": "हटाएं",
+      "connected": "जुड़ा हुआ",
+      "notConnected": "जुड़ा नहीं है",
+      "verified": "सत्यापित",
+      "unverified": "असत्यापित",
+      "notVerified": "सत्यापित नहीं",
+      "add": "जोड़ें",
+      "remove": "हटाएं",
+      "viewAll": "सभी देखें",
+      "unsavedChanges": "असहेजे बदलाव"
+    },
+    "personalInfo": {
+      "title": "व्यक्तिगत जानकारी",
+      "subtitle": "अपने venuebook.in खाते का व्यक्तिगत विवरण प्रबंधित करें।",
+      "photoLabel": "प्रोफ़ाइल फ़ोटो",
+      "changePhoto": "फ़ोटो बदलें",
+      "legalName": "कानूनी नाम",
+      "preferredName": "पसंदीदा नाम",
+      "email": "ईमेल",
+      "phone": "फ़ोन",
+      "dob": "जन्म तिथि",
+      "gender": "लिंग",
+      "address": "पता",
+      "identityVerification": "पहचान सत्यापन",
+      "residentialAddress": "निवास का पता",
+      "postalAddress": "डाक का पता",
+      "emergencyContact": "आपातकालीन संपर्क",
+      "bio": "बायो",
+      "notAdded": "अभी तक नहीं जोड़ा गया",
+      "verificationNote": "इसे बदलने पर पुनः सत्यापन की आवश्यकता होगी।",
+      "genderOptions": {
+        "female": "महिला",
+        "male": "पुरुष",
+        "other": "अन्य",
+        "prefer_not_to_say": "बताना नहीं चाहते"
+      }
+    },
+    "loginSecurity": {
+      "title": "लॉगिन और सुरक्षा",
+      "subtitle": "अपने खाते को सुरक्षित रखें और साइन इन करने का तरीका नियंत्रित करें।",
+      "password": "पासवर्ड",
+      "managedByGoogle": "Google द्वारा प्रबंधित",
+      "twoFactor": "टू-फैक्टर प्रमाणीकरण",
+      "twoFactorDesc": "साइन इन करते समय सुरक्षा की एक अतिरिक्त परत जोड़ें।",
+      "emailVerification": "ईमेल सत्यापन",
+      "phoneVerification": "फ़ोन सत्यापन",
+      "noPhone": "कोई फ़ोन नंबर नहीं जोड़ा गया",
+      "verifyNow": "अभी सत्यापित करें",
+      "activeSessions": "सक्रिय सत्र",
+      "activeSessionsValue": "देखें कि आप कहाँ साइन इन हैं",
+      "recoveryEmail": "रिकवरी ईमेल",
+      "connectedProviders": "जुड़े हुए लॉगिन प्रोवाइडर",
+      "connectedProvidersValue": "Google, Facebook, Apple",
+      "recentActivity": "हाल की लॉगिन गतिविधि",
+      "currentPassword": "वर्तमान पासवर्ड",
+      "newPassword": "नया पासवर्ड",
+      "confirmPassword": "नए पासवर्ड की पुष्टि करें"
+    },
+    "notifications": {
+      "title": "सूचनाएं",
+      "subtitle": "चुनें कि आपको किस बारे में और कैसे सूचित किया जाए।",
+      "categories": {
+        "bookingUpdates": "बुकिंग अपडेट",
+        "offers": "ऑफ़र",
+        "marketing": "मार्केटिंग",
+        "wishlistAlerts": "विशलिस्ट अलर्ट",
+        "priceDropAlerts": "मूल्य में कमी अलर्ट"
+      },
+      "channels": {
+        "email": "ईमेल",
+        "sms": "एसएमएस",
+        "whatsapp": "व्हाट्सएप",
+        "push": "पुश"
+      }
+    },
+    "payments": {
+      "title": "भुगतान",
+      "subtitle": "सहेजे गए भुगतान तरीके, चालान और रिफंड प्राथमिकताएं प्रबंधित करें।",
+      "savedCards": "सहेजे गए कार्ड",
+      "addCard": "कार्ड जोड़ें",
+      "noCards": "अभी तक कोई कार्ड सहेजा नहीं गया",
+      "expires": "समाप्ति",
+      "upi": "UPI",
+      "addUpi": "UPI जोड़ें",
+      "bankAccounts": "बैंक खाते",
+      "addBank": "बैंक खाता जोड़ें",
+      "gstDetails": "GST विवरण",
+      "billingAddress": "बिलिंग पता",
+      "refundPreference": "रिफंड प्राथमिकता",
+      "refundOptions": {
+        "original": "मूल भुगतान तरीका",
+        "wallet": "venuebook.in वॉलेट"
+      },
+      "invoices": "चालान",
+      "download": "डाउनलोड करें",
+      "notAdded": "अभी तक नहीं जोड़ा गया",
+      "removeConfirmTitle": "यह भुगतान तरीका हटाएं?",
+      "removeConfirmDesc": "आप इसे बाद में कभी भी फिर से जोड़ सकते हैं।"
+    },
+    "addresses": {
+      "title": "पते",
+      "subtitle": "तेज़ चेकआउट के लिए अपने बार-बार उपयोग होने वाले पते सहेजें।",
+      "addAddress": "पता जोड़ें",
+      "noAddresses": "अभी तक कोई पता सहेजा नहीं गया",
+      "home": "घर",
+      "office": "कार्यालय",
+      "other": "अन्य",
+      "defaultAddress": "डिफ़ॉल्ट",
+      "setDefault": "डिफ़ॉल्ट सेट करें"
+    },
+    "rewards": {
+      "title": "रिवॉर्ड्स और सदस्यता",
+      "subtitle": "आपके फ़ार्मस्टे रिवॉर्ड्स, पॉइंट्स और उपलब्ध कूपन।",
+      "currentPoints": "वर्तमान पॉइंट्स",
+      "progressToNext": "{tier} तक प्रगति",
+      "lifetimePoints": "लाइफटाइम पॉइंट्स",
+      "bookingsCounted": "गिनी गई बुकिंग",
+      "availableCoupons": "उपलब्ध कूपन",
+      "expires": "समाप्ति",
+      "history": "रिवॉर्ड्स इतिहास"
+    },
+    "preferences": {
+      "title": "प्राथमिकताएं",
+      "subtitle": "भाषा, क्षेत्र, मुद्रा, और venuebook.in कैसा दिखता व महसूस होता है।",
+      "language": "भाषा",
+      "region": "क्षेत्र",
+      "currency": "मुद्रा",
+      "theme": "थीम",
+      "themeDark": "डार्क",
+      "themeLight": "लाइट",
+      "themeUpdated": "थीम अपडेट हो गई",
+      "accessibility": "मोशन कम करें",
+      "reduceMotionDesc": "ऐप में एनिमेशन को कम करें।",
+      "distanceUnit": "दूरी की इकाई",
+      "km": "किलोमीटर",
+      "miles": "मील",
+      "dateFormat": "तारीख़ प्रारूप"
+    },
+    "privacy": {
+      "title": "गोपनीयता",
+      "subtitle": "अपनी दृश्यता नियंत्रित करें और अपना डेटा प्रबंधित करें।",
+      "visibility": "प्रोफ़ाइल दृश्यता",
+      "public": "सार्वजनिक",
+      "private": "निजी",
+      "dataDownload": "अपना डेटा डाउनलोड करें",
+      "dataDownloadDesc": "अपने खाते के डेटा की एक प्रति प्राप्त करें।",
+      "dataExport": "डेटा निर्यात करें",
+      "dataExportDesc": "अपने डेटा को एक पोर्टेबल फ़ॉर्मेट में निर्यात करें।",
+      "exportRequested": "आपका अनुरोध प्राप्त हो गया है — तैयार होने पर हम आपको ईमेल करेंगे।",
+      "deletePersonalData": "व्यक्तिगत डेटा हटाएं",
+      "deletePersonalDataDesc": "अपना खाता रखते हुए व्यक्तिगत विवरण हटाएं।",
+      "deletePersonalDataConfirm": "इससे आपके खाते से व्यक्तिगत विवरण हट जाएंगे। यह पूर्ववत नहीं किया जा सकता।",
+      "goToDeleteAccount": "इसके बजाय अपना खाता हटाना चाहते हैं?",
+      "request": "अनुरोध करें"
+    },
+    "devices": {
+      "title": "डिवाइस और सत्र",
+      "subtitle": "देखें कि आप कहाँ साइन इन हैं और सक्रिय सत्र प्रबंधित करें।",
+      "active": "सक्रिय",
+      "currentDevice": "यह आपका वर्तमान डिवाइस है",
+      "otherDevices": "अन्य डिवाइस",
+      "lastSeen": "अंतिम बार देखा गया",
+      "logoutDevice": "लॉग आउट करें",
+      "logoutAll": "अन्य सभी डिवाइस से लॉग आउट करें",
+      "logoutConfirm": "{device} आपके खाते से साइन आउट हो जाएगा।",
+      "logoutAllConfirm": "हर दूसरा डिवाइस आपके खाते से साइन आउट हो जाएगा।"
+    },
+    "connectedAccounts": {
+      "title": "जुड़े हुए खाते",
+      "subtitle": "venuebook.in से जुड़े थर्ड-पार्टी खातों को प्रबंधित करें।",
+      "google": "Google",
+      "facebook": "Facebook",
+      "apple": "Apple",
+      "phone": "फ़ोन",
+      "notConnected": "जुड़ा नहीं है",
+      "disconnectTitle": "इस खाते को डिस्कनेक्ट करें?",
+      "disconnectConfirm": "साइन-इन के लिए फिर से {provider} का उपयोग करने हेतु आपको इसे दोबारा जोड़ना होगा।"
+    },
+    "hostSettings": {
+      "title": "होस्ट सेटिंग्स",
+      "subtitle": "आपकी लिस्टिंग के लिए व्यवसाय विवरण, सत्यापन और भुगतान।",
+      "businessInfo": "व्यवसाय जानकारी",
+      "verification": "सत्यापन",
+      "verified": "सत्यापित",
+      "pending": "लंबित",
+      "kyc": "KYC",
+      "kycValue": "पहचान दस्तावेज़ दर्ज हैं",
+      "taxDetails": "कर विवरण",
+      "payout": "भुगतान खाता",
+      "hostPreferences": "होस्ट प्राथमिकताएं",
+      "hostPreferencesValue": "बुकिंग नियम और उपलब्धता डिफ़ॉल्ट"
+    },
+    "help": {
+      "title": "सहायता और समर्थन",
+      "subtitle": "जवाब पाएं या हमारी सहायता टीम से संपर्क करें।",
+      "contactSupport": "सहायता से संपर्क करें",
+      "contactSupportDesc": "हमारी टीम आमतौर पर एक दिन के भीतर जवाब देती है।",
+      "faqTitle": "अक्सर पूछे जाने वाले प्रश्न",
+      "faq1Q": "मैं अपना पंजीकृत ईमेल कैसे बदलूं?",
+      "faq1A": "व्यक्तिगत जानकारी खोलें, अपना ईमेल संपादित करें, और हमारे भेजे गए सत्यापन लिंक की पुष्टि करें।",
+      "faq2Q": "मैं बुकिंग कैसे रद्द करूं?",
+      "faq2A": "अपने प्रोफ़ाइल पेज पर बुकिंग में जाएं और जिस बुकिंग को रद्द करना है उसे खोलें।",
+      "faq3Q": "रिफंड कैसे काम करता है?",
+      "faq3A": "रिफंड भुगतान में सेट की गई प्राथमिकता के अनुसार होता है और आमतौर पर 5-7 कार्य दिवसों में संसाधित होता है।",
+      "faq4Q": "मैं अपना खाता कैसे हटाऊं?",
+      "faq4A": "साइडबार से खाता हटाएं खोलें और पुष्टि करें — इससे आपका खाता स्थायी रूप से हट जाएगा।"
+    },
+    "deleteAccount": {
+      "title": "खाता हटाएं",
+      "subtitle": "अपना venuebook.in खाता और सभी संबद्ध डेटा स्थायी रूप से हटाएं।"
     }
   }
 }

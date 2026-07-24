@@ -833,6 +833,7 @@
     "review_title": "Review Your Booking",
     "review_subtitle": "Please review all details before proceeding to checkout",
     "checkout_subtitle": "Enter your contact details and choose a payment option",
+    "step_of": "Step {current} of {total}",
     "wallet": {
       "title": "Your venuebook.in Rewards",
       "tier": "Membership Tier",
@@ -840,6 +841,12 @@
       "wallet_value": "Wallet Value",
       "max_redeemable": "Max Redeemable",
       "apply_toggle": "Apply Maximum Reward Points",
+      "redeem_label": "Redeem Points",
+      "redeem_none": "None",
+      "redeem_half": "50%",
+      "redeem_max": "Max",
+      "redeem_custom": "Custom",
+      "custom_max_hint": "Up to {amount}",
       "applied": "Rewards Applied",
       "saved": "You saved",
       "remaining_after": "Remaining after redemption",
@@ -1130,7 +1137,8 @@
       "agree_prefix": "ಮುಂದುವರಿಸುವ ಮೂಲಕ, ನೀವು ನಮ್ಮ",
       "agree_terms_link": "ನಿಯಮಗಳು ಮತ್ತು ಷರತ್ತುಗಳಿಗೆ",
       "agree_and": "ಮತ್ತು",
-      "agree_cancellation_link": "ರದ್ದತಿ ನೀತಿಗೆ ಒಪ್ಪುತ್ತೀರಿ"
+      "agree_cancellation_link": "ರದ್ದತಿ ನೀತಿಗೆ ಒಪ್ಪುತ್ತೀರಿ",
+      "agree_checkbox_aria": "ನಿಯಮಗಳು ಮತ್ತು ಷರತ್ತುಗಳು ಹಾಗೂ ರದ್ದತಿ ನೀತಿಯನ್ನು ಒಪ್ಪಿಕೊಳ್ಳಿ"
     },
     "cta": {
       "venue": "Request Booking",
@@ -1154,6 +1162,7 @@
     },
     "review": {
       "title": "Booking Summary",
+      "subtitle": "Everything you need to know about this booking",
       "location": "Location"
     },
     "contact": {
@@ -2129,6 +2138,8 @@
     "offers": {
       "title": "ಆಫರ್‌ಗಳು ಮತ್ತು ರಿವಾರ್ಡ್ಸ್",
       "subtitle": "ನಿಮಗಾಗಿ ಆಯ್ಕೆ ಮಾಡಿದ ಡೀಲ್‌ಗಳು",
+      "viewAll": "ಎಲ್ಲಾ ಆಫರ್‌ಗಳನ್ನು ವೀಕ್ಷಿಸಿ",
+      "allTitle": "ಎಲ್ಲಾ ಆಫರ್‌ಗಳು",
       "creditWallet": "ಕ್ರೆಡಿಟ್ ವ್ಯಾಲೆಟ್",
       "coupons": "ಕೂಪನ್‌ಗಳು",
       "giftCards": "ಗಿಫ್ಟ್ ಕಾರ್ಡ್‌ಗಳು",
@@ -2206,6 +2217,272 @@
       "title": "ಸಂದೇಶಗಳು",
       "subtitle": "ಹೋಸ್ಟ್ ಮತ್ತು ಬೆಂಬಲದೊಂದಿಗೆ ಚಾಟ್ ಮಾಡಿ",
       "cta": "ಇನ್‌ಬಾಕ್ಸ್ ತೆರೆಯಿರಿ"
+    },
+    "greeting": {
+      "morning": "ಶುಭೋದಯ, {name}",
+      "afternoon": "ಶುಭ ಮಧ್ಯಾಹ್ನ, {name}",
+      "evening": "ಶುಭ ಸಂಜೆ, {name}",
+      "guest": "ಸ್ನೇಹಿತ",
+      "subtitle": "ಇಂದು ನಿಮಗಾಗಿ ಹೊಸದೇನಿದೆ",
+      "actions": {
+        "bookings": "ಬುಕಿಂಗ್‌ಗಳು",
+        "bookingsBack": "ಫೀಡ್‌ಗೆ ಹಿಂತಿರುಗಿ",
+        "messages": "ಸಂದೇಶಗಳು",
+        "collections": "ಸಂಗ್ರಹಗಳು"
+      }
+    },
+    "reels": {
+      "title": "ನಿಮಗಾಗಿ ರೀಲ್ಸ್",
+      "subtitle": "ಬುಕ್ ಮಾಡುವ ಮೊದಲು ತ್ವರಿತ ವೀಡಿಯೊ ಪ್ರವಾಸಗಳು",
+      "viewAll": "ಎಲ್ಲಾ ವೀಕ್ಷಿಸಿ"
+    },
+    "suggestions": {
+      "title": "ನಿಮಗಾಗಿ ಸಲಹೆಗಳು",
+      "subtitle": "ನಿಮ್ಮ ಚಟುವಟಿಕೆಯ ಆಧಾರದ ಮೇಲೆ ಆಯ್ಕೆಮಾಡಲಾಗಿದೆ",
+      "viewAll": "ಎಲ್ಲಾ ವೀಕ್ಷಿಸಿ"
+    }
+  },
+  "accountSettings": {
+    "pageSubtitle": "ನಿಮ್ಮ ಪ್ರೊಫೈಲ್, ಭದ್ರತೆ, ಪಾವತಿಗಳು ಮತ್ತು ಆದ್ಯತೆಗಳನ್ನು ಒಂದೇ ಕಡೆ ನಿರ್ವಹಿಸಿ.",
+    "breadcrumb": {
+      "profile": "ಪ್ರೊಫೈಲ್",
+      "settings": "ಖಾತೆ ಸೆಟ್ಟಿಂಗ್‌ಗಳು"
+    },
+    "nav": {
+      "groupAccount": "ಖಾತೆ",
+      "personal": "ವೈಯಕ್ತಿಕ ಮಾಹಿತಿ",
+      "security": "ಲಾಗಿನ್ ಮತ್ತು ಭದ್ರತೆ",
+      "notifications": "ಅಧಿಸೂಚನೆಗಳು",
+      "payments": "ಪಾವತಿಗಳು",
+      "addresses": "ವಿಳಾಸಗಳು",
+      "rewards": "ರಿವಾರ್ಡ್‌ಗಳು ಮತ್ತು ಸದಸ್ಯತ್ವ",
+      "preferences": "ಆದ್ಯತೆಗಳು",
+      "privacy": "ಗೌಪ್ಯತೆ",
+      "devices": "ಸಾಧನಗಳು ಮತ್ತು ಸೆಷನ್‌ಗಳು",
+      "connected": "ಸಂಪರ್ಕಿತ ಖಾತೆಗಳು",
+      "host": "ಹೋಸ್ಟ್ ಸೆಟ್ಟಿಂಗ್‌ಗಳು",
+      "help": "ಸಹಾಯ ಮತ್ತು ಬೆಂಬಲ",
+      "delete": "ಖಾತೆ ಅಳಿಸಿ"
+    },
+    "common": {
+      "edit": "ಸಂಪಾದಿಸಿ",
+      "save": "ಉಳಿಸಿ",
+      "cancel": "ರದ್ದುಮಾಡಿ",
+      "close": "ಮುಚ್ಚಿ",
+      "confirm": "ದೃಢೀಕರಿಸಿ",
+      "change": "ಬದಲಾಯಿಸಿ",
+      "comingSoon": "ಇದು ಇನ್ನೂ ಲೈವ್ ಸೆಟ್ಟಿಂಗ್‌ಗೆ ಸಂಪರ್ಕಗೊಂಡಿಲ್ಲ — ಶೀಘ್ರದಲ್ಲೇ ಬರಲಿದೆ.",
+      "connect": "ಸಂಪರ್ಕಿಸಿ",
+      "disconnect": "ಸಂಪರ್ಕ ಕಡಿತಗೊಳಿಸಿ",
+      "connected": "ಸಂಪರ್ಕಿತ",
+      "notConnected": "ಸಂಪರ್ಕಿತವಾಗಿಲ್ಲ",
+      "verified": "ಪರಿಶೀಲಿಸಲಾಗಿದೆ",
+      "unverified": "ಪರಿಶೀಲಿಸಲಾಗಿಲ್ಲ",
+      "notVerified": "ಪರಿಶೀಲಿಸಲಾಗಿಲ್ಲ",
+      "add": "ಸೇರಿಸಿ",
+      "remove": "ತೆಗೆದುಹಾಕಿ",
+      "viewAll": "ಎಲ್ಲಾ ವೀಕ್ಷಿಸಿ",
+      "unsavedChanges": "ಉಳಿಸದ ಬದಲಾವಣೆಗಳು"
+    },
+    "personalInfo": {
+      "title": "ವೈಯಕ್ತಿಕ ಮಾಹಿತಿ",
+      "subtitle": "ನಿಮ್ಮ venuebook.in ಖಾತೆಯ ವೈಯಕ್ತಿಕ ವಿವರಗಳನ್ನು ನಿರ್ವಹಿಸಿ.",
+      "photoLabel": "ಪ್ರೊಫೈಲ್ ಫೋಟೋ",
+      "changePhoto": "ಫೋಟೋ ಬದಲಾಯಿಸಿ",
+      "legalName": "ಕಾನೂನುಬದ್ಧ ಹೆಸರು",
+      "preferredName": "ಆದ್ಯತೆಯ ಹೆಸರು",
+      "email": "ಇಮೇಲ್",
+      "phone": "ಫೋನ್",
+      "dob": "ಹುಟ್ಟಿದ ದಿನಾಂಕ",
+      "gender": "ಲಿಂಗ",
+      "address": "ವಿಳಾಸ",
+      "identityVerification": "ಗುರುತಿನ ಪರಿಶೀಲನೆ",
+      "residentialAddress": "ವಾಸಸ್ಥಳದ ವಿಳಾಸ",
+      "postalAddress": "ಅಂಚೆ ವಿಳಾಸ",
+      "emergencyContact": "ತುರ್ತು ಸಂಪರ್ಕ",
+      "bio": "ಬಯೋ",
+      "notAdded": "ಇನ್ನೂ ಸೇರಿಸಿಲ್ಲ",
+      "verificationNote": "ಇದನ್ನು ಬದಲಾಯಿಸಿದರೆ ಮರು-ಪರಿಶೀಲನೆ ಅಗತ್ಯವಿದೆ.",
+      "genderOptions": {
+        "female": "ಸ್ತ್ರೀ",
+        "male": "ಪುರುಷ",
+        "other": "ಇತರೆ",
+        "prefer_not_to_say": "ಹೇಳಲು ಇಚ್ಛಿಸುವುದಿಲ್ಲ"
+      }
+    },
+    "loginSecurity": {
+      "title": "ಲಾಗಿನ್ ಮತ್ತು ಭದ್ರತೆ",
+      "subtitle": "ನಿಮ್ಮ ಖಾತೆಯನ್ನು ಸುರಕ್ಷಿತವಾಗಿಡಿ ಮತ್ತು ಸೈನ್ ಇನ್ ವಿಧಾನವನ್ನು ನಿಯಂತ್ರಿಸಿ.",
+      "password": "ಪಾಸ್‌ವರ್ಡ್",
+      "managedByGoogle": "Google ಮೂಲಕ ನಿರ್ವಹಿಸಲಾಗಿದೆ",
+      "twoFactor": "ಎರಡು-ಹಂತದ ದೃಢೀಕರಣ",
+      "twoFactorDesc": "ಸೈನ್ ಇನ್ ಮಾಡುವಾಗ ಹೆಚ್ಚುವರಿ ಭದ್ರತಾ ಪದರವನ್ನು ಸೇರಿಸಿ.",
+      "emailVerification": "ಇಮೇಲ್ ಪರಿಶೀಲನೆ",
+      "phoneVerification": "ಫೋನ್ ಪರಿಶೀಲನೆ",
+      "noPhone": "ಯಾವುದೇ ಫೋನ್ ಸಂಖ್ಯೆ ಸೇರಿಸಿಲ್ಲ",
+      "verifyNow": "ಈಗ ಪರಿಶೀಲಿಸಿ",
+      "activeSessions": "ಸಕ್ರಿಯ ಸೆಷನ್‌ಗಳು",
+      "activeSessionsValue": "ನೀವು ಎಲ್ಲಿ ಸೈನ್ ಇನ್ ಆಗಿದ್ದೀರಿ ಎಂದು ನೋಡಿ",
+      "recoveryEmail": "ಮರುಪಡೆಯುವಿಕೆ ಇಮೇಲ್",
+      "connectedProviders": "ಸಂಪರ್ಕಿತ ಲಾಗಿನ್ ಪೂರೈಕೆದಾರರು",
+      "connectedProvidersValue": "Google, Facebook, Apple",
+      "recentActivity": "ಇತ್ತೀಚಿನ ಲಾಗಿನ್ ಚಟುವಟಿಕೆ",
+      "currentPassword": "ಪ್ರಸ್ತುತ ಪಾಸ್‌ವರ್ಡ್",
+      "newPassword": "ಹೊಸ ಪಾಸ್‌ವರ್ಡ್",
+      "confirmPassword": "ಹೊಸ ಪಾಸ್‌ವರ್ಡ್ ದೃಢೀಕರಿಸಿ"
+    },
+    "notifications": {
+      "title": "ಅಧಿಸೂಚನೆಗಳು",
+      "subtitle": "ನಿಮಗೆ ಏನು ಮತ್ತು ಹೇಗೆ ತಿಳಿಸಬೇಕು ಎಂಬುದನ್ನು ಆಯ್ಕೆಮಾಡಿ.",
+      "categories": {
+        "bookingUpdates": "ಬುಕಿಂಗ್ ನವೀಕರಣಗಳು",
+        "offers": "ಆಫರ್‌ಗಳು",
+        "marketing": "ಮಾರ್ಕೆಟಿಂಗ್",
+        "wishlistAlerts": "ವಿಶ್‌ಲಿಸ್ಟ್ ಎಚ್ಚರಿಕೆಗಳು",
+        "priceDropAlerts": "ಬೆಲೆ ಇಳಿಕೆ ಎಚ್ಚರಿಕೆಗಳು"
+      },
+      "channels": {
+        "email": "ಇಮೇಲ್",
+        "sms": "SMS",
+        "whatsapp": "WhatsApp",
+        "push": "ಪುಶ್"
+      }
+    },
+    "payments": {
+      "title": "ಪಾವತಿಗಳು",
+      "subtitle": "ಉಳಿಸಿದ ಪಾವತಿ ವಿಧಾನಗಳು, ಇನ್‌ವಾಯ್ಸ್‌ಗಳು ಮತ್ತು ಮರುಪಾವತಿ ಆದ್ಯತೆಗಳನ್ನು ನಿರ್ವಹಿಸಿ.",
+      "savedCards": "ಉಳಿಸಿದ ಕಾರ್ಡ್‌ಗಳು",
+      "addCard": "ಕಾರ್ಡ್ ಸೇರಿಸಿ",
+      "noCards": "ಇನ್ನೂ ಯಾವುದೇ ಕಾರ್ಡ್ ಉಳಿಸಿಲ್ಲ",
+      "expires": "ಅವಧಿ ಮುಗಿಯುತ್ತದೆ",
+      "upi": "UPI",
+      "addUpi": "UPI ಸೇರಿಸಿ",
+      "bankAccounts": "ಬ್ಯಾಂಕ್ ಖಾತೆಗಳು",
+      "addBank": "ಬ್ಯಾಂಕ್ ಖಾತೆ ಸೇರಿಸಿ",
+      "gstDetails": "GST ವಿವರಗಳು",
+      "billingAddress": "ಬಿಲ್ಲಿಂಗ್ ವಿಳಾಸ",
+      "refundPreference": "ಮರುಪಾವತಿ ಆದ್ಯತೆ",
+      "refundOptions": {
+        "original": "ಮೂಲ ಪಾವತಿ ವಿಧಾನ",
+        "wallet": "venuebook.in ವಾಲೆಟ್"
+      },
+      "invoices": "ಇನ್‌ವಾಯ್ಸ್‌ಗಳು",
+      "download": "ಡೌನ್‌ಲೋಡ್ ಮಾಡಿ",
+      "notAdded": "ಇನ್ನೂ ಸೇರಿಸಿಲ್ಲ",
+      "removeConfirmTitle": "ಈ ಪಾವತಿ ವಿಧಾನವನ್ನು ತೆಗೆದುಹಾಕಬೇಕೆ?",
+      "removeConfirmDesc": "ನೀವು ಇದನ್ನು ಯಾವಾಗ ಬೇಕಾದರೂ ಮತ್ತೆ ಸೇರಿಸಬಹುದು."
+    },
+    "addresses": {
+      "title": "ವಿಳಾಸಗಳು",
+      "subtitle": "ವೇಗದ ಚೆಕ್‌ಔಟ್‌ಗಾಗಿ ನಿಮ್ಮ ಪದೇಪದೇ ಬಳಸುವ ವಿಳಾಸಗಳನ್ನು ಉಳಿಸಿ.",
+      "addAddress": "ವಿಳಾಸ ಸೇರಿಸಿ",
+      "noAddresses": "ಇನ್ನೂ ಯಾವುದೇ ವಿಳಾಸ ಉಳಿಸಿಲ್ಲ",
+      "home": "ಮನೆ",
+      "office": "ಕಚೇರಿ",
+      "other": "ಇತರೆ",
+      "defaultAddress": "ಡೀಫಾಲ್ಟ್",
+      "setDefault": "ಡೀಫಾಲ್ಟ್ ಆಗಿ ಹೊಂದಿಸಿ"
+    },
+    "rewards": {
+      "title": "ರಿವಾರ್ಡ್‌ಗಳು ಮತ್ತು ಸದಸ್ಯತ್ವ",
+      "subtitle": "ನಿಮ್ಮ ಫಾರ್ಮ್‌ಸ್ಟೇ ರಿವಾರ್ಡ್‌ಗಳು, ಪಾಯಿಂಟ್‌ಗಳು ಮತ್ತು ಲಭ್ಯವಿರುವ ಕೂಪನ್‌ಗಳು.",
+      "currentPoints": "ಪ್ರಸ್ತುತ ಪಾಯಿಂಟ್‌ಗಳು",
+      "progressToNext": "{tier} ಗೆ ಪ್ರಗತಿ",
+      "lifetimePoints": "ಜೀವಮಾನ ಪಾಯಿಂಟ್‌ಗಳು",
+      "bookingsCounted": "ಎಣಿಸಿದ ಬುಕಿಂಗ್‌ಗಳು",
+      "availableCoupons": "ಲಭ್ಯವಿರುವ ಕೂಪನ್‌ಗಳು",
+      "expires": "ಅವಧಿ ಮುಗಿಯುತ್ತದೆ",
+      "history": "ರಿವಾರ್ಡ್‌ಗಳ ಇತಿಹಾಸ"
+    },
+    "preferences": {
+      "title": "ಆದ್ಯತೆಗಳು",
+      "subtitle": "ಭಾಷೆ, ಪ್ರದೇಶ, ಕರೆನ್ಸಿ, ಮತ್ತು venuebook.in ಹೇಗೆ ಕಾಣುತ್ತದೆ ಮತ್ತು ಅನುಭವಿಸುತ್ತದೆ.",
+      "language": "ಭಾಷೆ",
+      "region": "ಪ್ರದೇಶ",
+      "currency": "ಕರೆನ್ಸಿ",
+      "theme": "ಥೀಮ್",
+      "themeDark": "ಡಾರ್ಕ್",
+      "themeLight": "ಲೈಟ್",
+      "themeUpdated": "ಥೀಮ್ ನವೀಕರಿಸಲಾಗಿದೆ",
+      "accessibility": "ಚಲನೆ ಕಡಿಮೆ ಮಾಡಿ",
+      "reduceMotionDesc": "ಆ್ಯಪ್‌ನಾದ್ಯಂತ ಅನಿಮೇಷನ್‌ಗಳನ್ನು ಕಡಿಮೆ ಮಾಡಿ.",
+      "distanceUnit": "ದೂರದ ಘಟಕ",
+      "km": "ಕಿಲೋಮೀಟರ್",
+      "miles": "ಮೈಲಿ",
+      "dateFormat": "ದಿನಾಂಕ ಸ್ವರೂಪ"
+    },
+    "privacy": {
+      "title": "ಗೌಪ್ಯತೆ",
+      "subtitle": "ನಿಮ್ಮ ಗೋಚರತೆಯನ್ನು ನಿಯಂತ್ರಿಸಿ ಮತ್ತು ನಿಮ್ಮ ಡೇಟಾವನ್ನು ನಿರ್ವಹಿಸಿ.",
+      "visibility": "ಪ್ರೊಫೈಲ್ ಗೋಚರತೆ",
+      "public": "ಸಾರ್ವಜನಿಕ",
+      "private": "ಖಾಸಗಿ",
+      "dataDownload": "ನಿಮ್ಮ ಡೇಟಾ ಡೌನ್‌ಲೋಡ್ ಮಾಡಿ",
+      "dataDownloadDesc": "ನಿಮ್ಮ ಖಾತೆ ಡೇಟಾದ ಪ್ರತಿಯನ್ನು ಪಡೆಯಿರಿ.",
+      "dataExport": "ಡೇಟಾ ರಫ್ತು ಮಾಡಿ",
+      "dataExportDesc": "ನಿಮ್ಮ ಡೇಟಾವನ್ನು ಪೋರ್ಟಬಲ್ ಸ್ವರೂಪದಲ್ಲಿ ರಫ್ತು ಮಾಡಿ.",
+      "exportRequested": "ನಿಮ್ಮ ವಿನಂತಿ ಸ್ವೀಕರಿಸಲಾಗಿದೆ — ಸಿದ್ಧವಾದಾಗ ನಾವು ನಿಮಗೆ ಇಮೇಲ್ ಮಾಡುತ್ತೇವೆ.",
+      "deletePersonalData": "ವೈಯಕ್ತಿಕ ಡೇಟಾ ಅಳಿಸಿ",
+      "deletePersonalDataDesc": "ನಿಮ್ಮ ಖಾತೆಯನ್ನು ಇಟ್ಟುಕೊಂಡು ವೈಯಕ್ತಿಕ ವಿವರಗಳನ್ನು ತೆಗೆದುಹಾಕಿ.",
+      "deletePersonalDataConfirm": "ಇದು ನಿಮ್ಮ ಖಾತೆಯಿಂದ ವೈಯಕ್ತಿಕ ವಿವರಗಳನ್ನು ತೆಗೆದುಹಾಕುತ್ತದೆ. ಇದನ್ನು ರದ್ದುಗೊಳಿಸಲಾಗುವುದಿಲ್ಲ.",
+      "goToDeleteAccount": "ಬದಲಿಗೆ ನಿಮ್ಮ ಖಾತೆಯನ್ನು ಅಳಿಸಲು ಬಯಸುವಿರಾ?",
+      "request": "ವಿನಂತಿಸಿ"
+    },
+    "devices": {
+      "title": "ಸಾಧನಗಳು ಮತ್ತು ಸೆಷನ್‌ಗಳು",
+      "subtitle": "ನೀವು ಎಲ್ಲಿ ಸೈನ್ ಇನ್ ಆಗಿದ್ದೀರಿ ಎಂದು ನೋಡಿ ಮತ್ತು ಸಕ್ರಿಯ ಸೆಷನ್‌ಗಳನ್ನು ನಿರ್ವಹಿಸಿ.",
+      "active": "ಸಕ್ರಿಯ",
+      "currentDevice": "ಇದು ನಿಮ್ಮ ಪ್ರಸ್ತುತ ಸಾಧನವಾಗಿದೆ",
+      "otherDevices": "ಇತರೆ ಸಾಧನಗಳು",
+      "lastSeen": "ಕೊನೆಯದಾಗಿ ಕಂಡಿದ್ದು",
+      "logoutDevice": "ಲಾಗ್ ಔಟ್ ಮಾಡಿ",
+      "logoutAll": "ಇತರೆ ಎಲ್ಲಾ ಸಾಧನಗಳಿಂದ ಲಾಗ್ ಔಟ್ ಮಾಡಿ",
+      "logoutConfirm": "{device} ನಿಮ್ಮ ಖಾತೆಯಿಂದ ಸೈನ್ ಔಟ್ ಆಗುತ್ತದೆ.",
+      "logoutAllConfirm": "ಪ್ರತಿಯೊಂದು ಇತರ ಸಾಧನವು ನಿಮ್ಮ ಖಾತೆಯಿಂದ ಸೈನ್ ಔಟ್ ಆಗುತ್ತದೆ."
+    },
+    "connectedAccounts": {
+      "title": "ಸಂಪರ್ಕಿತ ಖಾತೆಗಳು",
+      "subtitle": "venuebook.in ಗೆ ಲಿಂಕ್ ಆಗಿರುವ ಥರ್ಡ್-ಪಾರ್ಟಿ ಖಾತೆಗಳನ್ನು ನಿರ್ವಹಿಸಿ.",
+      "google": "Google",
+      "facebook": "Facebook",
+      "apple": "Apple",
+      "phone": "ಫೋನ್",
+      "notConnected": "ಸಂಪರ್ಕಿತವಾಗಿಲ್ಲ",
+      "disconnectTitle": "ಈ ಖಾತೆಯ ಸಂಪರ್ಕ ಕಡಿತಗೊಳಿಸಬೇಕೆ?",
+      "disconnectConfirm": "ಸೈನ್-ಇನ್‌ಗಾಗಿ ಮತ್ತೆ {provider} ಬಳಸಲು ನೀವು ಅದನ್ನು ಮತ್ತೆ ಸಂಪರ್ಕಿಸಬೇಕಾಗುತ್ತದೆ."
+    },
+    "hostSettings": {
+      "title": "ಹೋಸ್ಟ್ ಸೆಟ್ಟಿಂಗ್‌ಗಳು",
+      "subtitle": "ನಿಮ್ಮ ಲಿಸ್ಟಿಂಗ್‌ಗಳಿಗಾಗಿ ವ್ಯಾಪಾರ ವಿವರಗಳು, ಪರಿಶೀಲನೆ ಮತ್ತು ಪಾವತಿಗಳು.",
+      "businessInfo": "ವ್ಯಾಪಾರ ಮಾಹಿತಿ",
+      "verification": "ಪರಿಶೀಲನೆ",
+      "verified": "ಪರಿಶೀಲಿಸಲಾಗಿದೆ",
+      "pending": "ಬಾಕಿ ಇದೆ",
+      "kyc": "KYC",
+      "kycValue": "ಗುರುತಿನ ದಾಖಲೆಗಳು ದಾಖಲಾಗಿವೆ",
+      "taxDetails": "ತೆರಿಗೆ ವಿವರಗಳು",
+      "payout": "ಪಾವತಿ ಖಾತೆ",
+      "hostPreferences": "ಹೋಸ್ಟ್ ಆದ್ಯತೆಗಳು",
+      "hostPreferencesValue": "ಬುಕಿಂಗ್ ನಿಯಮಗಳು ಮತ್ತು ಲಭ್ಯತೆ ಡೀಫಾಲ್ಟ್‌ಗಳು"
+    },
+    "help": {
+      "title": "ಸಹಾಯ ಮತ್ತು ಬೆಂಬಲ",
+      "subtitle": "ಉತ್ತರಗಳನ್ನು ಪಡೆಯಿರಿ ಅಥವಾ ನಮ್ಮ ಬೆಂಬಲ ತಂಡವನ್ನು ಸಂಪರ್ಕಿಸಿ.",
+      "contactSupport": "ಬೆಂಬಲ ಸಂಪರ್ಕಿಸಿ",
+      "contactSupportDesc": "ನಮ್ಮ ತಂಡ ಸಾಮಾನ್ಯವಾಗಿ ಒಂದು ದಿನದೊಳಗೆ ಪ್ರತಿಕ್ರಿಯಿಸುತ್ತದೆ.",
+      "faqTitle": "ಪದೇ ಪದೇ ಕೇಳಲಾಗುವ ಪ್ರಶ್ನೆಗಳು",
+      "faq1Q": "ನನ್ನ ನೋಂದಾಯಿತ ಇಮೇಲ್ ಅನ್ನು ಹೇಗೆ ಬದಲಾಯಿಸುವುದು?",
+      "faq1A": "ವೈಯಕ್ತಿಕ ಮಾಹಿತಿ ತೆರೆಯಿರಿ, ನಿಮ್ಮ ಇಮೇಲ್ ಸಂಪಾದಿಸಿ, ಮತ್ತು ನಾವು ಕಳುಹಿಸುವ ಪರಿಶೀಲನಾ ಲಿಂಕ್ ಅನ್ನು ದೃಢೀಕರಿಸಿ.",
+      "faq2Q": "ನಾನು ಬುಕಿಂಗ್ ಅನ್ನು ಹೇಗೆ ರದ್ದುಗೊಳಿಸುವುದು?",
+      "faq2A": "ನಿಮ್ಮ ಪ್ರೊಫೈಲ್ ಪುಟದಲ್ಲಿ ಬುಕಿಂಗ್‌ಗಳಿಗೆ ಹೋಗಿ ಮತ್ತು ರದ್ದುಗೊಳಿಸಬೇಕಾದ ಬುಕಿಂಗ್ ತೆರೆಯಿರಿ.",
+      "faq3Q": "ಮರುಪಾವತಿ ಹೇಗೆ ಕೆಲಸ ಮಾಡುತ್ತದೆ?",
+      "faq3A": "ಮರುಪಾವತಿಗಳು ಪಾವತಿಗಳ ಅಡಿಯಲ್ಲಿ ಹೊಂದಿಸಲಾದ ಆದ್ಯತೆಯನ್ನು ಅನುಸರಿಸುತ್ತವೆ ಮತ್ತು ಸಾಮಾನ್ಯವಾಗಿ 5-7 ಕೆಲಸದ ದಿನಗಳಲ್ಲಿ ಪ್ರಕ್ರಿಯೆಗೊಳ್ಳುತ್ತವೆ.",
+      "faq4Q": "ನನ್ನ ಖಾತೆಯನ್ನು ಹೇಗೆ ಅಳಿಸುವುದು?",
+      "faq4A": "ಸೈಡ್‌ಬಾರ್‌ನಿಂದ ಖಾತೆ ಅಳಿಸಿ ತೆರೆಯಿರಿ ಮತ್ತು ದೃಢೀಕರಿಸಿ — ಇದು ನಿಮ್ಮ ಖಾತೆಯನ್ನು ಶಾಶ್ವತವಾಗಿ ತೆಗೆದುಹಾಕುತ್ತದೆ."
+    },
+    "deleteAccount": {
+      "title": "ಖಾತೆ ಅಳಿಸಿ",
+      "subtitle": "ನಿಮ್ಮ venuebook.in ಖಾತೆ ಮತ್ತು ಎಲ್ಲಾ ಸಂಬಂಧಿತ ಡೇಟಾವನ್ನು ಶಾಶ್ವತವಾಗಿ ಅಳಿಸಿ."
     }
   }
 }
