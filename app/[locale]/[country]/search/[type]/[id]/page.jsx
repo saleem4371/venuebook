@@ -897,6 +897,7 @@ export default function ListingPage() {
                 venueData={venueData}
                 category={category}
                 propertyName={venueData.child_venue_name}
+                coverImage={images?.[0] ?? ""}
                 capacity={venueData.guest_rooms}
                 calendarRange={calendarRange}
                 venueSelection={venueSelection}
@@ -1045,6 +1046,7 @@ export default function ListingPage() {
         category={category}
         mobileOnly
         propertyName={venueData.child_venue_name}
+        coverImage={images?.[0] ?? ""}
         capacity={venueData.guest_rooms}
         calendarRange={calendarRange}
         venueSelection={venueSelection}
