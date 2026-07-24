@@ -406,8 +406,9 @@ export default function SearchPage() {
           topDestination(regions),
         ]);
 
-        setLoadData(res?.data?.data ?? []);
+       setLoadData(res?.data?.data ?? []);
         setLoadProperty(resProperty?.data?.data ?? []);
+        setDestination(resDes?.data ?? []);
       } finally {
         loadingRef.current = false;
         if (!silent) setIsLoadingVenues(false);
