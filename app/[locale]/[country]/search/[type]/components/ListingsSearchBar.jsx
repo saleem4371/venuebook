@@ -99,7 +99,7 @@ function parseDateParam(str) {
 }
 
 export default function ListingsSearchBar({
-  onSearch, countryCode = "in", defaultValues = {}, isSearching = false, isLoading = false }) {
+  onSearch, countryCode = "in", defaultValues = {}, isSearching = false, isLoading = false ,destination}) {
   const { activeCategory } = useCategory();
   const tint   = CATEGORY_TINTS[activeCategory] ?? CATEGORY_TINTS.venues;
   const fields = SEARCH_CONFIG[activeCategory] ?? SEARCH_CONFIG.venues;
@@ -210,6 +210,7 @@ export default function ListingsSearchBar({
             countryCode={countryCode}
             defaultLocation={field.type === "location" ? (defaultValues.location || "") : ""}
             defaultGuests={field.type === "guests"   ? (defaultValues.guests   || "")  : ""}
+            destination={destination}
           />
         ))}
 
@@ -266,7 +267,7 @@ export default function ListingsSearchBar({
         </div>
       </button>
 
-      <MobileSearchSheet open={sheetOpen} setOpen={setSheetOpen} onSummaryChange={setSummary} />
+      <MobileSearchSheet open={sheetOpen} setOpen={setSheetOpen} onSummaryChange={setSummary}   itemDest={destination}/>
     </>
   );
 }
@@ -275,7 +276,7 @@ export default function ListingsSearchBar({
    Mirrors HeroSection's SearchField exactly.
    Container colors adapted for white page; picker components unchanged.
    ────────────────────────────────────────────────────────────────── */
-function SearchField({ field, tint, category, isLast, dates, onDateChange,searchData, setSearchData, countryCode, defaultLocation = "", defaultGuests = "" }) {
+function SearchField({ field, tint, category, isLast, dates, onDateChange,searchData, setSearchData, countryCode, defaultLocation = "", defaultGuests = "" ,destination }) {
   // Header label above the location field used to stay permanently
   // "DESTINATION"/"LOCATION" (straight from SEARCH_CONFIG) even after
   // switching to Property mode inside the dropdown — only the placeholder
@@ -302,7 +303,7 @@ function SearchField({ field, tint, category, isLast, dates, onDateChange,search
           {field.type === "location" ? locationLabel : field.label}
         </p>
       )}
-
+{/* itemDest */}
       {field.type === "location" && (
         <LocationAutoComplete
           category={category}
@@ -320,6 +321,7 @@ function SearchField({ field, tint, category, isLast, dates, onDateChange,search
           defaultValue={defaultLocation || (typeof searchData.location === "string" ? searchData.location : searchData.location?.city)}
           onSelect={(value) => setSearchData((p) => ({ ...p, location: value }))}
           onModeChange={setLocationLabel}
+          itemDest={destination}
         />
       )}
 
