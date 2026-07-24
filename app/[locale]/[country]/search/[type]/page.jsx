@@ -46,6 +46,8 @@ import {
 
 import { findPropertyname } from "@/services/global.service";
 
+import { topDestination} from "@/services/home.service";
+
 const MAP_TOP = 72;
 const MAP_H = `calc(100vh - ${MAP_TOP}px)`;
 
@@ -104,6 +106,7 @@ export default function SearchPage() {
   const [searchLocLabel, setSearchLocLabel] = useState(
     () => searchParams.get("location") || null,
   );
+  const [destination, setDestination] = useState([]);
 
   const [searchCenter, setSearchCenter] = useState(() => {
     const la = Number(searchParams.get("lat"));
@@ -395,9 +398,12 @@ export default function SearchPage() {
   date: searchData.date,
   guests: searchData.guests,
 };
-        const [res, resProperty] = await Promise.all([
+        const regions =  localStorage.getItem("vb_preferred_location");
+
+        const [res, resProperty,resDes] = await Promise.all([
           findPropertyname(activeCategory),
           LoadProperty(payload),
+          topDestination(regions),
         ]);
 
         setLoadData(res?.data?.data ?? []);
@@ -714,6 +720,7 @@ const compare = () =>{
     setMapBounds(null);
     setMapResetKey((k) => k + 1);
   }}
+             destination={destination}
 />
           </div>
 
