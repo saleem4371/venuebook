@@ -3,10 +3,12 @@
 /**
  * BookingReviewCard.jsx
  *
- * Step 1 "Review" left-column property summary — image with category badge,
- * title/location, and an icon-grid of category-specific booking details.
- * Ported from the reference BookingSummary.vue's enhanced summary card
- * (`vb-booking-summary-enhanced`) onto the existing Tailwind design system.
+ * Step 1 "Review" left-column property summary — an icon-grid of
+ * category-specific booking details (event date, shift, guests, location…).
+ * The property image now lives at the top of the pricing sidebar
+ * (BookingSummary.jsx) instead of here. Header styled to match the
+ * "Recommended Add-ons" section (icon badge + title + subtitle) for
+ * consistency across the step 1 cards.
  *
  * Purely presentational — the pricing sidebar (BookingSummary.jsx) owns the
  * financial breakdown; this card owns the "what did I book" recap.
@@ -106,13 +108,12 @@ function useCategoryTiles(normCat, booking, bookingDetails, venueData, t, tBook)
         { icon: "calendar", label: t("check_in"), value: booking.checkIn },
         { icon: "calendar", label: t("check_out"), value: booking.checkOut },
         {
+          // booking only carries a flat `guests` count (see CheckoutClient's
+          // searchParams parsing) — there's no adults/children split coming
+          // through, so use the same guests_value format venues uses.
           icon: "users",
           label: t("guest_count"),
-          value: booking.adults
-            ? `${booking.adults} ${t("adults_short")}${
-                booking.children ? `, ${booking.children} ${t("children_short")}` : ""
-              }`
-            : null,
+          value: booking.guests ? t("guests_value", { count: booking.guests }) : null,
         },
       ];
     case "studios":
@@ -157,7 +158,6 @@ export default function BookingReviewCard({
   booking,
   bookingDetails,
   venueData,
-  images,
   loading,
 }) {
   const t = useTranslations("checkout.summary");
@@ -169,15 +169,29 @@ export default function BookingReviewCard({
     || venueData?.parent_address;
 
   if (loading) {
+    // Skeleton tile count tracks the real per-category tile set (venues: 4,
+    // farmstays/experiences: 3, studios/workspaces/rentals: 2) plus the
+    // always-present full-width location tile — so the loaded content
+    // doesn't reflow the card once real data arrives.
+    const skeletonTileCount = tiles.length;
     return (
       <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden">
-        <div className="h-40 sm:h-48 bg-gray-100 dark:bg-gray-800 animate-pulse" />
-        <div className="p-4 sm:p-5 space-y-3">
-          <div className="h-5 w-2/3 rounded bg-gray-100 dark:bg-gray-800 animate-pulse" />
+        {/* Header — icon badge + title + subtitle placeholders, matching
+            the two-line real header exactly so it doesn't grow on load. */}
+        <div className="px-4 sm:px-5 py-4 sm:py-5 border-b border-gray-100 dark:border-gray-800 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 animate-pulse shrink-0" />
+          <div className="min-w-0 space-y-1.5">
+            <div className="h-4 w-32 rounded bg-gray-100 dark:bg-gray-800 animate-pulse" />
+            <div className="h-3 w-44 rounded bg-gray-100 dark:bg-gray-800 animate-pulse" />
+          </div>
+        </div>
+        <div className="p-4 sm:p-5">
           <div className="grid grid-cols-2 gap-3">
-            {[0, 1, 2, 3].map((n) => (
+            {Array.from({ length: skeletonTileCount }).map((_, n) => (
               <div key={n} className="h-16 rounded-xl bg-gray-100 dark:bg-gray-800 animate-pulse" />
             ))}
+            {/* Location tile — always full-width in the real layout */}
+            <div className="h-16 rounded-xl bg-gray-100 dark:bg-gray-800 animate-pulse col-span-2" />
           </div>
         </div>
       </section>
@@ -189,38 +203,26 @@ export default function BookingReviewCard({
       className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden"
       aria-label={tReview("title")}
     >
-      {/* Image + category badge */}
-      <div className="relative h-40 sm:h-48 overflow-hidden bg-gray-100 dark:bg-gray-800">
-        {images?.[0] && (
-          <img
-            src={images[0]}
-            alt={venueData?.child_venue_name || venueData?.venue_name || tReview("title")}
-            className="w-full h-full object-cover"
-          />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
-        {venueData?.venue_category && (
-          <div
-            className="absolute top-3 start-3 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold text-white shadow-sm"
-            style={{ backgroundColor: tint.hex }}
-          >
-            <InfoIcon name="tag" className="h-3.5 w-3.5" />
-            {venueData.venue_category}
-          </div>
-        )}
-        <div className="absolute bottom-0 left-0 right-0 p-4 min-w-0">
-          <p className="text-xs text-white/70 font-medium truncate">{venueData?.venue_name}</p>
-          <p className="text-white font-semibold text-lg leading-tight truncate">
-            {venueData?.child_venue_name}
+      {/* Header — icon badge + title + subtitle, matching the
+          "Recommended Add-ons" section for uniformity across step 1 cards. */}
+      <div className="px-4 sm:px-5 py-4 sm:py-5 border-b border-gray-100 dark:border-gray-800 flex items-center gap-3">
+        <div
+          className="w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0"
+          style={{ backgroundColor: tint.hex }}
+        >
+          <InfoIcon name="calendar" className="w-4 h-4" />
+        </div>
+        <div className="min-w-0">
+          <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 truncate">
+            {tReview("title")}
+          </h2>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate">
+            {tReview("subtitle")}
           </p>
         </div>
       </div>
 
-      <div className="p-4 sm:p-5 space-y-4">
-        <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">
-          {tReview("title")}
-        </p>
-
+      <div className="p-4 sm:p-5">
         <div className="grid grid-cols-2 gap-3">
           {tiles.map((tile) => (
             <InfoTile key={tile.label} icon={tile.icon} label={tile.label} value={tile.value} tint={tint} />

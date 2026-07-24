@@ -104,6 +104,11 @@ export default function ClientLayout({ children }) {
   // belong on either.
   const isProfileRoute = pathname.includes("/profile");
 
+  // Account Settings is its own self-contained management module (sidebar +
+  // card content) — same reasoning as Profile, the marketing footer has no
+  // place here.
+  const isAccountSettingsRoute = pathname.includes("/account/settings");
+
   // Listing detail page: /search/[type]/[id] — has two segments after /search/
   const isListingDetailPage = /\/search\/[^/]+\/[^/]+/.test(pathname);
 
@@ -112,8 +117,18 @@ export default function ClientLayout({ children }) {
   const isVenueParentPage = /\/venue\/[^/]+\/?$/.test(pathname);
 
   // Checkout flow — the floating category switcher pill has no purpose
-  // mid-booking and overlaps the checkout header on smaller viewports.
-  const isCheckoutRoute = pathname.includes("/checkout");
+  // mid-booking and overlaps the checkout header on smaller viewports, so
+  // Navbar/BottomMenu are hidden and Footer goes compact on the wizard
+  // steps. The confirmation/success step is post-booking, not mid-flow —
+  // it gets the full global chrome (Navbar + Footer) back like any other
+  // page, so it's deliberately excluded from isCheckoutRoute below.
+  const isCheckoutSuccessRoute = /\/checkout\/[^/]+\/[^/]+\/success(?:\/|$)/.test(pathname);
+  const isCheckoutRoute = pathname.includes("/checkout") && !isCheckoutSuccessRoute;
+
+  // PAX enquiry wizard — has its own sticky header and mobile pricing bar;
+  // the global Navbar and BottomMenu should be hidden exactly like checkout.
+  // The full marketing Footer is intentionally kept.
+  const isPaxEnquiryRoute = pathname.includes("/pax-enquiry");
 
   // Extract category from /search/[type] or /search/[type]/[id] for footer copy
   const searchTypeMatch = pathname.match(/\/search\/([^/?#]+)/);
@@ -154,8 +169,12 @@ export default function ClientLayout({ children }) {
           <CategoryProvider>
             <MobileReelsProvider>
 
-              {!hideChrome && <Navbar />}
-              {!hideChrome && !isListingDetailPage && !isVenueParentPage && !isMessagesRoute && !isProfileRoute && !isCheckoutRoute && (
+              {/* Checkout owns its own header (back button + step title) and
+                  has nothing for the global nav/bottom bar to do mid-booking,
+                  so both are hidden on this route entirely — not just the
+                  floating category switcher pill. */}
+              {!hideChrome && !isCheckoutRoute && !isPaxEnquiryRoute && <Navbar />}
+              {!hideChrome && !isListingDetailPage && !isVenueParentPage && !isMessagesRoute && !isProfileRoute && !isAccountSettingsRoute && !isCheckoutRoute && !isCheckoutSuccessRoute && !isPaxEnquiryRoute && (
                 <CategoryNavigator
                   loadData={loadData}
                   fabBreakpoint={fabBreakpoint}
@@ -164,9 +183,9 @@ export default function ClientLayout({ children }) {
 
               {children}
 
-              {!hideChrome && <BottomMenu />}
-              {!hideChrome && !isSearchListPage && !isMessagesRoute && !isProfileRoute && (
-                isCheckoutRoute ? <Footer variant="compact" /> : <Footer category={pageCategory} />
+              {!hideChrome && !isCheckoutRoute && !isPaxEnquiryRoute && <BottomMenu />}
+              {!hideChrome && !isSearchListPage && !isMessagesRoute && !isProfileRoute && !isAccountSettingsRoute && (
+                (isCheckoutRoute || isPaxEnquiryRoute) ? <Footer variant="compact" /> : <Footer category={pageCategory} />
               )}
 
               {/* Consumes showReels signal from BottomMenu — works on every page */}

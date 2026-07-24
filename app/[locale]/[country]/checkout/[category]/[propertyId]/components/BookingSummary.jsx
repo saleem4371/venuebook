@@ -3,10 +3,17 @@
 /**
  * BookingSummary.jsx
  *
- * Right-column sticky pricing panel — mirrors the reference
- * pricing_summary.vue: purely the financial breakdown + terms gate + CTA.
- * The property image/booking recap now lives in BookingReviewCard.jsx
- * (step 1, left column), matching the reference's layout split.
+ * Right-column pricing panel — mirrors the reference pricing_summary.vue:
+ * purely the financial breakdown + terms gate + CTA. The property image/
+ * booking recap now lives in BookingReviewCard.jsx (step 1, left column),
+ * matching the reference's layout split.
+ *
+ * Responsive split, matching the property detail page's BookingCard.jsx
+ * pattern: on lg+ this renders as the full sticky card in the right
+ * column; below lg the full card is hidden and replaced by a fixed
+ * bottom bar (total + step-aware CTA only) — tapping the price expands
+ * a bottom sheet with the exact same breakdown content (`cardBody`,
+ * rendered once and shared by both the desktop card and the sheet).
  *
  * Contains:
  *   1. Base Price / Add-ons / Platform Fee — each its own ticket-style
@@ -20,11 +27,12 @@
  *   3. Points Redeemed — non-venue categories only, when wallet applied
  *   4. Total Payable — the one number that should visually dominate
  *   5. Loyalty reward callout (skipped for venues)
- *   6. Terms & Conditions checkbox gate (step 1 only)
+ *   6. Terms & Conditions checkbox gate (shown on both steps)
  *   7. Step-aware primary CTA (Proceed → Pay, reflects advance/full amount)
  */
 
 import { useState, useEffect, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { MEMBERSHIP_TIERS } from "@/config/checkoutConfig";
 
@@ -188,6 +196,7 @@ export default function BookingSummary({
   isProcessing,
   onPay,
   venueData,
+  images,
   booking,
   venueshifts,
   venueSettings,
@@ -201,12 +210,19 @@ export default function BookingSummary({
   paymentType = "full",
   disablePay = false,
   walletApplied = false,
+  loading = false,
 }) {
   const t = useTranslations("checkout.summary");
   const tBook = useTranslations("checkout.booking");
   const tPayment = useTranslations("checkout.payment");
   const tCta = useTranslations("checkout.cta");
   const tTerms = useTranslations("checkout.terms");
+
+  // Mobile bottom sheet — below lg, the full card is hidden and replaced by
+  // a fixed bottom bar (price + CTA only); tapping the price expands this
+  // sheet with the same breakdown content, mirroring the property detail
+  // page's BookingCard.jsx mobile pattern.
+  const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
 
   // -----------------------------
   // PRICE CALCULATION — memoized so the object identity only changes when
@@ -383,9 +399,30 @@ export default function BookingSummary({
     ...(feeGst > 0 ? [{ label: gstItemLabel, value: feeGst }] : []),
   ];
 
-  return (
-    <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden shadow-sm">
-      <div className="p-4 sm:p-5 space-y-5">
+  // Shared breakdown content — rendered once inside the desktop sticky
+  // card, and again inside the mobile bottom sheet, so both stay in sync.
+  const cardBody = (
+    <div className="p-4 sm:p-5 space-y-5">
+      {/* ── Property image — its own fully-rounded box, not clipped flush
+          against the card edge like a header banner would be. Moved here
+          from BookingReviewCard so the sidebar leads with the property. ── */}
+      {images?.[0] && (
+          <div className="relative h-32 sm:h-36 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800">
+            <img
+              src={images[0]}
+              alt={venueData?.child_venue_name || venueData?.venue_name || t("property")}
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+            <div className="absolute bottom-0 start-0 end-0 p-3 min-w-0">
+              <p className="text-[11px] text-white/70 font-medium truncate">{venueData?.venue_name}</p>
+              <p className="text-white font-semibold text-base leading-tight truncate">
+                {venueData?.child_venue_name}
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* ── Financial breakdown ──────────────────────────────────────── */}
         <div className="space-y-3">
           <BreakdownGroup
@@ -493,48 +530,60 @@ export default function BookingSummary({
           />
         )}
 
-        {/* ── Terms & Conditions checkbox gate ────────────────────────── */}
-        {/* Step 1 only — once accepted, the user proceeds to Contact & Payment. */}
-        {currentStep === 1 && (
+        {/* ── Terms & Conditions checkbox gate ──────────────────────────
+            Shown on both steps now (not just step 1) — still gates
+            Proceed on step 1, and also gates Pay on step 2 via disablePay
+            so unchecking it there still blocks payment.
+
+            Tick mark and label are separate click targets now:
+              - Tick mark: unticked → opens the Terms modal (only the
+                modal's Accept button actually sets termsAccepted); ticked
+                → unticks it directly, no modal.
+              - Label text: unticked → also opens the modal (still a way to
+                get there); ticked → inert, does nothing. Untick only ever
+                happens via the tick mark itself, never by tapping the text. */}
+        <div className="flex w-full items-start gap-3 text-start">
           <button
             type="button"
-            onClick={() => onToggleTerms?.(!termsAccepted)}
-            className="flex w-full items-start gap-3 text-start"
+            role="checkbox"
+            aria-checked={termsAccepted}
+            aria-label={tTerms("agree_checkbox_aria")}
+            onClick={() => { termsAccepted ? onToggleTerms?.(false) : onOpenTerms?.("terms"); }}
+            className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 transition-colors ${
+              termsAccepted ? "border-transparent text-white" : "border-gray-300 dark:border-gray-600"
+            }`}
+            style={termsAccepted ? { backgroundColor: tint.hex } : undefined}
           >
-            <span
-              className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 transition-colors ${
-                termsAccepted ? "border-transparent text-white" : "border-gray-300 dark:border-gray-600"
-              }`}
-              style={termsAccepted ? { backgroundColor: tint.hex } : undefined}
-            >
-              {termsAccepted && (
-                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M20 6L9 17l-5-5" />
-                </svg>
-              )}
-            </span>
-            <span className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
-              {tTerms("agree_prefix")}{" "}
-              <span
-                role="link"
-                tabIndex={0}
-                onClick={(e) => { e.stopPropagation(); onOpenTerms?.("terms"); }}
-                className="font-medium underline underline-offset-2 hover:text-gray-700 dark:hover:text-gray-200"
-              >
-                {tTerms("agree_terms_link")}
-              </span>{" "}
-              {tTerms("agree_and")}{" "}
-              <span
-                role="link"
-                tabIndex={0}
-                onClick={(e) => { e.stopPropagation(); onOpenTerms?.("cancellation"); }}
-                className="font-medium underline underline-offset-2 hover:text-gray-700 dark:hover:text-gray-200"
-              >
-                {tTerms("agree_cancellation_link")}
-              </span>
-            </span>
+            {termsAccepted && (
+              <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M20 6L9 17l-5-5" />
+              </svg>
+            )}
           </button>
-        )}
+          <span
+            onClick={() => { if (!termsAccepted) onOpenTerms?.("terms"); }}
+            className={`text-xs text-gray-500 dark:text-gray-400 leading-relaxed ${!termsAccepted ? "cursor-pointer" : ""}`}
+          >
+            {tTerms("agree_prefix")}{" "}
+            <span
+              role="link"
+              tabIndex={0}
+              onClick={(e) => { e.stopPropagation(); onOpenTerms?.("terms"); }}
+              className="font-medium underline underline-offset-2 hover:text-gray-700 dark:hover:text-gray-200"
+            >
+              {tTerms("agree_terms_link")}
+            </span>{" "}
+            {tTerms("agree_and")}{" "}
+            <span
+              role="link"
+              tabIndex={0}
+              onClick={(e) => { e.stopPropagation(); onOpenTerms?.("cancellation"); }}
+              className="font-medium underline underline-offset-2 hover:text-gray-700 dark:hover:text-gray-200"
+            >
+              {tTerms("agree_cancellation_link")}
+            </span>
+          </span>
+        </div>
 
         {/* ── CTA button ───────────────────────────────────────────────── */}
         {currentStep === 1 ? (
@@ -577,7 +626,143 @@ export default function BookingSummary({
         {currentStep === 1 && (
           <p className="text-center text-xs text-gray-400 dark:text-gray-500">{t("no_charge_note")}</p>
         )}
-      </div>
     </div>
+  );
+
+  // Skeleton — venueData/venueshifts haven't loaded yet, so `summary` above
+  // is computed from empty/zeroed inputs (real ₹0 base price, a flat
+  // convenience-fee-only total, etc.) rather than the real invoice. Showing
+  // that half-real, half-zero UI (and a clickable CTA/redeem control) looks
+  // broken, so this mirrors BookingReviewCard/AddOnsSection's pulse-block
+  // pattern instead — same shape as cardBody, no live numbers or controls.
+  const skeletonBody = (
+    <div className="p-4 sm:p-5 space-y-5">
+      <div className="h-32 sm:h-36 rounded-xl bg-gray-100 dark:bg-gray-800 animate-pulse" />
+
+      <div className="space-y-3">
+        {[0, 1, 2].map((n) => (
+          <div key={n} className="flex items-center justify-between gap-2">
+            <div className="h-3.5 w-24 rounded bg-gray-100 dark:bg-gray-800 animate-pulse" />
+            <div className="h-3.5 w-14 rounded bg-gray-100 dark:bg-gray-800 animate-pulse" />
+          </div>
+        ))}
+
+        <div className="flex items-center justify-between gap-2 pt-3 mt-1 border-t-2 border-gray-100 dark:border-gray-800">
+          <div className="h-4 w-20 rounded bg-gray-100 dark:bg-gray-800 animate-pulse" />
+          <div className="h-5 w-24 rounded bg-gray-100 dark:bg-gray-800 animate-pulse" />
+        </div>
+      </div>
+
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5 h-5 w-5 shrink-0 rounded-md bg-gray-100 dark:bg-gray-800 animate-pulse" />
+        <div className="flex-1 space-y-1.5 pt-0.5">
+          <div className="h-3 w-full rounded bg-gray-100 dark:bg-gray-800 animate-pulse" />
+          <div className="h-3 w-2/3 rounded bg-gray-100 dark:bg-gray-800 animate-pulse" />
+        </div>
+      </div>
+
+      <div className="h-11 w-full rounded-xl bg-gray-100 dark:bg-gray-800 animate-pulse" />
+    </div>
+  );
+
+  return (
+    <>
+      {/* ── DESKTOP — full sticky card, unchanged ── */}
+      <div className="hidden lg:block rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden shadow-sm">
+        {loading ? skeletonBody : cardBody}
+      </div>
+
+      {/* ── MOBILE — fixed bottom bar (price + CTA only), matching the
+          property detail page's BookingCard.jsx mobile pattern. Tapping
+          the price opens a bottom sheet with the full breakdown below. ── */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 px-4 py-3 shadow-[0_-4px_24px_rgba(0,0,0,0.08)]">
+        {loading ? (
+          <div className="flex items-center gap-3">
+            <div className="flex-1 space-y-1.5">
+              <div className="h-2.5 w-16 rounded bg-gray-100 dark:bg-gray-800 animate-pulse" />
+              <div className="h-5 w-24 rounded bg-gray-100 dark:bg-gray-800 animate-pulse" />
+            </div>
+            <div className="h-11 w-32 shrink-0 rounded-xl bg-gray-100 dark:bg-gray-800 animate-pulse" />
+          </div>
+        ) : (
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setMobileSheetOpen(true)}
+            className="flex-1 min-w-0 text-start"
+          >
+            <p className="text-[11px] text-gray-400 dark:text-gray-500">{t("total")}</p>
+            <p className="text-lg font-extrabold text-gray-900 dark:text-gray-100 truncate">
+              {format(finalTotal)}
+            </p>
+          </button>
+
+          {currentStep === 1 ? (
+            <button
+              type="button"
+              onClick={onProceed}
+              disabled={!termsAccepted}
+              className="shrink-0 py-3 px-5 rounded-xl text-white text-sm font-semibold disabled:opacity-40 transition-all"
+              style={{ backgroundColor: tint.hex }}
+            >
+              {t("proceed_to_checkout")}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onPay}
+              disabled={isProcessing || disablePay}
+              className="shrink-0 py-3 px-5 rounded-xl text-white text-sm font-semibold disabled:opacity-70 transition-all"
+              style={{ backgroundColor: tint.hex }}
+            >
+              {isProcessing ? (
+                <span className="flex items-center gap-2">
+                  <svg className="animate-spin h-4 w-4 text-white shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  {tPayment("processing")}
+                </span>
+              ) : (
+                <span className="whitespace-nowrap">
+                  {tCta(ctaKey)} · {format(payableNow)}
+                </span>
+              )}
+            </button>
+          )}
+        </div>
+        )}
+      </div>
+
+      {/* ── MOBILE — bottom sheet, same breakdown as the desktop card ── */}
+      <AnimatePresence>
+        {mobileSheetOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => setMobileSheetOpen(false)}
+              className="lg:hidden fixed inset-0 bg-black/50 z-[100]"
+            />
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ duration: 0.28, ease: [0.32, 0.72, 0, 1] }}
+              className="lg:hidden fixed bottom-0 left-0 right-0 z-[101] bg-white dark:bg-gray-900 rounded-t-3xl max-h-[85vh] overflow-y-auto"
+            >
+              <div className="w-10 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full mx-auto my-3" />
+              {loading ? skeletonBody : cardBody}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Reserves space at the bottom of the mobile page flow so the fixed
+          bar above doesn't cover the last bit of content behind it. */}
+      <div className="lg:hidden h-20" />
+    </>
   );
 }

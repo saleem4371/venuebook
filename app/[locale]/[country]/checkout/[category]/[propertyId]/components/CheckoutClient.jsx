@@ -7,7 +7,9 @@
  * real time, and composes the 2-step wizard + sticky pricing sidebar.
  *
  * Architecture:
- *   - CheckoutProgressSteps → 3-step indicator (step 3 = the separate /success route)
+ *   - Sticky header → back button + step-aware title + "Step X of 2" label
+ *                      over a thin animated progress line (step 3 = the
+ *                      separate /success route, not in-page state)
  *   - Step 1 "Review"   → BookingReviewCard → Wallet (skipped for venues) →
  *                          AddOns
  *   - Step 2 "Checkout" → ContactForm → PaymentOptions (when advance payment
@@ -57,7 +59,6 @@ import BookingSummary from "./BookingSummary";
 import BookingReviewCard from "./BookingReviewCard";
 import ContactForm from "./ContactForm";
 import PaymentOptionsSection from "./PaymentOptionsSection";
-import CheckoutProgressSteps from "./CheckoutProgressSteps";
 import TermsModal from "./TermsModal";
 
 /* ─── Mock data (replace with API calls in production) ─────────────── */
@@ -131,7 +132,11 @@ export default function CheckoutClient({ locale, country, category, propertyId }
   /* ── Wallet state ─────────────────────────────────────────────────── */
   const walletPointsTotal = MOCK_WALLET.points;
   const walletValueINR = walletPointsTotal * INR_PER_POINT;
-  const [walletApplied, setWalletApplied] = useState(false);
+  // Absolute ₹ amount to redeem — None/50%/Max presets just set this to a
+  // computed value; Custom lets the guest type any amount up to
+  // financials.maxRedeemableINR. Replaces the old all-or-nothing toggle.
+  const [redeemAmountINR, setRedeemAmountINR] = useState(0);
+  const walletApplied = redeemAmountINR > 0;
 
   /* ── Add-ons state ───────────────────────────────────────────────── */
   // const [selectedAddOns, setSelectedAddOns] = useState(new Set());
@@ -264,9 +269,11 @@ const toggleAddOn = (addon, action = "toggle") => {
       Math.round(subtotalWithFees * MAX_WALLET_REDEMPTION_PERCENT)
     );
 
-    const rewardDiscountINR = walletApplied ? maxRedeemableINR : 0;
-    const pointsUsed = walletApplied
-      ? Math.ceil(maxRedeemableINR / INR_PER_POINT)
+    // Clamped so a stale custom amount (e.g. after addons change and lower
+    // the max) can never discount more than the current maxRedeemableINR.
+    const rewardDiscountINR = Math.min(redeemAmountINR, maxRedeemableINR);
+    const pointsUsed = rewardDiscountINR > 0
+      ? Math.ceil(rewardDiscountINR / INR_PER_POINT)
       : 0;
 
     const depositINR = catConfig.depositApplies ? (catConfig.depositAmountINR ?? 5000) : 0;
@@ -289,7 +296,7 @@ const toggleAddOn = (addon, action = "toggle") => {
       totalINR,
       pointsEarned,
     };
-  }, [selectedAddOns, walletApplied, catConfig, walletValueINR, walletPointsTotal]);
+  }, [selectedAddOns, redeemAmountINR, catConfig, walletValueINR, walletPointsTotal]);
 
   /* ── Tier progress ───────────────────────────────────────────────── */
   const currentTier = getMembershipTier(walletPointsTotal);
@@ -519,46 +526,59 @@ const handlePayment = async () => {
 
 
   return (
-    <div className="min-h-screen pt-16 md:pt-[72px] bg-white dark:bg-gray-950">
+    <div className="min-h-screen bg-white dark:bg-gray-950">
 
        <Script
         src="https://checkout.razorpay.com/v1/checkout.js"
         strategy="lazyOnload"
       />
-      {/* ── Main content ───────────────────────────────────────────────
-          Back button + title live inline with the content column instead
-          of a separate bordered/backdrop-blurred bar — no boxed strip,
-          just flush with the page background. */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-5 pb-6 sm:pb-8 lg:pb-12">
-        <div className="flex items-center gap-3 mb-6 sm:mb-8 lg:mb-12">
-          <button
-            onClick={handleHeaderBack}
-            className="shrink-0 flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-            aria-label="Go back"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-4 w-4 text-gray-700 dark:text-gray-300 rtl:rotate-180"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
+      {/* ── Sticky header ────────────────────────────────────────────────
+          Dropped the 3-circle stepper entirely for a different pattern:
+          back + title on one line, a plain "Step X of 2" label, and a thin
+          animated progress line as the bar's own bottom edge — no crowded
+          row of circles/connectors fighting the title for space at any
+          width. Now that the global Navbar/BottomMenu are hidden on
+          /checkout, this docks at top-0 and stays put while the columns
+          below scroll. */}
+      <div className="sticky top-0 z-40 bg-white/95 dark:bg-gray-950/95 backdrop-blur-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 sm:py-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              onClick={handleHeaderBack}
+              className="shrink-0 flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+              aria-label="Go back"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          <div className="min-w-0">
-            <h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 truncate">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4 text-gray-700 dark:text-gray-300 rtl:rotate-180"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <h1 className="text-base sm:text-lg font-bold text-gray-900 dark:text-gray-100 truncate">
               {currentStep === 1 ? t("review_title") : t("title")}
             </h1>
-            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5 truncate">
-              {currentStep === 1 ? t("review_subtitle") : t("checkout_subtitle")}
-            </p>
           </div>
+
+          <p className="shrink-0 text-xs sm:text-sm font-semibold text-gray-400 dark:text-gray-500 whitespace-nowrap">
+            {t("step_of", { current: currentStep, total: 2 })}
+          </p>
         </div>
 
-        <CheckoutProgressSteps tint={tint} currentStep={currentStep} onStepClick={goToStep} />
+        <div className="h-[3px] w-full bg-gray-100 dark:bg-gray-800">
+          <div
+            className="h-full rounded-e-full transition-all duration-300 ease-out"
+            style={{ width: `${(currentStep / 2) * 100}%`, backgroundColor: tint.hex }}
+          />
+        </div>
+      </div>
 
+      {/* ── Main content ─────────────────────────────────────────────── */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
         <div className="flex flex-col lg:flex-row gap-4 sm:gap-5 lg:gap-6 items-start">
 
           {/* ── LEFT COLUMN ─────────────────────────────────────────── */}
@@ -573,7 +593,6 @@ const handlePayment = async () => {
                   booking={booking}
                   bookingDetails={bookingDetails}
                   venueData={venueData}
-                  images={images}
                   loading={addonsLoading}
                 />
 
@@ -585,12 +604,13 @@ const handlePayment = async () => {
                     pointsTotal={walletPointsTotal}
                     walletValueINR={walletValueINR}
                     maxRedeemableINR={financials.maxRedeemableINR}
-                    walletApplied={walletApplied}
-                    onToggleWallet={setWalletApplied}
+                    redeemAmountINR={redeemAmountINR}
+                    onSelectRedeemAmount={setRedeemAmountINR}
                     rewardDiscountINR={financials.rewardDiscountINR}
                     remainingPoints={financials.remainingPoints}
                     currentTier={currentTier}
                     format={format}
+                    loading={addonsLoading}
                   />
                 )}
 
@@ -643,6 +663,7 @@ const handlePayment = async () => {
               isProcessing={isProcessing}
               onPay={handlePayment}
               venueData={venueData}
+              images={images}
               booking={booking}
               venueshifts={venueshifts}
               venueSettings={venueSettings}
@@ -654,8 +675,9 @@ const handlePayment = async () => {
               onToggleTerms={setTermsAccepted}
               onProceed={handleProceedToCheckout}
               paymentType={paymentType}
-              disablePay={currentStep === 2 && !isContactValid}
+              disablePay={currentStep === 2 && (!isContactValid || !termsAccepted)}
               walletApplied={walletApplied}
+              loading={addonsLoading}
             />
           </div>
         </div>
@@ -671,7 +693,7 @@ const handlePayment = async () => {
         privacyText={LEGAL_DEFAULTS.privacyText}
         cancellationText={catConfig.cancellationText}
         cancellationRule={catConfig.cancellationRule}
-        onAccept={currentStep === 1 ? () => setTermsAccepted(true) : undefined}
+        onAccept={() => setTermsAccepted(true)}
       />
     </div>
   );
