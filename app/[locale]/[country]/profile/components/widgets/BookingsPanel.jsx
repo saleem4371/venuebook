@@ -36,6 +36,20 @@
  * a small icon+title card with a single empty-state message, matching its
  * new neighbors (Identity/Messages/Offers) instead of trying to fill a
  * whole column the way the center placement does.
+ *
+ * `embedded` — used when this sits BELOW the new Greeting/Reels/Suggestions
+ * feed in the center column (see page.jsx) instead of being the column's
+ * sole content. In that layout the CENTER COLUMN ITSELF owns the one
+ * scrollbar for the whole feed, so this drops its own internal
+ * `flex-1 min-h-0 overflow-y-auto` scroll ownership and just flows
+ * naturally underneath — no nested/double scrollbars.
+ *
+ * This is also what renders (non-compact, non-embedded) when GreetingBar's
+ * "Bookings" pill toggles `showFullBookings` on, filling the whole center
+ * column on its own — the pill itself (icon/label swaps to "Back to
+ * Feed") is the only way back, so this has no back button of its own
+ * beyond the unrelated manage-view one above (out of a single booking's
+ * detail, not out of this whole panel).
  */
 
 import { useMemo, useState } from "react";
@@ -52,7 +66,7 @@ import { ManageBookingView } from "../shared/ManageBookingView";
 import BookingTabs, { filterBookingsByTab } from "../shared/BookingTabs";
 import { MOCK_BOOKINGS, CATEGORY_COLORS } from "../../data/mockProfileData";
 
-export default function BookingsPanel({ compact = false, flat = false }) {
+export default function BookingsPanel({ compact = false, flat = false, embedded = false }) {
   const t = useTranslations("profile.bookings");
   const tCat = useTranslations("card.badge");
   const { locale, country } = useParams();
@@ -69,6 +83,12 @@ export default function BookingsPanel({ compact = false, flat = false }) {
   const bookings = useMemo(() => filterBookingsByTab(allBookings, activeTab), [allBookings, activeTab]);
 
   if (compact) {
+    // Real data, not an assumed-empty placeholder — `compact` used to only
+    // ever render when there were zero bookings anywhere (the old
+    // hasBookings swap), so an unconditional EmptyState was correct then.
+    // Now it's the permanent LEFT-column card regardless of whether real
+    // bookings exist (see page.jsx), so it needs to actually check.
+    const preview = allBookings.slice(0, 2);
     return (
       <SectionCard flat={flat}>
         <SectionHeading
@@ -80,20 +100,50 @@ export default function BookingsPanel({ compact = false, flat = false }) {
             </span>
           }
         />
-        <EmptyState
-          icon={<PackageSearch size={18} className="text-violet-600" />}
-          title={t("empty.byTab.all.title")}
-          subtitle={t("empty.byTab.all.subtitle")}
-          ctaLabel={t("empty.cta")}
-          ctaHref={`/${locale}/${country}/search/venues`}
-          compact
-        />
+        {preview.length === 0 ? (
+          <EmptyState
+            icon={<PackageSearch size={18} className="text-violet-600" />}
+            title={t("empty.byTab.all.title")}
+            subtitle={t("empty.byTab.all.subtitle")}
+            ctaLabel={t("empty.cta")}
+            ctaHref={`/${locale}/${country}/search/venues`}
+            compact
+          />
+        ) : (
+          <div className="space-y-2">
+            {preview.map((b) => (
+              <div key={b.bookingId} className="flex items-center gap-2.5">
+                <img src={b.image} alt="" className="w-9 h-9 rounded-lg object-cover shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11.5px] font-semibold text-gray-900 dark:text-gray-50 truncate">
+                    {b.propertyName}
+                  </p>
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate">{b.date}</p>
+                </div>
+                <StatusBadge
+                  label={t(`status.${b.bookingStatus}`)}
+                  tone={STATUS_TONE[b.bookingStatus]}
+                  className="shrink-0"
+                />
+              </div>
+            ))}
+            {allBookings.length > preview.length && (
+              <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center pt-1">
+                +{allBookings.length - preview.length} more
+              </p>
+            )}
+          </div>
+        )}
       </SectionCard>
     );
   }
 
   return (
-    <SectionCard flat={flat} className="flex flex-col min-h-0 flex-1" padded={false}>
+    <SectionCard
+      flat={flat}
+      className={embedded ? "flex flex-col" : "flex flex-col min-h-0 flex-1"}
+      padded={false}
+    >
       {manageBooking ? (
         <div className="p-4 pb-0 flex items-center gap-3">
           <button
@@ -137,7 +187,7 @@ export default function BookingsPanel({ compact = false, flat = false }) {
       )}
 
       {manageBooking ? (
-        <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-4 pt-3">
+        <div className={embedded ? "px-4 pb-4 pt-3" : "flex-1 min-h-0 overflow-y-auto px-4 pb-4 pt-3"}>
           <ManageBookingView
             booking={manageBooking}
             t={t}
@@ -156,18 +206,18 @@ export default function BookingsPanel({ compact = false, flat = false }) {
         // room the panel has instead of sitting at its own compact height —
         // EmptyState's own items-center/justify-center then centers the
         // icon/title/subtitle/CTA within that full height, not just at top.
-        <div className="flex-1 min-h-0 flex flex-col px-4 pb-4 pt-3">
+        <div className={embedded ? "px-4 pb-4 pt-3" : "flex-1 min-h-0 flex flex-col px-4 pb-4 pt-3"}>
           <EmptyState
             icon={<PackageSearch size={20} className="text-violet-600" />}
             title={t(`empty.byTab.${activeTab}.title`)}
             subtitle={t(`empty.byTab.${activeTab}.subtitle`)}
             ctaLabel={t("empty.cta")}
             ctaHref={`/${locale}/${country}/search/venues`}
-            fill
+            fill={!embedded}
           />
         </div>
       ) : (
-        <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-4 pt-3 space-y-3">
+        <div className={embedded ? "px-4 pb-4 pt-3 space-y-3" : "flex-1 min-h-0 overflow-y-auto px-4 pb-4 pt-3 space-y-3"}>
           {bookings.map((b) => (
             <BookingCard
               key={b.bookingId}

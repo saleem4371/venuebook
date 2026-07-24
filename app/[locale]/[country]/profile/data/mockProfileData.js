@@ -383,7 +383,235 @@ export const MOCK_OFFERS = [
     colorFrom: "#EA580C",
     colorTo: "#FB923C",
   },
+  {
+    id: "off-studio-flash",
+    title: "Flash Sale — Studios",
+    subtitle: "Limited slots, book within 24 hrs",
+    tag: "STUDIO15",
+    colorFrom: "#2563EB",
+    colorTo: "#3B82F6",
+  },
+  {
+    id: "off-workspace-day",
+    title: "Workspace Day Pass",
+    subtitle: "Extra 10% off day passes",
+    tag: "WORK10",
+    colorFrom: "#0D9488",
+    colorTo: "#14B8A6",
+  },
+  {
+    id: "off-referral",
+    title: "Refer & Earn",
+    subtitle: "Get ₹500 for every friend who books",
+    tag: "REFER500",
+    colorFrom: "#DB2777",
+    colorTo: "#EC4899",
+  },
+  {
+    id: "off-longstay",
+    title: "Long Stay Discount",
+    subtitle: "7+ nights, save 18%",
+    tag: "LONG18",
+    colorFrom: "#4F46E5",
+    colorTo: "#6366F1",
+  },
+  {
+    id: "off-firstbooking",
+    title: "First Booking Bonus",
+    subtitle: "New here? Get flat ₹300 off",
+    tag: "FIRST300",
+    colorFrom: "#D97706",
+    colorTo: "#F59E0B",
+  },
+  {
+    id: "off-festive",
+    title: "Festive Season Special",
+    subtitle: "Up to 25% off select venues",
+    tag: "FEST25",
+    colorFrom: "#DC2626",
+    colorTo: "#EF4444",
+  },
+  {
+    id: "off-loyalty",
+    title: "Loyalty Member Deal",
+    subtitle: "Extra 5% off for Gold+ members",
+    tag: "LOYAL5",
+    colorFrom: "#0891B2",
+    colorTo: "#06B6D4",
+  },
 ];
+
+/**
+ * MOCK_REELS — a deliberate, even spread across ALL six categories (2
+ * each), unlike MOCK_BOOKINGS above which only has venues + farmstays.
+ * ReelsForYouSection.jsx (the Profile page's "Reels for you" rail) reads
+ * from this instead of the live `recommended`/Api_recommeded venues list —
+ * that API call is location-scoped and can legitimately come back thin or
+ * single-category for a given location, which made the rail read as
+ * "category-wise" (whatever the API happened to return) rather than the
+ * cross-category mix the page is supposed to show regardless of category.
+ * `getRandomReels()` below shuffles this pool on each mount so the rail
+ * shows a random cross-category selection every visit, never locked to
+ * one category.
+ *
+ * Field names match what ReelsForYouSection.jsx / the real ReelCard
+ * component already read from a venue object: childVenueId, category,
+ * venueName, images[0] (cover), city/state, rating, minPrice. No
+ * `videoUrl` here — ReelsForYouSection already falls back to
+ * getDemoVideoUrl(category, i) for any venue without one, exactly as it
+ * does for real API venues, so this mock pool goes through the same path.
+ */
+export const MOCK_REELS = [
+  // venues
+  {
+    childVenueId: "reel-venue-1",
+    category: "venues",
+    venueName: "Emerald Gardens Banquet",
+    images: ["https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=600&q=80"],
+    city: "Bengaluru",
+    state: "Karnataka",
+    rating: 4.6,
+    minPrice: 9800,
+  },
+  {
+    childVenueId: "reel-venue-2",
+    category: "venues",
+    venueName: "Regal Heights Convention Hall",
+    images: ["https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=600&q=80"],
+    city: "Chennai",
+    state: "Tamil Nadu",
+    rating: 4.4,
+    minPrice: 18500,
+  },
+  // farmstays
+  {
+    childVenueId: "reel-farmstay-1",
+    category: "farmstays",
+    venueName: "Whispering Pines Farmstay",
+    images: ["https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=600&q=80"],
+    city: "Coorg",
+    state: "Karnataka",
+    rating: 4.8,
+    minPrice: 3200,
+  },
+  {
+    childVenueId: "reel-farmstay-2",
+    category: "farmstays",
+    venueName: "Sunflower Valley Farmstay",
+    images: ["https://images.unsplash.com/photo-1500076656116-558758c991c1?w=600&q=80"],
+    city: "Nashik",
+    state: "Maharashtra",
+    rating: 4.5,
+    minPrice: 4100,
+  },
+  // studios
+  {
+    childVenueId: "reel-studio-1",
+    category: "studios",
+    venueName: "Lumina Photo Studio",
+    images: ["https://images.unsplash.com/photo-1598550874175-4d0ef436c909?w=600&q=80"],
+    city: "Mumbai",
+    state: "Maharashtra",
+    rating: 4.7,
+    minPrice: 2500,
+  },
+  {
+    childVenueId: "reel-studio-2",
+    category: "studios",
+    venueName: "Soundwave Recording Studio",
+    images: ["https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=600&q=80"],
+    city: "Bengaluru",
+    state: "Karnataka",
+    rating: 4.6,
+    minPrice: 1800,
+  },
+  // workspaces
+  {
+    childVenueId: "reel-workspace-1",
+    category: "workspaces",
+    venueName: "Nexus Co-working Hub",
+    images: ["https://images.unsplash.com/photo-1497366216548-37526070297c?w=600&q=80"],
+    city: "Hyderabad",
+    state: "Telangana",
+    rating: 4.3,
+    minPrice: 600,
+  },
+  {
+    childVenueId: "reel-workspace-2",
+    category: "workspaces",
+    venueName: "The Grid Business Lounge",
+    images: ["https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=600&q=80"],
+    city: "Pune",
+    state: "Maharashtra",
+    rating: 4.5,
+    minPrice: 750,
+  },
+  // rentals
+  {
+    childVenueId: "reel-rental-1",
+    category: "rentals",
+    venueName: "Lakeview Holiday Villa",
+    images: ["https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=600&q=80"],
+    city: "Udaipur",
+    state: "Rajasthan",
+    rating: 4.9,
+    minPrice: 12000,
+  },
+  {
+    childVenueId: "reel-rental-2",
+    category: "rentals",
+    venueName: "Skyline Serviced Apartment",
+    images: ["https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=600&q=80"],
+    city: "Gurugram",
+    state: "Haryana",
+    rating: 4.4,
+    minPrice: 5400,
+  },
+  // experiences
+  {
+    childVenueId: "reel-experience-1",
+    category: "experiences",
+    venueName: "Sunset Kayaking Experience",
+    images: ["https://images.unsplash.com/photo-1502920917128-1aa500764cbd?w=600&q=80"],
+    city: "Panaji",
+    state: "Goa",
+    rating: 4.8,
+    minPrice: 1500,
+  },
+  {
+    childVenueId: "reel-experience-2",
+    category: "experiences",
+    venueName: "Heritage Walking Tour",
+    images: ["https://images.unsplash.com/photo-1524492412937-b28074a5d7da?w=600&q=80"],
+    city: "Jaipur",
+    state: "Rajasthan",
+    rating: 4.6,
+    minPrice: 900,
+  },
+];
+
+/**
+ * Fisher-Yates shuffle — used only for the random reels pick below, kept
+ * local rather than pulled in as a dependency for one use site.
+ */
+function shuffle(arr) {
+  const copy = [...arr];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
+/**
+ * Returns a random selection spanning every category, not just whichever
+ * one happens to sort first — shuffles the whole pool then takes the
+ * first `count`, so repeated calls (e.g. a fresh page load) surface a
+ * different mix each time instead of a fixed order.
+ */
+export function getRandomReels(count = 8) {
+  return shuffle(MOCK_REELS).slice(0, count);
+}
 
 export const MOCK_NOTIFICATIONS = [
   {
