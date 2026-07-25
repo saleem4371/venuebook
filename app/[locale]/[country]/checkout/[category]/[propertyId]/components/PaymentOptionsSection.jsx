@@ -15,7 +15,7 @@
 
 import { useTranslations } from "next-intl";
 
-function PaymentOptionCard({ selected, onSelect, title, amount, description }) {
+function PaymentOptionCard({ selected, onSelect, title, amount, description,booking }) {
   return (
     <div
       role="radio"
@@ -59,6 +59,7 @@ export default function PaymentOptionsSection({
   paymentType,
   onChangePaymentType,
   dueDateLabel,
+  booking
 }) {
   const t = useTranslations("checkout.payment_options");
 
@@ -66,6 +67,8 @@ export default function PaymentOptionsSection({
   const remainingAmount = Math.max((total || 0) - advanceAmount, 0);
 
   return (
+    <>
+     {booking.bookingType !== "reserve" && (
     <section
       className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden"
       aria-label={t("title")}
@@ -143,5 +146,7 @@ export default function PaymentOptionsSection({
         )}
       </div>
     </section>
+     )}
+    </>
   );
 }

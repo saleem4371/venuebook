@@ -351,7 +351,7 @@ export default function BookingSummary({
     ? Math.round(finalTotal * ((catConfig?.advancePercent ?? 30) / 100))
     : finalTotal;
   const remainingAmount = Math.max(finalTotal - advanceAmount, 0);
-  const payableNow = currentStep === 2 && paymentType === "advance" ? advanceAmount : finalTotal;
+  const payableNow =  booking.bookingType !== "reserve" ? (currentStep === 2 && paymentType === "advance" ? advanceAmount : finalTotal) : booking.reserveAmount;
 
   /* ── Breakdown group contents ────────────────────────────────────────
      Every group below shows a GROSS total (net + its own GST slice), with
@@ -483,7 +483,7 @@ export default function BookingSummary({
                 </span>
               </div>
             </div>
-          )}
+          )} 
 
           {/* Points redeemed — non-venue categories only, when wallet applied */}
           {pointsDiscount > 0 && (
@@ -516,7 +516,21 @@ export default function BookingSummary({
               </div>
             </div>
           )}
-        </div>
+
+
+            {booking.bookingType === "reserve" && (
+            <div className="mt-2 rounded-xl p-3 space-y-1 text-xs" style={{ backgroundColor: tint.light }}>
+              <div className="flex items-center justify-between gap-2">
+                <span style={{ color: tint.hex }}>Reserve Amount </span>
+                <span className="font-semibold" style={{ color: tint.hex }}>{format(booking.reserveAmount)} </span>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span style={{ color: tint.hex }}>Reserve Till date </span>
+                <span className="font-semibold" style={{ color: tint.hex }}>{booking.reserveEndDate} </span>
+              </div>
+            </div>
+          )}
+        </div> 
 
         {/* ── Loyalty callout ──────────────────────────────────────────── */}
         {/* Venue bookings don't surface the loyalty/points program on checkout;

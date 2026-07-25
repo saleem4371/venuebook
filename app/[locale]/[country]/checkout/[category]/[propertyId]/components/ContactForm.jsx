@@ -1,5 +1,8 @@
 "use client";
 
+import { useAuth }         from "@/context/AuthContext";
+
+import {  useEffect } from "react";
 /**
  * ContactForm.jsx
  *
@@ -31,6 +34,26 @@ function FieldWrapper({ label, required, error, children }) {
 
 export default function ContactForm({ tint, formData, errors, onChange, onBlur }) {
   const t = useTranslations("checkout.contact");
+
+
+    const { user } = useAuth();
+
+useEffect(() => {
+  if (!user) return;
+
+  if (!formData.fullName && user.name) {
+    onChange("fullName", user.name);
+  }
+
+  if (!formData.email && user.email) {
+    onChange("email", user.email);
+  }
+
+  if (!formData.phone && user.phone) {
+    onChange("phone", user.phone);
+  }
+}, [user]);
+  
 
   const borderClass = (field) =>
     errors?.[field]

@@ -120,6 +120,8 @@ export default function CheckoutClient({ locale, country, category, propertyId }
     category: searchParams.get("category"),
     checkIn: searchParams.get("checkIn"),
     checkOut: searchParams.get("checkOut"),
+    reserveEndDate: searchParams.get("reserveEndDate"),
+    reserveAmount: searchParams.get("reserveAmount"),
   };
 
   console.log(venueshifts);
@@ -387,17 +389,15 @@ const handlePayment = async () => {
    
     check_in: booking.checkIn,
     check_out: booking.checkOut,
+    reservation_end_date: booking.bookingType === "reserve" ? booking.reserveEndDate : null,
   },
 
   customer: {
-    // name: bookingDetails.name,
-    // email: bookingDetails.email,
-    // phone: bookingDetails.phone,
-    // address: bookingDetails.address,
-    name: 'Saleem',
-    email: 'vb.develop1@gmail.com',
-    phone: '8147484371',
-    address: 'Address',
+     name: contactForm.fullName,
+    email: contactForm.email,
+    phone: contactForm.phone,
+    organization: contactForm.organization,
+    specialRequests: contactForm.specialRequests,
   },
 
   addons: Array.from(selectedAddOns.values()).map((item) => ({
@@ -418,12 +418,13 @@ const handlePayment = async () => {
     securityDeposit: paymentSummarys?.securityDeposit,
     wallet_discount: financials.rewardDiscountINR,
     grand_total: paymentSummarys?.grandTotal,
+    estimated_total:booking.bookingType === "reserve" ? booking.reserveAmount : 0 ,
   },
 };
   try {
     setIsProcessing(true);
 
-    const amount = paymentSummarys?.grandTotal ?? financials.totalINR;
+    const amount = booking.bookingType === "reserve" ? booking.reserveAmount : paymentSummarys?.grandTotal ?? financials.totalINR;
 
     const order = await createOrder({
       amount,
@@ -442,7 +443,7 @@ const handlePayment = async () => {
 
       order_id: order.id, // IMPORTANT
 
-      name: "VenueBook",
+      name: "venuebook.in",
       description: "Venue Booking",
 
       handler: async function (response) {
@@ -466,10 +467,10 @@ const handlePayment = async () => {
         }
       },
 
-      prefill: {
-        name: "Saleem",
-        email: "vb.develop1@gmail.com",
-        contact: "8147484371",
+       prefill: {
+        name: contactForm.fullName,
+        email: contactForm.email,
+        contact: contactForm.phone,
       },
 
       theme: {
@@ -645,6 +646,7 @@ const handlePayment = async () => {
                     advancePercent={catConfig.advancePercent}
                     paymentType={paymentType}
                     onChangePaymentType={setPaymentType}
+                     booking={booking}
                   />
                 )}
               </>
