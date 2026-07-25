@@ -10,3 +10,7 @@ export const loadAddons = async (data) => {
   return api.post(`/venues/loadAddons`,payload);
 };
 
+export const sendEnquiryApi = async (payload) => {
+  return api.post(`/venues/sendEnquiry`,payload);
+};
+
