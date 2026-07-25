@@ -61,12 +61,15 @@ function normalizeBooking(raw) {
     toDate: item.toDate ?? null,
     shift: item.shift ?? null,
     workflowState: item.workflowState ?? null,
-    amount,
-    paidAmount,
+    //amount,
+    paidAmount : item.booking_type==='reserve' ? item.estimated_total: paidAmount,
+    amount : item.booking_type==='reserve' ? item.estimated_total: amount,
     pointsEarned,
     // We don't yet know the customer's running loyalty total, so treat
     // this booking's points as the running total for tier-progress purposes.
     newPointsTotal: pointsEarned,
+    booking_type: item.booking_type,
+    reservation_end_date: formatDateTime(item.reservation_end_date),
   };
 }
 
@@ -107,6 +110,7 @@ function VenueDetails({ t, booking }) {
         },
         { label: "Customer Name", value: booking.customer.name },
         { label: "Contact", value: booking.customer.phone || "—" },
+        { label: "Reservation End Date", value: booking.reservation_end_date || "—" },
       ]}
     />
   );
@@ -470,7 +474,7 @@ export default function SuccessClient({
 
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">
-              {t("title")} ✨
+             { ( booking.booking_type === 'reserve'? ('Reserve Confirmed') : ( 'Booking Confirmed' ) )} ✨
             </h1>
             <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">
               {t("subtitle")}
@@ -489,7 +493,7 @@ export default function SuccessClient({
                 className="text-base font-mono font-bold tracking-wider"
                 style={{ color: tint.hex }}
               >
-                {booking.ref}
+                {booking.ref} 
               </p>
             </div>
             <button
