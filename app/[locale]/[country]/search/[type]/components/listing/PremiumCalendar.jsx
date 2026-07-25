@@ -30,17 +30,23 @@ const BOOKED = new Set([
 ]);
 
 
-// // Partially booked venue dates (only some shifts taken)
-// const PARTIAL = new Set(["2026-06-30", "2026-07-08", "2026-07-22"]);
+// Per-date shift status for venue (available / reserve / booked)
+const SHIFT_STATUS = {
+  "2026-07-15": { morning: "booked",    afternoon: "available", evening: "available" },
+  "2026-07-16": { morning: "booked",    afternoon: "available", evening: "available" },
+  "2026-07-23": { morning: "booked",    afternoon: "available", evening: "available" },
+  "2026-07-28": { morning: "available", afternoon: "booked",    evening: "available" },
+  "2026-07-29": { morning: "available", afternoon: "booked",    evening: "booked"    },
+  "2026-07-30": { morning: "booked",    afternoon: "available", evening: "booked"    },
+  "2026-07-31": { morning: "available", afternoon: "booked",    evening: "available" },
+  "2026-07-25": { morning: "booked",    afternoon: "available", evening: "available" },
+  "2026-07-27": { morning: "available", afternoon: "reserve",   evening: "reserve"   },
+};
 
-// // Per-date shift status for venue (available / reserved / booked)
-// const SHIFT_STATUS = {
-//   "2026-06-30": { morning: "booked",    afternoon: "available", evening: "reserved", fullday: "booked"    },
-//   "2026-07-08": { morning: "available", afternoon: "booked",    evening: "available", fullday: "booked"    },
-//   "2026-07-22": { morning: "reserved",  afternoon: "available", evening: "available", fullday: "booked"    },
-// };
 
 
+// Normalize either "reserve" or "reserved" coming from booking data to one key
+const normalizeShiftStatus = (s) => (s === "reserve" ? "reserved" : s ?? "available");
 
 const STATUS_LABEL  = { available: "Available", reserved: "Reserved", booked: "Booked" };
 const STATUS_STYLE  = {
@@ -128,10 +134,15 @@ const MONTH_NAMES = [
 
 function VenueMonthGrid({ year,bookingFull,bookingParial, month, selectedDate, onDateClick, colors, catKey, isMember }) {
   const days = useMemo(() => getCalendarDays(year, month), [year, month]);
-console.log(bookingFull)
-console.log(bookingParial)
+
   return (
-    <div className="rounded-2xl border border-gray-100 dark:border-gray-800 p-4">
+    <motion.div
+      key={`${year}-${month}`}
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
+      className="rounded-2xl border border-gray-100 dark:border-gray-800 p-4"
+    >
       <h3 className="text-center text-sm font-semibold text-gray-800 dark:text-gray-200 mb-4 tracking-wide">
         {MONTH_NAMES[month]} {year}
       </h3>
@@ -153,20 +164,23 @@ console.log(bookingParial)
           // const partial = bookingParial.has(key);
           // const partial = PARTIAL.has(key);
           const booked = bookingFull?.includes(key);
-const partial = bookingParial?.includes(key);
+          const partial = bookingParial?.includes(key);
           const past = isPast(date);
           const disabled = booked || past;
           const selected = sameDay(date, selectedDate);
           return (
-            <div
+            <motion.div
               key={key}
+              initial={{ opacity: 0, scale: 0.85 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.18, delay: i * 0.006, ease: "easeOut" }}
               onClick={() => !disabled && onDateClick(date)}
               className={`flex flex-col items-center py-0.5 select-none ${disabled ? "cursor-not-allowed" : "cursor-pointer"}`}
             >
               <div className={`
-                relative flex items-center justify-center w-10 h-10 rounded-full transition-all duration-100
-                ${selected ? `${colors.selBg} shadow-sm` : ""}
-                ${!disabled && !selected ? `hover:${colors.light}` : ""}
+                relative flex items-center justify-center w-10 h-10 rounded-full transition-all duration-150
+                ${selected ? `${colors.selBg} shadow-sm scale-105` : ""}
+                ${!disabled && !selected ? `hover:${colors.light} hover:scale-105` : ""}
               `}>
                 <span className={`
                   text-xs font-semibold leading-none
@@ -181,11 +195,11 @@ const partial = bookingParial?.includes(key);
                   <span className="absolute bottom-1 right-1 w-1.5 h-1.5 rounded-full bg-orange-400 border border-white dark:border-gray-950" />
                 )}
               </div>
-            </div>
+            </motion.div>
           );
         })}
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -241,7 +255,8 @@ function VenueCalendar({ venueshifts,bookingData, bookingFull,bookingParial, cat
   function getShiftStatus(date, shiftId) {
   if (!date) return "available";
   const key = toKey(date);
-  return bookingData[key]?.[shiftId] ?? "available";
+  const source = bookingData ?? SHIFT_STATUS;
+  return normalizeShiftStatus(source[key]?.[shiftId]);
 }
 
   return (
@@ -275,13 +290,13 @@ function VenueCalendar({ venueshifts,bookingData, bookingFull,bookingParial, cat
           <button
             onClick={() => canGoBack && setBaseMonth((b) => addMonths(b.year, b.month, -1))}
             disabled={!canGoBack}
-            className="w-7 h-7 rounded-full border border-gray-200 dark:border-gray-700 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-800 transition disabled:opacity-30 disabled:cursor-not-allowed"
+            className="w-7 h-7 rounded-full border border-gray-200 dark:border-gray-700 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-150 hover:scale-110 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100"
           >
             <ChevronLeft size={14} className="text-gray-600 dark:text-gray-400" />
           </button>
           <button
             onClick={() => setBaseMonth((b) => addMonths(b.year, b.month, 1))}
-            className="w-7 h-7 rounded-full border border-gray-200 dark:border-gray-700 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+            className="w-7 h-7 rounded-full border border-gray-200 dark:border-gray-700 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-150 hover:scale-110 active:scale-95"
           >
             <ChevronRight size={14} className="text-gray-600 dark:text-gray-400" />
           </button>
@@ -290,27 +305,34 @@ function VenueCalendar({ venueshifts,bookingData, bookingFull,bookingParial, cat
 
       {/* Gold member notice — only when no date selected */}
       {isMember && !selectedDate && (
-        <div className={`flex items-center gap-2 ${colors.light} border ${colors.border} rounded-xl px-3.5 py-2 mb-4 text-xs ${colors.accent}`}>
+        <motion.div
+          initial={{ opacity: 0, y: -4 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.2 }}
+          className={`flex items-center gap-2 ${colors.light} border ${colors.border} rounded-xl px-3.5 py-2 mb-4 text-xs ${colors.accent}`}
+        >
           <Sparkles size={12} />
           <span className="font-medium">Gold member pricing active</span>
           <span className="opacity-70">— 7% off on all dates</span>
-        </div>
+        </motion.div>
       )}
 
       {/* Calendar + Shift panel — side-by-side once a date is picked */}
       <div className={`grid grid-cols-1 ${selectedDate ? "md:grid-cols-2" : ""} gap-6 transition-all duration-300`}>
 
         {/* Single month */}
-        <VenueMonthGrid
-          {...baseMonth}
-          bookingFull={bookingFull}
-          bookingParial={bookingParial}
-          selectedDate={selectedDate}
-          onDateClick={handleDateClick}
-          colors={colors}
-          catKey={catKey}
-          isMember={isMember}
-        />
+        <AnimatePresence mode="wait">
+          <VenueMonthGrid
+            {...baseMonth}
+            bookingFull={bookingFull}
+            bookingParial={bookingParial}
+            selectedDate={selectedDate}
+            onDateClick={handleDateClick}
+            colors={colors}
+            catKey={catKey}
+            isMember={isMember}
+          />
+        </AnimatePresence>
 
         {/* Shift panel — animated in */}
         <AnimatePresence>
@@ -328,24 +350,27 @@ function VenueCalendar({ venueshifts,bookingData, bookingFull,bookingParial, cat
               <p className="text-xs font-medium text-gray-400 dark:text-gray-500 mb-0.5">Select a time slot</p>
 
               {/* Shift rows — status tag + pricing */}
-              {venueshifts.map((shift) => {
+              {venueshifts.map((shift, idx) => {
                 const ShiftIcon  = getShiftIcon(shift.label);
                 const status     = getShiftStatus(selectedDate, shift.id);
-                const isBooked   = status === "booked";
+                const isBooked   = status === "booked" || status === "reserved";
                 const isSelected = selectedShift === shift.id;
                 // const price      = memberPrice(Math.round(shift.price));
                 const price      = Math.round(shift.price);
                 const original   = Math.round(shift.price);
 
                 return (
-                  <button
+                  <motion.button
                     key={shift.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.2, delay: idx * 0.05, ease: "easeOut" }}
                     disabled={isBooked}
                     onClick={() => !isBooked && setSelectedShift(isSelected ? null : shift.id)}
                     className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl border transition-all duration-150 text-left
                       ${isBooked   ? "opacity-50 cursor-not-allowed bg-gray-50 dark:bg-gray-900 border-gray-100 dark:border-gray-800" : ""}
                       ${isSelected ? `${colors.light} border-2 ${colors.border}` : ""}
-                      ${!isSelected && !isBooked ? "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:border-gray-300 dark:hover:border-gray-600" : ""}
+                      ${!isSelected && !isBooked ? "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:border-gray-300 dark:hover:border-gray-600 hover:-translate-y-0.5" : ""}
                     `}
                   >
                     {/* Icon */}
@@ -377,7 +402,7 @@ function VenueCalendar({ venueshifts,bookingData, bookingFull,bookingParial, cat
                         {fmtShort(price)}
                       </p>
                     </div>
-                  </button>
+                  </motion.button>
                 );
               })}
 
@@ -388,11 +413,11 @@ function VenueCalendar({ venueshifts,bookingData, bookingFull,bookingParial, cat
 
       {/* Legend — always visible below calendar */}
       <div className="flex flex-wrap items-center gap-4 mt-5 pt-4 border-t border-gray-100 dark:border-gray-800 text-xs text-gray-500 dark:text-gray-400">
-        <span className="flex items-center gap-1.5"><span className="w-3.5 h-3.5 rounded-full bg-emerald-400 inline-block" />Available</span>
-        <span className="flex items-center gap-1.5"><span className="w-3.5 h-3.5 rounded-full bg-amber-400 inline-block" />Reserved</span>
-        <span className="flex items-center gap-1.5"><span className="w-3.5 h-3.5 rounded-full bg-orange-400 inline-block" />Partially Booked</span>
-        <span className="flex items-center gap-1.5"><span className="w-3.5 h-3.5 rounded-full bg-gray-300 dark:bg-gray-600 inline-block" />Booked</span>
-        <span className="flex items-center gap-1.5">
+        <span className="flex items-center gap-1.5 transition-opacity duration-150 hover:opacity-70"><span className="w-3.5 h-3.5 rounded-full bg-emerald-400 inline-block" />Available</span>
+        <span className="flex items-center gap-1.5 transition-opacity duration-150 hover:opacity-70"><span className="w-3.5 h-3.5 rounded-full bg-amber-400 inline-block" />Reserved</span>
+        <span className="flex items-center gap-1.5 transition-opacity duration-150 hover:opacity-70"><span className="w-3.5 h-3.5 rounded-full bg-orange-400 inline-block" />Partially Booked</span>
+        <span className="flex items-center gap-1.5 transition-opacity duration-150 hover:opacity-70"><span className="w-3.5 h-3.5 rounded-full bg-gray-300 dark:bg-gray-600 inline-block" />Booked</span>
+        <span className="flex items-center gap-1.5 transition-opacity duration-150 hover:opacity-70">
           <span className="relative w-3.5 h-3.5 rounded-full bg-gray-200 dark:bg-gray-700 inline-block overflow-hidden">
             <span className="absolute inset-0 flex items-center"><span className="w-full h-px bg-gray-400 rotate-45 block" /></span>
           </span>Fully Booked
@@ -411,7 +436,13 @@ function StayMonthGrid({ year, month,bookingFull, range, hoverDate, checkoutLimi
   const days = useMemo(() => getCalendarDays(year, month), [year, month]);
 
   return (
-    <div className="flex-1 min-w-0">
+    <motion.div
+      key={`${year}-${month}`}
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
+      className="flex-1 min-w-0"
+    >
       <h3 className="text-center text-sm font-semibold text-gray-800 dark:text-gray-200 mb-4 tracking-wide">
         {MONTH_NAMES[month]} {year}
       </h3>
@@ -446,8 +477,11 @@ function StayMonthGrid({ year, month,bookingFull, range, hoverDate, checkoutLimi
           const hasRangeEnd = !!range.end;
 
           return (
-            <div
+            <motion.div
               key={key}
+              initial={{ opacity: 0, scale: 0.85 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.18, delay: i * 0.004, ease: "easeOut" }}
               className={`
                 relative flex flex-col items-center py-0.5 select-none
                 ${disabled ? "cursor-not-allowed" : "cursor-pointer"}
@@ -467,10 +501,10 @@ function StayMonthGrid({ year, month,bookingFull, range, hoverDate, checkoutLimi
               )}
 
               <div className={`
-                relative z-10 flex items-center justify-center w-10 h-10 rounded-full transition-colors duration-100
-                ${isStart || isEnd ? `${colors.selBg} shadow-sm` : ""}
+                relative z-10 flex items-center justify-center w-10 h-10 rounded-full transition-all duration-150
+                ${isStart || isEnd ? `${colors.selBg} shadow-sm scale-105` : ""}
                 ${isHoverEnd ? `border-2 ${colors.border} ${colors.light}` : ""}
-                ${!disabled && !isStart && !isEnd && !isHoverEnd ? "hover:bg-gray-100 dark:hover:bg-gray-800" : ""}
+                ${!disabled && !isStart && !isEnd && !isHoverEnd ? "hover:bg-gray-100 dark:hover:bg-gray-800 hover:scale-105" : ""}
               `}>
                 <span className={`
                   text-xs font-semibold leading-none
@@ -483,11 +517,11 @@ function StayMonthGrid({ year, month,bookingFull, range, hoverDate, checkoutLimi
                   {date.getDate()}
                 </span>
               </div>
-            </div>
+            </motion.div>
           );
         })}
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -592,31 +626,44 @@ function StayCalendar({ category, bookingFull,colors, isMember, onRangeChange, r
         <div className="flex items-center gap-1 flex-none">
           <button onClick={() => canGoBack && setBaseMonth((b) => addMonths(b.year, b.month, -1))}
             disabled={!canGoBack}
-            className="w-8 h-8 rounded-full border border-gray-200 dark:border-gray-700 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-800 transition disabled:opacity-30 disabled:cursor-not-allowed">
+            className="w-8 h-8 rounded-full border border-gray-200 dark:border-gray-700 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-150 hover:scale-110 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100">
             <ChevronLeft size={15} className="text-gray-600 dark:text-gray-400" />
           </button>
           <button onClick={() => setBaseMonth((b) => addMonths(b.year, b.month, 1))}
-            className="w-8 h-8 rounded-full border border-gray-200 dark:border-gray-700 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+            className="w-8 h-8 rounded-full border border-gray-200 dark:border-gray-700 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-150 hover:scale-110 active:scale-95">
             <ChevronRight size={15} className="text-gray-600 dark:text-gray-400" />
           </button>
         </div>
       </div>
 
       {/* Min stay warning */}
-      {tooShort && (
-        <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl px-4 py-2.5 mb-4 text-sm text-amber-700 dark:text-amber-400">
-          <AlertCircle size={15} />
-          Minimum {minNights} night{minNights > 1 ? "s" : ""} required for this property
-        </div>
-      )}
+      <AnimatePresence>
+        {tooShort && (
+          <motion.div
+            initial={{ opacity: 0, y: -4, height: 0 }}
+            animate={{ opacity: 1, y: 0, height: "auto" }}
+            exit={{ opacity: 0, y: -4, height: 0 }}
+            transition={{ duration: 0.2 }}
+            className="flex items-center gap-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl px-4 py-2.5 mb-4 text-sm text-amber-700 dark:text-amber-400"
+          >
+            <AlertCircle size={15} />
+            Minimum {minNights} night{minNights > 1 ? "s" : ""} required for this property
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Gold rate notice */}
       {isMember && nights === 0 && !rangeError && (
-        <div className={`flex items-center gap-2 ${colors.light} border ${colors.border} rounded-xl px-4 py-2.5 mb-4 text-sm ${colors.accent}`}>
+        <motion.div
+          initial={{ opacity: 0, y: -4 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.2 }}
+          className={`flex items-center gap-2 ${colors.light} border ${colors.border} rounded-xl px-4 py-2.5 mb-4 text-sm ${colors.accent}`}
+        >
           <Sparkles size={14} />
           <span className="font-medium">Gold member rates active</span>
           <span className="opacity-70">— 7% off every night</span>
-        </div>
+        </motion.div>
       )}
 
       {/* Dual month */}
@@ -628,13 +675,13 @@ function StayCalendar({ category, bookingFull,colors, isMember, onRangeChange, r
 
       {/* Legend */}
       <div className="flex flex-wrap items-center gap-4 mt-5 pt-4 border-t border-gray-100 dark:border-gray-800 text-xs text-gray-500 dark:text-gray-400">
-        <span className="flex items-center gap-1.5">
+        <span className="flex items-center gap-1.5 transition-opacity duration-150 hover:opacity-70">
           <span className={`w-3.5 h-3.5 rounded-full ${colors.selBg} inline-block`} />Selected
         </span>
-        <span className="flex items-center gap-1.5">
+        <span className="flex items-center gap-1.5 transition-opacity duration-150 hover:opacity-70">
           <span className={`w-3.5 h-3.5 rounded-full ${colors.rangeBg} border inline-block`} />In range
         </span>
-        <span className="flex items-center gap-1.5">
+        <span className="flex items-center gap-1.5 transition-opacity duration-150 hover:opacity-70">
           <span className="relative w-3.5 h-3.5 rounded-full bg-gray-200 dark:bg-gray-700 inline-block overflow-hidden">
             <span className="absolute inset-0 flex items-center"><span className="w-full h-px bg-gray-400 rotate-45 block" /></span>
           </span>Booked

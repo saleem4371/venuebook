@@ -1307,11 +1307,14 @@ function ReserveCard({
 }
 
 // ─── Enquiry modal ────────────────────────────────────────────────────────────
-function EnquiryModal({ isOpen, onClose, gradient, propertyName }) {
+function EnquiryModal({ isOpen, onClose, gradient, propertyName ,data , sendEnquiry , router ,locale,country}) {
   const [form, setForm] = useState({ name: "", email: "", phone: "" });
   const [submitted, setSubmitted] = useState(false);
   const [errors, setErrors] = useState({});
   const [mounted, setMounted] = useState(false);
+  const [enquireyId, setEnquireyId] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   // Mount guard — createPortal requires document to be available
   useEffect(() => {
@@ -1338,20 +1341,44 @@ function EnquiryModal({ isOpen, onClose, gradient, propertyName }) {
     return e;
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     const errs = validate();
     if (Object.keys(errs).length) {
       setErrors(errs);
       return;
     }
-    setSubmitted(true);
+
+    if (submitting) return; // guard against double-submit
+
+    setSubmitError("");
+    setSubmitting(true);
+
+    const payload = { ...form, ...data };
+
+    try {
+      const enqId = await sendEnquiry(payload);
+console.log(enqId)
+      if (enqId?.data?.success) {
+        setEnquireyId(enqId.data); // keep the full response so enquireyId.code works below
+        setSubmitted(true);
+      } else {
+        setSubmitError("Something went wrong. Please try agains.");
+      }
+    } catch (error) {
+      console.error("Enquiry failed:", error);
+      setSubmitError("Something went wrong. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   function handleClose() {
     setSubmitted(false);
     setForm({ name: "", email: "", phone: "" });
     setErrors({});
+    setEnquireyId(null);
+    setSubmitError("");
     onClose();
   }
 
@@ -1405,24 +1432,42 @@ function EnquiryModal({ isOpen, onClose, gradient, propertyName }) {
             <div className="px-5 py-5">
               {submitted ? (
                 <div className="flex flex-col items-center py-6 gap-3 text-center">
-                  <div className="w-14 h-14 rounded-full bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center">
-                    <CheckCircle2 size={28} className="text-emerald-500" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-900 dark:text-white text-base">
-                      Enquiry Sent!
-                    </p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                      We'll get back to you within 24 hours.
-                    </p>
-                  </div>
-                  <button
-                    onClick={handleClose}
-                    className="mt-2 text-sm font-medium text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
-                  >
-                    Close
-                  </button>
-                </div>
+  <div className="w-14 h-14 rounded-full bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center">
+    <CheckCircle2 size={28} className="text-emerald-500" />
+  </div>
+
+  <div>
+    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+      Enquiry Sent Successfully!
+    </h3>
+
+    {enquireyId?.code && (
+      <p className="mt-1 text-sm font-medium text-emerald-600 dark:text-emerald-400">
+        Reference ID: {enquireyId.code}
+      </p>
+    )}
+
+    <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+      Thank you for your enquiry. Our team will contact you within 24 hours.
+    </p>
+  </div>
+
+  <div className="flex gap-3 mt-4">
+    <button
+      onClick={handleClose}
+      className="px-5 py-2 rounded-lg border border-gray-300 text-sm font-medium hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
+    >
+      Close
+    </button>
+
+    <button
+      onClick={() => router.push(`/${locale}/${country}/profile`)}
+      className="px-5 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700"
+    >
+      Manage Enquiry
+    </button>
+  </div>
+</div>
               ) : (
                 <form onSubmit={handleSubmit} noValidate className="space-y-4">
                   {/* Full name */}
@@ -1510,11 +1555,16 @@ function EnquiryModal({ isOpen, onClose, gradient, propertyName }) {
                     )}
                   </div>
 
+                  {submitError && (
+                    <p className="text-xs text-red-500 text-center">{submitError}</p>
+                  )}
+
                   <button
                     type="submit"
-                    className={`w-full bg-gradient-to-r ${gradient} text-white py-3 rounded-xl font-semibold text-sm shadow-md hover:opacity-90 active:scale-[0.98] transition-all mt-1`}
+                    disabled={submitting}
+                    className={`w-full bg-gradient-to-r ${gradient} text-white py-3 rounded-xl font-semibold text-sm shadow-md hover:opacity-90 active:scale-[0.98] transition-all mt-1 disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100`}
                   >
-                    Send Enquiry
+                    {submitting ? "Sending…" : "Send Enquiry"}
                   </button>
 
                   <p className="text-center text-[11px] text-gray-400 dark:text-gray-500">
@@ -1551,6 +1601,7 @@ export default function BookingCard({
   // ── Sticky nav integration (desktop-only; ignored when mobileOnly=true) ───────
   ctaSentinelRef, // ref placed after CTA buttons — observed by IntersectionObserver
   onCTAChange, // ({ label, badge }) → void — fires whenever the primary CTA changes
+  sendEnquiry
 }) {
   const { format } = useCurrency();
   const catKey = normalizeCategory(category);
@@ -1565,6 +1616,7 @@ export default function BookingCard({
   const [guestValues, setGuestValues] = useState(null);
   const [openSheet, setOpenSheet] = useState(false);
   const [enquiryOpen, setEnquiryOpen] = useState(false);
+  const [enquiryData, setEnquiryData] = useState(null);
   const [highlightGuests, setHighlightGuests] = useState(false);
 
   const router = useRouter();
@@ -1621,83 +1673,44 @@ export default function BookingCard({
     if (mobileOnly) setOpenSheet(false);
   };
 
-  // const handleAction = (data) => {
-  //   const handleAction = useCallback((data) => {
-  //   const type = data.type ?? "";
-
-  //   if (type === "enquiry") {
-  //     setEnquiryOpen(true);
-  //     setOpenSheet(false);
-  //     return;
-  //   }
-
-  //   if (type === "paxEnquiry") {
-  //     const guests = guestValues?.guests ?? guestValues?.adults ?? data.guestCount ?? "";
-
-  //     const paxParams = new URLSearchParams({
-  //       ...(data.eventType && { eventType: data.eventType }),
-  //       ...(guests && { guests: String(guests) }),
-  //       ...(venueSelection?.date && {
-  //         date: venueSelection.date.toISOString().split("T")[0],
-  //       }),
-  //       ...(venueSelection?.shift && {
-  //         shift: venueSelection.shift,
-  //       }),
-  //       ...(propertyName && { venueName: propertyName }),
-  //     });
-
-  //     router.push(
-  //       `/${locale}/${country}/search/${catKey}/${propertyId}/pax-enquiry?${paxParams.toString()}`
-  //     );
-
-  //     return;
-  //   }
-
-  //   // Checkout — "reserve" | "book" | (farmstay/other CTAs from getDefaultCTA)
-  //   const guestCount = guestValues?.guests ?? guestValues?.adults ?? data.guestCount ?? "";
-
-  //   const checkoutParams = new URLSearchParams({
-  //     ...(data.eventType && { eventType: data.eventType }),
-  //     ...(type && { bookingType: type }),
-
-  //     ...(guestCount && {
-  //       guests: String(guestCount),
-  //     }),
-
-  //     ...(venueSelection?.date && {
-  //       date: venueSelection.date.toISOString().split("T")[0],
-  //     }),
-
-  //     ...(venueSelection?.shift && {
-  //       shift: venueSelection.shift,
-  //     }),
-
-  //     ...(calendarRange?.start && {
-  //       checkIn: calendarRange.start.toISOString().split("T")[0],
-  //     }),
-
-  //     ...(calendarRange?.end && {
-  //       checkOut: calendarRange.end.toISOString().split("T")[0],
-  //     }),
-
-  //     ...(propertyName && { venueName: propertyName }),
-  //     ...(propertyId && { venueId: propertyId }),
-  //     ...(catKey && { category: catKey }),
-  //   });
-
-  //   router.push(
-  //     `/${locale}/${country}/checkout/${catKey}/${propertyId}?${checkoutParams.toString()}`
-  //   );
-  // });
   const handleAction = useCallback(
     (data) => {
       const type = data.type ?? "";
 
       if (type === "enquiry") {
+        const guestCount =
+          guestValues?.guests ??
+          guestValues?.adults ??
+          data.guestCount ??
+          "";
+
+        setEnquiryData({
+          eventType: data.eventType,
+          bookingType: type,
+          guests: guestCount,
+          date: venueSelection?.date
+            ? dayjs(venueSelection.date).format("YYYY-MM-DD")
+            : "",
+          shift: venueSelection?.shift,
+          checkIn: calendarRange?.start
+            ? dayjs(calendarRange.start).format("YYYY-MM-DD")
+            : "",
+          checkOut: calendarRange?.end
+            ? dayjs(calendarRange.end).format("YYYY-MM-DD")
+            : "",
+          venueName: propertyName,
+          venueId: propertyId,
+          category: catKey,
+        });
+
         setEnquiryOpen(true);
         setOpenSheet(false);
         return;
       }
+
+      const reserveAmount = 5000;
+      const reserveEndDate = "2026-08-31";
+      const reserveStatus = "now";
 
       if (type === "paxEnquiry") {
         const guests =
@@ -1707,7 +1720,6 @@ export default function BookingCard({
           ...(data.eventType && { eventType: data.eventType }),
           ...(guests && { guests: String(guests) }),
           ...(venueSelection?.date && {
-            // date: venueSelection.date.toISOString().split("T")[0],
             date: dayjs(venueSelection.date).format("YYYY-MM-DD"),
           }),
           ...(venueSelection?.shift && {
@@ -1737,7 +1749,6 @@ export default function BookingCard({
         }),
 
         ...(venueSelection?.date && {
-          // date: venueSelection.date.toISOString().split("T")[0],
           date: dayjs(venueSelection.date).format("YYYY-MM-DD"),
         }),
 
@@ -1746,18 +1757,19 @@ export default function BookingCard({
         }),
 
         ...(calendarRange?.start && {
-          // checkIn: calendarRange.start.toISOString().split("T")[0],
           checkIn: dayjs(calendarRange.start).format("YYYY-MM-DD"),
         }),
 
         ...(calendarRange?.end && {
-          // checkOut: calendarRange.end.toISOString().split("T")[0],
           checkOut: dayjs(calendarRange.end).format("YYYY-MM-DD"),
         }),
 
         ...(propertyName && { venueName: propertyName }),
         ...(propertyId && { venueId: propertyId }),
         ...(catKey && { category: catKey }),
+        reserveAmount: String(reserveAmount),
+        reserveEndDate,
+        reserveStatus,
       });
 
       router.push(
@@ -1942,6 +1954,11 @@ export default function BookingCard({
         onClose={() => setEnquiryOpen(false)}
         gradient={gradient}
         propertyName={propertyName}
+        data={enquiryData}
+        sendEnquiry={sendEnquiry}
+        router={router}
+        locale={locale}
+        country={country}
       />
 
       {/* ── MOBILE BOTTOM SHEET — mobile only, never on desktop ── */}
