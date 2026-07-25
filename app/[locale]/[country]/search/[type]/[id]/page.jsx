@@ -28,6 +28,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useUI }  from "@/context/UIContext";
 import {
   loadVenues,
+  sendEnquiryApi,
 } from "@/services/venue_details.service";
 import {
   likedProperty,
@@ -434,10 +435,17 @@ export default function ListingPage() {
     }
   };
 
+
+  const sendEnquiry = async (data) => {
+  const response = await sendEnquiryApi(data);
+  return response;
+};
   // ── Full-page skeleton — shown until the API call resolves ─────────────────
   if (isPageLoading || !venueData?.child_venue_name) {
     return <PropertyDetailSkeleton catKey={catKey} />;
   }
+
+  
 
   return (
     <div className="flex flex-col relative bg-white dark:bg-gray-950 min-h-screen">
@@ -910,6 +918,7 @@ export default function ListingPage() {
                 venue_settings={venueSettings}
                 ctaSentinelRef={ctaSentinelRef}
                 onCTAChange={setNavCTAInfo}
+                sendEnquiry={sendEnquiry}
               />
 
               {/* Report this listing — below the card, Airbnb-style */}
