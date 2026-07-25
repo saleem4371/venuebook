@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence }                  from "framer-motion";
-import { useParams, useRouter }                     from "next/navigation";
+import { useParams, useRouter , usePathname }                     from "next/navigation";
 import { useTranslations }                          from "next-intl";
 import { X }                                        from "lucide-react";
 
@@ -35,6 +35,8 @@ export default function CategoryNavigator({ loadData = [], fabBreakpoint = 768 }
   const t       = useTranslations("categories");
   const locale  = params?.locale  ?? "en";
   const country = params?.country ?? "in";
+
+  const pathname = usePathname();
 
   useEffect(() => setMounted(true), []);
 
@@ -80,7 +82,10 @@ export default function CategoryNavigator({ loadData = [], fabBreakpoint = 768 }
     if (!cat || cat.comingSoon) return;
     setActiveCategory(id);
     handleSetIsOpen(false);
-    // router.push(`/${locale}/${country}/search/${cat.route}`);
+      if (pathname.startsWith(`/${locale}/${country}/search`)) {
+    router.push(`/${locale}/${country}/search/${cat.route}`);
+  } 
+    
   }, [setActiveCategory, handleSetIsOpen, router, locale, country]);
 
   if (!mounted) return null;
