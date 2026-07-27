@@ -376,7 +376,14 @@ function SettingsContent({ section, isDark, brand = DEFAULT_BRAND, form, setForm
   const pay = settings.payment ?? { card: true, upi: true, bank: false, advance: "25" };
   const setPay = (u) => updateSettings("payment", u);
 
-  const res = settings.reserve ?? { type: "instant", notice: "4hr", window: "1m" };
+  // const res = settings.reserve ?? { type: "instant", notice: "4hr", window: "1m" };
+  const res = settings.reserve ?? {
+  type: "instant",      // instant | approval
+  amount: 5000,         // Reserve amount
+  notice: "4hr",        // Advance notice
+  period: "24hr",       // Hold duration
+  window: "1m",         // Booking window
+};
   const setRes = (u) => updateSettings("reserve", u);
 
   const pax = settings.pax ?? { min: "", max: "", children: true, pets: false, catering: true };
@@ -426,12 +433,25 @@ function SettingsContent({ section, isDark, brand = DEFAULT_BRAND, form, setForm
             right={<Toggle checked={pub.instant} onChange={(v) => setPub((p) => ({ ...p, instant: v }))} />}
             tk={tk}
           />
-           <SettingRow
+           {/* <SettingRow
             label="Reserve"
             description="Guests can confirm without host approval"
             right={<Toggle checked={pub.reserve} onChange={(v) => setPub((p) => ({ ...p, reserve: v }))} />}
             tk={tk}
-          />
+          /> */}
+          <SettingRow
+  label="Reserve Booking"
+  description="Allow guests to reserve by paying an advance amount."
+  right={
+    <Toggle
+      checked={pub.reserve}
+      onChange={(v) => setPub((p) => ({ ...p, reserve: v }))}
+    />
+  }
+  tk={tk}
+/>
+
+
            <SettingRow
             label="Enquire"
             description="Guests can confirm without host approval"
@@ -476,7 +496,55 @@ function SettingsContent({ section, isDark, brand = DEFAULT_BRAND, form, setForm
     ),
     reserve: (
       <div className="space-y-4">
-        <SettingCard title="Booking Type" tk={tk}>
+        {pub.reserve && (
+  <>
+  <SettingCard title="Booking Type" tk={tk}>
+    <SettingRow
+      label="Reserve Amount"
+      description="Amount guests must pay to reserve."
+      right={
+        <input
+          type="number"
+          value={res.amount}
+          onChange={(e) =>
+            setRes({ amount: Number(e.target.value) })
+          }
+           className={INPUT_CLS}
+                style={inputStyle}
+          placeholder="5000"
+        />
+      }
+      tk={tk}
+    />
+
+    <SettingRow
+      label="Reservation Period"
+      description="How long the reservation remains valid."
+      right={
+        <select
+          value={res.period}
+          onChange={(e) => setRes({ period: e.target.value })}
+           className={INPUT_CLS}
+                style={inputStyle}
+        >
+          <option value="6">6 Hours</option>
+<option value="12">12 Hours</option>
+<option value="24">24 Hours (1 Day)</option>
+<option value="48">48 Hours (2 Days)</option>
+<option value="72">72 Hours (3 Days)</option>
+<option value="96">96 Hours (4 Days)</option>
+<option value="120">120 Hours (5 Days)</option>
+<option value="144">144 Hours (6 Days)</option>
+<option value="168">168 Hours (7 Days)</option>
+        </select>
+      }
+      tk={tk}
+    />
+    </SettingCard>
+  </>
+)}
+
+        {/* <SettingCard title="Booking Type" tk={tk}>
           <Segmented
             options={[
               { value: "instant", label: "⚡ Instant Book" },
@@ -488,6 +556,7 @@ function SettingsContent({ section, isDark, brand = DEFAULT_BRAND, form, setForm
             brand={brand}
           />
         </SettingCard>
+        
         <SettingCard title="Booking Window" tk={tk}>
           <div className="space-y-4">
             <div>
@@ -525,7 +594,7 @@ function SettingsContent({ section, isDark, brand = DEFAULT_BRAND, form, setForm
               />
             </div>
           </div>
-        </SettingCard>
+        </SettingCard> */}
       </div>
     ),
     pax: (
