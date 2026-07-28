@@ -42,6 +42,7 @@
     "notifications": "Notifications",
     "messages": "Messages",
     "profile": "Profile",
+    "account_settings": "Account settings",
     "logout": "Log out",
     "switch_to_customer": "Switch to customer",
     "vendor_kyc_status": "KYC Status",
@@ -2367,7 +2368,18 @@
     "upcomingBooking": {
       "openItinerary": "Open itinerary",
       "messageHost": "Message host",
-      "empty": "No upcoming bookings"
+      "empty": "No upcoming bookings",
+      "today": "Today",
+      "tomorrow": "Tomorrow",
+      "inDays": "In {days} days"
+    },
+    "reserveHold": {
+      "title": "Reservation hold ending soon",
+      "subtitle": "Complete payment for {property} before this ends",
+      "d": "d",
+      "h": "h",
+      "m": "m",
+      "s": "s"
     },
     "drawer": {
       "settingsTitle": "Account",
@@ -2396,7 +2408,8 @@
         "bookings": "Bookings",
         "bookingsBack": "Back to Feed",
         "messages": "Messages",
-        "collections": "Collections"
+        "collections": "Collections",
+        "settings": "Account settings"
       }
     },
     "reels": {
@@ -2457,15 +2470,25 @@
       "subtitle": "Manage the personal details on your venuebook.in account.",
       "photoLabel": "Profile photo",
       "changePhoto": "Change photo",
+      "photoUpdated": "Profile photo updated.",
+      "photoInvalidType": "Please choose an image file.",
+      "photoTooLarge": "That image is too large — please choose one under 5MB.",
+      "photoUploadFailed": "Couldn't read that image — please try again.",
       "legalName": "Legal name",
       "preferredName": "Preferred name",
       "email": "Email",
       "phone": "Phone",
+      "phoneVerification": "Phone verification",
+      "noPhone": "No phone number added",
+      "verifyNow": "Verify now",
       "dob": "Date of birth",
       "gender": "Gender",
       "address": "Address",
       "identityVerification": "Identity verification",
+      "identityVerificationAadhaar": "Aadhaar verification",
+      "identityVerificationUaePass": "UAE Pass verification",
       "residentialAddress": "Residential address",
+      "residentialAddressHint": "Also used as your organisation address for billing purposes.",
       "postalAddress": "Postal address",
       "emergencyContact": "Emergency contact",
       "bio": "Bio",
@@ -2528,7 +2551,17 @@
       "bankAccounts": "Bank accounts",
       "addBank": "Add bank account",
       "gstDetails": "GST details",
+      "isOrganization": "This is for an organization",
+      "isOrganizationDesc": "Turn this on if you need GST details for your organization's bookings.",
+      "gstDetailsOptional": "GST details (optional)",
       "billingAddress": "Billing address",
+      "sameAsResidential": "Same as residential address",
+      "sameAsResidentialValue": "Same as your residential address in Personal Information",
+      "defaultMethod": "Default",
+      "setAsDefault": "Set as default",
+      "removeBlockedTitle": "Can't remove this payment method",
+      "removeBlockedDesc": "This payment method is linked to an active or completed booking, so it can't be removed.",
+      "viewInvoices": "View invoices & receipts",
       "refundPreference": "Refund preference",
       "refundOptions": {
         "original": "Original payment method",
@@ -2548,6 +2581,7 @@
       "home": "Home",
       "office": "Office",
       "other": "Other",
+      "pincodeLabel": "PIN code",
       "defaultAddress": "Default",
       "setDefault": "Set default"
     },
@@ -2560,7 +2594,10 @@
       "bookingsCounted": "Bookings counted",
       "availableCoupons": "Available coupons",
       "expires": "Expires",
-      "history": "Rewards history"
+      "history": "Rewards history",
+      "tierJourney": "Your membership journey",
+      "activityJourney": "Points & booking journey",
+      "runningTotal": "total"
     },
     "preferences": {
       "title": "Preferences",
@@ -2606,7 +2643,8 @@
       "logoutDevice": "Log out",
       "logoutAll": "Log out all other devices",
       "logoutConfirm": "{device} will be signed out of your account.",
-      "logoutAllConfirm": "Every other device will be signed out of your account."
+      "logoutAllConfirm": "Every other device will be signed out of your account.",
+      "recentActivity": "Recent login activity"
     },
     "connectedAccounts": {
       "title": "Connected Accounts",
@@ -2638,6 +2676,9 @@
       "subtitle": "Get answers or reach our support team.",
       "contactSupport": "Contact support",
       "contactSupportDesc": "Our team typically replies within a day.",
+      "goToFaq": "Visit FAQ",
+      "goToFaqDesc": "Browse common questions and answers.",
+      "raiseTicket": "Raise a support ticket",
       "faqTitle": "Frequently asked questions",
       "faq1Q": "How do I change my registered email?",
       "faq1A": "Open Personal Information, edit your email, and confirm the verification link we send you.",

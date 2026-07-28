@@ -42,6 +42,7 @@
     "notifications": "ಅಧಿಸೂಚನೆಗಳು",
     "messages": "ಸಂದೇಶಗಳು",
     "profile": "ಪ್ರೊಫೈಲ್",
+    "account_settings": "ಖಾತೆ ಸೆಟ್ಟಿಂಗ್‌ಗಳು",
     "logout": "ಲಾಗ್ ಔಟ್",
     "switch_to_customer": "Switch to customer",
     "vendor_kyc_status": "KYC Status",
@@ -2199,7 +2200,18 @@
     "upcomingBooking": {
       "openItinerary": "ಪ್ರಯಾಣ ವಿವರ ತೆರೆಯಿರಿ",
       "messageHost": "ಹೋಸ್ಟ್‌ಗೆ ಸಂದೇಶ ಕಳುಹಿಸಿ",
-      "empty": "ಯಾವುದೇ ಮುಂಬರುವ ಬುಕಿಂಗ್ ಇಲ್ಲ"
+      "empty": "ಯಾವುದೇ ಮುಂಬರುವ ಬುಕಿಂಗ್ ಇಲ್ಲ",
+      "today": "ಇಂದು",
+      "tomorrow": "ನಾಳೆ",
+      "inDays": "{days} ದಿನಗಳಲ್ಲಿ"
+    },
+    "reserveHold": {
+      "title": "ಕಾಯ್ದಿರಿಸುವಿಕೆಯ ಹೋಲ್ಡ್ ಶೀಘ್ರದಲ್ಲೇ ಮುಗಿಯಲಿದೆ",
+      "subtitle": "ಇದು ಮುಗಿಯುವ ಮೊದಲು {property} ಗಾಗಿ ಪಾವತಿ ಪೂರ್ಣಗೊಳಿಸಿ",
+      "d": "ದಿ",
+      "h": "ಗಂ",
+      "m": "ನಿ",
+      "s": "ಸೆ"
     },
     "drawer": {
       "settingsTitle": "ಖಾತೆ",
@@ -2228,7 +2240,8 @@
         "bookings": "ಬುಕಿಂಗ್‌ಗಳು",
         "bookingsBack": "ಫೀಡ್‌ಗೆ ಹಿಂತಿರುಗಿ",
         "messages": "ಸಂದೇಶಗಳು",
-        "collections": "ಸಂಗ್ರಹಗಳು"
+        "collections": "ಸಂಗ್ರಹಗಳು",
+        "settings": "ಖಾತೆ ಸೆಟ್ಟಿಂಗ್‌ಗಳು"
       }
     },
     "reels": {
@@ -2289,15 +2302,25 @@
       "subtitle": "ನಿಮ್ಮ venuebook.in ಖಾತೆಯ ವೈಯಕ್ತಿಕ ವಿವರಗಳನ್ನು ನಿರ್ವಹಿಸಿ.",
       "photoLabel": "ಪ್ರೊಫೈಲ್ ಫೋಟೋ",
       "changePhoto": "ಫೋಟೋ ಬದಲಾಯಿಸಿ",
+      "photoUpdated": "ಪ್ರೊಫೈಲ್ ಫೋಟೋ ನವೀಕರಿಸಲಾಗಿದೆ.",
+      "photoInvalidType": "ದಯವಿಟ್ಟು ಒಂದು ಇಮೇಜ್ ಫೈಲ್ ಆಯ್ಕೆಮಾಡಿ.",
+      "photoTooLarge": "ಈ ಇಮೇಜ್ ತುಂಬಾ ದೊಡ್ಡದಾಗಿದೆ — ದಯವಿಟ್ಟು 5MB ಗಿಂತ ಚಿಕ್ಕದನ್ನು ಆಯ್ಕೆಮಾಡಿ.",
+      "photoUploadFailed": "ಆ ಇಮೇಜ್ ಓದಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ — ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.",
       "legalName": "ಕಾನೂನುಬದ್ಧ ಹೆಸರು",
       "preferredName": "ಆದ್ಯತೆಯ ಹೆಸರು",
       "email": "ಇಮೇಲ್",
       "phone": "ಫೋನ್",
+      "phoneVerification": "ಫೋನ್ ಪರಿಶೀಲನೆ",
+      "noPhone": "ಯಾವುದೇ ಫೋನ್ ಸಂಖ್ಯೆ ಸೇರಿಸಿಲ್ಲ",
+      "verifyNow": "ಈಗ ಪರಿಶೀಲಿಸಿ",
       "dob": "ಹುಟ್ಟಿದ ದಿನಾಂಕ",
       "gender": "ಲಿಂಗ",
       "address": "ವಿಳಾಸ",
       "identityVerification": "ಗುರುತಿನ ಪರಿಶೀಲನೆ",
+      "identityVerificationAadhaar": "ಆಧಾರ್ ಪರಿಶೀಲನೆ",
+      "identityVerificationUaePass": "UAE ಪಾಸ್ ಪರಿಶೀಲನೆ",
       "residentialAddress": "ವಾಸಸ್ಥಳದ ವಿಳಾಸ",
+      "residentialAddressHint": "ಬಿಲ್ಲಿಂಗ್ ಉದ್ದೇಶಗಳಿಗಾಗಿ ಇದನ್ನು ನಿಮ್ಮ ಸಂಸ್ಥೆಯ ವಿಳಾಸವಾಗಿಯೂ ಬಳಸಲಾಗುತ್ತದೆ.",
       "postalAddress": "ಅಂಚೆ ವಿಳಾಸ",
       "emergencyContact": "ತುರ್ತು ಸಂಪರ್ಕ",
       "bio": "ಬಯೋ",
@@ -2360,7 +2383,17 @@
       "bankAccounts": "ಬ್ಯಾಂಕ್ ಖಾತೆಗಳು",
       "addBank": "ಬ್ಯಾಂಕ್ ಖಾತೆ ಸೇರಿಸಿ",
       "gstDetails": "GST ವಿವರಗಳು",
+      "isOrganization": "ಇದು ಒಂದು ಸಂಸ್ಥೆಗಾಗಿ",
+      "isOrganizationDesc": "ನಿಮ್ಮ ಸಂಸ್ಥೆಯ ಬುಕಿಂಗ್‌ಗಳಿಗೆ GST ವಿವರಗಳು ಬೇಕಿದ್ದರೆ ಇದನ್ನು ಆನ್ ಮಾಡಿ.",
+      "gstDetailsOptional": "GST ವಿವರಗಳು (ಐಚ್ಛಿಕ)",
       "billingAddress": "ಬಿಲ್ಲಿಂಗ್ ವಿಳಾಸ",
+      "sameAsResidential": "ವಾಸಸ್ಥಳದ ವಿಳಾಸದಂತೆಯೇ",
+      "sameAsResidentialValue": "ವೈಯಕ್ತಿಕ ಮಾಹಿತಿಯಲ್ಲಿರುವ ನಿಮ್ಮ ವಾಸಸ್ಥಳದ ವಿಳಾಸದಂತೆಯೇ",
+      "defaultMethod": "ಡೀಫಾಲ್ಟ್",
+      "setAsDefault": "ಡೀಫಾಲ್ಟ್ ಆಗಿ ಹೊಂದಿಸಿ",
+      "removeBlockedTitle": "ಈ ಪಾವತಿ ವಿಧಾನವನ್ನು ತೆಗೆದುಹಾಕಲು ಸಾಧ್ಯವಿಲ್ಲ",
+      "removeBlockedDesc": "ಈ ಪಾವತಿ ವಿಧಾನವು ಸಕ್ರಿಯ ಅಥವಾ ಪೂರ್ಣಗೊಂಡ ಬುಕಿಂಗ್‌ಗೆ ಲಿಂಕ್ ಆಗಿರುವುದರಿಂದ ಇದನ್ನು ತೆಗೆದುಹಾಕಲು ಸಾಧ್ಯವಿಲ್ಲ.",
+      "viewInvoices": "ಇನ್‌ವಾಯ್ಸ್‌ಗಳು ಮತ್ತು ರಸೀದಿಗಳನ್ನು ವೀಕ್ಷಿಸಿ",
       "refundPreference": "ಮರುಪಾವತಿ ಆದ್ಯತೆ",
       "refundOptions": {
         "original": "ಮೂಲ ಪಾವತಿ ವಿಧಾನ",
@@ -2380,6 +2413,7 @@
       "home": "ಮನೆ",
       "office": "ಕಚೇರಿ",
       "other": "ಇತರೆ",
+      "pincodeLabel": "ಪಿನ್ ಕೋಡ್",
       "defaultAddress": "ಡೀಫಾಲ್ಟ್",
       "setDefault": "ಡೀಫಾಲ್ಟ್ ಆಗಿ ಹೊಂದಿಸಿ"
     },
@@ -2392,7 +2426,10 @@
       "bookingsCounted": "ಎಣಿಸಿದ ಬುಕಿಂಗ್‌ಗಳು",
       "availableCoupons": "ಲಭ್ಯವಿರುವ ಕೂಪನ್‌ಗಳು",
       "expires": "ಅವಧಿ ಮುಗಿಯುತ್ತದೆ",
-      "history": "ರಿವಾರ್ಡ್‌ಗಳ ಇತಿಹಾಸ"
+      "history": "ರಿವಾರ್ಡ್‌ಗಳ ಇತಿಹಾಸ",
+      "tierJourney": "ನಿಮ್ಮ ಸದಸ್ಯತ್ವ ಪಯಣ",
+      "activityJourney": "ಪಾಯಿಂಟ್‌ಗಳು ಮತ್ತು ಬುಕಿಂಗ್ ಪಯಣ",
+      "runningTotal": "ಒಟ್ಟು"
     },
     "preferences": {
       "title": "ಆದ್ಯತೆಗಳು",
@@ -2438,7 +2475,8 @@
       "logoutDevice": "ಲಾಗ್ ಔಟ್ ಮಾಡಿ",
       "logoutAll": "ಇತರೆ ಎಲ್ಲಾ ಸಾಧನಗಳಿಂದ ಲಾಗ್ ಔಟ್ ಮಾಡಿ",
       "logoutConfirm": "{device} ನಿಮ್ಮ ಖಾತೆಯಿಂದ ಸೈನ್ ಔಟ್ ಆಗುತ್ತದೆ.",
-      "logoutAllConfirm": "ಪ್ರತಿಯೊಂದು ಇತರ ಸಾಧನವು ನಿಮ್ಮ ಖಾತೆಯಿಂದ ಸೈನ್ ಔಟ್ ಆಗುತ್ತದೆ."
+      "logoutAllConfirm": "ಪ್ರತಿಯೊಂದು ಇತರ ಸಾಧನವು ನಿಮ್ಮ ಖಾತೆಯಿಂದ ಸೈನ್ ಔಟ್ ಆಗುತ್ತದೆ.",
+      "recentActivity": "ಇತ್ತೀಚಿನ ಲಾಗಿನ್ ಚಟುವಟಿಕೆ"
     },
     "connectedAccounts": {
       "title": "ಸಂಪರ್ಕಿತ ಖಾತೆಗಳು",
@@ -2470,6 +2508,9 @@
       "subtitle": "ಉತ್ತರಗಳನ್ನು ಪಡೆಯಿರಿ ಅಥವಾ ನಮ್ಮ ಬೆಂಬಲ ತಂಡವನ್ನು ಸಂಪರ್ಕಿಸಿ.",
       "contactSupport": "ಬೆಂಬಲ ಸಂಪರ್ಕಿಸಿ",
       "contactSupportDesc": "ನಮ್ಮ ತಂಡ ಸಾಮಾನ್ಯವಾಗಿ ಒಂದು ದಿನದೊಳಗೆ ಪ್ರತಿಕ್ರಿಯಿಸುತ್ತದೆ.",
+      "goToFaq": "FAQ ನೋಡಿ",
+      "goToFaqDesc": "ಸಾಮಾನ್ಯ ಪ್ರಶ್ನೆಗಳು ಮತ್ತು ಉತ್ತರಗಳನ್ನು ವೀಕ್ಷಿಸಿ.",
+      "raiseTicket": "ಬೆಂಬಲ ಟಿಕೆಟ್ ದಾಖಲಿಸಿ",
       "faqTitle": "ಪದೇ ಪದೇ ಕೇಳಲಾಗುವ ಪ್ರಶ್ನೆಗಳು",
       "faq1Q": "ನನ್ನ ನೋಂದಾಯಿತ ಇಮೇಲ್ ಅನ್ನು ಹೇಗೆ ಬದಲಾಯಿಸುವುದು?",
       "faq1A": "ವೈಯಕ್ತಿಕ ಮಾಹಿತಿ ತೆರೆಯಿರಿ, ನಿಮ್ಮ ಇಮೇಲ್ ಸಂಪಾದಿಸಿ, ಮತ್ತು ನಾವು ಕಳುಹಿಸುವ ಪರಿಶೀಲನಾ ಲಿಂಕ್ ಅನ್ನು ದೃಢೀಕರಿಸಿ.",

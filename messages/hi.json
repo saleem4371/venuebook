@@ -42,6 +42,7 @@
     "notifications": "सूचनाएं",
     "messages": "संदेश",
     "profile": "प्रोफ़ाइल",
+    "account_settings": "खाता सेटिंग्स",
     "logout": "लॉग आउट",
     "switch_to_customer": "Switch to customer",
     "vendor_kyc_status": "KYC Status",
@@ -2199,7 +2200,18 @@
     "upcomingBooking": {
       "openItinerary": "यात्रा विवरण खोलें",
       "messageHost": "होस्ट को संदेश भेजें",
-      "empty": "कोई आगामी बुकिंग नहीं"
+      "empty": "कोई आगामी बुकिंग नहीं",
+      "today": "आज",
+      "tomorrow": "कल",
+      "inDays": "{days} दिनों में"
+    },
+    "reserveHold": {
+      "title": "आरक्षण होल्ड जल्द समाप्त हो रहा है",
+      "subtitle": "यह समाप्त होने से पहले {property} का भुगतान पूरा करें",
+      "d": "दि",
+      "h": "घं",
+      "m": "मि",
+      "s": "से"
     },
     "drawer": {
       "settingsTitle": "खाता",
@@ -2228,7 +2240,8 @@
         "bookings": "बुकिंग",
         "bookingsBack": "फ़ीड पर वापस जाएं",
         "messages": "संदेश",
-        "collections": "कलेक्शन"
+        "collections": "कलेक्शन",
+        "settings": "खाता सेटिंग्स"
       }
     },
     "reels": {
@@ -2289,15 +2302,25 @@
       "subtitle": "अपने venuebook.in खाते का व्यक्तिगत विवरण प्रबंधित करें।",
       "photoLabel": "प्रोफ़ाइल फ़ोटो",
       "changePhoto": "फ़ोटो बदलें",
+      "photoUpdated": "प्रोफ़ाइल फ़ोटो अपडेट हो गई।",
+      "photoInvalidType": "कृपया एक इमेज फ़ाइल चुनें।",
+      "photoTooLarge": "यह इमेज बहुत बड़ी है — कृपया 5MB से छोटी इमेज चुनें।",
+      "photoUploadFailed": "इमेज नहीं पढ़ी जा सकी — कृपया फिर कोशिश करें।",
       "legalName": "कानूनी नाम",
       "preferredName": "पसंदीदा नाम",
       "email": "ईमेल",
       "phone": "फ़ोन",
+      "phoneVerification": "फ़ोन सत्यापन",
+      "noPhone": "कोई फ़ोन नंबर नहीं जोड़ा गया",
+      "verifyNow": "अभी सत्यापित करें",
       "dob": "जन्म तिथि",
       "gender": "लिंग",
       "address": "पता",
       "identityVerification": "पहचान सत्यापन",
+      "identityVerificationAadhaar": "आधार सत्यापन",
+      "identityVerificationUaePass": "UAE पास सत्यापन",
       "residentialAddress": "निवास का पता",
+      "residentialAddressHint": "बिलिंग उद्देश्यों के लिए इसे आपके संगठन के पते के रूप में भी उपयोग किया जाता है।",
       "postalAddress": "डाक का पता",
       "emergencyContact": "आपातकालीन संपर्क",
       "bio": "बायो",
@@ -2360,7 +2383,17 @@
       "bankAccounts": "बैंक खाते",
       "addBank": "बैंक खाता जोड़ें",
       "gstDetails": "GST विवरण",
+      "isOrganization": "यह किसी संगठन के लिए है",
+      "isOrganizationDesc": "अपने संगठन की बुकिंग के लिए GST विवरण चाहिए तो इसे चालू करें।",
+      "gstDetailsOptional": "GST विवरण (वैकल्पिक)",
       "billingAddress": "बिलिंग पता",
+      "sameAsResidential": "निवास के पते के समान",
+      "sameAsResidentialValue": "व्यक्तिगत जानकारी में दिए गए आपके निवास के पते के समान",
+      "defaultMethod": "डिफ़ॉल्ट",
+      "setAsDefault": "डिफ़ॉल्ट के रूप में सेट करें",
+      "removeBlockedTitle": "यह भुगतान तरीका हटाया नहीं जा सकता",
+      "removeBlockedDesc": "यह भुगतान तरीका किसी सक्रिय या पूर्ण बुकिंग से जुड़ा है, इसलिए इसे हटाया नहीं जा सकता।",
+      "viewInvoices": "चालान और रसीदें देखें",
       "refundPreference": "रिफंड प्राथमिकता",
       "refundOptions": {
         "original": "मूल भुगतान तरीका",
@@ -2380,6 +2413,7 @@
       "home": "घर",
       "office": "कार्यालय",
       "other": "अन्य",
+      "pincodeLabel": "पिन कोड",
       "defaultAddress": "डिफ़ॉल्ट",
       "setDefault": "डिफ़ॉल्ट सेट करें"
     },
@@ -2392,7 +2426,10 @@
       "bookingsCounted": "गिनी गई बुकिंग",
       "availableCoupons": "उपलब्ध कूपन",
       "expires": "समाप्ति",
-      "history": "रिवॉर्ड्स इतिहास"
+      "history": "रिवॉर्ड्स इतिहास",
+      "tierJourney": "आपकी सदस्यता यात्रा",
+      "activityJourney": "पॉइंट्स और बुकिंग यात्रा",
+      "runningTotal": "कुल"
     },
     "preferences": {
       "title": "प्राथमिकताएं",
@@ -2438,7 +2475,8 @@
       "logoutDevice": "लॉग आउट करें",
       "logoutAll": "अन्य सभी डिवाइस से लॉग आउट करें",
       "logoutConfirm": "{device} आपके खाते से साइन आउट हो जाएगा।",
-      "logoutAllConfirm": "हर दूसरा डिवाइस आपके खाते से साइन आउट हो जाएगा।"
+      "logoutAllConfirm": "हर दूसरा डिवाइस आपके खाते से साइन आउट हो जाएगा।",
+      "recentActivity": "हाल की लॉगिन गतिविधि"
     },
     "connectedAccounts": {
       "title": "जुड़े हुए खाते",
@@ -2470,6 +2508,9 @@
       "subtitle": "जवाब पाएं या हमारी सहायता टीम से संपर्क करें।",
       "contactSupport": "सहायता से संपर्क करें",
       "contactSupportDesc": "हमारी टीम आमतौर पर एक दिन के भीतर जवाब देती है।",
+      "goToFaq": "FAQ देखें",
+      "goToFaqDesc": "सामान्य प्रश्न और उत्तर देखें।",
+      "raiseTicket": "सहायता टिकट दर्ज करें",
       "faqTitle": "अक्सर पूछे जाने वाले प्रश्न",
       "faq1Q": "मैं अपना पंजीकृत ईमेल कैसे बदलूं?",
       "faq1A": "व्यक्तिगत जानकारी खोलें, अपना ईमेल संपादित करें, और हमारे भेजे गए सत्यापन लिंक की पुष्टि करें।",

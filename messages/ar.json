@@ -42,6 +42,7 @@
     "notifications": "الإشعارات",
     "messages": "الرسائل",
     "profile": "الملف الشخصي",
+    "account_settings": "إعدادات الحساب",
     "logout": "تسجيل الخروج",
     "switch_to_customer": "Switch to customer",
     "vendor_kyc_status": "KYC Status",
@@ -2367,7 +2368,18 @@
     "upcomingBooking": {
       "openItinerary": "فتح خط الرحلة",
       "messageHost": "مراسلة المضيف",
-      "empty": "لا توجد حجوزات قادمة"
+      "empty": "لا توجد حجوزات قادمة",
+      "today": "اليوم",
+      "tomorrow": "غدًا",
+      "inDays": "خلال {days} أيام"
+    },
+    "reserveHold": {
+      "title": "الحجز المؤقت ينتهي قريبًا",
+      "subtitle": "أكمل الدفع لـ {property} قبل انتهاء المهلة",
+      "d": "ي",
+      "h": "س",
+      "m": "د",
+      "s": "ث"
     },
     "drawer": {
       "settingsTitle": "الحساب",
@@ -2396,7 +2408,8 @@
         "bookings": "الحجوزات",
         "bookingsBack": "العودة إلى الخلاصة",
         "messages": "الرسائل",
-        "collections": "المجموعات"
+        "collections": "المجموعات",
+        "settings": "إعدادات الحساب"
       }
     },
     "reels": {
@@ -2457,15 +2470,25 @@
       "subtitle": "إدارة التفاصيل الشخصية لحسابك على venuebook.in.",
       "photoLabel": "الصورة الشخصية",
       "changePhoto": "تغيير الصورة",
+      "photoUpdated": "تم تحديث الصورة الشخصية.",
+      "photoInvalidType": "الرجاء اختيار ملف صورة.",
+      "photoTooLarge": "هذه الصورة كبيرة جدًا — الرجاء اختيار صورة أصغر من 5 ميجابايت.",
+      "photoUploadFailed": "تعذّرت قراءة هذه الصورة — الرجاء المحاولة مرة أخرى.",
       "legalName": "الاسم القانوني",
       "preferredName": "الاسم المفضل",
       "email": "البريد الإلكتروني",
       "phone": "رقم الهاتف",
+      "phoneVerification": "التحقق من رقم الهاتف",
+      "noPhone": "لم تتم إضافة رقم هاتف",
+      "verifyNow": "تحقق الآن",
       "dob": "تاريخ الميلاد",
       "gender": "الجنس",
       "address": "العنوان",
       "identityVerification": "التحقق من الهوية",
+      "identityVerificationAadhaar": "التحقق عبر Aadhaar",
+      "identityVerificationUaePass": "التحقق عبر UAE Pass",
       "residentialAddress": "عنوان الإقامة",
+      "residentialAddressHint": "يُستخدم أيضًا كعنوان مؤسستك لأغراض الفوترة.",
       "postalAddress": "العنوان البريدي",
       "emergencyContact": "جهة اتصال الطوارئ",
       "bio": "نبذة تعريفية",
@@ -2528,7 +2551,17 @@
       "bankAccounts": "الحسابات البنكية",
       "addBank": "إضافة حساب بنكي",
       "gstDetails": "تفاصيل ضريبة السلع والخدمات",
+      "isOrganization": "هذا الحساب لمؤسسة",
+      "isOrganizationDesc": "فعّل هذا الخيار إذا كنت بحاجة إلى تفاصيل الضريبة لحجوزات مؤسستك.",
+      "gstDetailsOptional": "تفاصيل الضريبة (اختياري)",
       "billingAddress": "عنوان الفوترة",
+      "sameAsResidential": "نفس عنوان الإقامة",
+      "sameAsResidentialValue": "نفس عنوان إقامتك في المعلومات الشخصية",
+      "defaultMethod": "افتراضي",
+      "setAsDefault": "تعيين كافتراضي",
+      "removeBlockedTitle": "لا يمكن إزالة طريقة الدفع هذه",
+      "removeBlockedDesc": "طريقة الدفع هذه مرتبطة بحجز نشط أو مكتمل، لذا لا يمكن إزالتها.",
+      "viewInvoices": "عرض الفواتير والإيصالات",
       "refundPreference": "تفضيل الاسترداد",
       "refundOptions": {
         "original": "طريقة الدفع الأصلية",
@@ -2548,6 +2581,7 @@
       "home": "المنزل",
       "office": "المكتب",
       "other": "أخرى",
+      "pincodeLabel": "الرمز البريدي",
       "defaultAddress": "افتراضي",
       "setDefault": "تعيين كافتراضي"
     },
@@ -2560,7 +2594,10 @@
       "bookingsCounted": "الحجوزات المحتسَبة",
       "availableCoupons": "الكوبونات المتاحة",
       "expires": "تنتهي في",
-      "history": "سجل المكافآت"
+      "history": "سجل المكافآت",
+      "tierJourney": "رحلة عضويتك",
+      "activityJourney": "رحلة النقاط والحجوزات",
+      "runningTotal": "الإجمالي"
     },
     "preferences": {
       "title": "التفضيلات",
@@ -2606,7 +2643,8 @@
       "logoutDevice": "تسجيل الخروج",
       "logoutAll": "تسجيل الخروج من جميع الأجهزة الأخرى",
       "logoutConfirm": "سيتم تسجيل خروج {device} من حسابك.",
-      "logoutAllConfirm": "سيتم تسجيل خروج كل جهاز آخر من حسابك."
+      "logoutAllConfirm": "سيتم تسجيل خروج كل جهاز آخر من حسابك.",
+      "recentActivity": "نشاط تسجيل الدخول الأخير"
     },
     "connectedAccounts": {
       "title": "الحسابات المرتبطة",
@@ -2638,6 +2676,9 @@
       "subtitle": "احصل على إجابات أو تواصل مع فريق الدعم.",
       "contactSupport": "التواصل مع الدعم",
       "contactSupportDesc": "عادةً ما يرد فريقنا خلال يوم واحد.",
+      "goToFaq": "زيارة الأسئلة الشائعة",
+      "goToFaqDesc": "تصفّح الأسئلة والأجوبة الشائعة.",
+      "raiseTicket": "إرسال طلب دعم",
       "faqTitle": "الأسئلة الشائعة",
       "faq1Q": "كيف أغيّر بريدي الإلكتروني المسجّل؟",
       "faq1A": "افتح المعلومات الشخصية، عدّل بريدك الإلكتروني، وأكّد رابط التوثيق الذي نرسله إليك.",
