@@ -56,7 +56,7 @@ const [googleUserData, setGoogleUserData] = useState(null);
 const [googleAccessToken, setGoogleAccessToken] = useState("");
 const [googleProfile, setGoogleProfile] = useState(null);
 
-  const { login, fetchUser } = useAuth();
+  const { login, fetchUser, updateAvatar } = useAuth();
 
   /* Strict body scroll lock */
   useEffect(() => {
@@ -338,6 +338,15 @@ const handleGoogleContinue = async () => {
     document.cookie = `token=${res.data.token}; path=/`;
 
     const freshUser = await fetchUser();
+
+    // The backend doesn't return a profile photo of its own yet — Google
+    // already handed us the real one (googleProfile.picture, the same URL
+    // shown in this confirm dialog above) at the OAuth step, so seed it in
+    // here rather than letting every avatar in the app fall back to
+    // initials just because the backend has nowhere to store it.
+    if (freshUser && !freshUser.avatar && googleProfile?.picture) {
+      updateAvatar(googleProfile.picture);
+    }
 
     setShowGoogleConfirm(false);
 

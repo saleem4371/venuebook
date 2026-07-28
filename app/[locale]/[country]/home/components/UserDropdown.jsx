@@ -12,21 +12,21 @@ import { useUI }       from "@/context/UIContext";
 import LogoutConfirmationModal from "@/components/shared/LogoutConfirmationModal";
 import LogoutOverlay           from "@/components/shared/LogoutOverlay";
 
-/* ─────────────────────────────────────────────────────────────────────
-   MEMBERSHIP — Static demo UI  (swap DEMO_MEMBERSHIP for API data later)
-───────────────────────────────────────────────────────────────────── */
-const DEMO_MEMBERSHIP = {
-  tier:           "gold",   // bronze | silver | gold | platinum | diamond
-  points:         2450,
-  nextTier:       "Platinum",
-  nextTierPoints: 3000,
-  benefits: [
-    "benefit_priority_support",
-    "benefit_faster_refunds",
-    "benefit_exclusive_offers",
-  ],
-};
+import { POINTS_PER_INR, getMembershipTier } from "@/config/checkoutConfig";
+import { computeMockWalletPoints } from "@/app/[locale]/[country]/profile/data/mockProfileData";
+import { getAvatarColor } from "@/lib/avatar";
 
+/* ─────────────────────────────────────────────────────────────────────
+   MEMBERSHIP — tier/points come from the SAME shared source everything
+   else in the app reads from (config/checkoutConfig.js's MEMBERSHIP_TIERS
+   + profile's computeMockWalletPoints) — this used to be a disconnected
+   DEMO_MEMBERSHIP fake ("Gold", 2,450 pts, a "Platinum" tier that doesn't
+   even exist in the real 4-tier system) that visibly disagreed with what
+   Profile/Account Settings show for the same account. Clicking the badge
+   now navigates straight to Account Settings' Rewards tab (the one place
+   with the full tier journey + points history) instead of opening a
+   second, smaller, easily-out-of-sync mini dashboard here.
+───────────────────────────────────────────────────────────────────── */
 const TIER_CONFIG = {
   bronze: {
     label:    "Bronze",
@@ -71,20 +71,6 @@ const TIER_CONFIG = {
 };
 
 /* ─────────────────────────────────────────────────────────────────────
-   AVATAR PALETTE
-───────────────────────────────────────────────────────────────────── */
-const AVATAR_PALETTE = [
-  "bg-blue-500", "bg-violet-500", "bg-emerald-500", "bg-orange-500",
-  "bg-rose-500",  "bg-cyan-500",  "bg-amber-500",   "bg-pink-500",
-  "bg-teal-500",  "bg-indigo-500",
-];
-
-function getAvatarBg(name) {
-  if (!name) return "bg-violet-500";
-  return AVATAR_PALETTE[Math.max(0, (name.trim().toUpperCase().charCodeAt(0) - 65) % AVATAR_PALETTE.length)];
-}
-
-/* ─────────────────────────────────────────────────────────────────────
    MEMBERSHIP WIDGET
    ─ Visible at ALL breakpoints — never hidden, never displaced.
    ─ Compresses gracefully at smaller widths. Theme/Globe/Avatar are
@@ -99,170 +85,54 @@ function getAvatarBg(name) {
      2xl  1536px+     [icon] Gold Member      (wider padding only)
 ───────────────────────────────────────────────────────────────────── */
 
-/** Compact number formatter: 2450 → "2.4k", 950 → "950" */
-function fmtK(n) {
-  if (n >= 1000) return `${(n / 1000).toFixed(1).replace(/\.0$/, "")}k`;
-  return String(n);
-}
-
-function MembershipWidget({ tier, points, nextTier, nextTierPoints, benefits, isOpen, setIsOpen }) {
+function MembershipWidget({ tier, onNavigate }) {
   const t   = useTranslations("membership");
-  const ref = useRef(null);
   const cfg = TIER_CONFIG[tier];
-
-  /* Close popover on outside click */
-  useEffect(() => {
-    if (!isOpen) return;
-    const handler = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setIsOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [isOpen, setIsOpen]);
 
   if (!cfg) return null;
 
-  const progress  = Math.min(100, Math.round((points / nextTierPoints) * 100));
-  const remaining = nextTierPoints - points;
-
   return (
-    <div ref={ref} className="relative inline-flex shrink-0">
-
-      {/* ── Header trigger — always single-line, progressively wider ── */}
-      <motion.button
-        type="button"
-        onClick={() => setIsOpen((p) => !p)}
-        aria-label={t("membership_badge_aria", { tier: cfg.label })}
-        aria-expanded={isOpen}
-        aria-haspopup="dialog"
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.97 }}
-        transition={{ duration: 0.12 }}
-        className={[
-          "inline-flex items-center gap-1.5 cursor-pointer shrink-0",
-          "rounded-full border",
-          /* Padding: compact on mobile, scales up with available space */
-          "px-1.5 py-1 sm:px-2 sm:py-1.5 lg:px-2.5 xl:px-3",
-          "transition-all duration-150 hover:shadow-sm",
-          cfg.bg, cfg.border,
-          "focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2",
-        ].join(" ")}
+    /* No more local popover/state — this is now a plain nav trigger
+       straight to Account Settings' Rewards tab (tier journey, points
+       history, coupons all live there), same "click badge → redirect"
+       pattern already used by Profile's IdentityPanel tier badge. */
+    <motion.button
+      type="button"
+      onClick={onNavigate}
+      aria-label={t("membership_badge_aria", { tier: cfg.label })}
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.97 }}
+      transition={{ duration: 0.12 }}
+      className={[
+        "inline-flex items-center gap-1.5 cursor-pointer shrink-0",
+        "rounded-full border",
+        /* Padding: compact on mobile, scales up with available space */
+        "px-1.5 py-1 sm:px-2 sm:py-1.5 lg:px-2.5 xl:px-3",
+        "transition-all duration-150 hover:shadow-sm",
+        cfg.bg, cfg.border,
+        "focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2",
+      ].join(" ")}
+    >
+      {/* Tier icon circle — always visible */}
+      <span
+        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-white text-[10px] font-bold leading-none shadow-sm"
+        style={{ background: cfg.gradient }}
+        aria-hidden="true"
       >
-        {/* Tier icon circle — always visible */}
-        <span
-          className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-white text-[10px] font-bold leading-none shadow-sm"
-          style={{ background: cfg.gradient }}
-          aria-hidden="true"
-        >
-          {cfg.icon}
+        {cfg.icon}
+      </span>
+
+      {/* ── Tier label ───────────────────────────────────────────
+          md–xl:  "Gold"
+          xl+:    "Gold Member"
+      ─────────────────────────────────────────────────────────── */}
+      <span className={`text-xs font-semibold leading-none shrink-0 ${cfg.text}`}>
+        <span className="xl:hidden">{cfg.label}</span>
+        <span className="hidden xl:inline">
+          {t("member_label", { tier: cfg.label })}
         </span>
-
-        {/* ── Tier label ───────────────────────────────────────────
-            md–xl:  "Gold"
-            xl+:    "Gold Member"
-        ─────────────────────────────────────────────────────────── */}
-        <span className={`text-xs font-semibold leading-none shrink-0 ${cfg.text}`}>
-          <span className="xl:hidden">{cfg.label}</span>
-          <span className="hidden xl:inline">
-            {t("member_label", { tier: cfg.label })}
-          </span>
-        </span>
-
-      </motion.button>
-
-      {/* ── Membership popover ─────────────────────────────────── */}
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            role="dialog"
-            aria-label="Membership status"
-            initial={{ opacity: 0, scale: 0.95, y: -6 }}
-            animate={{ opacity: 1, scale: 1,    y: 0   }}
-            exit={{    opacity: 0, scale: 0.95, y: -6  }}
-            transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-            className={[
-              "absolute end-0 top-full mt-5 md:mt-6 z-50 w-72",
-              "rounded-2xl overflow-hidden",
-              "bg-white dark:bg-gray-900",
-              "border border-gray-100 dark:border-gray-800",
-              "shadow-xl shadow-gray-300/40 dark:shadow-black/50",
-            ].join(" ")}
-          >
-            {/* Tier header */}
-            <div
-              className="px-4 pt-4 pb-3 border-b border-gray-100 dark:border-gray-800"
-              style={{ background: `${cfg.gradient.replace(")", ", 0.08)")
-                .replace("linear-gradient(", "linear-gradient(")
-                .replace("135deg,", "135deg,")}` }}
-            >
-              <div className="flex items-center gap-3">
-                <span
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white text-base font-bold leading-none shadow-md"
-                  style={{ background: cfg.gradient }}
-                  aria-hidden="true"
-                >
-                  {cfg.icon}
-                </span>
-                <div>
-                  <p className={`text-sm font-bold ${cfg.text}`}>
-                    {t("member_label", { tier: cfg.label })}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                    {t("points_label", { points: points.toLocaleString() })}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Progress to next tier */}
-            <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                  {nextTier}
-                </p>
-                <p className="text-xs text-gray-400 dark:text-gray-500">
-                  {points.toLocaleString()} / {nextTierPoints.toLocaleString()}
-                </p>
-              </div>
-              <div className="h-1.5 w-full rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all duration-500"
-                  style={{ width: `${progress}%`, background: cfg.gradient }}
-                  role="progressbar"
-                  aria-valuenow={points}
-                  aria-valuemin={0}
-                  aria-valuemax={nextTierPoints}
-                />
-              </div>
-              <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1.5">
-                {t("next_tier_label", {
-                  points: remaining.toLocaleString(),
-                  tier:   nextTier,
-                })}
-              </p>
-            </div>
-
-            {/* Benefits */}
-            <div className="px-4 py-3">
-              <p className="text-[10px] font-semibold tracking-wider uppercase text-gray-400 dark:text-gray-500 mb-2">
-                {t("benefits_title")}
-              </p>
-              <ul className="space-y-1.5">
-                {benefits.map((key) => (
-                  <li key={key} className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
-                    <span
-                      className={`text-[11px] font-bold shrink-0 ${cfg.text}`}
-                      aria-hidden="true"
-                    >✓</span>
-                    {t(key)}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+      </span>
+    </motion.button>
   );
 }
 
@@ -282,23 +152,23 @@ export default function UserDropdown({ onOpenRegionModal }) {
 
   const isProfileOpen = openDropdown === "user";
 
-  /* Membership widget open state — independent of profile dropdown */
-  const [membershipOpen, setMembershipOpen] = useState(false);
-  const [confirmLogout,  setConfirmLogout]  = useState(false);
-  const [loggingOut,     setLoggingOut]     = useState(false);
+  const [confirmLogout, setConfirmLogout] = useState(false);
+  const [loggingOut,    setLoggingOut]    = useState(false);
 
-  /* Close on outside click (covers both widget + avatar) */
+  // Real tier/points — same source Profile/Account Settings use, so this
+  // badge can never show a different tier than the rest of the app does.
+  const walletPoints  = computeMockWalletPoints(POINTS_PER_INR);
+  const membershipTier = getMembershipTier(walletPoints);
+
+  /* Close profile dropdown on outside click */
   useEffect(() => {
-    if (!isProfileOpen && !membershipOpen) return;
+    if (!isProfileOpen) return;
     const handler = (e) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target)) {
-        closeAll();
-        setMembershipOpen(false);
-      }
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) closeAll();
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, [isProfileOpen, membershipOpen, closeAll]);
+  }, [isProfileOpen, closeAll]);
 
   /* Avatar initials */
   const initials = user?.name
@@ -340,40 +210,40 @@ export default function UserDropdown({ onOpenRegionModal }) {
   return (
     <div className="relative flex items-center gap-2" ref={wrapRef}>
 
-      {/* ── Membership widget — desktop + tablet, logged-in only ── */}
+      {/* ── Membership widget — desktop + tablet, logged-in only.
+          Clicking it navigates straight to Account Settings' Rewards tab
+          (both Profile and this badge now agree: click the tier → land
+          on the same real journey/points screen, nothing local to open
+          or keep in sync here). */}
       {isLoggedIn && (
         <MembershipWidget
-          tier={DEMO_MEMBERSHIP.tier}
-          points={DEMO_MEMBERSHIP.points}
-          nextTier={DEMO_MEMBERSHIP.nextTier}
-          nextTierPoints={DEMO_MEMBERSHIP.nextTierPoints}
-          benefits={DEMO_MEMBERSHIP.benefits}
-          isOpen={membershipOpen}
-          setIsOpen={(val) => {
-            setMembershipOpen(val);
-            if (val) closeAll(); /* close profile dropdown when opening membership */
+          tier={membershipTier.id}
+          onNavigate={() => {
+            closeAll();
+            router.push(`/${locale}/${country}/account/settings?tab=rewards`);
           }}
         />
       )}
 
-      {/* ── Avatar trigger ─────────────────────────────────────── */}
+      {/* ── Avatar trigger ─────────────────────────────────────────
+          Real photo whenever one exists, at every screen size — same
+          avatar-or-initials rule everywhere (this button, the dropdown
+          header right below it, Profile, Account Settings), so the same
+          account never shows a photo in one place and initials in
+          another at the same time. */}
       <button
         type="button"
-        onClick={() => {
-          setMembershipOpen(false); /* close membership when opening profile */
-          toggleDropdown("user");
-        }}
+        onClick={() => toggleDropdown("user")}
         aria-label="Open account menu"
         aria-expanded={isProfileOpen}
         aria-haspopup="menu"
+        style={isLoggedIn && !user?.avatar ? { backgroundColor: getAvatarColor(user?.name) } : undefined}
         className={[
           "relative flex h-10 w-10 shrink-0 items-center justify-center",
           "rounded-full overflow-hidden cursor-pointer",
           "transition hover:opacity-80",
           "focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2",
-          isLoggedIn
-            ? (user?.avatar ? "" : getAvatarBg(user?.name))
-            : "bg-gray-100 dark:bg-gray-800",
+          !isLoggedIn ? "bg-gray-100 dark:bg-gray-800" : "",
         ].join(" ")}
       >
         {isLoggedIn ? (
@@ -480,19 +350,33 @@ function LoggedInMenu({ user, isListed, locale, country, onClose, onLogout, onVe
 
   return (
     <nav aria-label="User menu">
-      {/* User header */}
-      <div className="px-4 py-4 border-b border-gray-100 dark:border-gray-800">
+      {/* User header — same avatar-or-initials logic as the header
+          trigger button (real photo when there is one, otherwise the one
+          shared color, never a different fallback than the button that
+          opened this menu). Now a real link to Profile instead of inert
+          text, since it's the account's own name/photo — tapping it is
+          the obvious thing to try. */}
+      <Link
+        href={`${base}/profile`}
+        onClick={onClose}
+        className="block px-4 py-4 border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors"
+      >
         <div className="flex items-center gap-3">
-          <span
-            className={[
-              "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
-              "text-sm font-semibold text-white select-none",
-              getAvatarBg(user?.name),
-            ].join(" ")}
-            aria-hidden="true"
-          >
-            {initials}
-          </span>
+          {user?.avatar ? (
+            <img
+              src={user.avatar}
+              alt={user.name ?? "Profile"}
+              className="h-9 w-9 shrink-0 rounded-full object-cover"
+            />
+          ) : (
+            <span
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white select-none"
+              style={{ backgroundColor: getAvatarColor(user?.name) }}
+              aria-hidden="true"
+            >
+              {initials}
+            </span>
+          )}
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100 leading-snug">
               {user.name}
@@ -502,7 +386,7 @@ function LoggedInMenu({ user, isListed, locale, country, onClose, onLogout, onVe
             </p>
           </div>
         </div>
-      </div>
+      </Link>
 
       <ul className="py-1.5" role="none">
         {/* Vendor / Listing */}
@@ -518,26 +402,29 @@ function LoggedInMenu({ user, isListed, locale, country, onClose, onLogout, onVe
         <Divider />
 
         <li role="none">
-          <MenuItem icon={<UserIcon />}     label={t("profile")}       href={`${base}/profile`}       onClick={onClose} />
+          <MenuItem icon={<FolderIcon />}   label={t("collections")}   href={`${base}/collections`}   onClick={onClose} />
         </li>
         <li role="none">
-          <MenuItem icon={<FolderIcon />}   label={t("collections")}   href={`${base}/collections`}   onClick={onClose} />
+          <MenuItem icon={<CalendarIcon />} label={t("bookings")}      href={`${base}/profile?section=bookings`}      onClick={onClose} />
+        </li>
+        <li role="none">
+          <MenuItem icon={<MessageIcon />}  label={t("messages")}      href={`${base}/messages`}      onClick={onClose} />
         </li>
         <li role="none">
           <MenuItem icon={<CompareIcon />}  label={t("compare")}       href={`${base}/compare`}       onClick={onClose} />
         </li>
         <li role="none">
-          <MenuItem icon={<CalendarIcon />} label={t("bookings")}      href={`${base}/bookings`}      onClick={onClose} />
-        </li>
-        <li role="none">
-          <MenuItem icon={<BellIcon />}     label={t("notifications")} href={`${base}/notifications`} onClick={onClose} />
-        </li>
-        <li role="none">
-          <MenuItem icon={<MessageIcon />}  label={t("messages")}      href={`${base}/messages`}      onClick={onClose} />
+          <MenuItem icon={<UserIcon />}     label={t("profile")}       href={`${base}/profile`}       onClick={onClose} />
         </li>
 
         <Divider />
 
+        <li role="none">
+          <MenuItem icon={<BellIcon />}     label={t("notifications")}     href={`${base}/profile?section=notifications`}     onClick={onClose} />
+        </li>
+        <li role="none">
+          <MenuItem icon={<SettingsIcon />} label={t("account_settings")}  href={`${base}/account/settings`}  onClick={onClose} />
+        </li>
         <li role="none">
           <MenuItem icon={<GlobeIcon />}  label={t("region_language")} onClick={onRegion} />
         </li>
@@ -637,6 +524,14 @@ function UserIcon() {
 }
 function LogoutIcon() {
   return <svg {...iconProps}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>;
+}
+function SettingsIcon() {
+  return (
+    <svg {...iconProps}>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    </svg>
+  );
 }
 function PersonIcon({ className }) {
   return (
