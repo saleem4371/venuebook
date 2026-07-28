@@ -1,62 +1,64 @@
 "use client";
 
 /**
- * Help & Support — no dedicated support-ticket/FAQ endpoint exists in this
- * codebase, so this is an honest static FAQ + a "Contact support" action
- * that surfaces the same "not connected yet" toast as the rest of the
- * module's unwired actions.
+ * Help & Support — simplified to two actions: go to FAQ, or raise a
+ * support ticket. No dedicated FAQ/ticket page or endpoint exists yet in
+ * this codebase, so both surface the same honest "not connected yet" toast
+ * as the rest of the module's unwired actions, rather than linking to a
+ * page that doesn't exist.
  */
 
-import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { IconHelpCircle, IconMessageCircle, IconChevronDown } from "@tabler/icons-react";
+import { IconHelpCircle, IconMessageCircle, IconChevronRight } from "@tabler/icons-react";
 
 import { useToast } from "@/components/ToastProvider";
-import { SettingsCard, CardHeading, PrimaryButton } from "../ui";
-
-const FAQ_KEYS = ["faq1", "faq2", "faq3", "faq4"];
+import { SettingsCard, CardHeading } from "../ui";
 
 export default function HelpSupport() {
   const t = useTranslations("accountSettings.help");
   const tCommon = useTranslations("accountSettings.common");
   const toast = useToast();
-  const [openFaq, setOpenFaq] = useState(null);
+
+  const comingSoon = () => toast.info(tCommon("comingSoon"));
 
   return (
     <SettingsCard>
       <CardHeading title={t("title")} subtitle={t("subtitle")} icon={<IconHelpCircle size={18} className="text-gray-500 dark:text-gray-400" stroke={1.75} />} />
 
-      <div className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/30 p-4 flex items-center justify-between gap-3 mb-5">
-        <div className="min-w-0">
-          <p className="text-[13.5px] font-semibold text-gray-900 dark:text-gray-50">{t("contactSupport")}</p>
-          <p className="text-[11.5px] text-gray-500 dark:text-gray-400 mt-0.5">{t("contactSupportDesc")}</p>
-        </div>
-        <PrimaryButton onClick={() => toast.info(tCommon("comingSoon"))} className="shrink-0">
-          <IconMessageCircle size={14} />
-          {t("contactSupport")}
-        </PrimaryButton>
-      </div>
+      <div className="space-y-2.5">
+        <button
+          type="button"
+          onClick={comingSoon}
+          className="w-full flex items-center justify-between gap-3 rounded-2xl border border-gray-100 dark:border-gray-800 px-4 py-4 hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors text-left"
+        >
+          <span className="flex items-center gap-3 min-w-0">
+            <span className="shrink-0 w-10 h-10 rounded-xl bg-gray-50 dark:bg-gray-800/60 flex items-center justify-center">
+              <IconHelpCircle size={17} className="text-gray-500 dark:text-gray-400" stroke={1.75} />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-[13.5px] font-semibold text-gray-900 dark:text-gray-50">{t("goToFaq")}</span>
+              <span className="block text-[11.5px] text-gray-500 dark:text-gray-400 mt-0.5">{t("goToFaqDesc")}</span>
+            </span>
+          </span>
+          <IconChevronRight size={16} className="shrink-0 text-gray-300 dark:text-gray-600 rtl:rotate-180" />
+        </button>
 
-      <p className="text-[12.5px] font-semibold text-gray-700 dark:text-gray-200 mb-3">{t("faqTitle")}</p>
-      <div className="space-y-2">
-        {FAQ_KEYS.map((key) => {
-          const isOpen = openFaq === key;
-          return (
-            <div key={key} className="rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden">
-              <button
-                type="button"
-                onClick={() => setOpenFaq((v) => (v === key ? null : key))}
-                className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left"
-              >
-                <span className="text-[13px] font-medium text-gray-800 dark:text-gray-100">{t(`${key}Q`)}</span>
-                <IconChevronDown size={15} className={`shrink-0 text-gray-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
-              </button>
-              {isOpen && (
-                <p className="px-4 pb-3.5 text-[12.5px] text-gray-500 dark:text-gray-400 leading-relaxed">{t(`${key}A`)}</p>
-              )}
-            </div>
-          );
-        })}
+        <button
+          type="button"
+          onClick={comingSoon}
+          className="w-full flex items-center justify-between gap-3 rounded-2xl border border-gray-100 dark:border-gray-800 px-4 py-4 hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors text-left"
+        >
+          <span className="flex items-center gap-3 min-w-0">
+            <span className="shrink-0 w-10 h-10 rounded-xl bg-gray-50 dark:bg-gray-800/60 flex items-center justify-center">
+              <IconMessageCircle size={17} className="text-gray-500 dark:text-gray-400" stroke={1.75} />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-[13.5px] font-semibold text-gray-900 dark:text-gray-50">{t("raiseTicket")}</span>
+              <span className="block text-[11.5px] text-gray-500 dark:text-gray-400 mt-0.5">{t("contactSupportDesc")}</span>
+            </span>
+          </span>
+          <IconChevronRight size={16} className="shrink-0 text-gray-300 dark:text-gray-600 rtl:rotate-180" />
+        </button>
       </div>
     </SettingsCard>
   );

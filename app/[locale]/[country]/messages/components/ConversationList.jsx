@@ -9,7 +9,7 @@
  */
 
 import { useState, useMemo, useRef, useCallback, useEffect } from "react";
-import { Search, Pin, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Pin, ChevronLeft, ChevronRight, ArrowLeft } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { MESSAGE_CATEGORIES, CATEGORY_STYLES } from "../_data";
 
@@ -109,7 +109,7 @@ function ConversationCard({ conv, isActive, onClick }) {
 }
 
 /* ── Main component ────────────────────────────────────────────── */
-export default function ConversationList({ conversations, activeId, onSelect }) {
+export default function ConversationList({ conversations, activeId, onSelect, onBack }) {
   const t = useTranslations("messages");
   const [search,   setSearch]   = useState("");
   const [category, setCategory] = useState("all");
@@ -188,10 +188,21 @@ export default function ConversationList({ conversations, activeId, onSelect }) 
 
       {/* ── Header ──────────────────────────────────────────── */}
       <div className="px-4 pt-4 pb-3 border-b border-gray-100 dark:border-gray-800 shrink-0">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-[15px] md:text-[17px] font-semibold text-gray-900 dark:text-gray-100">
-            {t("title")}
-          </h2>
+        <div className="flex items-center justify-between mb-3 gap-2">
+          <div className="flex items-center gap-1.5 min-w-0">
+            {onBack && (
+              <button
+                onClick={onBack}
+                aria-label="Back"
+                className="flex items-center justify-center w-8 h-8 -ms-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors shrink-0"
+              >
+                <ArrowLeft size={17} className="text-gray-600 dark:text-gray-400 rtl:rotate-180" />
+              </button>
+            )}
+            <h2 className="text-[15px] md:text-[17px] font-semibold text-gray-900 dark:text-gray-100 truncate">
+              {t("title")}
+            </h2>
+          </div>
           {totalUnread > 0 && (
             <span className="flex h-5 min-w-[20px] md:h-6 md:min-w-[24px] items-center justify-center rounded-full bg-violet-600 dark:bg-violet-500 px-1.5 text-[10px] md:text-[11px] font-bold text-white leading-none">
               {totalUnread}

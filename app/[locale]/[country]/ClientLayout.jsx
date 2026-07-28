@@ -173,7 +173,19 @@ export default function ClientLayout({ children }) {
                   has nothing for the global nav/bottom bar to do mid-booking,
                   so both are hidden on this route entirely — not just the
                   floating category switcher pill. */}
-              {!hideChrome && !isCheckoutRoute && !isPaxEnquiryRoute && <Navbar />}
+              {/* Account Settings has its own in-page header (back arrow,
+                  section title) below 768px, so the global site navbar is
+                  redundant there and is hidden on phone widths — it still
+                  shows from md (768px) up on this route. */}
+              {!hideChrome && !isCheckoutRoute && !isPaxEnquiryRoute && (
+                isAccountSettingsRoute ? (
+                  <div className="hidden md:block">
+                    <Navbar />
+                  </div>
+                ) : (
+                  <Navbar />
+                )
+              )}
               {!hideChrome && !isListingDetailPage && !isVenueParentPage && !isMessagesRoute && !isProfileRoute && !isAccountSettingsRoute && !isCheckoutRoute && !isCheckoutSuccessRoute && !isPaxEnquiryRoute && (
                 <CategoryNavigator
                   loadData={loadData}

@@ -2,18 +2,20 @@
 
 /**
  * Devices & Sessions — Current Device (active), Other Devices (last seen,
- * location, logout). Mock session list (data/mockAccountData.js) — no
- * session-management endpoint is confirmed, so Logout Device shows the
- * honest "not connected yet" toast after confirmation rather than actually
- * revoking anything.
+ * location, logout), and Recent Login Activity (moved here from Login &
+ * Security — it's a device/session log, so it belongs alongside the rest
+ * of the session data rather than duplicated across two sections). Mock
+ * session list (data/mockAccountData.js) — no session-management endpoint
+ * is confirmed, so Logout Device shows the honest "not connected yet"
+ * toast after confirmation rather than actually revoking anything.
  */
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { IconDeviceLaptop, IconDeviceMobile, IconMapPin, IconLogout, IconCircleCheck } from "@tabler/icons-react";
+import { IconDeviceLaptop, IconDeviceMobile, IconMapPin, IconLogout, IconCircleCheck, IconHistory } from "@tabler/icons-react";
 
 import { useToast } from "@/components/ToastProvider";
-import { MOCK_DEVICES } from "../../data/mockAccountData";
+import { MOCK_DEVICES, MOCK_LOGIN_ACTIVITY } from "../../data/mockAccountData";
 import { SettingsCard, CardHeading, StatusPill, ConfirmDialog, SecondaryButton } from "../ui";
 
 export default function Devices() {
@@ -98,6 +100,27 @@ export default function Devices() {
             </button>
           </div>
         ))}
+      </div>
+
+      {/* Recent login activity — read-only log, no edit affordance. Moved
+          here from Login & Security since it's a session/device log, not a
+          login-method setting. */}
+      <div className="mt-5 pt-5 border-t border-gray-100 dark:border-gray-800">
+        <p className="flex items-center gap-2 text-[12.5px] font-semibold text-gray-700 dark:text-gray-200 mb-3">
+          <IconHistory size={15} stroke={1.75} />
+          {t("recentActivity")}
+        </p>
+        <ul className="space-y-2.5">
+          {MOCK_LOGIN_ACTIVITY.map((row) => (
+            <li key={row.id} className="flex items-center justify-between gap-3 text-[12.5px]">
+              <div className="min-w-0">
+                <p className="font-medium text-gray-800 dark:text-gray-100 truncate">{row.event}</p>
+                <p className="text-gray-400 dark:text-gray-500 text-[11px] truncate">{row.device} · {row.location}</p>
+              </div>
+              <span className="shrink-0 text-gray-400 dark:text-gray-500 text-[11px]">{row.when}</span>
+            </li>
+          ))}
+        </ul>
       </div>
 
       <ConfirmDialog

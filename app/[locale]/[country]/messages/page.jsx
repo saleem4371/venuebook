@@ -85,22 +85,36 @@ function MessagesInner() {
     return () => setHideSiteChrome(false);
   }, [isFullscreenThread, setHideSiteChrome]);
 
-  /* Navigate to a conversation — preserves other search params */
+  /* Navigate to a conversation — preserves other search params.
+     Uses replace (not push): switching conversations is in-page UI
+     state, not a new navigable page. Pushing here would stack extra
+     history entries under /messages, so the back button would have to
+     step through every conversation ever opened before it could leave
+     the page — replace keeps "previous route" meaning whatever the
+     user was on before they entered Messages, not before they clicked
+     into a specific conversation. */
   const handleSelect = useCallback(
     (id) => {
       const p = new URLSearchParams(searchParams);
       p.set("conversation", id);
-      router.push(`${pathname}?${p.toString()}`, { scroll: false });
+      router.replace(`${pathname}?${p.toString()}`, { scroll: false });
     },
     [pathname, router, searchParams],
   );
 
-  /* Back to conversation list (mobile) */
+  /* Back to conversation list (mobile) — same reasoning, replace only. */
   const handleBack = useCallback(() => {
     const p = new URLSearchParams(searchParams);
     p.delete("conversation");
-    router.push(`${pathname}?${p.toString()}`, { scroll: false });
+    router.replace(`${pathname}?${p.toString()}`, { scroll: false });
   }, [pathname, router, searchParams]);
+
+  /* Leave the Messages page entirely — back to wherever the user came
+     from (e.g. account menu). Distinct from handleBack, which only
+     drops the active conversation. */
+  const handleGoBack = useCallback(() => {
+    router.back();
+  }, [router]);
 
   return (
     /* Sit below the fixed navbar (h-16 / md:h-18) and fill the rest.
@@ -137,6 +151,7 @@ function MessagesInner() {
               conversations={MOCK_CONVERSATIONS}
               activeId={activeId}
               onSelect={handleSelect}
+              onBack={handleGoBack}
             />
           </aside>
 

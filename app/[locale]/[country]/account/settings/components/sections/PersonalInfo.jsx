@@ -1,28 +1,35 @@
 "use client";
 
 /**
- * Personal Information — Profile Photo, Legal Name, Preferred Name, Email,
- * Phone, Date of Birth, Gender, Address, Emergency Contact, Bio. Every row
- * is Label / current value / Edit button — clicking Edit opens a side
- * drawer (never inline editing), per spec.
+ * Personal Information — Profile Photo, Legal Name, Email, Phone
+ * verification, Date of Birth, Gender, Bio, Identity verification,
+ * Residential address. Every editable row is Label / current value / Edit
+ * button — clicking Edit opens a side drawer (never inline editing), per
+ * spec. Phone verification (status only, no edit drawer — "Verify now"
+ * triggers the same honest not-connected-yet toast as everything else)
+ * lives here rather than in Login & Security, right next to the number it
+ * verifies.
  *
  * No update-profile endpoint exists in services/*.js (same conclusion the
  * existing AccountSettingsGrid.jsx already documents), so Save shows the
  * same honest "not connected yet" toast rather than faking persistence.
+ *
+ * Profile photo is the one exception — useAuth().updateAvatar() genuinely
+ * works client-side (see context/AuthContext.jsx), persisting per-account
+ * to localStorage since there's no backend field for it yet, so "Change
+ * photo" here actually updates the avatar everywhere it's shown (navbar,
+ * Profile, this page) instead of another comingSoon toast.
  */
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
   IconUser,
-  IconUserCircle,
   IconMail,
   IconPhone,
   IconCalendar,
   IconGenderBigender,
   IconHome,
-  IconMailbox,
-  IconPhoneCall,
   IconNotes,
   IconCircleCheck,
   IconShieldCheck,
@@ -30,11 +37,14 @@ import {
 } from "@tabler/icons-react";
 
 import { useToast } from "@/components/ToastProvider";
+import { useAuth } from "@/context/AuthContext";
+import { useRegion } from "@/hooks/useRegion";
+import { getAvatarColor, getInitials } from "@/lib/avatar";
 import {
   SettingsCard,
   CardHeading,
   RowItem,
-  EditDrawer,
+  EditModal,
   FormField,
   TextInput,
   SelectInput,
@@ -45,52 +55,53 @@ import {
 
 const FIELDS = [
   { key: "legalName", icon: IconUser, type: "text" },
-  { key: "preferredName", icon: IconUserCircle, type: "text" },
   { key: "email", icon: IconMail, type: "email", verifiable: true },
-  { key: "phone", icon: IconPhone, type: "tel", verifiable: true },
   { key: "dob", icon: IconCalendar, type: "date" },
   { key: "gender", icon: IconGenderBigender, type: "select" },
   { key: "bio", icon: IconNotes, type: "textarea" },
 ];
 
-/* Grouped at the bottom of the card, mirroring the reference layout:
-   Identity verification (status only, no edit) followed by Residential
-   address / Postal address / Emergency contact — each showing an "Add"
-   link when empty and "Edit" once a value exists. */
-const ADDRESS_FIELDS = [
-  { key: "residentialAddress", icon: IconHome, type: "text" },
-  { key: "postalAddress", icon: IconMailbox, type: "text" },
-  { key: "emergencyContact", icon: IconPhoneCall, type: "tel" },
-];
+/* Grouped at the bottom of the card: Identity verification (status only, no
+   edit — its method is region-aware, see IDENTITY_METHOD_BY_REGION below)
+   followed by Residential address, which doubles as the organisation/
+   billing address per spec. Preferred name, Postal address, and Emergency
+   contact are intentionally not collected here anymore. */
+const ADDRESS_FIELDS = [{ key: "residentialAddress", icon: IconHome, type: "text" }];
 
-function initialsOf(name) {
-  if (!name) return "VB";
-  const parts = name.trim().split(/\s+/);
-  return (parts[0]?.[0] || "").concat(parts[1]?.[0] || "").toUpperCase() || "VB";
-}
+/* Identity verification method differs by region — Aadhaar for India,
+   UAE Pass for the UAE. Falls back to India's method for any other region
+   until a new one is configured (per lib/region.js's REGIONS map). */
+const IDENTITY_METHOD_BY_REGION = {
+  IN: "identityVerificationAadhaar",
+  AE: "identityVerificationUaePass",
+};
+
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024; // 5MB — generous for a profile photo, cheap to guard against accidental huge uploads bloating localStorage
 
 export default function PersonalInfo({ user }) {
   const t = useTranslations("accountSettings.personalInfo");
   const tCommon = useTranslations("accountSettings.common");
   const tGender = useTranslations("accountSettings.personalInfo.genderOptions");
   const toast = useToast();
+  const { updateAvatar } = useAuth();
+  const { region } = useRegion();
+  const fileInputRef = useRef(null);
+
+  const identityMethodKey = IDENTITY_METHOD_BY_REGION[region] || IDENTITY_METHOD_BY_REGION.IN;
 
   const [values, setValues] = useState({
     legalName: user?.name || "",
-    preferredName: user?.preferredName || "",
     email: user?.email || "",
-    phone: user?.phone || "",
     dob: "",
     gender: "",
     bio: "",
     residentialAddress: "",
-    postalAddress: "",
-    emergencyContact: "",
   });
   const [draft, setDraft] = useState("");
   const [editingKey, setEditingKey] = useState(null);
 
   const isVerified = Boolean(user?.verified || user?.is_verified || user?.email_verified);
+  const isPhoneVerified = Boolean(user?.phone_verified);
 
   const openEdit = (key) => {
     setDraft(values[key] || "");
@@ -107,6 +118,27 @@ export default function PersonalInfo({ user }) {
 
   const field = FIELDS.find((f) => f.key === editingKey) || ADDRESS_FIELDS.find((f) => f.key === editingKey);
 
+  const handlePhotoSelect = (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-selecting the same file next time
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error(t("photoInvalidType"));
+      return;
+    }
+    if (file.size > MAX_PHOTO_BYTES) {
+      toast.error(t("photoTooLarge"));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      updateAvatar(reader.result); // data URL — shows up everywhere immediately (navbar, Profile, this row)
+      toast.success(t("photoUpdated"));
+    };
+    reader.onerror = () => toast.error(t("photoUploadFailed"));
+    reader.readAsDataURL(file);
+  };
+
   return (
     <SettingsCard>
       <CardHeading
@@ -115,7 +147,19 @@ export default function PersonalInfo({ user }) {
         icon={<IconUser size={18} className="text-gray-500 dark:text-gray-400" stroke={1.75} />}
       />
 
-      {/* Profile photo — its own row at the top, not part of the generic list */}
+      {/* Profile photo — its own row at the top, not part of the generic list.
+          Real upload now (see handlePhotoSelect above) — the one row in this
+          whole page that isn't a comingSoon no-op, since updateAvatar()
+          genuinely persists client-side. Same color-when-no-photo logic
+          (lib/avatar.js) as the navbar/Profile, so this never shows a
+          different fallback color for the same account. */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handlePhotoSelect}
+      />
       <div className="flex items-center justify-between gap-4 py-6 border-b border-gray-100 dark:border-gray-800">
         <div className="flex items-center gap-4 min-w-0">
           <div className="relative shrink-0">
@@ -124,14 +168,19 @@ export default function PersonalInfo({ user }) {
             ) : (
               <div
                 className="w-[72px] h-[72px] rounded-full flex items-center justify-center text-white text-[19px] font-bold border-2 border-white dark:border-gray-800 shadow-sm"
-                style={{ background: "linear-gradient(242deg, #a44bf3, #499ce8)" }}
+                style={{ backgroundColor: getAvatarColor(user?.name) }}
               >
-                {initialsOf(user?.name)}
+                {getInitials(user?.name, "VB")}
               </div>
             )}
-            <span className="absolute -bottom-0.5 -right-0.5 w-6 h-6 rounded-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 flex items-center justify-center">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              title={t("changePhoto")}
+              className="absolute -bottom-0.5 -right-0.5 w-6 h-6 rounded-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            >
               <IconCamera size={12} className="text-gray-500" />
-            </span>
+            </button>
           </div>
           <div className="min-w-0">
             <p className="text-[14px] font-medium text-gray-500 dark:text-gray-400">{t("photoLabel")}</p>
@@ -140,7 +189,7 @@ export default function PersonalInfo({ user }) {
         </div>
         <button
           type="button"
-          onClick={() => toast.info(tCommon("comingSoon"))}
+          onClick={() => fileInputRef.current?.click()}
           className="shrink-0 px-6 py-2.5 rounded-full border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 text-[14px] font-semibold hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors"
         >
           {t("changePhoto")}
@@ -167,10 +216,33 @@ export default function PersonalInfo({ user }) {
         />
       ))}
 
-      {/* Identity verification — status only, no edit affordance */}
+      {/* Phone verification — moved here from Login & Security, right next
+          to the number it verifies. Status only, no edit drawer; "Verify
+          now" surfaces the same honest not-connected-yet toast as the
+          rest of this module's unwired actions. */}
+      <RowItem
+        icon={<IconPhone size={16} stroke={1.75} />}
+        label={t("phoneVerification")}
+        value={user?.phone}
+        placeholder={t("noPhone")}
+        badge={
+          <StatusPill
+            tone={isPhoneVerified ? "green" : "amber"}
+            label={isPhoneVerified ? tCommon("verified") : tCommon("unverified")}
+          />
+        }
+        editLabel={!isPhoneVerified ? t("verifyNow") : undefined}
+        onEdit={!isPhoneVerified ? () => toast.info(tCommon("comingSoon")) : undefined}
+      />
+
+      {/* Identity verification — status only, no edit affordance. The
+          method itself is region-aware: Aadhaar for India, UAE Pass for
+          the UAE (see IDENTITY_METHOD_BY_REGION above), read from the
+          existing useRegion() — stable foundation, not modified here. */}
       <RowItem
         icon={<IconShieldCheck size={16} stroke={1.75} />}
         label={t("identityVerification")}
+        hint={t(identityMethodKey)}
         value={isVerified ? tCommon("verified") : tCommon("notVerified")}
       />
 
@@ -180,6 +252,7 @@ export default function PersonalInfo({ user }) {
           last={i === ADDRESS_FIELDS.length - 1}
           icon={<f.icon size={16} stroke={1.75} />}
           label={t(f.key)}
+          hint={t("residentialAddressHint")}
           value={values[f.key]}
           placeholder={t("notAdded")}
           editLabel={values[f.key] ? tCommon("edit") : tCommon("add")}
@@ -187,7 +260,7 @@ export default function PersonalInfo({ user }) {
         />
       ))}
 
-      <EditDrawer open={!!editingKey} onClose={() => setEditingKey(null)} title={field ? t(field.key) : ""} dirty={dirty}>
+      <EditModal open={!!editingKey} onClose={() => setEditingKey(null)} title={field ? t(field.key) : ""} dirty={dirty}>
         {field && (
           <div className="space-y-4">
             <FormField label={t(field.key)}>
@@ -223,7 +296,7 @@ export default function PersonalInfo({ user }) {
             )}
           </div>
         )}
-      </EditDrawer>
+      </EditModal>
     </SettingsCard>
   );
 }

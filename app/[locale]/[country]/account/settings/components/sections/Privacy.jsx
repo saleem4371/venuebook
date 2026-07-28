@@ -2,9 +2,10 @@
 
 /**
  * Privacy — Visibility, Data Download, Data Export, Delete Personal Data,
- * and a link into the standalone Delete Account section (which reuses the
- * existing DangerZone.jsx component wholesale rather than rebuilding the
- * same confirm-to-delete UI a second time).
+ * and Delete Account. Delete Account reuses the existing DangerZone.jsx
+ * component wholesale (already has the confirm-to-delete modal, the
+ * "not connected yet" toast, and the profile.danger i18n strings) rather
+ * than rebuilding the same destructive-action UI a second time here.
  */
 
 import { useState } from "react";
@@ -12,6 +13,7 @@ import { useTranslations } from "next-intl";
 import { IconLock, IconDownload, IconFileExport, IconUserOff } from "@tabler/icons-react";
 
 import { useToast } from "@/components/ToastProvider";
+import DangerZone from "@/app/[locale]/[country]/profile/components/DangerZone";
 import { SettingsCard, CardHeading, ToggleRow, RowItem, ConfirmDialog } from "../ui";
 
 export default function Privacy({ onNavigate }) {
@@ -69,6 +71,13 @@ export default function Privacy({ onNavigate }) {
         confirmLabel={tCommon("remove")}
         danger
       />
+
+      {/* Delete Account — a permanent, separate action from "delete personal
+          data" above (which keeps the account itself). Reuses the existing
+          Profile DangerZone component wholesale. */}
+      <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-800">
+        <DangerZone />
+      </div>
     </SettingsCard>
   );
 }

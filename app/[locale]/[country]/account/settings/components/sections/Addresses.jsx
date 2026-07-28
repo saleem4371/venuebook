@@ -1,11 +1,12 @@
 "use client";
 
 /**
- * Addresses — Home, Office, Other, a Map Preview, Default Address.
- * The map preview is a static, honest placeholder (not a live Google Maps
- * embed) since wiring a real map per saved address is outside "only
- * improve architecture/UI/UX" — it visually communicates the idea without
- * pretending to be a live map.
+ * Addresses — Home, Office, Other, each just a PIN/postal code, not a full
+ * street address. This section exists purely to estimate distance to a
+ * venue/destination at checkout; the full address is already captured once
+ * in Personal Information (residential/organisation address) and, for
+ * billing, in Payments — repeating it a third time here would just be
+ * duplicated data entry.
  */
 
 import { useState } from "react";
@@ -61,14 +62,9 @@ export default function Addresses() {
                   </span>
                   {addr.isDefault && <StatusPill tone="violet" label={t("defaultAddress")} />}
                 </div>
-                <p className="text-[12.5px] text-gray-600 dark:text-gray-300 leading-snug">
-                  {addr.line1}, {addr.city}, {addr.state} — {addr.pincode}
+                <p className="text-[12.5px] text-gray-500 dark:text-gray-400">
+                  {t("pincodeLabel")}: <span className="font-semibold text-gray-800 dark:text-gray-200">{addr.pincode}</span>
                 </p>
-
-                {/* Map preview placeholder — honest static illustration, no live embed */}
-                <div className="mt-3 h-20 rounded-xl bg-[repeating-linear-gradient(45deg,theme(colors.gray.50)_0px,theme(colors.gray.50)_10px,theme(colors.gray.100)_10px,theme(colors.gray.100)_20px)] dark:bg-gray-800/50 flex items-center justify-center">
-                  <IconMapPinFilled size={20} className="text-violet-400" />
-                </div>
 
                 <div className="flex items-center gap-2 mt-3">
                   <button onClick={comingSoon} className="flex-1 px-3 py-1.5 rounded-full border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 text-[11.5px] font-semibold hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">

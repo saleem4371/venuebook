@@ -35,14 +35,14 @@ export const MOCK_LOGIN_ACTIVITY = [
 ];
 
 export const MOCK_CARDS = [
-  { id: "card-1", brand: "Visa", last4: "4242", expiry: "09/27" },
-  { id: "card-2", brand: "Mastercard", last4: "8891", expiry: "01/26" },
+  { id: "card-1", brand: "Visa", last4: "4242", expiry: "09/27", isDefault: true },
+  { id: "card-2", brand: "Mastercard", last4: "8891", expiry: "01/26", lockedByBooking: true },
 ];
 
-export const MOCK_UPI = [{ id: "upi-1", vpa: "shawn@okhdfcbank" }];
+export const MOCK_UPI = [{ id: "upi-1", vpa: "shawn@okhdfcbank", isDefault: true }];
 
 export const MOCK_BANK_ACCOUNTS = [
-  { id: "bank-1", bankName: "HDFC Bank", last4: "4521", ifsc: "HDFC0001234" },
+  { id: "bank-1", bankName: "HDFC Bank", last4: "4521", ifsc: "HDFC0001234", isDefault: true },
 ];
 
 export const MOCK_INVOICES = [
@@ -51,25 +51,13 @@ export const MOCK_INVOICES = [
   { id: "inv-3", label: "Workspace day pass", amount: 1800, date: "18 Apr 2026", status: "Refunded" },
 ];
 
+/* Deliberately just a PIN/postal code per saved address, not a full street
+   address — this is only used to estimate distance to a venue/destination,
+   and the full address is already captured once in Personal Information
+   (residential/organisation address) and, for billing, in Payments. */
 export const MOCK_ADDRESSES = [
-  {
-    id: "addr-home",
-    type: "home",
-    line1: "42, Palm Meadows Layout",
-    city: "Bengaluru",
-    state: "Karnataka",
-    pincode: "560103",
-    isDefault: true,
-  },
-  {
-    id: "addr-office",
-    type: "office",
-    line1: "3rd Floor, WeWork Galaxy",
-    city: "Bengaluru",
-    state: "Karnataka",
-    pincode: "560025",
-    isDefault: false,
-  },
+  { id: "addr-home", type: "home", pincode: "560103", isDefault: true },
+  { id: "addr-office", type: "office", pincode: "560025", isDefault: false },
 ];
 
 export const MOCK_CONNECTED_ACCOUNTS = [

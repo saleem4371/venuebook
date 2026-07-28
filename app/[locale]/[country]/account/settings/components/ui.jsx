@@ -12,10 +12,8 @@
  * gray-800 hairlines) so the module reads as part of the same product, not
  * a bolt-on — no new colors are introduced anywhere in this file.
  *
- * `SlideOverPanel` is imported (not duplicated) from the Profile feature's
- * shared ui.jsx — it is a generic drawer shell with no Profile-specific
- * logic baked in, so reusing it satisfies "reuse existing components
- * wherever possible" without touching or depending on Profile page state.
+ * Edits happen in a small centered modal (`EditModal`), not a side panel —
+ * every section's "Edit" action opens the same modal shell.
  */
 
 import { useEffect } from "react";
@@ -23,8 +21,6 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { IconChevronRight, IconArrowLeft, IconX, IconAlertTriangle } from "@tabler/icons-react";
-
-import { SlideOverPanel } from "@/app/[locale]/[country]/profile/components/shared/ui";
 
 /* ═══════════════════════════════════════════════════════════════════════
    BREADCRUMB — "Profile > Account Settings", per spec.
@@ -48,32 +44,36 @@ export function Breadcrumb({ profileHref, current }) {
    rounded-3xl — a slightly tighter radius reads more "settings", less
    "dashboard widget", while staying on the same token system).
    ═══════════════════════════════════════════════════════════════════════ */
-export function SettingsCard({ children, className = "", noPad = false }) {
-  return (
-    <div className={`${noPad ? "" : "p-8 lg:p-11"} ${className}`}>
-      {children}
-    </div>
-  );
+export function SettingsCard({ children, className = "" }) {
+  return <div className={className}>{children}</div>;
 }
 
-export function SectionHeader({ title, subtitle, icon, action, backHref }) {
+export function SectionHeader({ title, subtitle, icon, action, backHref, onBack }) {
+  const backButtonClass =
+    "shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-gray-200 dark:border-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors";
   return (
     <div className="flex items-start justify-between gap-4">
       <div className="min-w-0">
-        <h1 className="flex items-center gap-3 text-[21px] sm:text-[24px] font-bold text-gray-900 dark:text-gray-50">
-          {backHref && (
-            <Link
-              href={backHref}
-              aria-label="Back"
-              className="shrink-0 w-9 h-9 rounded-full border border-gray-200 dark:border-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors"
-            >
-              <IconArrowLeft size={18} stroke={1.75} className="rtl:rotate-180" />
-            </Link>
+        <h1 className="flex items-center gap-2.5 sm:gap-3 text-[20px] sm:text-[23px] lg:text-[24px] font-bold text-gray-900 dark:text-gray-50">
+          {onBack ? (
+            <button type="button" onClick={onBack} aria-label="Back" className={backButtonClass}>
+              <IconArrowLeft size={16} stroke={1.75} className="rtl:rotate-180" />
+            </button>
+          ) : (
+            backHref && (
+              <Link href={backHref} aria-label="Back" className={backButtonClass}>
+                <IconArrowLeft size={16} stroke={1.75} className="rtl:rotate-180" />
+              </Link>
+            )
           )}
           {icon}
           {title}
         </h1>
-        {subtitle && <p className="text-[14px] text-gray-500 dark:text-gray-400 mt-2 max-w-xl ml-12">{subtitle}</p>}
+        {subtitle && (
+          <p className="hidden lg:block text-[14px] text-gray-500 dark:text-gray-400 mt-2 max-w-xl ml-12">
+            {subtitle}
+          </p>
+        )}
       </div>
       {action && <div className="shrink-0">{action}</div>}
     </div>
@@ -103,7 +103,7 @@ export function CardHeading({ title, subtitle, icon, action }) {
    ROW ITEM — Label / current value / Edit button. The core building block
    for Personal Information, Login & Security, Payments, Addresses.
    ═══════════════════════════════════════════════════════════════════════ */
-export function RowItem({ label, value, placeholder, onEdit, editLabel, icon, badge, last = false }) {
+export function RowItem({ label, hint, value, placeholder, onEdit, editLabel, icon, badge, last = false }) {
   return (
     <div
       className={`flex items-center justify-between gap-4 py-6 ${
@@ -121,6 +121,7 @@ export function RowItem({ label, value, placeholder, onEdit, editLabel, icon, ba
           <p className="text-[16px] font-semibold text-gray-900 dark:text-gray-50 truncate mt-1">
             {value || <span className="text-gray-400 dark:text-gray-500 font-normal">{placeholder}</span>}
           </p>
+          {hint && <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-1 leading-snug">{hint}</p>}
         </div>
         {badge}
       </div>
@@ -159,6 +160,34 @@ export function ToggleSwitch({ checked, onChange, disabled = false, label }) {
         className="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm rtl:right-0.5"
         style={{ left: checked ? "calc(100% - 1.25rem - 2px)" : "2px" }}
       />
+    </button>
+  );
+}
+
+/* Small square checkbox — used by the Notifications table (channel × category
+   grid), where a switch-style toggle would be too wide per cell. */
+export function Checkbox({ checked, onChange, disabled = false, label }) {
+  return (
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={checked}
+      aria-label={label}
+      disabled={disabled}
+      onClick={() => !disabled && onChange?.(!checked)}
+      className={`w-5 h-5 rounded-md border flex items-center justify-center transition-colors ${
+        disabled ? "opacity-40 cursor-not-allowed" : "cursor-pointer"
+      } ${
+        checked
+          ? "bg-violet-600 border-violet-600"
+          : "bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500"
+      }`}
+    >
+      {checked && (
+        <svg viewBox="0 0 16 16" fill="none" className="w-3 h-3">
+          <path d="M3.5 8.5L6.5 11.5L12.5 4.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      )}
     </button>
   );
 }
@@ -231,11 +260,11 @@ export function StatusPill({ label, tone = "gray" }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
-   EDIT DRAWER — every "Edit" click opens this, never inline editing (per
-   spec). Wraps the existing SlideOverPanel and adds Esc-to-close + a
-   dirty-state "unsaved changes" indicator next to the title.
+   EDIT MODAL — every "Edit" click opens this small centered modal, never a
+   side panel and never inline editing. Esc-to-close + a dirty-state
+   "unsaved changes" indicator next to the title.
    ═══════════════════════════════════════════════════════════════════════ */
-export function EditDrawer({ open, onClose, title, dirty = false, children }) {
+export function EditModal({ open, onClose, title, dirty = false, children }) {
   useEffect(() => {
     if (!open) return;
     const onKey = (e) => { if (e.key === "Escape") onClose?.(); };
@@ -244,10 +273,43 @@ export function EditDrawer({ open, onClose, title, dirty = false, children }) {
   }, [open, onClose]);
 
   return (
-    <SlideOverPanel open={open} onClose={onClose} title={title}>
-      {dirty && <UnsavedBadge className="mb-4" />}
-      {children}
-    </SlideOverPanel>
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          onClick={onClose}
+          className="fixed inset-0 z-[999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+        >
+          <motion.div
+            role="dialog"
+            aria-modal="true"
+            onClick={(e) => e.stopPropagation()}
+            initial={{ opacity: 0, scale: 0.96, y: 12 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: 8 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            className="w-full max-w-sm bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-6 max-h-[85vh] overflow-y-auto"
+          >
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <h4 className="text-[15px] font-semibold text-gray-900 dark:text-gray-50 pt-0.5">{title}</h4>
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Close"
+                className="shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                <IconX size={16} />
+              </button>
+            </div>
+            {dirty && <UnsavedBadge className="mb-4" />}
+            {children}
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 
