@@ -5,6 +5,31 @@ import api from "@/lib/axios";
 
 const AuthContext = createContext(null);
 
+// The backend's /auth/me and /auth/social-login responses don't carry a
+// profile-photo field yet — a Google login's real avatar (captured from
+// Google's own userinfo response at login time, see LoginModal.jsx) and
+// anything set via Account Settings' "Change photo" both only exist on
+// this side, so they're persisted here, keyed per-account, and reapplied
+// on top of whatever the backend returns whenever it comes back empty.
+// This is the ONE place `user.avatar` gets filled in from a non-backend
+// source — every component that renders an avatar just reads `user.avatar`
+// as before, so nothing downstream needed to change.
+const AVATAR_KEY_PREFIX = "vb_avatar_override:";
+
+function avatarKeyFor(u) {
+  const id = u?.email || u?.id || u?.phone || "anon";
+  return `${AVATAR_KEY_PREFIX}${id}`;
+}
+
+function withStoredAvatar(u) {
+  if (!u || u.avatar) return u;
+  try {
+    const saved = localStorage.getItem(avatarKeyFor(u));
+    if (saved) return { ...u, avatar: saved };
+  } catch (_) {}
+  return u;
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -18,8 +43,9 @@ const isListed =
   const fetchUser = useCallback(async () => {
     try {
       const res = await api.get("/auth/me");
-      setUser(res.data);
-      return res.data;          // ← callers receive fresh data synchronously
+      const nextUser = withStoredAvatar(res.data);
+      setUser(nextUser);
+      return nextUser;          // ← callers receive fresh data synchronously
     } catch (err) {
       setUser(null);
       return null;
@@ -30,7 +56,22 @@ const isListed =
 
   // ✅ login after success
   const login = useCallback((userData) => {
-    setUser(userData);
+    setUser(withStoredAvatar(userData));
+  }, []);
+
+  // ✅ Set (or replace) the current user's avatar — used by both the
+  // Google-login capture (LoginModal.jsx, when the backend doesn't return
+  // a photo of its own) and Account Settings' real "Change photo" upload.
+  // Persisted per-account so it survives refresh/relogin without a
+  // backend field to store it in.
+  const updateAvatar = useCallback((avatarUrl) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      try {
+        localStorage.setItem(avatarKeyFor(prev), avatarUrl);
+      } catch (_) {}
+      return { ...prev, avatar: avatarUrl };
+    });
   }, []);
 
   const logout = useCallback(async () => {
@@ -70,6 +111,7 @@ const isListed =
         login,
         logout,
         fetchUser, // 👈 IMPORTANT
+        updateAvatar,
       }}
     >
       {children}
