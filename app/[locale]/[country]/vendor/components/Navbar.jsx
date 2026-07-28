@@ -23,6 +23,7 @@ import LogoutConfirmationModal from "@/components/shared/LogoutConfirmationModal
 import LogoutOverlay           from "@/components/shared/LogoutOverlay";
 
 import { useSocket } from "@/context/SocketContext";
+import { getAvatarColor } from "@/lib/avatar";
 
 
 /* ═══════════════════════════════════════════════════════════════
@@ -70,26 +71,11 @@ function useTheme() {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   AVATAR
+   AVATAR — color comes from lib/avatar.js now (same hash as the
+   customer-facing navbar's UserDropdown.jsx), so a vendor account shows
+   the identical initials color there and here instead of its own
+   separately-hashed one.
 ═══════════════════════════════════════════════════════════════ */
-const PALETTE = [
-  "bg-blue-500",
-  "bg-violet-500",
-  "bg-emerald-500",
-  "bg-orange-500",
-  "bg-rose-500",
-  "bg-cyan-500",
-  "bg-amber-500",
-  "bg-pink-500",
-  "bg-teal-500",
-  "bg-indigo-500",
-];
-function avatarBg(name) {
-  if (!name) return "bg-violet-500";
-  return PALETTE[
-    Math.max(0, (name.trim().toUpperCase().charCodeAt(0) - 65) % PALETTE.length)
-  ];
-}
 function initials(name) {
   if (!name) return "V";
   return name
@@ -266,12 +252,12 @@ function AvatarArea({
         aria-label="Account menu"
         aria-expanded={showProfile}
         aria-haspopup="menu"
+        style={isLoggedIn && !user?.avatar ? { backgroundColor: getAvatarColor(userName) } : undefined}
         className={[
           "relative flex h-10 w-10 shrink-0 items-center justify-center",
           "rounded-full overflow-hidden cursor-pointer",
           "transition hover:opacity-80",
           "focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2",
-          isLoggedIn && user?.avatar ? "" : avatarBg(userName),
         ].join(" ")}
       >
         {isLoggedIn && user?.avatar ? (
@@ -302,12 +288,21 @@ function AvatarArea({
             {/* User header */}
             <div className="px-4 py-4 border-b border-gray-100 dark:border-gray-800">
               <div className="flex items-center gap-3">
-                <span
-                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white select-none ${avatarBg(userName)}`}
-                  aria-hidden="true"
-                >
-                  {initials(userName)}
-                </span>
+                {isLoggedIn && user?.avatar ? (
+                  <img
+                    src={user.avatar}
+                    alt={userName}
+                    className="h-9 w-9 shrink-0 rounded-full object-cover"
+                  />
+                ) : (
+                  <span
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white select-none"
+                    style={{ backgroundColor: getAvatarColor(userName) }}
+                    aria-hidden="true"
+                  >
+                    {initials(userName)}
+                  </span>
+                )}
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100 leading-snug">
                     {userName}
