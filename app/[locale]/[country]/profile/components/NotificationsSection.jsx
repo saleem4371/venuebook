@@ -39,10 +39,13 @@ const TYPE_TONE = {
   offer: { bg: "bg-orange-50 dark:bg-orange-900/30", text: "text-orange-600" },
 };
 
-export default function NotificationsSection({ compact = false, flat = false }) {
+export default function NotificationsSection({ compact = false, flat = false, defaultOpen = false }) {
   const t = useTranslations("profile.notifications");
   const tDrawer = useTranslations("profile.drawer");
-  const [open, setOpen] = useState(false);
+  // `defaultOpen` lets a caller (page.jsx, reading ?section=notifications
+  // from the navbar dropdown's Notifications link) land straight on the
+  // full list instead of just the 3-row preview card.
+  const [open, setOpen] = useState(defaultOpen);
 
   const preview = MOCK_NOTIFICATIONS.slice(0, 3);
 

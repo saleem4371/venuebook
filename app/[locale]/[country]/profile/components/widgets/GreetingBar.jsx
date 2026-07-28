@@ -23,7 +23,7 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { CalendarRange, ArrowLeft, MessageCircle, FolderHeart } from "lucide-react";
+import { CalendarRange, ArrowLeft, MessageCircle, Settings } from "lucide-react";
 
 import { SectionCard } from "../shared/ui";
 import { MOCK_CONVERSATIONS } from "@/app/[locale]/[country]/messages/_data";
@@ -72,7 +72,15 @@ export default function GreetingBar({
       active: bookingsActive,
     },
     { key: "messages", href: `/${locale}/${country}/messages`, icon: MessageCircle, label: t("actions.messages"), badge: unreadCount },
-    { key: "collections", href: `/${locale}/${country}/collections`, icon: FolderHeart, label: t("actions.collections") },
+    // Collections is still reachable from the navbar's own account menu —
+    // this row's third slot is Account Settings now instead, since
+    // IdentityPanel's mobile-only settings pill (right above this bar)
+    // was a near-duplicate of this same action sitting directly on top
+    // of it; one pill here replaces both. Desktop (lg+) already has a
+    // dedicated settings gear on IdentityPanel's avatar card in the left
+    // column, so this pill would be a second one there — `lg:hidden`
+    // keeps it a mobile/tablet-only entry.
+    { key: "settings", href: `/${locale}/${country}/account/settings`, icon: Settings, label: t("actions.settings"), lgHidden: true },
   ];
 
   return (
@@ -86,8 +94,10 @@ export default function GreetingBar({
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          {actions.map(({ key: actionKey, href, onClick, icon: Icon, label, badge, active }) => {
+          {actions.map(({ key: actionKey, href, onClick, icon: Icon, label, badge, active, lgHidden }) => {
             const className = `relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11.5px] font-semibold transition-colors ${
+              lgHidden ? "lg:hidden" : ""
+            } ${
               active
                 ? "bg-violet-600 hover:bg-violet-700 text-white"
                 : "bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200"

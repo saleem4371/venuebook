@@ -8,6 +8,10 @@
  * "Open itinerary" reuses the same BookingDetailModal (view mode) as every
  * other booking touchpoint on this page; "Message host" routes to the real
  * Messages page, same as BookingsSection's Support action.
+ *
+ * Carries a "days to go" badge over the image (Today / Tomorrow / In N
+ * days) so the headline reminder — how soon this is — reads at a glance
+ * without opening the itinerary.
  */
 
 import { useState } from "react";
@@ -44,11 +48,25 @@ export default function UpcomingBookingCard() {
     new Date(booking.date),
   );
 
+  // Whole-day difference from today, floored to midnight on both sides so
+  // "Today"/"Tomorrow" don't flip based on the current hour.
+  const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const daysToGo = Math.round(
+    (startOfDay(new Date(booking.date)) - startOfDay(new Date())) / 86400000,
+  );
+  const daysToGoLabel =
+    daysToGo <= 0 ? t("today") : daysToGo === 1 ? t("tomorrow") : t("inDays", { days: daysToGo });
+
   return (
     <div className="relative overflow-hidden rounded-3xl shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
       <div className="relative h-24">
         <img src={booking.image} alt="" className="w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+        <div className="absolute top-2 start-2">
+          <span className="inline-flex items-center rounded-full bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm px-2 py-0.5 text-[10px] font-bold text-violet-700 dark:text-violet-400">
+            {daysToGoLabel}
+          </span>
+        </div>
         <div className="absolute bottom-2 left-3 right-3">
           <p className="text-white text-[13px] font-bold truncate">{booking.propertyName}</p>
         </div>

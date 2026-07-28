@@ -46,7 +46,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import { Folder } from "lucide-react";
@@ -66,17 +66,15 @@ import { usePreferredLocation } from "@/hooks/usePreferredLocation";
 import { POINTS_PER_INR } from "@/config/checkoutConfig";
 import WishlistPopup from "@/app/[locale]/[country]/search/[type]/components/WishlistPopup";
 
-import { SlideOverPanel } from "./components/shared/ui";
-
-/* Full-detail components — only still used inside the Rewards drawer
-   below (MemberCard/FarmRewards). Everything else that used to live here
-   (ProfileHeader, QuickStats, BookingsSection, CollectionsSection,
+/* Everything that used to live here (ProfileHeader, QuickStats,
+   MemberCard, FarmRewards, BookingsSection, CollectionsSection,
    RecentlyViewed, OffersSection, AccountSettingsGrid, PasswordCard) has
    been replaced by the compact widgets below (reused on both desktop and
-   mobile/tablet now) or, for account management, by the dedicated
-   /account/settings route. */
-import MemberCard from "./components/MemberCard";
-import FarmRewards from "./components/FarmRewards";
+   mobile/tablet now) or, for account management AND the full Membership &
+   Rewards detail, by the dedicated /account/settings route — see
+   IdentityPanel's onOpenSettings/onOpenRewards, which now redirect there
+   instead of opening a local drawer, per direct request to keep this page
+   simple. */
 import NotificationsSection from "./components/NotificationsSection";
 
 /* Compact widgets — shared by desktop and mobile/tablet. */
@@ -86,11 +84,13 @@ import CollectionsPanel from "./components/widgets/CollectionsPanel";
 import RecentlyViewedPanel from "./components/widgets/RecentlyViewedPanel";
 import LikedPropertiesPanel from "./components/widgets/LikedPropertiesPanel";
 import OffersPanel from "./components/widgets/OffersPanel";
+import UpcomingBookingCard from "./components/widgets/UpcomingBookingCard";
+import ReserveHoldCard from "./components/widgets/ReserveHoldCard";
 import GreetingBar from "./components/widgets/GreetingBar";
 import ReelsForYouSection from "./components/widgets/ReelsForYouSection";
 import SuggestionsSection from "./components/widgets/SuggestionsSection";
 
-import { computeMockWalletPoints, hasFarmstayBooking } from "./data/mockProfileData";
+import { computeMockWalletPoints } from "./data/mockProfileData";
 
 function unwrapList(res) {
   const d = res?.data;
@@ -127,7 +127,14 @@ export default function ProfilePage() {
   const { setLoginOpen } = useUI();
   const { locale, country } = useParams();
   const router = useRouter();
-  const tDrawer = useTranslations("profile.drawer");
+  const searchParams = useSearchParams();
+
+  // Deep-link support for the navbar dropdown's Bookings/Notifications
+  // items (see UserDropdown.jsx) — both now point here with ?section=...
+  // instead of a separate /bookings or /notifications route (neither
+  // existed for customers), so the section actually opens on arrival
+  // instead of just landing on the plain feed.
+  const sectionParam = searchParams.get("section");
 
   const [liked, setLiked] = useState([]);
   const [wishlist, setWishlist] = useState([]);
@@ -147,8 +154,6 @@ export default function ProfilePage() {
   const [recommended, setRecommended] = useState([]);
   const [recommendedLoading, setRecommendedLoading] = useState(true);
 
-  const [rewardsOpen, setRewardsOpen] = useState(false);
-
   // Center-column toggle — GreetingBar's "Bookings" pill (always visible,
   // both modes) swaps the CENTER column between the feed (Reels +
   // Suggestions + Offers) and a single Bookings panel filling the column —
@@ -159,7 +164,33 @@ export default function ProfilePage() {
   // toggled open — replacing the old data-driven hasBookings↔Offers swap.
   const [showFullBookings, setShowFullBookings] = useState(false);
 
+  // ?section=bookings (from the navbar dropdown) opens straight into the
+  // full Bookings view instead of the feed — same state either link on
+  // this page already drives, just pre-set on arrival.
+  useEffect(() => {
+    if (sectionParam === "bookings") setShowFullBookings(true);
+  }, [sectionParam]);
+
+  // ?section=notifications does the same for NotificationsSection's own
+  // "View All" panel (see its `defaultOpen` prop below) — computed once
+  // here so both the desktop and mobile trees' NotificationsSection
+  // instances agree instead of each re-deriving it.
+  const openNotificationsOnLoad = sectionParam === "notifications";
+
   const isDesktop = useIsDesktop();
+
+  // Mobile's Bookings is a fixed full-viewport takeover (see BookingsPanel's
+  // `fullScreen`), so the page underneath must stop scrolling while it's
+  // open — otherwise the background column keeps its own scroll position
+  // and can shift invisibly behind the overlay.
+  useEffect(() => {
+    if (isDesktop || !showFullBookings) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [isDesktop, showFullBookings]);
 
   const load = useCallback(async () => {
     if (!user) {
@@ -252,11 +283,6 @@ export default function ProfilePage() {
   );
 
   const walletPoints = useMemo(() => computeMockWalletPoints(POINTS_PER_INR), []);
-  const showFarmRewards = useMemo(() => hasFarmstayBooking(), []);
-
-  const joinedRaw = user?.createdAt || user?.created_at || user?.joinedAt;
-  const memberSinceYear =
-    joinedRaw && !Number.isNaN(new Date(joinedRaw).getTime()) ? new Date(joinedRaw).getFullYear() : null;
 
   if (!authLoading && !user) {
     return <SignedOutState onLogin={() => setLoginOpen(true)} />;
@@ -297,7 +323,7 @@ export default function ProfilePage() {
            section now just reads as empty space within one continuous
            page, not a mismatched floating card.
            ════════════════════════════════════════════════════════════════ */
-        <div className="flex flex-col h-screen pt-20 overflow-hidden">
+        <div className="flex flex-col h-screen pt-16 md:pt-[72px] overflow-hidden">
           <LayoutGroup>
           <div className="grid grid-cols-[260px_1fr_280px] xl:grid-cols-[300px_1fr_320px] flex-1 min-h-0 min-w-0 divide-x divide-gray-100 dark:divide-gray-800">
             {/* LEFT — identity, then Bookings (compact). Bookings lives
@@ -322,8 +348,21 @@ export default function ProfilePage() {
                 user={user}
                 walletPoints={walletPoints}
                 onOpenSettings={() => router.push(`/${locale}/${country}/account/settings`)}
-                onOpenRewards={() => setRewardsOpen(true)}
+                onOpenRewards={() => router.push(`/${locale}/${country}/account/settings?tab=rewards`)}
               />
+
+              {/* Reminder belt — always visible above Bookings, independent
+                  of the layoutId FLIP below: the soonest upcoming event
+                  (with a days-to-go badge) and, separately, a live
+                  countdown if that or another near-term booking still has
+                  an unpaid hold at risk of release. Each sources its own
+                  "soonest" booking (see mockProfileData.js) and simply
+                  doesn't render when there's nothing to show. */}
+              <div className="p-4 flex flex-col gap-3">
+                <UpcomingBookingCard />
+                <ReserveHoldCard />
+              </div>
+
               <AnimatePresence>
                 {!showFullBookings && (
                   <motion.div
@@ -416,7 +455,7 @@ export default function ProfilePage() {
               <CollectionsPanel flat collections={collections} wishlist={wishlist} loading={dataLoading} locale={locale} country={country} />
               <LikedPropertiesPanel flat liked={liked} loading={dataLoading} locale={locale} country={country} />
               <RecentlyViewedPanel flat recentViews={recentViews} loading={dataLoading} locale={locale} country={country} />
-              <NotificationsSection compact flat />
+              <NotificationsSection compact flat defaultOpen={openNotificationsOnLoad} />
             </div>
           </div>
           </LayoutGroup>
@@ -438,15 +477,13 @@ export default function ProfilePage() {
                 "View All" to its own real page or drawer, so none of them
                 needed a new toggle state.
            ════════════════════════════════════════════════════════════════ */
-        <div className="min-h-screen pt-20 pb-14 overflow-x-hidden">
+        <div className="min-h-screen pt-16 md:pt-[72px] pb-14 overflow-x-hidden">
           <div className="max-w-[720px] mx-auto min-w-0 flex flex-col divide-y divide-gray-100 dark:divide-gray-800">
-            <IdentityPanel
-              flat
-              user={user}
-              walletPoints={walletPoints}
-              onOpenSettings={() => router.push(`/${locale}/${country}/account/settings`)}
-              onOpenRewards={() => setRewardsOpen(true)}
-            />
+            {/* No IdentityPanel here — below 1024px it only ever showed a
+                settings pill (avatar/name/email/tier badge were already
+                dropped earlier), and GreetingBar's own action row right
+                below now carries an "Account settings" pill of its own,
+                so this would just be a duplicate sitting on top of it. */}
             <GreetingBar
               flat
               user={user}
@@ -456,18 +493,24 @@ export default function ProfilePage() {
               onToggleBookings={() => setShowFullBookings((v) => !v)}
             />
 
+            {/* Reminder belt — same "soonest upcoming" + "hold expiring"
+                cards as desktop's left column, placed here since mobile
+                has no standing Bookings preview to sit above; hidden
+                while the full-screen Bookings takeover is open (nothing
+                behind it is visible anyway) so it doesn't render twice. */}
+            {!showFullBookings && (
+              <div className="p-4 flex flex-col gap-3">
+                <UpcomingBookingCard />
+                <ReserveHoldCard />
+              </div>
+            )}
+
+            {/* Bookings is a full-viewport takeover on mobile now, not
+                another section in this scrolling column — it renders
+                outside the column's flow entirely (fixed, own component),
+                so this AnimatePresence only ever mounts the feed side. */}
             <AnimatePresence mode="wait" initial={false}>
-              {showFullBookings ? (
-                <motion.div
-                  key="bookings-mobile"
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <BookingsPanel flat embedded />
-                </motion.div>
-              ) : (
+              {showFullBookings ? null : (
                 <motion.div
                   key="feed-mobile"
                   initial={{ opacity: 0, y: 8 }}
@@ -494,22 +537,23 @@ export default function ProfilePage() {
             <CollectionsPanel flat collections={collections} wishlist={wishlist} loading={dataLoading} locale={locale} country={country} />
             <LikedPropertiesPanel flat liked={liked} loading={dataLoading} locale={locale} country={country} />
             <RecentlyViewedPanel flat recentViews={recentViews} loading={dataLoading} locale={locale} country={country} />
-            <NotificationsSection compact flat />
+            <NotificationsSection compact flat defaultOpen={openNotificationsOnLoad} />
           </div>
         </div>
       )}
 
-      {/* ══════════════════════════════════════════════════════════════════
-          DRAWERS — reachable from both layouts' triggers (Account Settings
-          now navigates to its own /account/settings route instead of
-          opening a drawer here — see IdentityPanel's onOpenSettings above).
-          ══════════════════════════════════════════════════════════════════ */}
-      <SlideOverPanel open={rewardsOpen} onClose={() => setRewardsOpen(false)} title={tDrawer("rewardsTitle")}>
-        <div className={`grid grid-cols-1 ${showFarmRewards ? "gap-4" : ""}`}>
-          <MemberCard walletPoints={walletPoints} memberSinceYear={memberSinceYear} />
-          {showFarmRewards && <FarmRewards walletPoints={walletPoints} />}
-        </div>
-      </SlideOverPanel>
+      {/* Mobile Bookings — a real full-screen takeover (fixed, above the
+          navbar), not another section inline in the scrolling column
+          above. Mounted here rather than inside the mobile branch so it
+          isn't clipped by that column's own layout/overflow rules. */}
+      {!isDesktop && showFullBookings && (
+        <BookingsPanel fullScreen onBack={() => setShowFullBookings(false)} />
+      )}
+
+      {/* Account Settings and Membership & Rewards both navigate to the
+          dedicated /account/settings route now (see IdentityPanel's
+          onOpenSettings/onOpenRewards above) — no drawers left on this
+          page for either. */}
 
       {/* Same Save-to-Collection modal the search page and /collections use —
           reused, not reimplemented, so save/move/remove stays one code path. */}
@@ -553,7 +597,7 @@ function ProfileSkeleton() {
           gains the greeting pills + reels rail + suggestions grid rows
           that didn't exist when this skeleton was last touched; right
           column gains a 4th block for NotificationsSection. */}
-      <div className="hidden lg:flex flex-col h-screen pt-20 overflow-hidden">
+      <div className="hidden lg:flex flex-col h-screen pt-16 md:pt-[72px] overflow-hidden">
         <div className="grid grid-cols-[260px_1fr_280px] xl:grid-cols-[300px_1fr_320px] flex-1 min-h-0 min-w-0 divide-x divide-gray-100 dark:divide-gray-800">
 
           {/* LEFT — identity, then offers/bookings ribbon */}
@@ -573,6 +617,11 @@ function ProfileSkeleton() {
                 <Sk className="h-3 w-28 rounded-full" />
                 <Sk className="h-2.5 rounded-full" />
               </div>
+            </div>
+            {/* Reminder belt — mirrors UpcomingBookingCard + ReserveHoldCard */}
+            <div className="p-4 flex flex-col gap-3">
+              <Sk className="h-[172px] rounded-3xl" />
+              <Sk className="h-[92px] rounded-3xl" />
             </div>
             <div className="p-4 space-y-2.5">
               <Sk className="h-4 w-24 rounded-full" />
@@ -635,20 +684,10 @@ function ProfileSkeleton() {
           column, no card boxes — mirrors the real layout's single
           divide-y flow (identity, greeting, feed, collections/liked/
           recent/notifications) instead of boxing each group. */}
-      <div className="lg:hidden pt-20 pb-14 max-w-[720px] mx-auto flex flex-col divide-y divide-gray-100 dark:divide-gray-800">
-        {/* Identity */}
-        <div className="p-4 space-y-4">
-          <div className="flex items-center gap-3">
-            <Sk className="w-14 h-14 rounded-full flex-none" />
-            <div className="flex-1 space-y-2">
-              <Sk className="h-4 w-32" />
-              <Sk className="h-3 w-24" />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-2.5">
-            {[...Array(2)].map((_, i) => <Sk key={i} className="h-14 rounded-2xl" />)}
-          </div>
-        </div>
+      <div className="lg:hidden pt-16 md:pt-[72px] pb-14 max-w-[720px] mx-auto flex flex-col divide-y divide-gray-100 dark:divide-gray-800">
+        {/* No Identity block here — the real mobile render has no
+            IdentityPanel at all below 1024px anymore (see the real
+            render above), so nothing needs a skeleton for it. */}
 
         {/* Greeting */}
         <div className="p-4 flex items-center justify-between gap-3">
@@ -659,6 +698,12 @@ function ProfileSkeleton() {
           <div className="flex gap-2 shrink-0">
             {[...Array(2)].map((_, i) => <Sk key={i} className="h-7 w-16 rounded-full" />)}
           </div>
+        </div>
+
+        {/* Reminder belt — mirrors UpcomingBookingCard + ReserveHoldCard */}
+        <div className="p-4 flex flex-col gap-3">
+          <Sk className="h-[172px] rounded-3xl" />
+          <Sk className="h-[92px] rounded-3xl" />
         </div>
 
         {/* Feed — reels rail, offers grid */}
@@ -704,7 +749,7 @@ function ProfileSkeleton() {
 function SignedOutState({ onLogin }) {
   const t = useTranslations("profile.signedOut");
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-6 text-center pt-24 bg-white dark:bg-gray-950">
+    <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-6 text-center pt-16 md:pt-[72px] bg-white dark:bg-gray-950">
       <div className="w-16 h-16 rounded-full bg-violet-50 dark:bg-violet-500/10 flex items-center justify-center">
         <Folder size={26} className="text-violet-600" />
       </div>

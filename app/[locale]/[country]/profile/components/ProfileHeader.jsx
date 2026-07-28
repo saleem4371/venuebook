@@ -18,19 +18,7 @@ import { CheckCircle2, Camera, Pencil, Phone, Mail, Sparkles } from "lucide-reac
 
 import { ProgressBar } from "./shared/ui";
 import { MOCK_BOOKINGS, CATEGORY_COLORS } from "../data/mockProfileData";
-
-function initialsOf(name) {
-  if (!name) return "VB";
-  const parts = name.trim().split(/\s+/);
-  return (parts[0]?.[0] || "").concat(parts[1]?.[0] || "").toUpperCase() || "VB";
-}
-
-function avatarTone(name) {
-  const palette = ["#7C3AED", "#2563EB", "#16A34A", "#DB2777", "#EA580C", "#0EA5E9"];
-  if (!name) return palette[0];
-  const hash = name.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
-  return palette[hash % palette.length];
-}
+import { getAvatarColor, getInitials } from "@/lib/avatar";
 
 function mostRecentBooking() {
   return [...MOCK_BOOKINGS].sort((a, b) => new Date(b.date) - new Date(a.date))[0];
@@ -73,7 +61,7 @@ export default function ProfileHeader({ user }) {
     !hasAvatar && { key: "addPhoto", Icon: Camera },
   ].filter(Boolean);
 
-  const tone = avatarTone(user?.name);
+  const tone = getAvatarColor(user?.name);
 
   return (
     <section className="rounded-3xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-[0_2px_8px_rgba(0,0,0,0.04)] p-4 sm:p-5">
@@ -96,7 +84,7 @@ export default function ProfileHeader({ user }) {
                 className="w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center text-white text-lg font-bold border-2 border-white dark:border-gray-800 shadow-md"
                 style={{ backgroundColor: tone }}
               >
-                {initialsOf(user?.name)}
+                {getInitials(user?.name, "VB")}
               </div>
             )}
 

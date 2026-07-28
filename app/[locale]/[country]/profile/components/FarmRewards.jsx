@@ -20,7 +20,7 @@ import { MOCK_POINTS_HISTORY } from "../data/mockProfileData";
 
 const REWARD_STEP = 500;
 
-export default function FarmRewards({ walletPoints = 0 }) {
+export default function FarmRewards({ walletPoints = 0, flat = false }) {
   const t = useTranslations("profile.farmRewards");
 
   const nextThreshold = (Math.floor(walletPoints / REWARD_STEP) + 1) * REWARD_STEP;
@@ -28,7 +28,7 @@ export default function FarmRewards({ walletPoints = 0 }) {
   const canRedeem = walletPoints >= REWARD_STEP;
 
   return (
-    <SectionCard>
+    <SectionCard flat={flat}>
       <SectionHeading
         title={t("title")}
         subtitle={t("subtitle")}

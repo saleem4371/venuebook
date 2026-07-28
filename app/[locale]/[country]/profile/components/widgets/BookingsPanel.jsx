@@ -50,6 +50,15 @@
  * Feed") is the only way back, so this has no back button of its own
  * beyond the unrelated manage-view one above (out of a single booking's
  * detail, not out of this whole panel).
+ *
+ * `fullScreen` — mobile-only variant. On < 1024px the toggle no longer
+ * swaps this in as just another embedded section of the same scrolling
+ * page (that read as "part of the dashboard", not a real bookings screen);
+ * `fullScreen` renders it as a true full-viewport takeover instead — fixed
+ * over everything including the navbar, its own back button + title bar,
+ * the list owning its own scroll underneath. `onBack` is that top-level
+ * "leave bookings entirely" callback (distinct from the manage-view
+ * `onBack` above, which only backs out of a single booking's detail).
  */
 
 import { useMemo, useState } from "react";
@@ -66,7 +75,7 @@ import { ManageBookingView } from "../shared/ManageBookingView";
 import BookingTabs, { filterBookingsByTab } from "../shared/BookingTabs";
 import { MOCK_BOOKINGS, CATEGORY_COLORS } from "../../data/mockProfileData";
 
-export default function BookingsPanel({ compact = false, flat = false, embedded = false }) {
+export default function BookingsPanel({ compact = false, flat = false, embedded = false, fullScreen = false, onBack }) {
   const t = useTranslations("profile.bookings");
   const tCat = useTranslations("card.badge");
   const { locale, country } = useParams();
@@ -138,12 +147,8 @@ export default function BookingsPanel({ compact = false, flat = false, embedded 
     );
   }
 
-  return (
-    <SectionCard
-      flat={flat}
-      className={embedded ? "flex flex-col" : "flex flex-col min-h-0 flex-1"}
-      padded={false}
-    >
+  const content = (
+    <>
       {manageBooking ? (
         <div className="p-4 pb-0 flex items-center gap-3">
           <button
@@ -173,15 +178,32 @@ export default function BookingsPanel({ compact = false, flat = false, embedded 
         </div>
       ) : (
         <div className="p-4 pb-0">
-          <SectionHeading
-            title={t("title")}
-            subtitle={t("subtitle")}
-            icon={
-              <span className="flex items-center justify-center w-7 h-7 rounded-xl bg-violet-50 dark:bg-violet-900/30">
-                <CalendarRange size={14} className="text-violet-600" />
-              </span>
-            }
-          />
+          {fullScreen ? (
+            // Own back button + title instead of SectionHeading's icon
+            // treatment — this is the top bar of a full screen, not a
+            // section inside one, so it reads like a native list screen
+            // (back arrow + title) rather than a dashboard card header.
+            <div className="flex items-center gap-2 mb-3.5">
+              <button
+                type="button"
+                onClick={onBack}
+                className="w-8 h-8 -ml-1.5 rounded-full flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors shrink-0"
+              >
+                <ArrowLeft size={18} />
+              </button>
+              <h2 className="text-[16px] font-semibold text-gray-900 dark:text-gray-50">{t("title")}</h2>
+            </div>
+          ) : (
+            <SectionHeading
+              title={t("title")}
+              subtitle={t("subtitle")}
+              icon={
+                <span className="flex items-center justify-center w-7 h-7 rounded-xl bg-violet-50 dark:bg-violet-900/30">
+                  <CalendarRange size={14} className="text-violet-600" />
+                </span>
+              }
+            />
+          )}
           <BookingTabs active={activeTab} onChange={setActiveTab} t={t} compact />
         </div>
       )}
@@ -247,6 +269,28 @@ export default function BookingsPanel({ compact = false, flat = false, embedded 
           />
         )}
       </AnimatePresence>
+    </>
+  );
+
+  // `fullScreen` bypasses SectionCard's card chrome entirely — a fixed,
+  // full-viewport surface above even the navbar (z-[150]) so it reads as
+  // its own screen, not another card in the page. BookingDetailModal
+  // (z-[999]) still layers correctly above this for Invoice.
+  if (fullScreen) {
+    return (
+      <div className="fixed inset-0 z-[200] bg-white dark:bg-gray-950 flex flex-col">
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <SectionCard
+      flat={flat}
+      className={embedded ? "flex flex-col" : "flex flex-col min-h-0 flex-1"}
+      padded={false}
+    >
+      {content}
     </SectionCard>
   );
 }

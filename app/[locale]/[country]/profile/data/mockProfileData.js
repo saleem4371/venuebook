@@ -169,6 +169,12 @@ export const MOCK_BOOKINGS = [
     address: "5 Rooftop Lane, Amritsar, Punjab 143001",
     specialRequest: null,
     paymentStatus: "partial",
+    // MOCK ONLY — no real payment-hold concept exists on the backend yet.
+    // Drives ReserveHoldCard's countdown: if the remaining balance isn't
+    // paid before this timestamp, the date is treated as released back to
+    // general availability. Only set on bookings with paymentStatus
+    // "partial" — a fully paid booking has no hold to expire.
+    holdExpiresAt: "2026-08-05T23:59:59",
     bookingType: "reservation",
     bookingStatus: "upcoming",
     vendorName: "Coral Bay Events",
@@ -678,12 +684,41 @@ export function computeMockTotalNights() {
   return confirmedReservations().reduce((sum, b) => sum + (b.nights || 0), 0);
 }
 
-/** Soonest upcoming booking, or null if none. */
+/**
+ * Soonest upcoming booking, or null if none. Filters out anything dated
+ * before today even if still tagged "upcoming" — Cedar Creek Farmstay's
+ * mock date has already passed relative to "today" in some environments,
+ * and a booking that's already happened has no business surfacing as the
+ * "next" one.
+ */
 export function getNextUpcomingBooking() {
-  const upcoming = MOCK_BOOKINGS.filter((b) => b.bookingStatus === "upcoming").sort(
-    (a, b) => new Date(a.date) - new Date(b.date),
-  );
+  const now = new Date();
+  const upcoming = MOCK_BOOKINGS.filter(
+    (b) => b.bookingStatus === "upcoming" && new Date(b.date) >= now,
+  ).sort((a, b) => new Date(a.date) - new Date(b.date));
   return upcoming[0] || null;
+}
+
+/**
+ * Soonest upcoming booking that still has an active, unexpired payment
+ * hold (partial payment + a future `holdExpiresAt`) — drives
+ * ReserveHoldCard. Deliberately a separate query from
+ * getNextUpcomingBooking(): the single soonest booking overall is often
+ * fully paid (nothing to warn about), while the soonest AT-RISK booking
+ * can be a different, later one. Returns null when nothing currently has
+ * an active hold, so the card simply doesn't render rather than showing
+ * a countdown to nothing.
+ */
+export function getNextHoldExpiring() {
+  const now = new Date();
+  const holds = MOCK_BOOKINGS.filter(
+    (b) =>
+      b.bookingStatus === "upcoming" &&
+      b.paymentStatus === "partial" &&
+      b.holdExpiresAt &&
+      new Date(b.holdExpiresAt) > now,
+  ).sort((a, b) => new Date(a.holdExpiresAt) - new Date(b.holdExpiresAt));
+  return holds[0] || null;
 }
 
 export const MOCK_POINTS_HISTORY = [
