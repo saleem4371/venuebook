@@ -549,6 +549,16 @@ function VenueCard({
       return acc;
     }, {});
 
+
+  const buttonSettings = venue_settings
+    .filter((item) => item.group === "publication")
+    .reduce((acc, item) => {
+      acc[item.key] = item.value;
+      return acc;
+    }, {});
+
+  
+
   // ── Push the complete action group to the sticky nav (single source of truth) ─
   // Includes the DISPLAYED price (shift price when selected, minPrice otherwise)
   // so the nav always mirrors exactly what the booking card shows.
@@ -576,7 +586,6 @@ function VenueCard({
       });
       return;
     }
-
     if (bookingMode === "pax") {
       onCTAChange({
         badge: meta.badge,
@@ -643,6 +652,7 @@ function VenueCard({
     }
   }, [venueData?.venue_mode]);
 
+
   return (
     <div className="space-y-3">
       {/* Price (left) + Badge + Toggle stacked (right) */}
@@ -655,14 +665,14 @@ function VenueCard({
                 : format(shiftAmount)}
             </p>
             <p className="text-xs text-gray-400 mt-0.5">
-              {shiftAmount == 0 ? meta.priceLabel : "Your Venue price "}
+              {shiftAmount == 0 ? meta.priceLabel : "Your Venue price "} 
             </p>
           </div>
         ) : (
           <>
             <div>
               <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
-                {format(propertySettings.pack_amt)}
+             {format(propertySettings?.pack_amt ?? 0)}
               </p>
               <p className="text-xs text-gray-400 mt-0.5">Starting Package</p>
             </div>
@@ -922,22 +932,32 @@ function VenueCard({
             transition={{ duration: 0.18 }}
           >
             <div className="flex items-stretch gap-2">
-              <button
-                onClick={() =>
-                  onAction({ eventType, type: "reserve", guestCount })
-                }
-                className={`flex-1 py-3 rounded-xl font-semibold text-sm ${colors.pill} hover:opacity-80 active:scale-[0.98] transition-all`}
-              >
-                Reserve
-              </button>
-              <button
-                onClick={() =>
-                  onAction({ eventType, type: "book", guestCount })
-                }
-                className={`flex-[1.4] py-3 rounded-xl font-bold text-sm bg-gradient-to-r ${gradient} text-white shadow-md hover:opacity-90 active:scale-[0.98] transition-all`}
-              >
-                Book Now
-              </button>
+              {buttonSettings["reserve"]  === 'true'  && (
+                <>
+                  <button
+                    onClick={() =>
+                      onAction({ eventType, type: "reserve", guestCount })
+                    }
+                    className={`flex-1 py-3 rounded-xl font-semibold text-sm ${colors.pill} hover:opacity-80 active:scale-[0.98] transition-all`}
+                  >
+                    Reserve
+                  </button>
+                </>
+              )}
+
+              {buttonSettings["instant"] == 'true'  && (
+                <>
+                  <button
+                    onClick={() =>
+                      onAction({ eventType, type: "book", guestCount })
+                    }
+                    className={`flex-[1.4] py-3 rounded-xl font-bold text-sm bg-gradient-to-r ${gradient} text-white shadow-md hover:opacity-90 active:scale-[0.98] transition-all`}
+                  >
+                    Book Now 
+                  </button>
+                </>
+              )}
+
               <button
                 onClick={() =>
                   onAction({ eventType, type: "enquiry", guestCount })
@@ -1307,7 +1327,17 @@ function ReserveCard({
 }
 
 // ─── Enquiry modal ────────────────────────────────────────────────────────────
-function EnquiryModal({ isOpen, onClose, gradient, propertyName ,data , sendEnquiry , router ,locale,country}) {
+function EnquiryModal({
+  isOpen,
+  onClose,
+  gradient,
+  propertyName,
+  data,
+  sendEnquiry,
+  router,
+  locale,
+  country,
+}) {
   const [form, setForm] = useState({ name: "", email: "", phone: "" });
   const [submitted, setSubmitted] = useState(false);
   const [errors, setErrors] = useState({});
@@ -1358,7 +1388,7 @@ function EnquiryModal({ isOpen, onClose, gradient, propertyName ,data , sendEnqu
 
     try {
       const enqId = await sendEnquiry(payload);
-console.log(enqId)
+      console.log(enqId);
       if (enqId?.data?.success) {
         setEnquireyId(enqId.data); // keep the full response so enquireyId.code works below
         setSubmitted(true);
@@ -1432,42 +1462,45 @@ console.log(enqId)
             <div className="px-5 py-5">
               {submitted ? (
                 <div className="flex flex-col items-center py-6 gap-3 text-center">
-  <div className="w-14 h-14 rounded-full bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center">
-    <CheckCircle2 size={28} className="text-emerald-500" />
-  </div>
+                  <div className="w-14 h-14 rounded-full bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center">
+                    <CheckCircle2 size={28} className="text-emerald-500" />
+                  </div>
 
-  <div>
-    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-      Enquiry Sent Successfully!
-    </h3>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                      Enquiry Sent Successfully!
+                    </h3>
 
-    {enquireyId?.code && (
-      <p className="mt-1 text-sm font-medium text-emerald-600 dark:text-emerald-400">
-        Reference ID: {enquireyId.code}
-      </p>
-    )}
+                    {enquireyId?.code && (
+                      <p className="mt-1 text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                        Reference ID: {enquireyId.code}
+                      </p>
+                    )}
 
-    <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-      Thank you for your enquiry. Our team will contact you within 24 hours.
-    </p>
-  </div>
+                    <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                      Thank you for your enquiry. Our team will contact you
+                      within 24 hours.
+                    </p>
+                  </div>
 
-  <div className="flex gap-3 mt-4">
-    <button
-      onClick={handleClose}
-      className="px-5 py-2 rounded-lg border border-gray-300 text-sm font-medium hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
-    >
-      Close
-    </button>
+                  <div className="flex gap-3 mt-4">
+                    <button
+                      onClick={handleClose}
+                      className="px-5 py-2 rounded-lg border border-gray-300 text-sm font-medium hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
+                    >
+                      Close
+                    </button>
 
-    <button
-      onClick={() => router.push(`/${locale}/${country}/profile`)}
-      className="px-5 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700"
-    >
-      Manage Enquiry
-    </button>
-  </div>
-</div>
+                    <button
+                      onClick={() =>
+                        router.push(`/${locale}/${country}/profile`)
+                      }
+                      className="px-5 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700"
+                    >
+                      Manage Enquiry
+                    </button>
+                  </div>
+                </div>
               ) : (
                 <form onSubmit={handleSubmit} noValidate className="space-y-4">
                   {/* Full name */}
@@ -1556,7 +1589,9 @@ console.log(enqId)
                   </div>
 
                   {submitError && (
-                    <p className="text-xs text-red-500 text-center">{submitError}</p>
+                    <p className="text-xs text-red-500 text-center">
+                      {submitError}
+                    </p>
                   )}
 
                   <button
@@ -1601,7 +1636,7 @@ export default function BookingCard({
   // ── Sticky nav integration (desktop-only; ignored when mobileOnly=true) ───────
   ctaSentinelRef, // ref placed after CTA buttons — observed by IntersectionObserver
   onCTAChange, // ({ label, badge }) → void — fires whenever the primary CTA changes
-  sendEnquiry
+  sendEnquiry,
 }) {
   const { format } = useCurrency();
   const catKey = normalizeCategory(category);
@@ -1639,6 +1674,16 @@ export default function BookingCard({
       );
 
   const ctaButtons = getDefaultCTA(catKey);
+
+  //----------Reservation Setting----------------//
+    const reserveSettings = venue_settings
+    .filter((item) => item.group === "reserve")
+    .reduce((acc, item) => {
+      acc[item.key] = item.value;
+      return acc;
+    }, {});
+
+  //----------Reservation Setting----------------//
 
   // ── Auto-open sheet whenever booking selection transitions none → valid ────────
   // Fires regardless of where the selection came from (sheet, direct calendar,
@@ -1679,10 +1724,7 @@ export default function BookingCard({
 
       if (type === "enquiry") {
         const guestCount =
-          guestValues?.guests ??
-          guestValues?.adults ??
-          data.guestCount ??
-          "";
+          guestValues?.guests ?? guestValues?.adults ?? data.guestCount ?? "";
 
         setEnquiryData({
           eventType: data.eventType,
@@ -1708,8 +1750,16 @@ export default function BookingCard({
         return;
       }
 
-      const reserveAmount = 5000;
-      const reserveEndDate = "2026-08-31";
+      const reserveAmount = reserveSettings['amount'] ?? 0 ;
+
+
+const hours = Number(reserveSettings['period'] ?? 24 ); // e.g. 1, 6, 24, 168
+
+const reserveExpiresAt = dayjs()
+  .add(hours, "hour")
+  .format("YYYY-MM-DD HH:mm:ss");
+
+      const reserveEndDate = reserveExpiresAt;
       const reserveStatus = "now";
 
       if (type === "paxEnquiry") {
@@ -1768,8 +1818,7 @@ export default function BookingCard({
         ...(propertyId && { venueId: propertyId }),
         ...(catKey && { category: catKey }),
         reserveAmount: String(reserveAmount),
-        reserveEndDate,
-        reserveStatus,
+        reserveEndDate
       });
 
       router.push(
