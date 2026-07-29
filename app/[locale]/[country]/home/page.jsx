@@ -27,7 +27,7 @@ import { CATEGORIES, CATEGORY_TINTS } from "@/config/categoryConfig";
 import { useAuth } from "@/context/AuthContext";
 
 import { findPropertyname } from "@/services/global.service";
-import { recent_views , Api_recommeded , topDestination} from "@/services/home.service";
+import { recent_views , Api_recommeded , topDestination } from "@/services/home.service";
 
 /* ── Category page content ──────────────────────────────────── */
 const CATEGORY_CONTENT = {
@@ -762,6 +762,7 @@ export default function Home() {
 
   const [loadData, setLoadData]  = useState([]);
   const [recent, setRecent]  = useState([]);
+    const [tier, setTier]  = useState([]);
   const [recommeded, setRecommeded]  = useState([]);
   const [destination, setDestination]  = useState([]);
   // The two real API-backed fetches on this page: Recommended/Recently
@@ -822,11 +823,13 @@ export default function Home() {
 const getRecentViews = async () => {
   if (!user) {
     setRecent([]);
+    setTier([]);
     return;
   }
 
   const res = await recent_views();
-  setRecent(res?.data ?? []);
+  setRecent(res?.data ?? []); 
+  
 };
 
 useEffect(() => {

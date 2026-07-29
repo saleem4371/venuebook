@@ -85,7 +85,7 @@ const TIER_CONFIG = {
      2xl  1536px+     [icon] Gold Member      (wider padding only)
 ───────────────────────────────────────────────────────────────────── */
 
-function MembershipWidget({ tier, onNavigate }) {
+function MembershipWidget({ tier,tiers, onNavigate }) {
   const t   = useTranslations("membership");
   const cfg = TIER_CONFIG[tier];
 
@@ -127,9 +127,9 @@ function MembershipWidget({ tier, onNavigate }) {
           xl+:    "Gold Member"
       ─────────────────────────────────────────────────────────── */}
       <span className={`text-xs font-semibold leading-none shrink-0 ${cfg.text}`}>
-        <span className="xl:hidden">{cfg.label}</span>
+        <span className="xl:hidden">{tiers?.name}</span>
         <span className="hidden xl:inline">
-          {t("member_label", { tier: cfg.label })}
+          {t("member_label", { tier: tiers?.name })}
         </span>
       </span>
     </motion.button>
@@ -139,7 +139,7 @@ function MembershipWidget({ tier, onNavigate }) {
 /* ─────────────────────────────────────────────────────────────────────
    USER DROPDOWN
 ───────────────────────────────────────────────────────────────────── */
-export default function UserDropdown({ onOpenRegionModal }) {
+export default function UserDropdown({ onOpenRegionModal , tier}) {
   const { openDropdown, toggleDropdown, closeAll } = useDropdown();
   const { user, isLoggedIn, isListed, logout }     = useAuth();
   const { setLoginOpen }                           = useUI();
@@ -218,6 +218,7 @@ export default function UserDropdown({ onOpenRegionModal }) {
       {isLoggedIn && (
         <MembershipWidget
           tier={membershipTier.id}
+          tiers={tier}
           onNavigate={() => {
             closeAll();
             router.push(`/${locale}/${country}/account/settings?tab=rewards`);

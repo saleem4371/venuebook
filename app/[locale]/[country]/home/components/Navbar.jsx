@@ -32,6 +32,8 @@ import { useAuth }         from "@/context/AuthContext";
 import { useRegionContext } from "@/context/RegionContext";
 import { useCurrency }     from "@/hooks/useCurrency";
 
+import {  find_your_tier } from "@/services/home.service";
+
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
@@ -142,12 +144,13 @@ export default function Navbar() {
 
   const { setFilterOpen, setLoginOpen, loginOpen, hideSiteChrome } = useUI();
   const { openDropdown }                           = useDropdown();
-  const { isLoggedIn, isListed }                   = useAuth();
+  const { isLoggedIn, isListed ,user }                   = useAuth();
 
   const t = useTranslations("header");
 
   const [activeTab,       setActiveTab]       = useState("venue");
   const [regionModalOpen, setRegionModalOpen] = useState(false);
+  const [tier, setTier] = useState({});
   const { isDark, toggleTheme }               = useTheme();
 
    const { activeCategory }           = useCategory();
@@ -251,10 +254,29 @@ export default function Navbar() {
 
     const [token, setToken] = useState(null);
 
-  useEffect(() => {
-    const t = getCookie("token");
-    setToken(t);
-  }, []);
+useEffect(() => {
+  const t = getCookie("token");
+  setToken(t);
+}, []);
+
+useEffect(() => {
+  if (user) {
+    check_tier();
+  } else {
+    setTier([]);
+  }
+}, [user]);
+
+const check_tier = async () => {
+  try {
+    const resp = await find_your_tier();
+    setTier(resp?.data ?? []);
+  } catch (error) {
+    console.error(error);
+    setTier([]);
+  }
+};
+  
 
   // Messages page sets this when a conversation thread is open full-screen
   // on mobile — the chat has its own header, so the site Navbar steps aside.
@@ -298,7 +320,7 @@ export default function Navbar() {
                   ].join(" ")}
                 >
                   <ExploreSearchIcon className="h-[15px] w-[15px] shrink-0" />
-                  <span>{t("explore")}</span>
+                  <span>{t("explore")}</span> 
                 </button>
 
                 {/* Vendor CTA — visible md+ */}
@@ -397,11 +419,11 @@ export default function Navbar() {
                     "focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2",
                   ].join(" ")}
                 >
-                  <GlobeNavIcon className="h-[18px] w-[18px]" />
-                </button>
+                  <GlobeNavIcon className="h-[18px] w-[18px]" /> 
+                </button> 
 
                 {/* Profile / User dropdown */}
-                <UserDropdown onOpenRegionModal={() => setRegionModalOpen(true)}  token = { token }  />
+                <UserDropdown onOpenRegionModal={() => setRegionModalOpen(true)}  token = { token }   tier = {tier?.tier} />
 
               </div>
         </nav>
