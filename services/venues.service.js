@@ -47,6 +47,10 @@ export const addLikedProperty  = async (data) => {
   return api.post("/listing/addLikedProperty", data);
 };
 
+export const UserlikedProperty  = async () => {
+  return api.get("/listing/UserlikedProperty");
+};
+
 export const totalLikedProperty  = async (data) => {
   return api.get("/listing/totalLikedProperty", data);
 };
