@@ -54,5 +54,15 @@ export const createOnlineBooking = (payload) => {
   return api.post(`/razorpay/createOnlineBooking`,payload);
 };
 
+//razorpay
 
+export const razorpay_subscription = (payload) => {
+  return api.post(`/razorpay/razorpay_subscription`, payload);
+};
+export const verifyRazorpaySubscription = (payload) => {
+  return api.post(`/razorpay/subscription/verify`,payload);
+};
 
+export const verify_razorpay_subscription = (id) => {
+   return api.get(`/razorpay/verify_subscription/${id}`);
+};
