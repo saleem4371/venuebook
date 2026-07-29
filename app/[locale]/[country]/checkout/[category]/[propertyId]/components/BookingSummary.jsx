@@ -37,6 +37,7 @@ import { useTranslations } from "next-intl";
 import { MEMBERSHIP_TIERS } from "@/config/checkoutConfig";
 
 
+import dayjs from "dayjs";
 /* ─── Breakdown group ────────────────────────────────────────────────── */
 /* Expandable line item — collapsed shows just the label + group total;
    expanded reveals the itemized sub-rows underneath (matching the
@@ -518,18 +519,30 @@ export default function BookingSummary({
           )}
 
 
-            {booking.bookingType === "reserve" && (
-            <div className="mt-2 rounded-xl p-3 space-y-1 text-xs" style={{ backgroundColor: tint.light }}>
-              <div className="flex items-center justify-between gap-2">
-                <span style={{ color: tint.hex }}>Reserve Amount </span>
-                <span className="font-semibold" style={{ color: tint.hex }}>{format(booking.reserveAmount)} </span>
-              </div>
-              <div className="flex items-center justify-between gap-2">
-                <span style={{ color: tint.hex }}>Reserve Till date </span>
-                <span className="font-semibold" style={{ color: tint.hex }}>{booking.reserveEndDate} </span>
-              </div>
-            </div>
-          )}
+           {booking.bookingType === "reserve" && (
+  <div
+    className="mt-2 rounded-xl p-3 space-y-1 text-xs"
+    style={{ backgroundColor: tint.light }}
+  >
+    <div className="flex items-center justify-between gap-2">
+      <span style={{ color: tint.hex }}>Reserve Amount</span>
+      <span className="font-semibold" style={{ color: tint.hex }}>
+        {booking.reserveAmount > 0
+          ? format(booking.reserveAmount)
+          : "Free"}
+      </span>
+    </div>
+
+    <div className="flex items-center justify-between gap-2">
+      <span style={{ color: tint.hex }}>Reserve Until</span>
+      <span className="font-semibold" style={{ color: tint.hex }}>
+        {booking.reserveEndDate
+          ? dayjs(booking.reserveEndDate).format("DD MMM YYYY, hh:mm A")
+          : "-"}
+      </span>
+    </div>
+  </div>
+)}
         </div> 
 
         {/* ── Loyalty callout ──────────────────────────────────────────── */}
@@ -631,7 +644,7 @@ export default function BookingSummary({
             ) : (
               <span className="flex items-center justify-center flex-wrap gap-x-2 gap-y-0.5 text-center">
                 <span className="truncate">{tCta(ctaKey)}</span>
-                <span className="font-normal opacity-80 whitespace-nowrap">·{format(payableNow)}</span>
+                <span className="font-normal opacity-80 whitespace-nowrap"> · {payableNow > 0 ? format(payableNow) : 'Free'}</span>
               </span>
             )}
           </button>
@@ -739,7 +752,7 @@ export default function BookingSummary({
                 </span>
               ) : (
                 <span className="whitespace-nowrap">
-                  {tCta(ctaKey)} · {format(payableNow)}
+                  {tCta(ctaKey)} · {payableNow > 0 ? format(payableNow) : 'Free'}
                 </span>
               )}
             </button>

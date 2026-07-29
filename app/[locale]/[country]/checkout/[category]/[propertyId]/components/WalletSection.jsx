@@ -9,10 +9,49 @@
  * maxRedeemableINR) — not an all-or-nothing toggle, so guests can partially
  * or precisely redeem instead of being forced into fixed amounts.
  * Updates the invoice instantly.
+ *
+ * TIER DATA: `rewards` is the live membership-tier array from the API, e.g.
+ * [{ id, user_id, mem_id, total_points, available_points, redeemed_points,
+ *    expired_points, name: "Bronze", icon: "circle-star", color: "#9CA3AF",
+ *    min_booking, max_booking, book_amount, created_at, updated_at }]
+ * The active tier is always the first (and currently only) row. Points
+ * total and tier label/color/icon are derived from it below, with the old
+ * `pointsTotal`/`currentTier` props kept only as a fallback for call sites
+ * that haven't started passing `rewards` yet.
  */
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import * as LucideIcons from "lucide-react";
+
+// hex → rgba, used to derive a soft tier-tinted badge background straight
+// from the API's own `color` hex instead of a hardcoded Tailwind class per
+// tier — so any tier color the backend sends "just works" without needing
+// a matching class added here every time a new tier is introduced.
+function hexToRgba(hex, alpha) {
+  const h = (hex || "").replace("#", "");
+  const bigint = parseInt(
+    h.length === 3 ? h.split("").map((c) => c + c).join("") : h,
+    16,
+  );
+  if (Number.isNaN(bigint)) return `rgba(156,163,175,${alpha})`;
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+// API icon names are kebab-case ("circle-star"); lucide-react components
+// are PascalCase ("CircleStar"). Converts the former to the latter so the
+// tier icon can be looked up directly off the `LucideIcons` namespace
+// instead of maintaining a manual name→component map here.
+function toPascalCase(str) {
+  return (str || "")
+    .split("-")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join("");
+}
 
 export default function WalletSection({
   tint,
@@ -25,10 +64,35 @@ export default function WalletSection({
   remainingPoints,
   currentTier,
   format,
+  rewards,
   loading = false,
 }) {
   const t = useTranslations("checkout.wallet");
   const walletApplied = redeemAmountINR > 0;
+
+  // ── LIVE TIER ROW ──────────────────────────────────────────────────────
+  // First (currently only) row of the rewards array is the guest's active
+  // membership tier.
+  const reward = rewards?.[0];
+
+  // Points shown in the header badge: prefer the live `available_points`
+  // from the rewards row (this is the guest's actual redeemable balance —
+  // `total_points` includes already-redeemed/expired points, which isn't
+  // what should drive the wallet UI here), falling back to the old
+  // `pointsTotal` prop when `rewards` hasn't loaded yet.
+  const resolvedPointsTotal = reward?.available_points ?? pointsTotal ?? 0;
+
+  // Tier identity: prefer the live row's own name/color/icon over the
+  // static `currentTier` prop, so a tier's look updates the moment the API
+  // changes it (new color, renamed tier, etc.) without a code change here.
+  const resolvedTier = reward
+    ? {
+        id: (reward.name || "bronze").toLowerCase(),
+        label: reward.name,
+        color: reward.color,
+        icon: reward.icon,
+      }
+    : currentTier;
 
   // Custom input is its own UI mode, separate from the derived preset
   // match below — so picking "Custom" opens the input even before the
@@ -47,6 +111,10 @@ export default function WalletSection({
     { key: "redeem_max", value: maxRedeemableINR },
   ];
 
+  // Legacy fallback palette — only used when `resolvedTier` came from the
+  // old `currentTier` prop shape (no rewards data yet) and doesn't carry
+  // its own `color`. Once `rewards` is live, `resolvedTier.color` (the
+  // API's own hex) drives everything instead of this map.
   const tierColors = {
     bronze:  { bg: "bg-amber-100 dark:bg-amber-900/30",  text: "text-amber-700 dark:text-amber-400",  dot: "#cd7f32" },
     silver:  { bg: "bg-gray-100 dark:bg-gray-800/50",   text: "text-gray-600 dark:text-gray-300",   dot: "#9ca3af" },
@@ -54,7 +122,22 @@ export default function WalletSection({
     diamond: { bg: "bg-violet-100 dark:bg-violet-900/30", text: "text-violet-700 dark:text-violet-400", dot: "#818cf8" },
   };
 
-  const tc = tierColors[currentTier?.id] ?? tierColors.bronze;
+  const tc = tierColors[resolvedTier?.id] ?? tierColors.bronze;
+
+  // Badge dot + background: prefer the live tier's own hex (from
+  // `rewards[0].color`); fall back to the static map's dot/bg/text only
+  // when there's no live color to derive from.
+  const tierDotColor = resolvedTier?.color ?? tc.dot;
+  const tierBadgeStyle = resolvedTier?.color
+    ? { backgroundColor: hexToRgba(resolvedTier.color, 0.14), color: resolvedTier.color }
+    : undefined;
+
+  // Tier icon: the API sends a kebab-case lucide icon name (e.g.
+  // "circle-star"); resolve it to the matching lucide-react component.
+  // Falls back to the original ✦ glyph if the name is missing or doesn't
+  // match a real icon, so nothing breaks if the backend sends something
+  // unexpected.
+  const TierIcon = LucideIcons[toPascalCase(resolvedTier?.icon)];
 
   if (loading) {
     // Wallet balance is mock data (not tied to the venueData fetch), but it
@@ -114,31 +197,38 @@ export default function WalletSection({
         style={{ background: `linear-gradient(135deg, ${tint.bg}, ${tint.activeBg})`, borderBottom: `1px solid ${tint.border}` }}
       >
         <div className="flex items-center gap-3 min-w-0">
-          {/* Coin icon */}
+          {/* Tier icon — resolved from rewards[0].icon (e.g. "circle-star")
+              to the matching lucide-react component; falls back to the
+              original ✦ glyph if it doesn't resolve. */}
           <div
             className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-lg font-bold shadow-sm shrink-0"
             style={{ backgroundColor: tint.hex }}
           >
-            ✦
+            {TierIcon ? <TierIcon size={18} strokeWidth={2.25} /> : "✦"}
           </div>
           <div className="min-w-0">
             <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
               {t("title")}
             </p>
-            <div className={`mt-0.5 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${tc.bg} ${tc.text}`}>
+            <div
+              className={`mt-0.5 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${
+                tierBadgeStyle ? "" : `${tc.bg} ${tc.text}`
+              }`}
+              style={tierBadgeStyle}
+            >
               <span
                 className="w-1.5 h-1.5 rounded-full shrink-0"
-                style={{ backgroundColor: currentTier?.color ?? tc.dot }}
+                style={{ backgroundColor: tierDotColor }}
               />
-              <span className="truncate">{currentTier?.label} {t("tier")}</span>
+              <span className="truncate">{resolvedTier?.label} {t("tier")}</span>
             </div>
           </div>
         </div>
 
-        {/* Points badge */}
+        {/* Points badge — live `available_points` from rewards[0] */}
         <div className="text-end shrink-0">
           <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
-            {pointsTotal.toLocaleString()}
+            {resolvedPointsTotal.toLocaleString()}
           </p>
           <p className="text-xs text-gray-500 dark:text-gray-400">{t("points")}</p>
         </div>

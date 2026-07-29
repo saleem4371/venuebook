@@ -26,12 +26,17 @@ import { useCurrency } from "@/hooks/useCurrency";
 import { startPayment } from "@/services/cashfree.service";
 
 
+import {
+  total_reward_in_your_account
+} from "@/services/loyalty.service";
 
 import {
   createOrder,
   verifyPayment,
   createOnlineBooking,
 } from "@/services/payment.service";
+
+
 
 import Script from "next/script";
 
@@ -105,6 +110,7 @@ export default function CheckoutClient({ locale, country, category, propertyId }
   const [venueEvents,  SetVenueEvents]  = useState([]); 
  const [venueSettings,  SetvenueSettings]  = useState([]);
  const [addons,  SetAddons]  = useState([]);
+ const [rewards,  SetRewards]  = useState({});
  const [addonsLoading, setAddonsLoading] = useState(true);
 
   const searchParams = useSearchParams();
@@ -372,60 +378,214 @@ const toggleAddOn = (addon, action = "toggle") => {
 //   }
 // };
 
-const handlePayment = async () => {
+// const handlePayment = async () => {
 
-  const payload = {
-  booking: {
-    booking_id: propertyId,
-    venue_id: booking.venueId,
-    venue_name: booking.venueName,
-    category: booking.category,
-     guests: booking.guests,
-    date: booking.date,
-    shift: booking.shift,
+//   const payload = {
+//   booking: {
+//     booking_id: propertyId,
+//     venue_id: booking.venueId,
+//     venue_name: booking.venueName,
+//     category: booking.category,
+//      guests: booking.guests,
+//     date: booking.date,
+//     shift: booking.shift,
 
-    event_type: booking.eventType,
-    booking_type: booking.bookingType,
+//     event_type: booking.eventType,
+//     booking_type: booking.bookingType,
    
-    check_in: booking.checkIn,
-    check_out: booking.checkOut,
-    reservation_end_date: booking.bookingType === "reserve" ? booking.reserveEndDate : null,
-  },
+//     check_in: booking.checkIn,
+//     check_out: booking.checkOut,
+//     reservation_end_date: booking.bookingType === "reserve" ? booking.reserveEndDate : null,
+//   },
 
-  customer: {
-     name: contactForm.fullName,
-    email: contactForm.email,
-    phone: contactForm.phone,
-    organization: contactForm.organization,
-    specialRequests: contactForm.specialRequests,
-  },
+//   customer: {
+//      name: contactForm.fullName,
+//     email: contactForm.email,
+//     phone: contactForm.phone,
+//     organization: contactForm.organization,
+//     specialRequests: contactForm.specialRequests,
+//   },
 
-  addons: Array.from(selectedAddOns.values()).map((item) => ({
-    add_on_id: item.addon.add_on_id,
-    name: item.addon.name,
-    qty: item.qty,
-    price: item.addon.price,
-    total: item.qty * item.addon.price,
-  })),
+//   addons: Array.from(selectedAddOns.values()).map((item) => ({
+//     add_on_id: item.addon.add_on_id,
+//     name: item.addon.name,
+//     qty: item.qty,
+//     price: item.addon.price,
+//     total: item.qty * item.addon.price,
+//   })),
 
-  pricing: {
-    baseAmount: paymentSummarys?.baseAmount,
-    cleaningAmount: paymentSummarys.cleaningAmount,
-    convenienceFee: paymentSummarys.convenienceFee,
-    addon_amount: addonSummary.grandTotal,
-    gstAmount: paymentSummarys.gstAmount,
-    gstPercent: paymentSummarys?.gstPercent,
-    securityDeposit: paymentSummarys?.securityDeposit,
-    wallet_discount: financials.rewardDiscountINR,
-    grand_total: paymentSummarys?.grandTotal,
-    estimated_total:booking.bookingType === "reserve" ? booking.reserveAmount : 0 ,
-  },
-};
+//   pricing: {
+//     baseAmount: paymentSummarys?.baseAmount,
+//     cleaningAmount: paymentSummarys.cleaningAmount,
+//     convenienceFee: paymentSummarys.convenienceFee,
+//     addon_amount: addonSummary.grandTotal,
+//     gstAmount: paymentSummarys.gstAmount,
+//     gstPercent: paymentSummarys?.gstPercent,
+//     securityDeposit: paymentSummarys?.securityDeposit,
+//     wallet_discount: financials.rewardDiscountINR,
+//     grand_total: paymentSummarys?.grandTotal,
+//     estimated_total:booking.bookingType === "reserve" ? booking.reserveAmount : 0 ,
+//   },
+// };
+//   try {
+//     setIsProcessing(true);
+
+//     const amount = booking.bookingType === "reserve" ? booking.reserveAmount : paymentSummarys?.grandTotal ?? financials.totalINR;
+
+//     const order = await createOrder({
+//       amount,
+//       booking_id: propertyId,
+//     });
+
+//     if (!window.Razorpay) {
+//       throw new Error("Razorpay SDK not loaded");
+//     }
+
+//     const options = {
+//       key: process.env.NEXT_PUBLIC_RAZORPAY_KEY,
+
+//       amount: order.amount,
+//       currency: order.currency,
+
+//       order_id: order.id, // IMPORTANT
+
+//       name: "venuebook.in",
+//       description: "Venue Booking",
+
+//       handler: async function (response) {
+//         try {
+//           await verifyPayment({
+//             razorpay_payment_id: response.razorpay_payment_id,
+//             razorpay_order_id: response.razorpay_order_id,
+//             razorpay_signature: response.razorpay_signature,
+//             booking_id: propertyId,
+//           });
+
+         
+//  const responses = await createOnlineBooking(payload);
+
+//           router.push(
+//             `/${locale}/${country}/checkout/${category}/${responses.data.invoice_number}/success`
+//           );
+//         } catch (err) {
+//           console.error(err);
+//           alert("Payment verification failed");
+//         }
+//       },
+
+//        prefill: {
+//         name: contactForm.fullName,
+//         email: contactForm.email,
+//         contact: contactForm.phone,
+//       },
+
+//       theme: {
+//         color: "#2563EB",
+//       },
+
+//       modal: {
+//         ondismiss() {
+//           setIsProcessing(false);
+//         },
+//       },
+//     };
+
+//     const razorpay = new window.Razorpay(options);
+//     razorpay.open();
+//   } catch (err) {
+//     console.error(err);
+//     setIsProcessing(false);
+//   }
+// };
+
+const handlePayment = async () => {
+  const payload = {
+    booking: {
+      booking_id: propertyId,
+      venue_id: booking.venueId,
+      venue_name: booking.venueName,
+      category: booking.category,
+      guests: booking.guests,
+      date: booking.date,
+      shift: booking.shift,
+
+      event_type: booking.eventType,
+      booking_type: booking.bookingType,
+
+      check_in: booking.checkIn,
+      check_out: booking.checkOut,
+
+      reservation_end_date:
+        booking.bookingType === "reserve"
+          ? booking.reserveEndDate
+          : null,
+    },
+
+    customer: {
+      name: contactForm.fullName,
+      email: contactForm.email,
+      phone: contactForm.phone,
+      organization: contactForm.organization,
+      specialRequests: contactForm.specialRequests,
+    },
+
+    addons: Array.from(selectedAddOns.values()).map((item) => ({
+      add_on_id: item.addon.add_on_id,
+      name: item.addon.name,
+      qty: item.qty,
+      price: item.addon.price,
+      total: item.qty * item.addon.price,
+    })),
+
+    pricing: {
+      baseAmount: paymentSummarys?.baseAmount,
+      cleaningAmount: paymentSummarys.cleaningAmount,
+      convenienceFee: paymentSummarys.convenienceFee,
+      addon_amount: addonSummary.grandTotal,
+      gstAmount: paymentSummarys.gstAmount,
+      gstPercent: paymentSummarys?.gstPercent,
+      securityDeposit: paymentSummarys?.securityDeposit,
+      wallet_discount: financials.rewardDiscountINR,
+      grand_total: paymentSummarys?.grandTotal,
+
+      estimated_total:
+        booking.bookingType === "reserve"
+          ? booking.reserveAmount
+          : 0,
+    },
+  };
+
   try {
     setIsProcessing(true);
 
-    const amount = booking.bookingType === "reserve" ? booking.reserveAmount : paymentSummarys?.grandTotal ?? financials.totalINR;
+    // Amount to charge
+    const amount =
+      booking.bookingType === "reserve"
+        ? Number(booking.reserveAmount || 0)
+        : Number(
+            paymentSummarys?.grandTotal ??
+              financials.totalINR ??
+              0
+          );
 
+    // ---------------------------------------------------
+    // FREE BOOKING / ZERO PAYMENT
+    // ---------------------------------------------------
+    if (amount <= 0) {
+      const response = await createOnlineBooking(payload);
+
+      setIsProcessing(false);
+
+      router.push(
+        `/${locale}/${country}/checkout/${category}/${response.data.invoice_number}/success`
+      );
+
+      return;
+    }
+
+    // ---------------------------------------------------
+    // CREATE RAZORPAY ORDER
+    // ---------------------------------------------------
     const order = await createOrder({
       amount,
       booking_id: propertyId,
@@ -440,34 +600,12 @@ const handlePayment = async () => {
 
       amount: order.amount,
       currency: order.currency,
-
-      order_id: order.id, // IMPORTANT
+      order_id: order.id,
 
       name: "venuebook.in",
       description: "Venue Booking",
 
-      handler: async function (response) {
-        try {
-          await verifyPayment({
-            razorpay_payment_id: response.razorpay_payment_id,
-            razorpay_order_id: response.razorpay_order_id,
-            razorpay_signature: response.razorpay_signature,
-            booking_id: propertyId,
-          });
-
-         
- const responses = await createOnlineBooking(payload);
-
-          router.push(
-            `/${locale}/${country}/checkout/${category}/${responses.data.invoice_number}/success`
-          );
-        } catch (err) {
-          console.error(err);
-          alert("Payment verification failed");
-        }
-      },
-
-       prefill: {
+      prefill: {
         name: contactForm.fullName,
         email: contactForm.email,
         contact: contactForm.phone,
@@ -477,8 +615,30 @@ const handlePayment = async () => {
         color: "#2563EB",
       },
 
+      handler: async (response) => {
+        try {
+          await verifyPayment({
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_signature: response.razorpay_signature,
+            booking_id: propertyId,
+          });
+
+          const bookingResponse = await createOnlineBooking(payload);
+
+          router.push(
+            `/${locale}/${country}/checkout/${category}/${bookingResponse.data.invoice_number}/success`
+          );
+        } catch (err) {
+          console.error(err);
+          alert("Payment verification failed.");
+        } finally {
+          setIsProcessing(false);
+        }
+      },
+
       modal: {
-        ondismiss() {
+        ondismiss: () => {
           setIsProcessing(false);
         },
       },
@@ -489,6 +649,7 @@ const handlePayment = async () => {
   } catch (err) {
     console.error(err);
     setIsProcessing(false);
+    alert("Unable to process payment. Please try again.");
   }
 };
 
@@ -499,9 +660,10 @@ const handlePayment = async () => {
       const load = async () => {
         setAddonsLoading(true);
         try {
-          const [res,resp] = await Promise.all([
+          const [res,resp,rewards] = await Promise.all([
               loadVenues(propertyId),
               loadAddons(propertyId),
+              total_reward_in_your_account(),
             // getGalleryCategory(listingId),
           ]);
           if (cancelled) return;
@@ -511,6 +673,7 @@ const handlePayment = async () => {
           if (res?.data) SetVenueEvents(res.data.events);
           if (res?.data) SetvenueSettings(res.data.venue_settings);
           if (resp?.data) SetAddons(resp.data);
+          if (rewards?.data) SetRewards(rewards.data);
           // if (resCt?.data) setCategory(resCt.data);
         } catch (err) {
           if (!cancelled) console.error("Listing load error:", err);
@@ -611,6 +774,7 @@ const handlePayment = async () => {
                     remainingPoints={financials.remainingPoints}
                     currentTier={currentTier}
                     format={format}
+                    rewards={rewards}
                     loading={addonsLoading}
                   />
                 )}
