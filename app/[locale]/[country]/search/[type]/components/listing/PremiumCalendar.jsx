@@ -129,6 +129,35 @@ const MONTH_NAMES = [
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// TOOLTIP — small premium hover tooltip for disabled/booked/status days
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function DayTooltip({ message, tone = "neutral" }) {
+  if (!message) return null;
+
+  const toneStyle = {
+    neutral: "bg-gray-900 dark:bg-gray-700",
+    booked:  "bg-gray-900 dark:bg-gray-700",
+    partial: "bg-orange-600 dark:bg-orange-600",
+    reserved:"bg-amber-600 dark:bg-amber-600",
+  }[tone] ?? "bg-gray-900 dark:bg-gray-700";
+
+  return (
+    <div
+      role="tooltip"
+      className="pointer-events-none absolute -top-2 left-1/2 -translate-x-1/2 -translate-y-full
+                 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100
+                 transition-all duration-150 ease-out z-30 whitespace-nowrap"
+    >
+      <div className={`${toneStyle} text-white text-[11px] font-medium leading-none px-2.5 py-1.5 rounded-lg shadow-lg shadow-black/10`}>
+        {message}
+      </div>
+      <div className={`w-2 h-2 ${toneStyle} rotate-45 absolute left-1/2 -translate-x-1/2 -bottom-[3px]`} />
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // VENUE MODE — single month + shift selection panel
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -141,7 +170,7 @@ function VenueMonthGrid({ year,bookingFull,bookingParial, month, selectedDate, o
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
-      className="rounded-2xl border border-gray-100 dark:border-gray-800 p-4"
+      className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-950 p-4 shadow-sm shadow-black/[0.02]"
     >
       <h3 className="text-center text-sm font-semibold text-gray-800 dark:text-gray-200 mb-4 tracking-wide">
         {MONTH_NAMES[month]} {year}
@@ -159,15 +188,26 @@ function VenueMonthGrid({ year,bookingFull,bookingParial, month, selectedDate, o
         {days.map((date, i) => {
           if (!date) return <div key={`e-${i}`} />;
           const key = toKey(date);
-          // const booked = bookingFull.has(key);
-          // const booked = BOOKED.has(key);
-          // const partial = bookingParial.has(key);
-          // const partial = PARTIAL.has(key);
           const booked = bookingFull?.includes(key);
           const partial = bookingParial?.includes(key);
           const past = isPast(date);
           const disabled = booked || past;
           const selected = sameDay(date, selectedDate);
+
+          // Tooltip copy — proper, specific messaging per state
+          let tooltipMessage = null;
+          let tooltipTone = "neutral";
+          if (booked && !past) {
+            tooltipMessage = "Fully booked — no shifts available this day";
+            tooltipTone = "booked";
+          } else if (past) {
+            tooltipMessage = "This date has passed";
+            tooltipTone = "neutral";
+          } else if (partial) {
+            tooltipMessage = "Partially booked — some time slots still open";
+            tooltipTone = "partial";
+          }
+
           return (
             <motion.div
               key={key}
@@ -175,12 +215,15 @@ function VenueMonthGrid({ year,bookingFull,bookingParial, month, selectedDate, o
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.18, delay: i * 0.006, ease: "easeOut" }}
               onClick={() => !disabled && onDateClick(date)}
-              className={`flex flex-col items-center py-0.5 select-none ${disabled ? "cursor-not-allowed" : "cursor-pointer"}`}
+              className={`group relative flex flex-col items-center py-0.5 select-none ${disabled ? "cursor-not-allowed" : "cursor-pointer"}`}
             >
+              {tooltipMessage && <DayTooltip message={tooltipMessage} tone={tooltipTone} />}
+
               <div className={`
                 relative flex items-center justify-center w-10 h-10 rounded-full transition-all duration-150
-                ${selected ? `${colors.selBg} shadow-sm scale-105` : ""}
+                ${selected ? `${colors.selBg} shadow-md scale-105 ring-2 ring-offset-2 ring-offset-white dark:ring-offset-gray-950 ${colors.border}` : ""}
                 ${!disabled && !selected ? `hover:${colors.light} hover:scale-105` : ""}
+                ${booked && !past ? "bg-gray-50 dark:bg-gray-900/60" : ""}
               `}>
                 <span className={`
                   text-xs font-semibold leading-none
@@ -355,54 +398,62 @@ function VenueCalendar({ venueshifts,bookingData, bookingFull,bookingParial, cat
                 const status     = getShiftStatus(selectedDate, shift.id);
                 const isBooked   = status === "booked" || status === "reserved";
                 const isSelected = selectedShift === shift.id;
-                // const price      = memberPrice(Math.round(shift.price));
                 const price      = Math.round(shift.price);
                 const original   = Math.round(shift.price);
 
+                const shiftTooltip =
+                  status === "booked"   ? "This slot is fully booked" :
+                  status === "reserved" ? "This slot is reserved — tentatively held" :
+                  null;
+
                 return (
-                  <motion.button
+                  <motion.div
                     key={shift.id}
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.2, delay: idx * 0.05, ease: "easeOut" }}
-                    disabled={isBooked}
-                    onClick={() => !isBooked && setSelectedShift(isSelected ? null : shift.id)}
-                    className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl border transition-all duration-150 text-left
-                      ${isBooked   ? "opacity-50 cursor-not-allowed bg-gray-50 dark:bg-gray-900 border-gray-100 dark:border-gray-800" : ""}
-                      ${isSelected ? `${colors.light} border-2 ${colors.border}` : ""}
-                      ${!isSelected && !isBooked ? "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:border-gray-300 dark:hover:border-gray-600 hover:-translate-y-0.5" : ""}
-                    `}
+                    className="group relative"
                   >
-                    {/* Icon */}
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-none transition-colors ${
-                      isSelected ? colors.iconBg : "bg-gray-100 dark:bg-gray-800"
-                    }`}>
-                      <ShiftIcon size={15} className={isSelected ? "text-white" : "text-gray-500 dark:text-gray-400"} />
-                    </div>
+                    {shiftTooltip && (
+                      <DayTooltip message={shiftTooltip} tone={status === "booked" ? "booked" : "reserved"} />
+                    )}
+                    <button
+                      disabled={isBooked}
+                      onClick={() => !isBooked && setSelectedShift(isSelected ? null : shift.id)}
+                      className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl border transition-all duration-150 text-left
+                        ${isBooked   ? "opacity-50 cursor-not-allowed bg-gray-50 dark:bg-gray-900 border-gray-100 dark:border-gray-800" : ""}
+                        ${isSelected ? `${colors.light} border-2 ${colors.border} shadow-sm` : ""}
+                        ${!isSelected && !isBooked ? "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm hover:-translate-y-0.5" : ""}
+                      `}
+                    >
+                      {/* Icon */}
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-none transition-colors ${
+                        isSelected ? colors.iconBg : "bg-gray-100 dark:bg-gray-800"
+                      }`}>
+                        <ShiftIcon size={15} className={isSelected ? "text-white" : "text-gray-500 dark:text-gray-400"} />
+                      </div>
 
-                    {/* Label + time */}
-                    <div className="flex-1 min-w-0">
-                      <p className={`font-semibold text-sm leading-none mb-0.5 ${isSelected ? colors.accentBold : "text-gray-800 dark:text-gray-200"}`}>
-                        {shift.label}
-                      </p>
-                      <p className="text-xs text-gray-400 dark:text-gray-500">{shift.time}</p>
-                    </div>
+                      {/* Label + time */}
+                      <div className="flex-1 min-w-0">
+                        <p className={`font-semibold text-sm leading-none mb-0.5 ${isSelected ? colors.accentBold : "text-gray-800 dark:text-gray-200"}`}>
+                          {shift.label}
+                        </p>
+                        <p className="text-xs text-gray-400 dark:text-gray-500">{shift.time}</p>
+                      </div>
 
-                    {/* Status tag */}
-                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full flex-none ${STATUS_STYLE[status]}`}>
-                      {STATUS_LABEL[status]}
-                    </span>
+                      {/* Status tag */}
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full flex-none ${STATUS_STYLE[status]}`}>
+                        {STATUS_LABEL[status]}
+                      </span>
 
-                    {/* Pricing */}
-                    <div className="text-right flex-none ml-1">
-                      {/* {isMember && price !== original && (
-                        <p className="text-[10px] line-through text-gray-400">{fmtShort(original)}</p>
-                      )} */}
-                      <p className={`font-bold text-sm ${isSelected ? colors.accent : "text-gray-900 dark:text-white"}`}>
-                        {fmtShort(price)}
-                      </p>
-                    </div>
-                  </motion.button>
+                      {/* Pricing */}
+                      <div className="text-right flex-none ml-1">
+                        <p className={`font-bold text-sm ${isSelected ? colors.accent : "text-gray-900 dark:text-white"}`}>
+                          {fmtShort(price)}
+                        </p>
+                      </div>
+                    </button>
+                  </motion.div>
                 );
               })}
 
@@ -443,6 +494,8 @@ function StayMonthGrid({ year, month,bookingFull, range, hoverDate, checkoutLimi
       transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
       className="flex-1 min-w-0"
     >
+
+      
       <h3 className="text-center text-sm font-semibold text-gray-800 dark:text-gray-200 mb-4 tracking-wide">
         {MONTH_NAMES[month]} {year}
       </h3>
@@ -459,7 +512,6 @@ function StayMonthGrid({ year, month,bookingFull, range, hoverDate, checkoutLimi
         {days.map((date, i) => {
           if (!date) return <div key={`e-${i}`} />;
           const key = toKey(date);
-          // const booked = BOOKED.has(key); //bookingFull
           const booked = bookingFull?.includes(key);
           const past = isPast(date);
           // When picking checkout: dates before/on check-in and dates >= first blocked date are slashed
@@ -476,6 +528,21 @@ function StayMonthGrid({ year, month,bookingFull, range, hoverDate, checkoutLimi
           const isHoverEnd = selectingCheckout && hoverDate && sameDay(date, hoverDate) && !postLimit;
           const hasRangeEnd = !!range.end;
 
+          // Tooltip copy — proper, specific messaging per disabled reason
+          let tooltipMessage = null;
+          let tooltipTone = "neutral";
+          if (booked && !past) {
+            tooltipMessage = "Already booked — not available";
+            tooltipTone = "booked";
+          } else if (past) {
+            tooltipMessage = "This date has passed";
+          } else if (postLimit) {
+            tooltipMessage = "Unavailable — a booking starts before this date";
+            tooltipTone = "booked";
+          } else if (preCheckIn) {
+            tooltipMessage = "Checkout must be after your check-in date";
+          }
+
           return (
             <motion.div
               key={key}
@@ -483,7 +550,7 @@ function StayMonthGrid({ year, month,bookingFull, range, hoverDate, checkoutLimi
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.18, delay: i * 0.004, ease: "easeOut" }}
               className={`
-                relative flex flex-col items-center py-0.5 select-none
+                group relative flex flex-col items-center py-0.5 select-none
                 ${disabled ? "cursor-not-allowed" : "cursor-pointer"}
                 ${inRange || inHover ? colors.rangeBg : ""}
               `}
@@ -491,6 +558,8 @@ function StayMonthGrid({ year, month,bookingFull, range, hoverDate, checkoutLimi
               onMouseEnter={() => !disabled && onHover(date)}
               onMouseLeave={() => onHover(null)}
             >
+              {tooltipMessage && <DayTooltip message={tooltipMessage} tone={tooltipTone} />}
+
               {/* Right-side bridge: start → range */}
               {isStart && (hasRangeEnd || (hoverDate && hoverDate > date && !postLimit)) && (
                 <span className={`absolute inset-y-0 right-0 w-1/2 ${colors.rangeBg}`} />
@@ -502,7 +571,7 @@ function StayMonthGrid({ year, month,bookingFull, range, hoverDate, checkoutLimi
 
               <div className={`
                 relative z-10 flex items-center justify-center w-10 h-10 rounded-full transition-all duration-150
-                ${isStart || isEnd ? `${colors.selBg} shadow-sm scale-105` : ""}
+                ${isStart || isEnd ? `${colors.selBg} shadow-md scale-105` : ""}
                 ${isHoverEnd ? `border-2 ${colors.border} ${colors.light}` : ""}
                 ${!disabled && !isStart && !isEnd && !isHoverEnd ? "hover:bg-gray-100 dark:hover:bg-gray-800 hover:scale-105" : ""}
               `}>
@@ -526,8 +595,22 @@ function StayMonthGrid({ year, month,bookingFull, range, hoverDate, checkoutLimi
 }
 
 function StayCalendar({ category, bookingFull,colors, isMember, onRangeChange, resetKey, resetEndKey }) {
+
+  const MIN_NIGHTS = {
+  farmstays: 2,
+  venues: 1,
+  studios: 1,
+};
+
+const MAX_NIGHTS = {
+  farmstays: 5,
+  venues: 30,
+  studios: 15,
+};
+
   const catKey = normalizeCategory(category);
   const minNights = MIN_NIGHTS[catKey] ?? 1;
+const maxNights = MAX_NIGHTS[catKey] ?? 30;
   const now = new Date();
 
   const [baseMonth, setBaseMonth] = useState({ year: now.getFullYear(), month: now.getMonth() });
@@ -554,29 +637,75 @@ function StayCalendar({ category, bookingFull,colors, isMember, onRangeChange, r
 
   // First blocked date after check-in — checkout must be before this
   const checkoutLimit = useMemo(() => {
-    if (!range.start || range.end) return null;
-    const cur = new Date(range.start);
-    cur.setDate(cur.getDate() + 1);
-    for (let i = 0; i < 365; i++) {
-      if (BOOKED.has(toKey(cur))) return new Date(cur);
-      cur.setDate(cur.getDate() + 1);
+  if (!range.start || range.end) return null;
+
+  const bookedDates = bookingFull || [];
+
+  const cur = new Date(range.start);
+  cur.setDate(cur.getDate() + 1);
+
+  while (true) {
+    const key = toKey(cur);
+
+    if (bookedDates.includes(key)) {
+      return new Date(cur); // First booked day
     }
-    return null;
-  }, [range.start, range.end]);
+
+    cur.setDate(cur.getDate() + 1);
+
+    // Safety stop (1 year)
+    if ((cur - range.start) / 86400000 > 365) break;
+  }
+
+  return null;
+}, [range.start, range.end, bookingFull]);
 
   const handleDateClick = useCallback((date) => {
-    setRangeError(null);
-    setRange((prev) => {
-      if (!prev.start || (prev.start && prev.end)) {
-        return { start: date, end: null };
-      }
-      if (date <= prev.start) {
-        return { start: date, end: null };
-      }
-      return { start: prev.start, end: date };
-    });
-    setHoverDate(null);
-  }, []);
+  setRangeError(null);
+
+  setRange((prev) => {
+    // First click
+    if (!prev.start || prev.end) {
+      return {
+        start: date,
+        end: null,
+      };
+    }
+
+    // Restart if clicked before start
+    if (date <= prev.start) {
+      return {
+        start: date,
+        end: null,
+      };
+    }
+
+    const nights = Math.round(
+      (date - prev.start) / 86400000,
+    );
+
+    if (nights > maxNights) {
+      setRangeError(
+        `Maximum ${maxNights} nights can be booked.`,
+      );
+      return prev;
+    }
+
+    if (hasBlockedInRange(prev.start, date)) {
+      setRangeError(
+        "One or more selected dates are already booked."
+      );
+      return prev;
+    }
+
+    return {
+      start: prev.start,
+      end: date,
+    };
+  });
+
+  setHoverDate(null);
+}, [maxNights]);
 
   const clearRange = () => { setRange({ start: null, end: null }); setRangeError(null); };
 
@@ -636,6 +765,22 @@ function StayCalendar({ category, bookingFull,colors, isMember, onRangeChange, r
         </div>
       </div>
 
+      {/* Range error — booked dates in range / too many nights */}
+      <AnimatePresence>
+        {rangeError && (
+          <motion.div
+            initial={{ opacity: 0, y: -4, height: 0 }}
+            animate={{ opacity: 1, y: 0, height: "auto" }}
+            exit={{ opacity: 0, y: -4, height: 0 }}
+            transition={{ duration: 0.2 }}
+            className="flex items-center gap-2 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl px-4 py-2.5 mb-4 text-sm text-red-700 dark:text-red-400"
+          >
+            <AlertCircle size={15} />
+            {rangeError}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Min stay warning */}
       <AnimatePresence>
         {tooShort && (
@@ -672,6 +817,26 @@ function StayCalendar({ category, bookingFull,colors, isMember, onRangeChange, r
         <div className="hidden md:block w-px bg-gray-100 dark:bg-gray-800 self-stretch" />
         <StayMonthGrid {...nextMonth} bookingFull={bookingFull}  range={range} hoverDate={hoverDate} checkoutLimit={checkoutLimit} onDateClick={handleDateClick} onHover={setHoverDate} colors={colors} catKey={catKey} isMember={isMember} />
       </div>
+
+      {/* Total price summary — once a full range is picked */}
+      {range.start && range.end && (
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.2 }}
+          className="flex items-center justify-between mt-5 px-4 py-3 rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-900/40"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-500 dark:text-gray-400">
+              {nights} night{nights !== 1 ? "s" : ""} total
+            </span>
+            {isMember && totalPrice !== originalTotal && (
+              <span className="text-xs line-through text-gray-400 dark:text-gray-600">{fmtFull(originalTotal)}</span>
+            )}
+          </div>
+          <span className={`font-bold text-base ${colors.accent}`}>{fmtFull(totalPrice)}</span>
+        </motion.div>
+      )}
 
       {/* Legend */}
       <div className="flex flex-wrap items-center gap-4 mt-5 pt-4 border-t border-gray-100 dark:border-gray-800 text-xs text-gray-500 dark:text-gray-400">

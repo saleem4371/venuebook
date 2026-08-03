@@ -9,26 +9,32 @@ import ImageSlider from "./ImageSlider";
 // ─────────────────────────────────────────────────────────────────────────────
 // Data helpers
 // ─────────────────────────────────────────────────────────────────────────────
-function buildSections(images = [], galleryCategory = []) {
+// Builds gallery sections directly from the categoryWiseGallery API shape:
+// [{ id, title, images: [{ id, attachment }] }, ...]
+// Skips categories with no (or empty) images, and tracks a running `offset`
+// so each section's images map back correctly onto the flattened "All Photos"
+// array (needed for the fullscreen ImageSlider index).
+function buildSectionsFromGallery(categoryWiseGallery = []) {
   const out = [];
   let cursor = 0;
-  for (const cfg of galleryCategory) {
-    if (!cfg.count || cfg.count <= 0) continue;
-    if (cursor >= images.length) break;
-    const slice = images.slice(cursor, cursor + cfg.count);
-    if (!slice.length) continue;
-    out.push({ ...cfg, images: slice, offset: cursor });
-    cursor += slice.length;
-  }
-  if (cursor < images.length) {
+
+  for (const cat of categoryWiseGallery) {
+    const urls = (cat?.images || [])
+      .map((img) => img?.attachment)
+      .filter(Boolean);
+
+    if (!urls.length) continue; // e.g. "additonal images" with images: []
+
     out.push({
+      id: cat.id,
       label: String(out.length + 1).padStart(2, "0"),
-      title: "More",
-      count: images.length - cursor,
-      images: images.slice(cursor),
+      title: cat.title || "Gallery",
+      images: urls,
       offset: cursor,
     });
+    cursor += urls.length;
   }
+
   return out;
 }
 
@@ -41,14 +47,23 @@ const ASPECT_PATTERN = [
   "aspect-[3/4]",   "aspect-[4/3]",
 ];
 
+// Shimmer skeleton — diagonal sweep instead of a flat pulse.
+// Reused for both the initial load and every category switch.
+function SkeletonCell({ index }) {
+  return (
+    <div
+      className={`${ASPECT_PATTERN[index % ASPECT_PATTERN.length]} rounded-xl mb-2 break-inside-avoid relative overflow-hidden bg-gray-200 dark:bg-gray-700`}
+    >
+      <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.4s_ease-in-out_infinite] bg-gradient-to-r from-transparent via-white/40 dark:via-white/10 to-transparent" />
+    </div>
+  );
+}
+
 function StaticGrid({ count }) {
   return (
     <div className="columns-2 md:columns-3" style={{ columnGap: 8 }}>
       {Array.from({ length: Math.min(count, 9) }).map((_, i) => (
-        <div
-          key={i}
-          className={`${ASPECT_PATTERN[i % ASPECT_PATTERN.length]} rounded-xl bg-gray-200 dark:bg-gray-700 mb-2 break-inside-avoid animate-pulse`}
-        />
+        <SkeletonCell key={i} index={i} />
       ))}
     </div>
   );
@@ -59,7 +74,9 @@ function PhotoCell({ src, alt, onClick, priority }) {
   return (
     <div className="absolute inset-0">
       {!loaded && (
-        <div className="absolute inset-0 rounded-xl bg-gray-200 dark:bg-gray-700 animate-pulse" />
+        <div className="absolute inset-0 rounded-xl bg-gray-200 dark:bg-gray-700 overflow-hidden">
+          <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.4s_ease-in-out_infinite] bg-gradient-to-r from-transparent via-white/40 dark:via-white/10 to-transparent" />
+        </div>
       )}
       <img
         src={src}
@@ -106,7 +123,6 @@ function MasonryGrid({ images, globalOffset, onImageClick, priority }) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Desktop category card
-// — fixed 16:9 thumbnail (never clipped), improved active state
 // ─────────────────────────────────────────────────────────────────────────────
 function DesktopCategoryCard({ section, isActive, isAll, totalCount, colors, onClick, cardRef }) {
   const count = isAll ? totalCount : section.images.length;
@@ -124,18 +140,11 @@ function DesktopCategoryCard({ section, isActive, isAll, totalCount, colors, onC
           : "border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm",
       ].join(" ")}
     >
-      {/* ── Thumbnail — fixed 16:9 aspect, object-cover, never clips title ── */}
       <div className="relative w-full aspect-[16/9] bg-gray-100 dark:bg-gray-800 overflow-hidden">
         {isAll ? (
           <div className="absolute inset-0 grid grid-cols-2 gap-px">
             {section.images.slice(0, 4).map((img, i) => (
-              <img
-                key={i}
-                src={img}
-                alt=""
-                className="w-full h-full object-cover"
-                loading="lazy"
-              />
+              <img key={i} src={img} alt="" className="w-full h-full object-cover" loading="lazy" />
             ))}
           </div>
         ) : (
@@ -147,26 +156,17 @@ function DesktopCategoryCard({ section, isActive, isAll, totalCount, colors, onC
           />
         )}
 
-        {/* Active tint */}
-        {isActive && (
-          <div className="absolute inset-0 bg-white/10 pointer-events-none" />
-        )}
+        {isActive && <div className="absolute inset-0 bg-white/10 pointer-events-none" />}
 
-        {/* Photo count chip */}
         <div className="absolute bottom-1.5 right-1.5 bg-black/55 backdrop-blur-sm rounded px-1.5 py-0.5 z-10">
-          <span className="text-[9px] font-semibold text-white tabular-nums leading-none">
-            {count}
-          </span>
+          <span className="text-[9px] font-semibold text-white tabular-nums leading-none">{count}</span>
         </div>
       </div>
 
-      {/* ── Label ── */}
       <div
         className={[
           "px-2.5 py-2 transition-colors",
-          isActive
-            ? colors.light
-            : "bg-white dark:bg-gray-900 group-hover:bg-gray-50 dark:group-hover:bg-gray-800/60",
+          isActive ? colors.light : "bg-white dark:bg-gray-900 group-hover:bg-gray-50 dark:group-hover:bg-gray-800/60",
         ].join(" ")}
       >
         <p
@@ -183,7 +183,7 @@ function DesktopCategoryCard({ section, isActive, isAll, totalCount, colors, onC
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Mobile horizontal category card (improved aspect ratio + sizing)
+// Mobile horizontal category card
 // ─────────────────────────────────────────────────────────────────────────────
 function MobileCategoryCard({ section, isActive, isAll, totalCount, colors, onClick }) {
   const count = isAll ? totalCount : section.images.length;
@@ -194,12 +194,9 @@ function MobileCategoryCard({ section, isActive, isAll, totalCount, colors, onCl
       className={[
         "flex-none rounded-xl overflow-hidden transition-all duration-200",
         "focus:outline-none active:scale-95",
-        isActive
-          ? `border-2 ${colors.tabBorderColor} shadow-md`
-          : "border border-gray-200 dark:border-gray-700 shadow-sm",
+        isActive ? `border-2 ${colors.tabBorderColor} shadow-md` : "border border-gray-200 dark:border-gray-700 shadow-sm",
       ].join(" ")}
     >
-      {/* Thumbnail — 4:3 so text below never gets clipped */}
       <div className="relative w-full aspect-[4/3] bg-gray-100 dark:bg-gray-800 overflow-hidden">
         {isAll ? (
           <div className="absolute inset-0 grid grid-cols-2 gap-px">
@@ -208,23 +205,12 @@ function MobileCategoryCard({ section, isActive, isAll, totalCount, colors, onCl
             ))}
           </div>
         ) : (
-          <img
-            src={section.images[0]}
-            className="absolute inset-0 w-full h-full object-cover"
-            loading="lazy"
-            alt=""
-          />
+          <img src={section.images[0]} className="absolute inset-0 w-full h-full object-cover" loading="lazy" alt="" />
         )}
         {isActive && <div className="absolute inset-0 bg-black/5 pointer-events-none" />}
       </div>
 
-      {/* Label */}
-      <div
-        className={[
-          "px-1.5 py-1.5 transition-colors",
-          isActive ? colors.light : "bg-white dark:bg-gray-900",
-        ].join(" ")}
-      >
+      <div className={["px-1.5 py-1.5 transition-colors", isActive ? colors.light : "bg-white dark:bg-gray-900"].join(" ")}>
         <p
           className={[
             "text-[10px] font-bold text-center truncate leading-tight",
@@ -248,18 +234,9 @@ function MobileCategoryCard({ section, isActive, isAll, totalCount, colors, onCl
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SidebarScrollContainer
-//
-// Wraps the scrollable list and wires up dynamic top + bottom fade indicators.
-//
-// Architecture:
-//   outer  →  relative + flex-1 + min-h-0 + overflow-hidden
-//             (gives the scroller a concrete pixel height via flex allocation)
-//   scroller→  h-full + overflow-y-auto
-//             (h-full explicitly matches the outer's pixel height → scroll fires)
-//   fades  →  absolute overlays that transition opacity based on scroll state
 // ─────────────────────────────────────────────────────────────────────────────
 function SidebarScrollContainer({ scrollRef, children }) {
-  const [atTop,    setAtTop]    = useState(true);
+  const [atTop, setAtTop] = useState(true);
   const [atBottom, setAtBottom] = useState(false);
 
   const sync = useCallback(() => {
@@ -273,7 +250,7 @@ function SidebarScrollContainer({ scrollRef, children }) {
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    sync(); // initial check
+    sync();
     el.addEventListener("scroll", sync, { passive: true });
     const ro = new ResizeObserver(sync);
     ro.observe(el);
@@ -285,30 +262,19 @@ function SidebarScrollContainer({ scrollRef, children }) {
 
   return (
     <div className="relative flex-1 min-h-0 overflow-hidden">
-
-      {/* ── Scroller ──
-          h-full is critical: it targets the outer's concrete pixel height
-          rather than relying on flex-1 resolution (which varies by engine).  */}
       <div
         ref={scrollRef}
         className="h-full overflow-y-auto gallery-sidebar-scroll"
-        style={{
-          overscrollBehavior: "contain",
-          WebkitOverflowScrolling: "touch",
-          scrollBehavior: "smooth",
-        }}
+        style={{ overscrollBehavior: "contain", WebkitOverflowScrolling: "touch", scrollBehavior: "smooth" }}
       >
         {children}
       </div>
 
-      {/* Top fade — hidden when already at the top */}
       <div
         aria-hidden
         className="pointer-events-none absolute top-0 inset-x-0 h-10 bg-gradient-to-b from-white dark:from-gray-950 to-transparent z-10 transition-opacity duration-300"
         style={{ opacity: atTop ? 0 : 1 }}
       />
-
-      {/* Bottom fade — hidden when at the bottom (peek disappears, confirming end) */}
       <div
         aria-hidden
         className="pointer-events-none absolute bottom-0 inset-x-0 h-20 bg-gradient-to-t from-white dark:from-gray-950 to-transparent z-10 transition-opacity duration-300"
@@ -321,32 +287,35 @@ function SidebarScrollContainer({ scrollRef, children }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Main overlay
 // ─────────────────────────────────────────────────────────────────────────────
-export default function PhotoTourOverlay({ images = [], category = "venues", onClose, galleyCategory }) {
-  const [sliderIndex,      setSliderIndex]      = useState(null);
+export default function PhotoTourOverlay({ categoryWiseGallery = [], category = "venues", onClose }) {
+  const [sliderIndex, setSliderIndex] = useState(null);
   const [activeSectionIdx, setActiveSectionIdx] = useState(0);
-  const [phase,            setPhase]            = useState("open");
+  const [phase, setPhase] = useState("open");           // overlay-open animation gate
+  const [sectionReady, setSectionReady] = useState(false); // per-section skeleton gate
 
   const colors = getCategoryColors(category);
 
+  // Build sections straight from categoryWiseGallery — no count-based slicing needed,
+  // each category already carries its own images.
   const sections = useMemo(
-    () => buildSections(images, galleyCategory),
-    [images, galleyCategory],
+    () => buildSectionsFromGallery(categoryWiseGallery),
+    [categoryWiseGallery],
   );
+
+  // Flatten every section's images, in order, for "All Photos" + the lightbox index.
+  const images = useMemo(() => sections.flatMap((s) => s.images), [sections]);
 
   const allSection = useMemo(
     () => ({ title: "All Photos", images, offset: 0, isAll: true }),
     [images],
   );
 
-  const allSections    = useMemo(() => [allSection, ...sections], [allSection, sections]);
-  const activeSection  = allSections[activeSectionIdx];
+  const allSections = useMemo(() => [allSection, ...sections], [allSection, sections]);
+  const activeSection = allSections[activeSectionIdx];
 
-  // Panel refs
-  const rightPanelRef    = useRef(null);
+  const rightPanelRef = useRef(null);
   const sidebarScrollRef = useRef(null);
-  const mobileStripRef   = useRef(null);
-
-  // Per-card refs for keyboard-driven scroll-into-view
+  const mobileStripRef = useRef(null);
   const cardRefs = useRef([]);
 
   const handleSelectCategory = useCallback((idx) => {
@@ -354,26 +323,23 @@ export default function PhotoTourOverlay({ images = [], category = "venues", onC
     rightPanelRef.current?.scrollTo({ top: 0, behavior: "instant" });
   }, []);
 
-  // Auto-scroll the active sidebar card into view whenever selection changes
+  // Brief skeleton flash on every category switch — not just the very first open.
   useEffect(() => {
-    cardRefs.current[activeSectionIdx]?.scrollIntoView({
-      behavior: "smooth",
-      block: "nearest",
-    });
+    setSectionReady(false);
+    const t = setTimeout(() => setSectionReady(true), 220);
+    return () => clearTimeout(t);
   }, [activeSectionIdx]);
 
-  // Auto-scroll active mobile tab into view (horizontal)
+  useEffect(() => {
+    cardRefs.current[activeSectionIdx]?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [activeSectionIdx]);
+
   useEffect(() => {
     const strip = mobileStripRef.current;
     if (!strip) return;
-    strip.children[activeSectionIdx]?.scrollIntoView({
-      behavior: "smooth",
-      block: "nearest",
-      inline: "center",
-    });
+    strip.children[activeSectionIdx]?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
   }, [activeSectionIdx]);
 
-  // Keyboard: ↑ / ↓ navigate sidebar categories
   const handleSidebarKeyDown = useCallback(
     (e) => {
       if (e.key === "ArrowDown") {
@@ -387,7 +353,6 @@ export default function PhotoTourOverlay({ images = [], category = "venues", onC
     [activeSectionIdx, allSections.length, handleSelectCategory],
   );
 
-  // Body scroll lock
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -396,42 +361,29 @@ export default function PhotoTourOverlay({ images = [], category = "venues", onC
 
   const handleAnimationComplete = useCallback(() => setPhase("loaded"), []);
 
+  const showSkeleton = phase === "open" || !sectionReady;
+
   return (
     <>
-      {/*
-        Custom scrollbar styles — scoped to .gallery-sidebar-scroll
-        • Firefox: scrollbar-width + scrollbar-color
-        • Chrome/Safari/Edge: webkit pseudo-elements with rounded thumb
-        • Dark mode: lighter thumb on dark backgrounds
-      */}
       <style>{`
+        @keyframes shimmer {
+          100% { transform: translateX(100%); }
+        }
         .gallery-sidebar-scroll {
           scrollbar-width: thin;
           scrollbar-color: #d1d5db transparent;
         }
-        .gallery-sidebar-scroll::-webkit-scrollbar {
-          width: 4px;
-        }
-        .gallery-sidebar-scroll::-webkit-scrollbar-track {
-          background: transparent;
-        }
+        .gallery-sidebar-scroll::-webkit-scrollbar { width: 4px; }
+        .gallery-sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
         .gallery-sidebar-scroll::-webkit-scrollbar-thumb {
           background-color: #d1d5db;
           border-radius: 9999px;
           min-height: 32px;
         }
-        .gallery-sidebar-scroll::-webkit-scrollbar-thumb:hover {
-          background-color: #9ca3af;
-        }
-        .dark .gallery-sidebar-scroll {
-          scrollbar-color: #374151 transparent;
-        }
-        .dark .gallery-sidebar-scroll::-webkit-scrollbar-thumb {
-          background-color: #374151;
-        }
-        .dark .gallery-sidebar-scroll::-webkit-scrollbar-thumb:hover {
-          background-color: #4b5563;
-        }
+        .gallery-sidebar-scroll::-webkit-scrollbar-thumb:hover { background-color: #9ca3af; }
+        .dark .gallery-sidebar-scroll { scrollbar-color: #374151 transparent; }
+        .dark .gallery-sidebar-scroll::-webkit-scrollbar-thumb { background-color: #374151; }
+        .dark .gallery-sidebar-scroll::-webkit-scrollbar-thumb:hover { background-color: #4b5563; }
       `}</style>
 
       <motion.div
@@ -443,8 +395,6 @@ export default function PhotoTourOverlay({ images = [], category = "venues", onC
         style={{ backfaceVisibility: "hidden", transform: "translateZ(0)" }}
         onAnimationComplete={handleAnimationComplete}
       >
-
-        {/* ── HEADER ── */}
         <div className="flex-none flex items-center justify-between px-4 md:px-8 py-4 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950">
           <button
             onClick={onClose}
@@ -456,48 +406,18 @@ export default function PhotoTourOverlay({ images = [], category = "venues", onC
           <span className="text-xs text-gray-400 dark:text-gray-500">{images.length} photos</span>
         </div>
 
-        {/* ── BODY ── */}
         <div className="flex-1 flex overflow-hidden">
-
-          {/*
-            ════════════════════════════════════════════════════════════
-            DESKTOP SIDEBAR
-            ════════════════════════════════════════════════════════════
-
-            Height chain (how the scroller gets a concrete pixel height):
-
-            1. motion.div     →  fixed inset-0 (= 100vh, concrete)
-            2. header         →  flex-none     (= fixed px, concrete)
-            3. body           →  flex-1        (= 100vh − header, concrete)
-            4. sidebar outer  →  flex-col + overflow-hidden
-                                 overflow-hidden clamps to cross-axis size
-                                 assigned by the flex-row parent = body height.
-                                 Without overflow-hidden the browser lets the
-                                 element expand to content height and scroll
-                                 never fires.
-            5. SidebarScrollContainer  →  relative + flex-1 + min-h-0 + overflow-hidden
-            6. scroller       →  h-full + overflow-y-auto
-                                 h-full explicitly targets step-5's px height.
-                                 This is the only cross-browser reliable trigger.
-          */}
           <div
             className="hidden md:flex flex-col md:w-44 lg:w-52 shrink-0 border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 overflow-hidden"
             onKeyDown={handleSidebarKeyDown}
             tabIndex={-1}
             aria-label="Photo categories"
           >
-
-            {/* ── Scrollable card list with dynamic top + bottom fades ── */}
             <SidebarScrollContainer scrollRef={sidebarScrollRef}>
-              {/*
-                pb-20: ensures the last card peeks above the h-20 bottom fade.
-                When the user reaches the very bottom, SidebarScrollContainer
-                detects atBottom=true and the fade disappears, confirming end.
-              */}
               <div className="px-3 pt-2 pb-20 flex flex-col gap-2">
                 {allSections.map((sec, i) => (
                   <DesktopCategoryCard
-                    key={i}
+                    key={sec.id ?? i}
                     cardRef={(el) => { cardRefs.current[i] = el; }}
                     section={sec}
                     isActive={activeSectionIdx === i}
@@ -511,26 +431,15 @@ export default function PhotoTourOverlay({ images = [], category = "venues", onC
             </SidebarScrollContainer>
           </div>
 
-          {/* ════ RIGHT PANEL ════ */}
           <div className="flex-1 flex flex-col overflow-hidden">
-
-            {/*
-              Mobile horizontal tab strip
-              — 27vw cards give ~3.6 visible at once, right edge naturally peeks
-              — pr-6 adds breathing room after the last card
-            */}
             <div
               className="md:hidden flex-none border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-950 overflow-x-auto"
               style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
             >
-              <div
-                ref={mobileStripRef}
-                className="flex gap-2 pl-3 pr-6 pt-3 pb-3"
-                style={{ width: "max-content" }}
-              >
+              <div ref={mobileStripRef} className="flex gap-2 pl-3 pr-6 pt-3 pb-3" style={{ width: "max-content" }}>
                 {allSections.map((sec, i) => (
                   <MobileCategoryCard
-                    key={i}
+                    key={sec.id ?? i}
                     section={sec}
                     isActive={activeSectionIdx === i}
                     isAll={!!sec.isAll}
@@ -542,23 +451,20 @@ export default function PhotoTourOverlay({ images = [], category = "venues", onC
               </div>
             </div>
 
-            {/* Scrollable image area */}
             <div
               ref={rightPanelRef}
               className="flex-1 overflow-y-auto overscroll-contain"
               style={{ scrollbarWidth: "thin", WebkitOverflowScrolling: "touch" }}
             >
-              <AnimatePresence initial={false}>
+              <AnimatePresence initial={false} mode="wait">
                 <motion.div
                   key={activeSectionIdx}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  transition={{ duration: 0.14 }}
+                  transition={{ duration: 0.16 }}
                 >
                   <div className="px-4 md:px-6 py-6">
-
-                    {/* Desktop section heading */}
                     <div className="hidden md:flex items-end justify-between mb-6">
                       <div>
                         <h2 className="text-xl font-bold text-gray-900 dark:text-white">
@@ -576,8 +482,8 @@ export default function PhotoTourOverlay({ images = [], category = "venues", onC
                       )}
                     </div>
 
-                    {phase === "open" ? (
-                      <StaticGrid count={Math.min(activeSection.images.length, 9)} />
+                    {showSkeleton ? (
+                      <StaticGrid count={Math.min(activeSection.images.length || 9, 9)} />
                     ) : (
                       <MasonryGrid
                         images={activeSection.images}
@@ -595,7 +501,6 @@ export default function PhotoTourOverlay({ images = [], category = "venues", onC
         </div>
       </motion.div>
 
-      {/* Fullscreen viewer — z-[200] sits above overlay z-[190] */}
       <AnimatePresence>
         {sliderIndex !== null && (
           <ImageSlider
