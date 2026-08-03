@@ -15,18 +15,11 @@ import lightLogo from "@/assets/logo.svg";
 import darkLogo  from "@/assets/logo.png";
 import { CATEGORY_TINTS } from "@/config/categoryConfig";
 
-
-import {
-  cashfree_subscription,
-  cashfree_plans,
-  razorpay_subscription,
-  stripe_subscription,
-  verifyRazorpaySubscription
-} from "@/services/payment.service";
-
-
+import { cashfree_subscription,cashfree_plans, stripe_subscription } from '@/services/payment.service'
 import { last_parent_id } from "@/services/listing.service";
 import termsData from "@/data/terms_and_conditions.json";
+
+import { load } from "@cashfreepayments/cashfree-js";
 
 import { useCategory } from "@/context/CategoryContext";
 import { Exo_2 } from "next/font/google";
@@ -115,9 +108,9 @@ const PLANS = [
 // Payment methods & gateway by region
 const PAYMENT_CONFIG = {
   in: {
-    methods:   ["UPI", "Cards", "Net Banking", "Razorpay"],
-    gateway:   "Razorpay",
-    secureMsg: "Payments secured by Razorpay · venuebook.in never stores card details",
+    methods:   ["UPI", "Cards", "Net Banking", "Cashfree"],
+    gateway:   "Cashfree",
+    secureMsg: "Payments secured by Cashfree · venuebook.in never stores card details",
   },
   ae: {
     methods:   ["Cards", "Apple Pay", "Google Pay", "Stripe"],
@@ -125,31 +118,6 @@ const PAYMENT_CONFIG = {
     secureMsg: "Payments secured by Stripe · venuebook.in never stores card details",
   },
 };
-
-// ─────────────────────────────────────────────────────────────────────────────
-//  Razorpay checkout script loader
-//  Razorpay doesn't ship an npm SDK for client-side checkout — it's loaded via
-//  a <script> tag that exposes `window.Razorpay`. We load it once and reuse it.
-// ─────────────────────────────────────────────────────────────────────────────
-
-let razorpayScriptPromise = null;
-
-function loadRazorpayScript() {
-  if (typeof window === "undefined") return Promise.resolve(false);
-  if (window.Razorpay) return Promise.resolve(true);
-
-  if (!razorpayScriptPromise) {
-    razorpayScriptPromise = new Promise((resolve) => {
-      const script = document.createElement("script");
-      script.src = "https://checkout.razorpay.com/v1/checkout.js";
-      script.async = true;
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
-      document.body.appendChild(script);
-    });
-  }
-  return razorpayScriptPromise;
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Page
@@ -335,8 +303,8 @@ const fmt = (n) =>
       return;
     }
 
-    // Paid plan — India goes through Razorpay
-    razorpay_checkout(1);
+    // Paid plan — go through the Cashfree payment gateway as before
+    payment_gateway(1);
   };
 
   // Activates the listing directly (Free plan or Commission-only plan) without
@@ -367,188 +335,51 @@ const fmt = (n) =>
     }
   };
 
-  // ── Razorpay checkout (India / country id 2) ─────────────────────────────
-  // Expects the backend `razorpay_subscription` endpoint to return either:
-  //   { data: { key_id, amount, currency, order_id, notes... } }        (one-time order)
-  // or
-  //   { data: { key_id, amount, currency, subscription_id, notes... } } (recurring subscription)
-  // Only one of order_id / subscription_id needs to be present.
-  // const razorpay_checkout = async (selected) => { 
-  //   try {
-  //     const payload = {
-  //       selected: selected,
-  //       selectedPlan: selectedPlan,
-  //       agreed: agreed,
-  //       selectedModes: Array.from(selectedModes),
-  //       coupon: coupon,
-  //       billing: billing,
-  //       parent_venue_id: parentId,
-  //       category: category,
-  //     };
-  //     const res = await razorpay_subscription(payload);
-  //     const order = res?.data;
-
-  //     if (!order?.key_id || (!order?.order_id && !order?.subscription_id)) {
-  //       throw new Error("Razorpay order could not be created");
-  //     }
-
-  //     // Persist payment type so success page can show the right variant
-  //     try { localStorage.setItem("vb_payment_type", selected === 0 ? "pay_later" : "pay_now"); } catch (_) {}
-
-  //     const scriptReady = await loadRazorpayScript();
-  //     if (!scriptReady || !window.Razorpay) {
-  //       throw new Error("Razorpay checkout script failed to load");
-  //     }
-
-  //     const options = {
-  //       key: order.key_id,
-  //       amount: order.amount,
-  //       currency: order.currency || "INR",
-  //       name: "venuebook.in",
-  //       description: plan?.plan_name ? `${plan.plan_name} plan subscription` : "Subscription",
-  //       order_id: order.order_id,
-  //       subscription_id: order.subscription_id,
-  //       prefill: {
-  //         name: listingInfo?.ownerName || listingInfo?.name || "",
-  //         email: listingInfo?.email || "",
-  //         contact: listingInfo?.phone || "",
-  //       },
-  //       theme: { color: tint.hex },
-  //       handler: function () {
-  //         // Payment succeeded — Razorpay's checkout confirms this client-side
-  //         // via this callback (unlike Cashfree's redirect-based flow).
-  //         try { localStorage.removeItem("vb_pending_" + category); } catch (_) {}
-  //         setActivating(false);
-  //         router.push("/" + locale + "/" + country + "/vendor/dashboard");
-  //       },
-  //       modal: {
-  //         ondismiss: function () {
-  //           // User closed the checkout without paying
-  //           setActivating(false);
-  //         },
-  //       },
-  //     };
-
-  //     const rzp = new window.Razorpay(options);
-  //     rzp.on("payment.failed", function (response) {
-  //       console.error("Razorpay payment failed:", response?.error);
-  //       setActivating(false);
-  //     });
-  //     rzp.open();
-  //   } catch (error) {
-  //     console.error("Razorpay Error:", error);
-  //     setActivating(false);
-  //   }
-  // };
-  const razorpay_checkout = async (selected) => {
+  const payment_gateway = async (selected) => {
   try {
-    setActivating(true);
-
-    const payload = {
-      selected,
-      selectedPlan,
-      agreed,
-      selectedModes: Array.from(selectedModes),
-      coupon,
-      billing,
-      parent_venue_id: parentId,
-      category,
-    };
-
-    const res = await razorpay_subscription(payload);
-    const order = res.data;
-
-    if (
-      !order?.success ||
-      !order?.key_id ||
-      !order?.subscription_id
-    ) {
-      throw new Error("Unable to create Razorpay subscription");
-    }
-
-    const scriptReady = await loadRazorpayScript();
-
-    if (!scriptReady) {
-      throw new Error("Razorpay SDK failed to load");
-    }
-
-    const options = {
-      key: order.key_id,
-
-      subscription_id: order.subscription_id,
-
-      name: "VenueBook",
-
-      description: plan?.plan_name || "Subscription",
-
-      prefill: {
-        name: listingInfo?.ownerName || "",
-        email: listingInfo?.email || "",
-        contact: listingInfo?.phone || "",
-      },
-
-      theme: {
-        color: tint.hex,
-      },
    
 
-  handler: async function (response) {
-    try {
-      const verifyPayload = {
-        payment_id: response.razorpay_payment_id,
-        subscription_id: response.razorpay_subscription_id,
-        signature: response.razorpay_signature,
-      };
-
-      const verify = await verifyRazorpaySubscription(verifyPayload);
-
-      if (verify.data.success) {
-        localStorage.removeItem("vb_pending_" + category);
-
-         router.push("/" + locale + "/" + country + "/start-listing/venue/subscription-success?subscription_id="+verify.data.subscription_id);
-
-      } else {
-        alert("Payment verification failed.");
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Unable to verify payment.");
-    } finally {
-      setActivating(false);
+    const payload = {
+      selected:selected,
+      selectedPlan:selectedPlan,
+      agreed:agreed,
+      selectedModes:Array.from(selectedModes),
+      coupon:coupon,
+      billing:billing,
+      parent_venue_id:parentId,
+      category:category,
     }
-  },
+    
+    const paymentGateway = await cashfree_subscription(payload);
 
-  modal: {
-    ondismiss() {
-      setActivating(false);
-    },
-  },
-};
+    // Persist payment type so success page can show the right variant
+    try { localStorage.setItem("vb_payment_type", selected === 0 ? "pay_later" : "pay_now"); } catch (_) {}
 
-    const rzp = new window.Razorpay(options);
-
-    rzp.on("payment.failed", function (response) {
-      console.log(response.error);
-      setActivating(false);
+    const cashfree = await load({
+      mode: "sandbox",
     });
 
-    rzp.open();
-  } catch (e) {
-    console.log(e);
+    const result = await cashfree.subscriptionsCheckout({
+      subsSessionId: paymentGateway.data.subscription_session_id,
+      redirectTarget: "_self",
+    });
+
+    if (result?.error) {
+      console.error(result.error);
+    }
+  } catch (error) {
+    console.error("Cashfree Error:", error);
+  } finally {
     setActivating(false);
+    
   }
 };
 
   const handlePayLater = () => {
-    if (!agreed || activating) return;
-
-    if (countrys?.id === 2) {
-      razorpay_checkout(0);
-    } else {
-      // Stripe checkout doesn't have a distinct "pay later" mode in this flow —
-      // fall back to the standard Stripe subscription checkout.
-      handleSubscribe();
-    }
+ if (!agreed || activating) return;
+payment_gateway(0)
+    // try { localStorage.removeItem("vb_pending_" + category); } catch (_) {}
+    // router.push("/" + locale + "/" + country + "/vendor/dashboard");
   };
 
   const openTerms  = () => setShowTermsModal(true);
@@ -1193,7 +1024,7 @@ function SummaryPanel({
   plan, billing, basePrice, perMonth, gst, total, annualTotal,
   selectedModes, agreed, activating,
   isFreePlan, isCommissionPlan, isPaidPlan,
-  onActivate, onPayLater, onOpenTerms,handleSubscribe, tint, fmt, payConfig,loading,countrys
+  onActivate, onPayLater, onOpenTerms,handleSubscribe, tint, fmt, payConfig,loading,country
 }) {
   const isAnnual      = billing === "2";
   const isFree        = basePrice === 0;
@@ -1207,7 +1038,7 @@ function SummaryPanel({
     ? formatPrice(perMonth) + "/month · billed annually"
     : billingPeriod;
 
-  const gateway = payConfig?.gateway || "Razorpay";
+  const gateway = payConfig?.gateway || "Cashfree";
 
   // CTA label: Free plan → "Activate Free", Commission-only plan → "Activate",
   // Paid plan → "Pay & Activate" (unchanged design/behaviour for paid plans)
@@ -1365,13 +1196,8 @@ function SummaryPanel({
         </p>
       </button>
 
-      {/* ── Primary CTA ──
-          India (country id 2) → Razorpay checkout via onActivate.
-          Everywhere else → Stripe checkout via handleSubscribe.
-          (Fixed: this used to read `country` here while the parent only ever
-          passed `countrys`, so the check was always false and every user —
-          India included — silently fell through to the Stripe button.) */}
-      { countrys?.id === 2 ? (
+      {/* ── Primary CTA ── */}
+      { country?.id === 2 ? (
       <button
         type="button"
         disabled={!agreed || activating}
@@ -1482,7 +1308,7 @@ function MobilePayBar({
   plan, billing, basePrice, perMonth, gst, total, annualTotal,
   selectedModes, agreed, activating,
   isFreePlan, isCommissionPlan, isPaidPlan,
-  onActivate, onPayLater, onOpenTerms, handleSubscribe, tint, fmt, payConfig, countrys,
+  onActivate, onPayLater, onOpenTerms, tint, fmt, payConfig,
   expanded, onToggleExpand
 }) {
   const isAnnual    = billing === "2";
@@ -1494,12 +1320,6 @@ function MobilePayBar({
   // CTA label: Free plan → "Activate Free", Commission-only plan → "Activate",
   // Paid plan → "Pay & Activate" (unchanged design/behaviour for paid plans)
   const ctaLabel = isFreePlan ? "Activate Free" : isCommissionPlan ? "Activate" : "Pay & Activate";
-
-  // Mirror the desktop gateway split: India (id 2) → Razorpay (onActivate),
-  // everywhere else → Stripe (handleSubscribe). Previously this always used
-  // onActivate regardless of country, so mobile Stripe users never actually
-  // hit the Stripe checkout.
-  const handlePrimaryCta = countrys?.id === 2 ? onActivate : handleSubscribe;
 
   return (
     <div className="lg:hidden fixed bottom-0 inset-x-0 z-40">
@@ -1665,7 +1485,7 @@ function MobilePayBar({
             <button
               type="button"
               disabled={!agreed || activating}
-              onClick={handlePrimaryCta}
+              onClick={onActivate}
               className={[
                 "flex-[2] flex items-center justify-center gap-2 py-3 rounded-xl",
                 "text-[14px] font-bold text-white transition-all",
