@@ -2085,8 +2085,8 @@
       "tabs": {
         "all": "All",
         "upcoming": "Upcoming",
-        "completed": "Completed",
-        "cancelled": "Cancelled",
+        "Completed": "Completed",
+        "Cancelled": "Cancelled",
         "reservation": "Reservation",
         "enquiry": "Enquiry",
         "drafted": "Drafted"
