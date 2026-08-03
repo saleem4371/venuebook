@@ -11,7 +11,7 @@
  * • flex-1 tabs — equal distribution, no fixed widths
  * • Subtle active pill (bg tint) instead of dot indicator
  * • Local scroll-hide state — context loop safe
- * • md:hidden — mobile only; desktop nav is VendorNavTabs
+ * • md:hidden — mobile only; desktop nav is VendorSidebar
  */
 
 import { motion, AnimatePresence }           from "framer-motion";

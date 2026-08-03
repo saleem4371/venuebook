@@ -8,7 +8,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import lightLogo from "@/assets/logo.svg";
 import darkLogo from "@/assets/logo.png";
 
-import { each_kyc_status , suscription_detail , kyc_status } from "@/services/kyc.service";
+import { suscription_detail } from "@/services/kyc.service";
 
 
 import { useVendorCategory } from "@/context/VendorCategoryContext";
@@ -17,8 +17,6 @@ import { useVendorCategory } from "@/context/VendorCategoryContext";
 import { useTranslations } from "next-intl";
 import RegionLanguageModal from "../../home/components/RegionLanguageModal";
 import { useAuth } from "@/context/AuthContext";
-import KycStatusChip from "./KycStatusChip";
-import KYCModal from "./KYCModal";
 import LogoutConfirmationModal from "@/components/shared/LogoutConfirmationModal";
 import LogoutOverlay           from "@/components/shared/LogoutOverlay";
 
@@ -411,16 +409,15 @@ export default function PremiumNavbar() {
   const userName = user?.name || "Vendor";
   const userEmail = user?.email || "vendor@venuebook.in";
 
-  // subscribe_status is now rendered inside KycStatusChip (DEMO_PLAN)
+  // subscribe_status is rendered via PlanBadge below (DEMO_PLAN). KYC
+  // status is no longer shown in the header — see KycReminderCard.jsx,
+  // rendered globally in layout.jsx above every page's content.
 
   const [showNotif,       setShowNotif]       = useState(false);
   const [showProfile,     setShowProfile]     = useState(false);
   const [regionOpen,      setRegionOpen]      = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [logoutLoading,   setLogoutLoading]   = useState(false);
-  const [kycStatus,       setKycStatus]       = useState("pending"); // wire to API/session later
-   const [kycState, setKycState] = useState(null);
-  const [kycOpen,         setKycOpen]         = useState(false);
   const [mounted,         setMounted]         = useState(false);
   const [switchLoading,   setSwitchLoading]   = useState(false);
   const [subscriptionData,   setSubscriptionData]   = useState({});
@@ -430,7 +427,6 @@ export default function PremiumNavbar() {
 
   //const [status, setStatus] = useState(null);
 
-  const [kycData, setKycData] = useState(null);
   const [notification, setNotification] = useState(null);
 
 // const { status } = useSocket();
@@ -489,26 +485,6 @@ const { status } = useSocket();
 
 
 useEffect(() => {
-  //if (!activeCategory) return;
-
- 
-  fetchKycStatus();
-}, [activeCategory]);
-
- const fetchKycStatus = async () => {
-    try {
-      const res = await each_kyc_status(activeCategory);
-      setKycData(res?.data ?? null); 
-      
-  
-    } catch (err) {
-      console.error(err);
-      setKycData(null);
-    }
-  };
-
-
-useEffect(() => {
   SUbsStatus();
 }, [activeCategory]);
 
@@ -555,9 +531,6 @@ setSubscriptionData(subscription.data[0])
           <Brandlogo href={`${base}/dashboard`} isDark={isDark} />
 
           <div className="flex items-center gap-1.5 lg:gap-2">
-            {/* ── KYC status (independent badge) ─────────────────── */}
-            <KycStatusChip onClick={() => setKycOpen(true)} kycState={kycState} setKycState={setKycState} />
-
             {/* ── Switch to Customer — only visible on desktop (1024px+)
                 At tablet (768–1024px) it moves into the profile dropdown ── */}
             <span
@@ -639,7 +612,7 @@ setSubscriptionData(subscription.data[0])
           </div>
         </nav>
   
-  <RealtimeStatusToast status={status} />
+  {/* <RealtimeStatusToast status={status} /> */}
 
         {/* ── Mobile: Logo + Avatar only ── */}
         <nav
@@ -649,14 +622,11 @@ setSubscriptionData(subscription.data[0])
           <Brandlogo href={`${base}/dashboard`} isDark={isDark} /> 
 
           {/*
-            Mobile header order: [KYC] [Theme] [Globe] [Plan] [Profile]
+            Mobile header order: [Theme] [Globe] [Plan] [Profile]
             "Switch to Customer" is moved into the Profile dropdown (md:hidden item).
             This keeps the header on exactly one row even on 320px phones.
           */}
           <div className="flex items-center gap-1 flex-nowrap min-w-0">
-            {/* KYC chip — compact on xs (icon only), adds "KYC" from sm */}
-            <KycStatusChip onClick={() => setKycOpen(true)} kycState={kycState} setKycState={setKycState}/>
-
             {/* Theme toggle */}
             <button
               type="button"
@@ -699,8 +669,6 @@ setSubscriptionData(subscription.data[0])
         open={regionOpen}
         onClose={() => setRegionOpen(false)}
       />
-
-      <KYCModal open={kycOpen} setOpen={setKycOpen}  kycData={kycData}  kycStatus={kycState} />
 
       {/* Shared logout confirmation modal */}
       <LogoutConfirmationModal

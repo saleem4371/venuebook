@@ -15,7 +15,7 @@ export default function VerificationBanner() {
       {/* ── Fixed outer layer — pointer-events-none so page content below is clickable ── */}
       <div
         aria-live="polite"
-        className="fixed inset-x-0 top-[64px] md:top-[116px] z-[39] pointer-events-none"
+        className="fixed inset-x-0 top-[64px] md:top-[72px] md:ps-[88px] z-[39] pointer-events-none"
       >
         <div className="max-w-7xl mx-auto px-4 md:px-6 pt-3">
           {/* ── Floating pill ── */}

@@ -3,7 +3,7 @@
 /**
  * /vendor/components/VendorCategoryNavigator.jsx
  *
- * Floating category switcher for the vendor panel.
+ * Category switcher for the vendor panel.
  * Mounted once in vendor/layout.jsx — available on every vendor page.
  *
  * Visual language: identical to the customer CategoryNavigator
@@ -15,10 +15,13 @@
  *   • Shows ONLY the vendor's enabled categories (vendorCategories from context).
  *   • Hidden automatically when vendor has ≤ 1 category.
  *
- * Positioning:
- *   desktop  top: 128px  (below vendor secondary nav at 116px + 12px gap)
- *   mobile   top: calc(80px + safe-area-inset-top)
- *   Both anchored to insetInlineEnd for full RTL support.
+ * Desktop: this component renders NOTHING — the switcher lives inside
+ * `VendorSidebar.jsx` instead (a rail item docked above Alerts), reusing
+ * the `Panel`/`IconBadge`/`CategoryIcon` primitives exported below.
+ * Mobile: still renders its own floating FAB here, since there's no
+ * sidebar on mobile to dock into.
+ *   mobile top: calc(80px + safe-area-inset-top), anchored to
+ *   insetInlineEnd for full RTL support.
  */
 
 import { useState, useEffect, useRef } from "react";
@@ -95,45 +98,10 @@ export default function VendorCategoryNavigator() {
     vendorCategories, onSelect: handleSelect, t,
   };
 
-  return isMobile
-    ? <MobileNav {...shared} />
-    : <DesktopNav {...shared} />;
-}
-
-/* ------------------------------------------------------------------ */
-/*  Desktop layout                                                      */
-/* ------------------------------------------------------------------ */
-function DesktopNav({
-  containerRef, isOpen, setIsOpen,
-  activeCategory, activeColor, activeLabel,
-  vendorCategories, onSelect, t,
-}) {
-  return (
-    <div
-      ref={containerRef}
-      style={{ insetInlineEnd: "40px", top: "83px" }}
-      className="fixed z-40 flex flex-col items-end"
-    >
-      <Trigger
-        isOpen={isOpen} setIsOpen={setIsOpen}
-        activeCategory={activeCategory}
-        activeColor={activeColor}
-        activeLabel={activeLabel}
-      />
-      <AnimatePresence>
-        {isOpen && (
-          <Panel
-            cols={2}
-            vendorCategories={vendorCategories}
-            activeCategory={activeCategory}
-            onSelect={onSelect}
-            onClose={() => setIsOpen(false)}
-            t={t}
-          />
-        )}
-      </AnimatePresence>
-    </div>
-  );
+  /* Desktop: nothing here — VendorSidebar hosts the switcher as a rail
+     item docked above Alerts. Mobile: keep the floating FAB, there's no
+     sidebar to dock into there. */
+  return isMobile ? <MobileNav {...shared} /> : null;
 }
 
 /* ------------------------------------------------------------------ */
@@ -257,9 +225,9 @@ function Trigger({ isOpen, setIsOpen, activeCategory, activeColor, activeLabel, 
 }
 
 /* ------------------------------------------------------------------ */
-/*  Animated panel                                                      */
+/*  Animated panel — exported for VendorSidebar's docked switcher       */
 /* ------------------------------------------------------------------ */
-function Panel({ cols, vendorCategories, activeCategory, onSelect, onClose, t, mobile, openUpward }) {
+export function Panel({ cols, vendorCategories, activeCategory, onSelect, onClose, t, mobile, openUpward }) {
   const gridCols = cols === 3 ? "grid-cols-3" : "grid-cols-2";
   const yDir = openUpward ? 8 : -8;
   return (
@@ -338,12 +306,14 @@ function Panel({ cols, vendorCategories, activeCategory, onSelect, onClose, t, m
 }
 
 /* ------------------------------------------------------------------ */
-/*  Primitives — identical to customer CategoryNavigator               */
+/*  Primitives — identical to customer CategoryNavigator. Exported for
+    VendorSidebar's docked switcher.                                   */
 /* ------------------------------------------------------------------ */
-function IconBadge({ color, size = "sm", children }) {
+export function IconBadge({ color, size = "sm", children }) {
   const dim =
     size === "fab" ? "h-8 w-8 rounded-full" :
     size === "md"  ? "h-8 w-8 rounded-lg"   :
+    size === "lg"  ? "h-8 w-8 rounded-full" :
                      "h-6 w-6 rounded-full";
   return (
     <span
@@ -356,9 +326,10 @@ function IconBadge({ color, size = "sm", children }) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Category icons — verbatim from customer CategoryNavigator          */
+/*  Category icons — verbatim from customer CategoryNavigator.
+    Exported for VendorSidebar's docked switcher.                     */
 /* ------------------------------------------------------------------ */
-function CategoryIcon({ id, className }) {
+export function CategoryIcon({ id, className }) {
   switch (id) {
     case "venues":      return <VenueIcon      className={className} />;
     case "farmstays":   return <FarmstayIcon   className={className} />;
