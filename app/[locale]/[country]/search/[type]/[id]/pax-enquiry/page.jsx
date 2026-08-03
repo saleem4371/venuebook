@@ -1,586 +1,1495 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, Fragment } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { loadVenues } from "@/services/venue_details.service";
+import { Utensils } from "lucide-react";
+import PremiumCalendar from "../../components/listing/PremiumCalendar";
+import lightLogo from "@/assets/logo.svg";
+import darkLogo  from "@/assets/logo.png";
 
-import { loadPackage , package_booking } from '@/services/package.service'
+// ─── Lock body scroll while a modal is mounted ───────────────────────────────
+// Counter-based: only lock on first open, only unlock when last modal closes.
+// This prevents the race where two modals unmount in the same render and the
+// "restore prev" order is non-deterministic.
+let _lockCount = 0;
+const _modalStack = [];
+function useLockScroll(onEsc) {
+  useEffect(() => {
+    _lockCount++;
+    if (_lockCount === 1) document.body.style.overflow = "hidden";
+    const entry = { onEsc };
+    _modalStack.push(entry);
+    const onKey = e => {
+      if (e.key === "Escape" && _modalStack[_modalStack.length - 1] === entry) {
+        entry.onEsc?.();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      _lockCount--;
+      if (_lockCount === 0) document.body.style.overflow = "";
+      document.removeEventListener("keydown", onKey);
+      const i = _modalStack.indexOf(entry);
+      if (i > -1) _modalStack.splice(i, 1);
+    };
+  }, []);
+}
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// ─── Mock Data (unchanged) ────────────────────────────────────────────────────
+const MOCK_CATEGORIES = [
+  { id: 1, name: "Starters & Soups" },
+  { id: 2, name: "Main Course" },
+  { id: 3, name: "Breads & Rice" },
+  { id: 4, name: "Desserts" },
+  { id: 5, name: "Beverages" },
+];
+const MOCK_ITEMS = [
+  { id: 101, category_id: 1, category_name: "Starters & Soups", item_name: "Veg Spring Rolls", food_type: 1 },
+  { id: 102, category_id: 1, category_name: "Starters & Soups", item_name: "Paneer Tikka", food_type: 1 },
+  { id: 103, category_id: 1, category_name: "Starters & Soups", item_name: "Hara Bhara Kebab", food_type: 1 },
+  { id: 104, category_id: 1, category_name: "Starters & Soups", item_name: "Tomato Soup", food_type: 1 },
+  { id: 105, category_id: 1, category_name: "Starters & Soups", item_name: "Chicken Tikka", food_type: 2 },
+  { id: 106, category_id: 1, category_name: "Starters & Soups", item_name: "Seekh Kebab", food_type: 2 },
+  { id: 107, category_id: 1, category_name: "Starters & Soups", item_name: "Chicken Soup", food_type: 2 },
+  { id: 201, category_id: 2, category_name: "Main Course", item_name: "Paneer Butter Masala", food_type: 1 },
+  { id: 202, category_id: 2, category_name: "Main Course", item_name: "Dal Makhani", food_type: 1 },
+  { id: 203, category_id: 2, category_name: "Main Course", item_name: "Veg Biryani", food_type: 1 },
+  { id: 204, category_id: 2, category_name: "Main Course", item_name: "Mix Veg Curry", food_type: 1 },
+  { id: 205, category_id: 2, category_name: "Main Course", item_name: "Kadai Paneer", food_type: 1 },
+  { id: 206, category_id: 2, category_name: "Main Course", item_name: "Chicken Biryani", food_type: 2 },
+  { id: 207, category_id: 2, category_name: "Main Course", item_name: "Butter Chicken", food_type: 2 },
+  { id: 208, category_id: 2, category_name: "Main Course", item_name: "Mutton Rogan Josh", food_type: 2 },
+  { id: 301, category_id: 3, category_name: "Breads & Rice", item_name: "Butter Naan", food_type: 1 },
+  { id: 302, category_id: 3, category_name: "Breads & Rice", item_name: "Tandoori Roti", food_type: 1 },
+  { id: 303, category_id: 3, category_name: "Breads & Rice", item_name: "Laccha Paratha", food_type: 1 },
+  { id: 304, category_id: 3, category_name: "Breads & Rice", item_name: "Steamed Rice", food_type: 1 },
+  { id: 305, category_id: 3, category_name: "Breads & Rice", item_name: "Jeera Rice", food_type: 1 },
+  { id: 401, category_id: 4, category_name: "Desserts", item_name: "Gulab Jamun", food_type: 1 },
+  { id: 402, category_id: 4, category_name: "Desserts", item_name: "Rasgulla", food_type: 1 },
+  { id: 403, category_id: 4, category_name: "Desserts", item_name: "Kheer", food_type: 1 },
+  { id: 404, category_id: 4, category_name: "Desserts", item_name: "Ice Cream (2 flavours)", food_type: 1 },
+  { id: 405, category_id: 4, category_name: "Desserts", item_name: "Fruit Custard", food_type: 1 },
+  { id: 501, category_id: 5, category_name: "Beverages", item_name: "Welcome Drink (Mocktail)", food_type: 1 },
+  { id: 502, category_id: 5, category_name: "Beverages", item_name: "Fresh Lime Soda", food_type: 1 },
+  { id: 503, category_id: 5, category_name: "Beverages", item_name: "Masala Chai", food_type: 1 },
+  { id: 504, category_id: 5, category_name: "Beverages", item_name: "Filter Coffee", food_type: 1 },
+  { id: 505, category_id: 5, category_name: "Beverages", item_name: "Soft Drinks Assorted", food_type: 1 },
+];
+const MOCK_PACKAGES = [
+  { id: "pkg_silver",   package_name: "Silver Banquet",  package_amount: 850,  package_food_type: 1, is_popular: false, max_items_per_category: 2, categories: [{ id: 1, name: "Starters & Soups" }, { id: 3, name: "Breads & Rice" }, { id: 4, name: "Desserts" }] },
+  { id: "pkg_gold",     package_name: "Gold Feast",      package_amount: 1200, package_food_type: 1, is_popular: true,  max_items_per_category: 3, categories: [{ id: 1, name: "Starters & Soups" }, { id: 2, name: "Main Course" }, { id: 3, name: "Breads & Rice" }, { id: 4, name: "Desserts" }] },
+  { id: "pkg_platinum", package_name: "Platinum Grand",  package_amount: 1800, package_food_type: 1, is_popular: false, max_items_per_category: 4, categories: MOCK_CATEGORIES },
+  { id: "pkg_nonveg",   package_name: "Non-Veg Special", package_amount: 1500, package_food_type: 2, is_popular: false, max_items_per_category: 3, categories: [{ id: 1, name: "Starters & Soups" }, { id: 2, name: "Main Course" }, { id: 3, name: "Breads & Rice" }, { id: 4, name: "Desserts" }, { id: 5, name: "Beverages" }] },
+  { id: "pkg_budget",   package_name: "Budget Bliss",    package_amount: 650,  package_food_type: 1, is_popular: false, max_items_per_category: 2, categories: [{ id: 2, name: "Main Course" }, { id: 3, name: "Breads & Rice" }] },
+];
+function loadMockData() { return new Promise(r => setTimeout(() => r({ packages: MOCK_PACKAGES, categories: MOCK_CATEGORIES, items: MOCK_ITEMS }), 600)); }
+function submitMockEnquiry(p) { return new Promise(r => setTimeout(() => r({ success: true }), 1200)); }
+
+// ─── Constants (unchanged) ────────────────────────────────────────────────────
 const STEPS = [
-  { id: 1, label: "Event Details", short: "Details" },
-  { id: 2, label: "Food Menu",     short: "Menu"    },
-  { id: 3, label: "Requirements",  short: "Reqs"    },
-  { id: 4, label: "Contact Info",  short: "Contact" },
-  { id: 5, label: "Review",        short: "Review"  },
+  { id: 1, label: "Guests & Menu", short: "Menu"    },
+  { id: 2, label: "Requirements",  short: "Reqs"    },
+  { id: 3, label: "Contact Info",  short: "Contact" },
+  { id: 4, label: "Review",        short: "Review"  },
 ];
 const DIETARY_OPTIONS = [
-  { id: "vegetarian", label: "Vegetarian" }, { id: "vegan",     label: "Vegan"       },
-  { id: "glutenFree", label: "Gluten-Free"}, { id: "dairyFree", label: "Dairy-Free"  },
-  { id: "halal",      label: "Halal"      }, { id: "kosher",    label: "Kosher"      },
+  { id: "vegetarian", label: "Vegetarian" }, { id: "vegan", label: "Vegan" },
+  { id: "glutenFree", label: "Gluten-Free" }, { id: "dairyFree", label: "Dairy-Free" },
+  { id: "halal", label: "Halal" }, { id: "kosher", label: "Kosher" },
 ];
 const ALLERGY_OPTIONS = [
-  { id: "nuts",     label: "Nuts"     }, { id: "shellfish", label: "Shellfish" },
-  { id: "dairy",    label: "Dairy"    }, { id: "eggs",      label: "Eggs"      },
-  { id: "soy",      label: "Soy"      }, { id: "wheat",     label: "Wheat"     },
-  { id: "fish",     label: "Fish"     }, { id: "other",     label: "Other"     },
+  { id: "nuts", label: "Nuts" }, { id: "shellfish", label: "Shellfish" },
+  { id: "dairy", label: "Dairy" }, { id: "eggs", label: "Eggs" },
+  { id: "soy", label: "Soy" }, { id: "wheat", label: "Wheat" },
+  { id: "fish", label: "Fish" }, { id: "other", label: "Other" },
 ];
 const SERVING_PREFS = ["Buffet", "Plated", "Family Style", "Stations"];
-const MINIMUM_PAX   = 50;
-const FOOD_TAX      = 0.05;
-const ADDON_TAX     = 0.18;
-const DRAFT_KEY     = "paxBookingDraft";
-const EMAIL_RE      = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PHONE_RE      = /^[+0-9 ()-]{7,15}$/;
+const SHIFT_OPTIONS      = ["Morning", "Afternoon", "Evening", "Night"];
+const EVENT_TYPE_OPTIONS = ["Wedding", "Reception", "Roce", "Engagement", "Birthday", "Corporate", "Baby Shower", "Other"];
+const MINIMUM_PAX = 50;
+const FOOD_TAX = 0.05;
+const ADDON_TAX = 0.18;
+const DRAFT_KEY = "paxBookingDraft";
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-function fmt(n) {
-  return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n || 0);
-}
-function fmtDate(d) {
-  if (!d) return "";
-  try { return new Date(d).toLocaleDateString("en-IN", { weekday: "long", year: "numeric", month: "long", day: "numeric" }); }
-  catch { return d; }
-}
+// ─── Helpers (unchanged) ──────────────────────────────────────────────────────
+function fmt(n) { return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n || 0); }
+function fmtDate(d) { if (!d) return ""; try { return new Date(d).toLocaleDateString("en-IN", { weekday: "long", year: "numeric", month: "long", day: "numeric" }); } catch { return d; } }
 function genRef() { return "VB-PAX-" + Math.random().toString(36).substring(2, 8).toUpperCase(); }
 
-// TODO: swap this for the real enquiry-submission endpoint (e.g. a
-// `submitPaxEnquiry` export from '@/services/package.service') once it's
-// available — this keeps the form fully functional in the meantime.
-// function submitEnquiry(payload) {
-//   package_booking(payload)
-//   return new Promise((resolve) => setTimeout(() => resolve({ success: true, ref: payload._ref }), 1000));
-// }
+// ─── Design Tokens ────────────────────────────────────────────────────────────
+const P   = "var(--pax-p)";
+const PH  = "var(--pax-ph)";
+const PL  = "var(--pax-pl)";
+const PLL = "var(--pax-pll)";
+const PR  = "var(--pax-pr)";
 
-export const submitEnquiry = async (payload) => {
-  const { data } = await package_booking(payload);
+// ─── Tabler Icons (inline SVG) ────────────────────────────────────────────────
+const Ico = ({ d, d2, d3, circle, size = 20, color = "currentColor", sw = 1.75 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+    {circle && <circle cx={circle[0]} cy={circle[1]} r={circle[2]}/>}
+    <path d={d}/>
+    {d2 && <path d={d2}/>}
+    {d3 && <path d={d3}/>}
+  </svg>
+);
 
-   setEnquiryRef(data?.data?.booking_code);
-  return data;
-};
+const ICheck     = (p = {}) => <Ico {...p} d="M5 12l5 5l10-10"/>;
+const IChevL     = (p = {}) => <Ico {...p} d="M15 6l-6 6l6 6"/>;
+const IChevR     = (p = {}) => <Ico {...p} d="M9 6l6 6l-6 6"/>;
+const IChevD     = ({ rot, ...p }) => <span style={{ display:"inline-flex", transition:"transform 0.25s", transform: rot ? "rotate(180deg)" : "none" }}><Ico {...p} d="M6 9l6 6l6-6"/></span>;
+const IClose     = (p = {}) => <Ico {...p} d="M18 6L6 18M6 6l12 12"/>;
+const ISearch    = (p = {}) => <Ico {...p} circle={[10,10,7]} d="M21 21l-6-6"/>;
+const IInfo      = (p = {}) => <Ico {...p} circle={[12,12,9]} d="M12 8h.01M11 12h1v4h1"/>;
+const IWarn      = (p = {}) => <Ico {...p} d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" d2="M12 9v4" d3="M12 17h.01"/>;
+const IUtensils  = ({ size = 20, color = "currentColor", sw = 1.75 }) => <Utensils size={size} color={color} strokeWidth={sw}/>;
+const ICalendar  = (p = {}) => <Ico {...p} d="M4 7a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V7zM16 3v4M8 3v4M4 11h16M11 15h1M12 15v3"/>;
+const IUsers     = (p = {}) => <Ico {...p} circle={[9,7,4]} d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2M16 3.13a4 4 0 010 7.75M21 21v-2a4 4 0 00-3-3.85"/>;
+const IPin       = (p = {}) => <Ico {...p} circle={[12,11,3]} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>;
+const ICheckCirc = (p = {}) => <Ico {...p} circle={[12,12,9]} d="M9 12l2 2l4-4"/>;
+const ITag       = (p = {}) => <Ico {...p} d="M7.5 7.5m-1 0a1 1 0 102 0 1 1 0 10-2 0M3 6a3 3 0 013-3h3.586a1 1 0 01.707.293l7.414 7.414a2 2 0 010 2.828l-4.586 4.586a2 2 0 01-2.828 0L3.293 10.707A1 1 0 013 10V6z"/>;
+const IReceipt   = (p = {}) => <Ico {...p} d="M5 21V5a2 2 0 012-2h10a2 2 0 012 2v16l-3-2l-2 2l-2-2l-2 2l-2-2l-3 2zM9 7h6M9 11h6M9 15h4"/>;
+const IArrowR    = (p = {}) => <Ico {...p} d="M5 12h14M13 18l6-6M13 6l6 6"/>;
+const IPlus      = (p = {}) => <Ico {...p} d="M12 5v14M5 12h14"/>;
+const IMinus     = (p = {}) => <Ico {...p} d="M5 12h14"/>;
+const IStar      = (p = {}) => <Ico {...p} d="M12 17.75l-6.172 3.245l1.179-6.873l-5-4.867l6.9-1l3.086-6.253l3.086 6.253l6.9 1l-5 4.867l1.179 6.873z"/>;
+const ILeaf      = (p = {}) => <Ico {...p} d="M5 21c.5-4.5 2.5-8 7-10M9 18c6.218 0 10.5-3.288 11-12v-2h-4.014c-9 0-11.986 4-12 9c0 1 0 3 2 5h3z"/>;
+const IMail      = (p = {}) => <Ico {...p} d="M3 7a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V7zM3 7l9 6l9-6"/>;
+const IPhone     = (p = {}) => <Ico {...p} d="M5 4h4l2 5l-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 014 6a2 2 0 012-2"/>;
+const IBuild     = (p = {}) => <Ico {...p} d="M3 21h18M5 21V7l7-4l7 4v14M9 9v.01M9 12v.01M9 15v.01M15 9v.01M15 12v.01M15 15v.01M12 21v-4a1 1 0 011-1h2a1 1 0 011 1v4"/>;
+const IFile      = (p = {}) => <Ico {...p} d="M14 3v4a1 1 0 001 1h4M17 21H7a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v11a2 2 0 01-2 2zM9 9h1M9 13h6M9 17h6"/>;
+const IClock     = (p = {}) => <Ico {...p} circle={[12,12,9]} d="M12 7v5l3 3"/>;
 
-// Normalizes the raw catalogue payload returned by `loadPackage` into the flat
-// shapes the rest of this page expects:
-//  - categories: [{ id, name }]                                    (published only)
-//  - items:      [{ id, category_id, category_name, item_name, price, image, food_type }]
-//  - packages:   [{ id, package_name, package_amount, package_food_type,
-//                   allowed_item_ids: number[], category_requirements: [{id,count}] }]
-function normalizeCatalog(payload) {
-  const rawCategories = Array.isArray(payload?.category) ? payload.category : [];
-  const rawItemGroups = Array.isArray(payload?.items) ? payload.items : [];
-  const rawPackages   = Array.isArray(payload?.package) ? payload.package : [];
+// ─── Global CSS ───────────────────────────────────────────────────────────────
+const GLOBAL_CSS = `
+  :root {
+    --pax-bg:#fff; --pax-card:#fff; --pax-t1:#111827; --pax-t2:#374151;
+    --pax-t3:#6B7280; --pax-t4:#9CA3AF; --pax-brd:#dddddd; --pax-brd2:#F0EFFE;
+    --pax-brd3:#dddddd; --pax-muted:#F9FAFB; --pax-muted2:#F3F4F6;
+    --pax-p:#7C3AED; --pax-ph:#6D28D9; --pax-pl:#EDE9FE; --pax-pll:#F5F3FF;
+    --pax-pr:rgba(124,58,237,0.12); --pax-header:rgba(255,255,255,0.95);
+  }
+  .dark {
+    --pax-bg:#0D0D1A; --pax-card:#161625; --pax-t1:#F9FAFB; --pax-t2:#E5E7EB;
+    --pax-t3:#9CA3AF; --pax-t4:#6B7280; --pax-brd:#374151; --pax-brd2:#2E1065;
+    --pax-brd3:#1F2937; --pax-muted:#111827; --pax-muted2:#1F2937;
+    --pax-p:#8B5CF6; --pax-ph:#7C3AED; --pax-pl:#2E1065; --pax-pll:#1E1B4B;
+    --pax-pr:rgba(139,92,246,0.2); --pax-header:rgba(13,13,26,0.95);
+  }
+  @keyframes spin    { to { transform: rotate(360deg); } }
+  @keyframes fadeUp  { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes scaleIn { from { opacity:0; transform:scale(0.96); } to { opacity:1; transform:scale(1); } }
+  @keyframes slideUp { from { transform:translateY(100%); } to { transform:translateY(0); } }
+  @keyframes shimmer { from { background-position:-200% 0; } to { background-position:200% 0; } }
+  @keyframes popIn   { 0%{transform:scale(0.8);opacity:0} 60%{transform:scale(1.08)} 100%{transform:scale(1);opacity:1} }
 
-  // Only categories that are published and actually named are shown to guests.
-  const categories = rawCategories
-    .filter(c => c?.cat_publish === 1 && c?.item_category && c.item_category.trim())
-    .map(c => ({ id: c.id, name: c.item_category }));
+  html, body { background: var(--pax-bg); color: var(--pax-t1); }
+  *,*::before,*::after { box-sizing:border-box; }
+  input,textarea,select,button { font-family:inherit; }
+  input:focus,textarea:focus,select:focus { outline:none; }
+  button:focus-visible { outline:2px solid var(--pax-p); outline-offset:2px; }
+  input[type=number]::-webkit-inner-spin-button,
+  input[type=number]::-webkit-outer-spin-button { display:none; }
+  input[type=number] { -moz-appearance:textfield; }
+  input[type=checkbox],input[type=radio] { accent-color:var(--pax-p); }
 
-  const publishedIds = new Set(categories.map(c => c.id));
+  .pax-card  { animation: fadeUp 0.26s cubic-bezier(0.16,1,0.3,1); }
+  .pax-modal { animation: scaleIn 0.22s cubic-bezier(0.16,1,0.3,1); }
+  .pax-sheet { animation: slideUp 0.3s cubic-bezier(0.16,1,0.3,1); }
+  .pax-pop   { animation: popIn 0.28s cubic-bezier(0.16,1,0.3,1); }
 
-  const items = [];
-  const foodTypeById = new Map();
-  rawItemGroups.forEach(group => {
-    if (!publishedIds.has(group?.id)) return;
-    (group.package_item || []).forEach(pi => {
-      const foodType = pi.food_pre === 2 ? 2 : 1; // 1 = veg, 2 = non-veg
-      items.push({
-        id: pi.id,
-        category_id: pi.cat_id ?? group.id,
-        category_name: group.item_category,
-        item_name: pi.item_name,
-        price: Number(pi.item_price) || 0,
-        image: pi.image || "",
-        food_type: foodType,
-      });
-      foodTypeById.set(pi.id, foodType);
-    });
-  });
+  .pkg-card { transition: border-color 0.15s; }
+  .pkg-card:hover { border-color: var(--pax-t2) !important; }
 
-  const packages = rawPackages
-    .filter(pkg => pkg?.package_status !== 0) // hide disabled packages, show everything else
-    .map(pkg => {
-      const allowedItemIds = (pkg.package_items || []).map(Number);
-      const categoryRequirements = (pkg.category_items || [])
-        .filter(ci => ci?.category_id != null)
-        .map(ci => ({ id: ci.category_id, count: Math.max(1, Number(ci.count) || 1) }));
+  .pax-btn-primary { transition: background 0.15s, box-shadow 0.15s, transform 0.1s; }
+  .pax-btn-primary:hover:not(:disabled) { box-shadow: 0 4px 16px rgba(124,58,237,0.38); transform: translateY(-1px); }
+  .pax-btn-primary:active:not(:disabled) { transform: translateY(0); }
 
-      const foodTypesInPkg = new Set(allowedItemIds.map(id => foodTypeById.get(id)).filter(Boolean));
-      const packageFoodType = foodTypesInPkg.size === 1 ? [...foodTypesInPkg][0] : undefined;
+  .pax-counter-btn { transition: transform 0.1s, background 0.15s, border-color 0.15s; }
+  .pax-counter-btn:active:not(:disabled) { transform: scale(0.9); }
 
-      return {
-        id: pkg.id,
-        package_name: pkg.name,
-        package_amount: Number(pkg.price) || 0,
-        package_food_type: packageFoodType,
-        allowed_item_ids: allowedItemIds,
-        category_requirements: categoryRequirements,
-      };
-    });
+  .pax-chip { transition: border-color 0.15s, background 0.15s, color 0.15s, box-shadow 0.15s; }
+  .pax-chip:hover { box-shadow: 0 0 0 1px var(--pax-p); }
 
-  return { categories, items, packages };
-}
+  .pax-input:focus { border-color: var(--pax-p) !important; box-shadow: 0 0 0 3px var(--pax-pr) !important; }
+  .pax-input { transition: border-color 0.15s, box-shadow 0.15s; }
 
-// ─── Icons ────────────────────────────────────────────────────────────────────
-const ChkIcon  = ({ s = 20, c = "currentColor" }) => (<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>);
-const ChevL    = () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>);
-const ChevD    = ({ r }) => (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transition: "transform 0.3s", transform: r ? "rotate(180deg)" : "none", display: "block" }}><polyline points="6 9 12 15 18 9" /></svg>);
-const XIco     = ({ s = 20 }) => (<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>);
-const SrchIco  = () => (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>);
-const InfoIco  = ({ s = 16 }) => (<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" /></svg>);
-const WarnIco  = () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>);
-const SpoonIco = () => (<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2" /><line x1="7" y1="2" x2="7" y2="22" /><path d="M21 15V2a5 5 0 0 0-5 5v6c0 .9.7 1.8 1.6 2l1.4.5V22" /></svg>);
-const OkCircle = () => (<svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>);
-
-// ─── Global animation styles (see <style> block at bottom of Page) ───────────
-// .pv-fade-in     — step content, keyed by step so it replays on every change
-// .pv-scale-in    — modal panels popping in
-// .pv-card        — hover-lift for clickable cards (packages, custom items)
-// .pv-btn         — press/hover feedback for buttons
-// .pv-pop         — staggered entrance for grid items (package cards, menu tiles)
+  ::-webkit-scrollbar { width:5px; height:5px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:var(--pax-brd); border-radius:3px; }
+`;
 
 // ─── ProgressSteps ────────────────────────────────────────────────────────────
 function ProgressSteps({ current }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "1.25rem 0", overflowX: "auto" }}>
+    <nav aria-label="Booking progress" className="flex items-center justify-center">
       {STEPS.map((step, i) => {
-        const done = current > step.id, active = current === step.id;
+        const done   = current > step.id;
+        const active = current === step.id;
         return (
-          <div key={step.id} style={{ display: "flex", alignItems: "center" }}>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.4rem", flexShrink: 0 }}>
-              <div style={{ width: "2.125rem", height: "2.125rem", borderRadius: "50%", background: done ? "#10b981" : active ? "#8368ef" : "#e5e7eb", color: (done || active) ? "white" : "#9ca3af", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "0.875rem", transition: "all 0.3s", flexShrink: 0, animation: active ? "pulseRing 1.8s ease-in-out infinite" : "none" }}>
-                {done ? <ChkIcon s={15} c="white" /> : step.id}
+          <Fragment key={step.id}>
+            <div className="flex flex-col items-center gap-1.5 flex-shrink-0">
+              {/* Circle */}
+              <div
+                className="flex items-center justify-center w-8 h-8 rounded-full text-sm transition-all duration-300"
+                style={{
+                  background: active ? P : done ? "var(--pax-muted2)" : "var(--pax-muted2)",
+                  color: active ? "#fff" : "var(--pax-t4)",
+                  border: active ? "none" : `2px solid ${done ? "var(--pax-brd)" : "var(--pax-brd)"}`,
+                }}
+                aria-label={`Step ${step.id}: ${step.label}${done ? " (completed)" : active ? " (current)" : ""}`}
+              >
+                {done
+                  ? <ICheck size={13} color="var(--pax-t3)" sw={2.5}/>
+                  : <span className="text-[0.75rem] font-semibold leading-none">{step.id}</span>
+                }
               </div>
-              <span style={{ fontSize: "0.7rem", fontWeight: active ? 600 : 400, whiteSpace: "nowrap", color: active ? "#8368ef" : done ? "#10b981" : "#9ca3af", transition: "color 0.3s" }}>{step.label}</span>
+              {/* Label */}
+              <span
+                className="whitespace-nowrap text-[0.6375rem] tracking-wide transition-colors duration-300 hidden sm:block"
+                style={{ color: active ? P : "var(--pax-t4)", fontWeight: active ? 600 : 400 }}
+              >
+                {step.label}
+              </span>
+              <span
+                className="whitespace-nowrap text-[0.6375rem] tracking-wide transition-colors duration-300 sm:hidden"
+                style={{ color: active ? P : "var(--pax-t4)", fontWeight: active ? 600 : 400 }}
+              >
+                {step.short}
+              </span>
             </div>
-            {i < STEPS.length - 1 && <div style={{ height: "2px", width: "clamp(20px,4vw,56px)", background: done ? "#10b981" : "#e5e7eb", margin: "0 4px", marginBottom: "1.25rem", transition: "background 0.4s", flexShrink: 1 }} />}
-          </div>
+            {i < STEPS.length - 1 && (
+              <div
+                className="flex-1 mx-2 sm:mx-3 transition-all duration-300"
+                style={{ height: "1px", marginBottom: "22px", background: "var(--pax-brd3)" }}
+              />
+            )}
+          </Fragment>
         );
       })}
-    </div>
+    </nav>
   );
 }
 
-// ─── Banner (error / warning) ────────────────────────────────────────────────
-function Banner({ tone = "error", message, onRetry }) {
-  if (!message) return null;
-  const palette = tone === "error"
-    ? { bg: "#fef2f2", border: "#fecaca", text: "#991b1b", icon: "#dc2626" }
-    : { bg: "#fffbeb", border: "#fde68a", text: "#92400e", icon: "#d97706" };
-  return (
-    <div className="pv-fade-in" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem", padding: "0.875rem 1.25rem", background: palette.bg, border: `1px solid ${palette.border}`, borderRadius: "0.5rem", marginBottom: "1.5rem" }}>
-      <div style={{ display: "flex", gap: "0.625rem", alignItems: "flex-start" }}>
-        <div style={{ color: palette.icon, flexShrink: 0, marginTop: "1px" }}><WarnIco /></div>
-        <p style={{ color: palette.text, margin: 0, fontSize: "0.9375rem", lineHeight: 1.5 }}>{message}</p>
-      </div>
-      {onRetry && <button type="button" className="pv-btn" onClick={onRetry} style={{ padding: "0.5rem 1rem", background: "white", border: `1px solid ${palette.border}`, color: palette.text, borderRadius: "0.375rem", fontWeight: 600, cursor: "pointer", fontSize: "0.8125rem", flexShrink: 0 }}>Retry</button>}
-    </div>
-  );
-}
-
-// ─── PricingCard ──────────────────────────────────────────────────────────────
-function PricingCard({ pricing }) {
-  const { foodDesc, foodTotal, addonSummary, minimumCharge, subtotal, tax5, tax18, total } = pricing;
-  return (
-    <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: "0.5rem", padding: "1.5rem" }}>
-      <p style={{ fontSize: "1.125rem", fontWeight: 600, color: "#111827", margin: "0 0 1.25rem 0" }}>Price Estimate</p>
-      {foodTotal > 0 && (
-        <div style={{ marginBottom: "1rem" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.75rem" }}>
-            <span style={{ color: "#6b7280", fontSize: "0.875rem", flex: 1, paddingRight: "0.5rem" }}>{foodDesc}</span>
-            <span style={{ fontWeight: 600, color: "#111827", flexShrink: 0 }}>{fmt(foodTotal)}</span>
-          </div>
-          {addonSummary > 0 && <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.75rem" }}><span style={{ color: "#6b7280", fontSize: "0.875rem" }}>Add-ons</span><span style={{ fontWeight: 600, color: "#111827" }}>{fmt(addonSummary)}</span></div>}
-          {minimumCharge > 0 && <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.75rem" }}><span style={{ color: "#6b7280", fontSize: "0.875rem" }}>Minimum charge</span><span style={{ fontWeight: 600, color: "#111827" }}>{fmt(minimumCharge)}</span></div>}
-        </div>
-      )}
-      <div style={{ height: "1px", background: "#e5e7eb", margin: "1rem 0" }} />
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.75rem" }}><span style={{ color: "#6b7280", fontSize: "0.875rem" }}>Subtotal</span><span style={{ fontWeight: 600, color: "#111827" }}>{fmt(subtotal)}</span></div>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.75rem" }}><span style={{ color: "#9ca3af", fontSize: "0.875rem" }}>Tax (5% food)</span><span style={{ color: "#9ca3af", fontSize: "0.875rem" }}>{fmt(tax5)}</span></div>
-      {tax18 > 0 && <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.75rem" }}><span style={{ color: "#9ca3af", fontSize: "0.875rem" }}>Tax (18% add-ons)</span><span style={{ color: "#9ca3af", fontSize: "0.875rem" }}>{fmt(tax18)}</span></div>}
-      <div style={{ height: "1px", background: "#e5e7eb", margin: "1rem 0" }} />
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "0.5rem" }}>
-        <span style={{ fontWeight: 600, color: "#111827", fontSize: "1rem" }}>Estimated Total</span>
-        <span style={{ fontWeight: 700, color: "#8368ef", fontSize: "1.25rem" }}>{fmt(total)}</span>
-      </div>
-      <div style={{ display: "flex", gap: "0.5rem", padding: "0.75rem", background: "#f9fafb", borderRadius: "0.375rem", marginTop: "1rem", alignItems: "flex-start" }}>
-        <div style={{ flexShrink: 0, marginTop: "1px", color: "#6b7280" }}><InfoIco s={13} /></div>
-        <p style={{ fontSize: "0.75rem", color: "#6b7280", margin: 0, lineHeight: 1.5 }}>This is an estimate. Final pricing will be confirmed in your quote.</p>
-      </div>
-    </div>
-  );
-}
-
-// ─── Step 1 — Event Details ───────────────────────────────────────────────────
-function StepEventDetails({ ctx, adultCount, setAdultCount, childCount, setChildCount, error }) {
-  const guestCount = adultCount + childCount;
-  const belowMin = guestCount > 0 && guestCount < MINIMUM_PAX;
-
-  function Stepper({ value, onChange }) {
+// ─── Section ─────────────────────────────────────────────────────────────────
+// Lightweight card — replaces the heavy SectionCard.
+// Use `bare` for no card shell (plain grouping), `flush` for no padding.
+function Section({ title, subtitle, children, className = "", bare = false }) {
+  if (bare) {
     return (
-      <div style={{ display: "flex", alignItems: "center", gap: "0.875rem" }}>
-        <button type="button" className="pv-btn" onClick={() => onChange(Math.max(0, value - 1))} style={{ width: "2.25rem", height: "2.25rem", borderRadius: "50%", border: "1.5px solid #d1d5db", background: "white", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.375rem", color: "#374151", lineHeight: 1 }}>−</button>
-        <input type="number" min="0" value={value} onChange={e => onChange(Math.max(0, parseInt(e.target.value) || 0))} style={{ width: "4rem", textAlign: "center", border: "1.5px solid #d1d5db", borderRadius: "0.375rem", padding: "0.375rem 0", fontSize: "1.125rem", fontWeight: 600 }} />
-        <button type="button" className="pv-btn" onClick={() => onChange(value + 1)} style={{ width: "2.25rem", height: "2.25rem", borderRadius: "50%", border: "none", background: "#8368ef", color: "white", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.375rem", lineHeight: 1 }}>+</button>
+      <div className={className}>
+        {(title || subtitle) && (
+          <div className="mb-5">
+            {title    && <h3 className="font-bold text-[1.0625rem] m-0 leading-tight" style={{ color:"var(--pax-t1)" }}>{title}</h3>}
+            {subtitle && <p  className="text-sm m-0 mt-1 leading-relaxed" style={{ color:"var(--pax-t3)" }}>{subtitle}</p>}
+          </div>
+        )}
+        {children}
       </div>
     );
   }
+  return (
+    <div className={`rounded-2xl p-6 ${className}`} style={{ background:"var(--pax-card)", border:"1px solid var(--pax-brd3)" }}>
+      {(title || subtitle) && (
+        <div className="mb-6">
+          {title    && <h3 className="font-bold text-[1.0625rem] m-0 leading-tight" style={{ color:"var(--pax-t1)" }}>{title}</h3>}
+          {subtitle && <p  className="text-sm m-0 mt-1 leading-relaxed" style={{ color:"var(--pax-t3)" }}>{subtitle}</p>}
+        </div>
+      )}
+      {children}
+    </div>
+  );
+}
 
+// ─── FieldWrap ────────────────────────────────────────────────────────────────
+function FieldWrap({ label, required, error, hint, children }) {
   return (
     <div>
-      <h2 style={{ fontSize: "1.375rem", fontWeight: 700, color: "#111827", margin: "0 0 0.375rem 0" }}>Event Details &amp; Guest Information</h2>
-      <p style={{ color: "#6b7280", margin: "0 0 1.5rem 0", fontSize: "0.9375rem" }}>Review your event details and confirm the guest count.</p>
-      {error && <Banner tone="warning" message={error} />}
-      <div style={{ background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: "0.5rem", padding: "1.25rem", marginBottom: "1.5rem" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(180px,1fr))", gap: "1rem" }}>
-          {[{ label: "Event Type", value: ctx.eventType }, { label: "Date", value: fmtDate(ctx.date) }, { label: "Shift", value: ctx.shift }, { label: "Venue", value: ctx.venueName }].filter(r => r.value).map(row => (
-            <div key={row.label}>
-              <p style={{ fontSize: "0.7rem", fontWeight: 700, color: "#6b7280", margin: "0 0 0.25rem 0", textTransform: "uppercase", letterSpacing: "0.05em" }}>{row.label}</p>
-              <p style={{ fontSize: "0.9375rem", fontWeight: 500, color: "#111827", margin: 0 }}>{row.value}</p>
-            </div>
-          ))}
-        </div>
+      {label && (
+        <label className="block text-[0.8125rem] font-semibold mb-1.5 tracking-[0.01em]" style={{ color:"var(--pax-t2)" }}>
+          {label}{required && <span className="text-red-500 ml-0.5">*</span>}
+        </label>
+      )}
+      {children}
+      {error && (
+        <p className="flex items-center gap-1 mt-1.5 text-[0.8125rem] text-red-600 m-0">
+          <IWarn size={13} color="#DC2626" sw={2}/> {error}
+        </p>
+      )}
+      {hint && !error && <p className="text-[0.8125rem] mt-1.5 m-0 leading-relaxed" style={{ color:"var(--pax-t4)" }}>{hint}</p>}
+    </div>
+  );
+}
+
+// ─── PaxInput ─────────────────────────────────────────────────────────────────
+function PaxInput({ label, required, error, hint, icon, ...props }) {
+  return (
+    <FieldWrap label={label} required={required} error={error} hint={hint}>
+      <div className="relative">
+        {icon && (
+          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 flex pointer-events-none" style={{ color:"var(--pax-t4)" }}>
+            {icon}
+          </span>
+        )}
+        <input
+          {...props}
+          className="pax-input w-full h-12 rounded-xl text-[0.9375rem] border-[1.5px] focus:outline-none"
+          style={{
+            paddingLeft: icon ? "42px" : "14px",
+            paddingRight: "14px",
+            borderColor: error ? "#FCA5A5" : "var(--pax-brd)",
+            color: "var(--pax-t1)",
+            background: "var(--pax-card)",
+            fontFamily: "inherit",
+            ...props.style,
+          }}
+        />
       </div>
-      <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: "0.5rem", padding: "1.25rem", marginBottom: "1rem" }}>
-        <h3 style={{ fontWeight: 600, color: "#111827", margin: "0 0 1.25rem 0", fontSize: "1rem" }}>Guest Count</h3>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.875rem 0", borderBottom: "1px solid #f3f4f6" }}>
-          <div><p style={{ fontWeight: 600, color: "#111827", margin: "0 0 0.2rem 0" }}>Adults</p><p style={{ fontSize: "0.8125rem", color: "#6b7280", margin: 0 }}>Age 13 and above</p></div>
-          <Stepper value={adultCount} onChange={setAdultCount} />
+    </FieldWrap>
+  );
+}
+
+// ─── Buttons ─────────────────────────────────────────────────────────────────
+function BtnPrimary({ children, disabled, loading, className = "", ...props }) {
+  const dis = disabled || loading;
+  return (
+    <button
+      {...props}
+      disabled={dis}
+      className={`pax-btn-primary inline-flex items-center justify-center gap-2 px-6 h-12 rounded-xl border-0 font-semibold text-[0.9375rem] tracking-[0.01em] whitespace-nowrap ${dis ? "opacity-60 cursor-not-allowed" : "cursor-pointer"} ${className}`}
+      style={{
+        background: dis ? "var(--pax-p)" : `linear-gradient(135deg, var(--pax-p), var(--pax-ph))`,
+        color: "#fff",
+        boxShadow: "none",
+        ...(props.style || {}),
+      }}
+    >
+      {loading && (
+        <span className="w-4 h-4 rounded-full flex-shrink-0 border-2 border-white/30 border-t-white" style={{ animation:"spin 0.7s linear infinite" }}/>
+      )}
+      {children}
+    </button>
+  );
+}
+
+function BtnSecondary({ children, className = "", ...props }) {
+  return (
+    <button
+      {...props}
+      className={`inline-flex items-center justify-center gap-2 px-5 h-12 rounded-xl font-medium text-[0.9375rem] whitespace-nowrap cursor-pointer border-[1.5px] transition-colors hover:bg-[var(--pax-muted)] hover:border-[var(--pax-t4)] ${className}`}
+      style={{ background:"var(--pax-card)", borderColor:"var(--pax-brd)", color:"var(--pax-t2)", ...(props.style || {}) }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function BtnGhost({ children, className = "", ...props }) {
+  return (
+    <button
+      {...props}
+      className={`inline-flex items-center gap-1.5 px-3 h-10 rounded-xl border-0 font-medium text-[0.9375rem] cursor-pointer transition-colors hover:text-[var(--pax-t2)] hover:bg-[var(--pax-muted2)] ${className}`}
+      style={{ background:"transparent", color:"var(--pax-t3)", ...(props.style || {}) }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function Divider({ className = "" }) {
+  return <div className={`h-px ${className}`} style={{ background:"var(--pax-brd3)" }}/>;
+}
+
+// ─── InfoBanner ───────────────────────────────────────────────────────────────
+function InfoBanner({ color = "blue", icon, children }) {
+  const map = {
+    blue:  ["#EFF6FF","#BFDBFE","#1E40AF"],
+    amber: ["#FFFBEB","#FDE68A","#92400E"],
+    green: ["#ECFDF5","#A7F3D0","#065F46"],
+    red:   ["#FEF2F2","#FECACA","#991B1B"],
+  };
+  const [bg, border, text] = map[color] || map.blue;
+  return (
+    <div className="flex gap-2.5 px-4 py-3.5 rounded-xl items-start" style={{ background:bg, border:`1px solid ${border}` }}>
+      <span className="flex-shrink-0 mt-px" style={{ color:text }}>{icon || <IInfo size={16} color={text}/>}</span>
+      <p className="m-0 text-sm leading-relaxed" style={{ color:text }}>{children}</p>
+    </div>
+  );
+}
+
+// ChangeEventTypeModal removed — replaced by inline dropdown in SummaryCard
+
+// ─── ChangeDateModal ──────────────────────────────────────────────────────────
+function ChangeDateModal({ date, shift, venueshifts, onSave, onClose }) {
+  useLockScroll(onClose);
+  const [resetKey]      = useState(0);
+  const [resetShiftKey] = useState(0);
+  const [selection, setSelection] = useState({ date: null, shift: null, shiftLabel: null });
+
+  const hasShifts = venueshifts.length > 0;
+  const canSave   = !!selection.date && (!hasShifts || !!selection.shiftLabel);
+
+  const handleSave = () => {
+    const d = selection.date;
+    const dateStr = d
+      ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+      : date;
+    onSave(dateStr, selection.shiftLabel || shift);
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 flex items-center justify-center z-[10000] p-4 backdrop-blur-sm" style={{ background:"rgba(15,15,15,0.6)" }}>
+      <div className="pax-modal rounded-2xl w-full shadow-2xl flex flex-col overflow-hidden" style={{ background:"var(--pax-card)", maxWidth:"700px", maxHeight:"90vh" }}>
+        {/* Header */}
+        <div className="flex-shrink-0 flex items-center justify-between px-6 py-5 border-b" style={{ borderColor:"var(--pax-brd3)" }}>
+          <h2 className="font-bold text-lg m-0" style={{ color:"var(--pax-t1)" }}>Change Date &amp; Shift</h2>
+          <button type="button" onClick={onClose}
+            className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer border-0 transition-colors hover:bg-[var(--pax-muted2)]"
+            style={{ background:"var(--pax-muted)", color:"var(--pax-t3)" }}>
+            <IClose size={16} sw={2}/>
+          </button>
         </div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.875rem 0" }}>
-          <div><p style={{ fontWeight: 600, color: "#111827", margin: "0 0 0.2rem 0" }}>Children</p><p style={{ fontSize: "0.8125rem", color: "#6b7280", margin: 0 }}>Age 2–12</p></div>
-          <Stepper value={childCount} onChange={setChildCount} />
+        {/* Calendar body */}
+        <div className="flex-1 overflow-y-auto px-6 py-5">
+          <PremiumCalendar
+            venueshifts={venueshifts}
+            bookingData={{}}
+            bookingFull={[]}
+            bookingParial={[]}
+            category="venues"
+            isMember={false}
+            onSelectionChange={setSelection}
+            resetKey={resetKey}
+            resetShiftKey={resetShiftKey}
+            initialDate={date}
+          />
         </div>
-      </div>
-      {belowMin && (<div style={{ display: "flex", gap: "0.75rem", padding: "0.875rem 1rem", background: "#fef3c7", border: "1px solid #fde68a", borderRadius: "0.5rem", marginBottom: "1rem" }}><div style={{ color: "#d97706", flexShrink: 0 }}><WarnIco /></div><p style={{ color: "#92400e", margin: 0, fontSize: "0.875rem", lineHeight: 1.5 }}>Minimum pax is <strong>{MINIMUM_PAX}</strong> guests. A minimum charge applies for {MINIMUM_PAX - guestCount} additional guests.</p></div>)}
-      <div style={{ display: "flex", gap: "0.75rem", padding: "0.875rem 1rem", background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "0.5rem" }}>
-        <div style={{ color: "#3b82f6", flexShrink: 0, marginTop: "1px" }}><InfoIco s={16} /></div>
-        <p style={{ color: "#1e40af", margin: 0, fontSize: "0.875rem", lineHeight: 1.5 }}>This is an enquiry form. You will receive a detailed quote within 24 hours of submission.</p>
+        {/* Footer */}
+        <div className="flex-shrink-0 px-6 py-4 border-t flex items-center justify-between gap-3" style={{ borderColor:"var(--pax-brd3)" }}>
+          <p className="m-0 text-sm" style={{ color:"var(--pax-t4)" }}>
+            {!selection.date
+              ? "Pick a date on the calendar"
+              : hasShifts && !selection.shiftLabel
+              ? "Now select a shift"
+              : selection.date.toLocaleDateString("en-IN", { weekday:"short", day:"numeric", month:"short", year:"numeric" }) + (selection.shiftLabel ? ` · ${selection.shiftLabel}` : "")}
+          </p>
+          <div className="flex gap-3 flex-shrink-0">
+            <BtnSecondary type="button" onClick={onClose}>Cancel</BtnSecondary>
+            <BtnPrimary type="button" disabled={!canSave} onClick={handleSave}>Save</BtnPrimary>
+          </div>
+        </div>
       </div>
     </div>
+  );
+}
+
+// ─── ChangeGuestsModal ────────────────────────────────────────────────────────
+function ChangeGuestsModal({ adultCount, childCount, onSave, onClose }) {
+  useLockScroll(onClose);
+  const [adults, setAdults] = useState(adultCount);
+  const [children, setChildren] = useState(childCount);
+  const total = adults + children;
+  const GRow = ({ label, sub, value, onChange, min = 0 }) => (
+    <div className="flex items-center justify-between gap-4 py-4 border-b last:border-b-0" style={{ borderColor:"var(--pax-brd3)" }}>
+      <div>
+        <p className="font-semibold text-[0.9375rem] m-0" style={{ color:"var(--pax-t1)" }}>{label}</p>
+        <p className="text-xs m-0 mt-0.5" style={{ color:"var(--pax-t4)" }}>{sub}</p>
+      </div>
+      <div className="flex items-center gap-4 flex-shrink-0">
+        <button type="button" disabled={value <= min} onClick={() => onChange(Math.max(min, value - 1))}
+          className="w-8 h-8 rounded-full border flex items-center justify-center cursor-pointer transition-colors disabled:opacity-30 hover:border-[var(--pax-t2)]"
+          style={{ borderColor:"var(--pax-brd)", background:"var(--pax-card)", color:"var(--pax-t1)" }}>
+          <IMinus size={13} sw={2.5}/>
+        </button>
+        <span className="w-5 text-center font-semibold text-base" style={{ color:"var(--pax-t1)" }}>{value}</span>
+        <button type="button" onClick={() => onChange(value + 1)}
+          className="w-8 h-8 rounded-full border flex items-center justify-center cursor-pointer transition-colors hover:border-[var(--pax-t2)]"
+          style={{ borderColor:"var(--pax-brd)", background:"var(--pax-card)", color:"var(--pax-t1)" }}>
+          <IPlus size={13} sw={2.5}/>
+        </button>
+      </div>
+    </div>
+  );
+  return (
+    <div className="fixed inset-0 flex items-center justify-center z-[10000] p-4 backdrop-blur-sm" style={{ background:"rgba(15,15,15,0.6)" }}>
+      <div className="pax-modal rounded-2xl w-full shadow-2xl overflow-hidden" style={{ background:"var(--pax-card)", maxWidth:"420px" }}>
+        <div className="flex items-center justify-between px-6 py-5 border-b" style={{ borderColor:"var(--pax-brd3)" }}>
+          <h2 className="font-bold text-lg m-0" style={{ color:"var(--pax-t1)" }}>Change Guests</h2>
+          <button type="button" onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer border-0 transition-colors hover:bg-[var(--pax-muted2)]" style={{ background:"var(--pax-muted)", color:"var(--pax-t3)" }}>
+            <IClose size={16} sw={2}/>
+          </button>
+        </div>
+        <div className="px-6 py-1">
+          <GRow label="Adults" sub="Age 13 and above" value={adults} onChange={setAdults}/>
+          <GRow label="Children" sub="Ages 2–12" value={children} onChange={setChildren}/>
+        </div>
+        {total > 0 && total < MINIMUM_PAX && (
+          <div className="mx-6 mb-3 flex gap-2 items-start px-3 py-2.5 rounded-xl border border-[#FDE68A] bg-[#FFFBEB]">
+            <IWarn size={13} color="#92400E" sw={2}/>
+            <p className="text-xs m-0 text-[#78350F]">Minimum <strong>{MINIMUM_PAX}</strong> guests required for this venue</p>
+          </div>
+        )}
+        <div className="px-6 py-4 border-t flex justify-between items-center gap-3" style={{ borderColor:"var(--pax-brd3)" }}>
+          <p className="m-0 text-sm" style={{ color:"var(--pax-t4)" }}>{total} guest{total !== 1 ? "s" : ""} total</p>
+          <div className="flex gap-3">
+            <BtnSecondary type="button" onClick={onClose}>Cancel</BtnSecondary>
+            <BtnPrimary type="button" onClick={() => { onSave(adults, children); onClose(); }}>Save</BtnPrimary>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── SummaryCard ─────────────────────────────────────────────────────────────
+function SummaryCard({ pricing, ctx, coverImage, selectedPackage, menuTab, customMenuItems, adultCount, childCount = 0, setAdultCount, setChildCount, bookingEventType, setBookingEventType, bookingDate, setBookingDate, bookingShift, setBookingShift, venueshifts = [], onOpenDateModal, onOpenGuestsModal, flat = false }) {
+  const { foodTotal, addonSummary: addonAmt, minimumCharge, tax5, tax18, total } = pricing;
+  const hasPrice    = total > 0;
+  const belowMin    = adultCount > 0 && adultCount < MINIMUM_PAX;
+  const totalGuests = adultCount + childCount;
+  const displayEventType = bookingEventType || ctx.eventType;
+  const displayDate      = bookingDate      || ctx.date;
+  const displayShift     = bookingShift     || ctx.shift;
+
+  const [eventTypeOpen,   setEventTypeOpen]   = useState(false);
+  const [eventTypeSearch, setEventTypeSearch] = useState("");
+
+  const priceRows = [];
+  if (selectedPackage && adultCount > 0)
+    priceRows.push({ label:`${adultCount} guests × ${fmt(selectedPackage.package_amount)}`, value:foodTotal });
+  else if (menuTab === "custom" && customMenuItems.length > 0)
+    priceRows.push({ label:`${customMenuItems.length} custom item${customMenuItems.length !== 1 ? "s" : ""}`, value:foodTotal });
+  if (tax5    > 0) priceRows.push({ label:"GST 5% (Food)",      value:tax5   });
+  if (addonAmt > 0) priceRows.push({ label:"Add-ons",           value:addonAmt });
+  if (tax18   > 0) priceRows.push({ label:"GST 18% (Add-ons)", value:tax18  });
+
+  const Row = ({ label, value }) => (
+    <div className="flex justify-between gap-2">
+      <span className="text-sm" style={{ color:"var(--pax-t2)" }}>{label}</span>
+      <span className="text-sm flex-shrink-0" style={{ color:"var(--pax-t2)" }}>{fmt(value)}</span>
+    </div>
+  );
+
+  const SectionDivider = () => <div className="h-px" style={{ background:"var(--pax-brd3)" }}/>;
+
+  // Airbnb-style Change button: white bg, gray border, dark text
+  const ChangeBtn = ({ onClick }) => (
+    <button type="button" onClick={onClick}
+      className="flex-shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg cursor-pointer border transition-colors"
+      style={{ background:"var(--pax-card)", borderColor:"var(--pax-brd)", color:"var(--pax-t1)" }}>
+      Change
+    </button>
+  );
+
+  return (
+    <div className={flat ? "" : "rounded-2xl overflow-hidden"} style={flat ? {} : { background:"var(--pax-card)", border:"1px solid var(--pax-brd3)" }}>
+
+      {/* ── Venue header ── */}
+      <div className="flex items-start gap-3 px-4 py-4">
+        {/* Square thumbnail */}
+        <div className="flex-shrink-0 rounded-xl overflow-hidden" style={{ width:"88px", height:"88px", background:"linear-gradient(135deg,#3B0764,#7C3AED)" }}>
+          {coverImage
+            ? <img src={coverImage} alt={ctx.venueName || "Venue"} className="w-full h-full object-cover object-center block"/>
+            : <div className="w-full h-full flex items-center justify-center">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+              </div>}
+        </div>
+        {/* Names */}
+        <div className="min-w-0 flex-1 pt-0.5">
+          {ctx.parentVenueName && (
+            <p className="text-xs m-0 mb-0.5 truncate" style={{ color:"var(--pax-t4)" }}>{ctx.parentVenueName}</p>
+          )}
+          {ctx.venueName && (
+            <p className="font-semibold text-sm m-0 leading-snug truncate" style={{ color:"var(--pax-t1)" }}>{ctx.venueName}</p>
+          )}
+          {/* Rating */}
+          <div className="flex items-center gap-1 mt-1">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="#F59E0B" stroke="none"><path d="M12 17.75l-6.172 3.245l1.179-6.873l-5-4.867l6.9-1l3.086-6.253l3.086 6.253l6.9 1l-5 4.867l1.179 6.873z"/></svg>
+            <span className="text-xs font-semibold" style={{ color:"var(--pax-t2)" }}>{ctx.venueRating}</span>
+          </div>
+          {/* Address — always shown when available */}
+          <div className="flex items-start gap-1 mt-1">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--pax-t4)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 mt-px"><circle cx="12" cy="11" r="3"/><path d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/></svg>
+            <span className="text-xs leading-tight line-clamp-2" style={{ color:"var(--pax-t4)" }}>{ctx.venueAddress || "Address not provided"}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="mx-4 h-px" style={{ background:"var(--pax-brd3)" }}/>
+      {/* ── Body ── */}
+      <div className="flex flex-col" style={{ padding:"0" }}>
+
+        {/* Event type */}
+        <div className="relative px-5 py-4">
+          {eventTypeOpen ? (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setEventTypeOpen(false)}/>
+              <div className="relative z-50">
+                <p className="font-semibold text-sm m-0 mb-2" style={{ color:"var(--pax-t1)" }}>Event Type</p>
+                <div className="flex items-center gap-2 px-3 py-2 rounded-xl border" style={{ background:"var(--pax-muted)", borderColor:"var(--pax-brd)" }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--pax-t4)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                  <input autoFocus type="text" placeholder="Search event type…" value={eventTypeSearch ?? ""} onChange={e => setEventTypeSearch(e.target.value)}
+                    className="flex-1 bg-transparent border-0 outline-none text-sm" style={{ color:"var(--pax-t1)" }}/>
+                  <button type="button" onClick={() => setEventTypeOpen(false)} className="border-0 bg-transparent cursor-pointer p-0" style={{ color:"var(--pax-t4)" }}>
+                    <IClose size={14} sw={2}/>
+                  </button>
+                </div>
+                <div className="absolute left-0 right-0 top-full mt-1 rounded-xl shadow-2xl overflow-hidden border" style={{ background:"var(--pax-card)", borderColor:"var(--pax-brd)", maxHeight:"200px", overflowY:"auto" }}>
+                  {EVENT_TYPE_OPTIONS.filter(o => !eventTypeSearch || o.toLowerCase().includes(eventTypeSearch.toLowerCase())).map(opt => {
+                    const active = displayEventType === opt;
+                    return (
+                      <button key={opt} type="button"
+                        onClick={() => { setBookingEventType(opt); setEventTypeOpen(false); setEventTypeSearch(""); }}
+                        className="w-full text-left px-4 py-2.5 text-sm flex items-center gap-2.5 cursor-pointer transition-colors border-0"
+                        style={{ background: active ? "var(--pax-pll)" : "transparent", color: active ? P : "var(--pax-t2)", fontWeight: active ? 600 : 400 }}>
+                        {active ? <ICheck size={13} color={P} sw={2.5}/> : <span className="w-[13px] flex-shrink-0"/>}
+                        {opt}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="font-semibold text-sm m-0 mb-0.5" style={{ color:"var(--pax-t1)" }}>Event Type</p>
+                <p className="text-sm m-0" style={{ color: displayEventType ? "var(--pax-t2)" : "var(--pax-t4)" }}>
+                  {displayEventType || "Not set"}
+                </p>
+              </div>
+              {setBookingEventType && <ChangeBtn onClick={() => { setEventTypeSearch(""); setEventTypeOpen(true); }}/>}
+            </div>
+          )}
+        </div>
+
+        <div className="mx-5 h-px" style={{ background:"var(--pax-brd3)" }}/>
+        {/* Date */}
+        <div className="flex items-start justify-between gap-3 px-5 py-4">
+          <div className="min-w-0">
+            <p className="font-semibold text-sm m-0 mb-0.5" style={{ color:"var(--pax-t1)" }}>Date</p>
+            <p className="text-sm m-0" style={{ color:"var(--pax-t2)" }}>
+              {displayDate ? fmtDate(displayDate) : <span style={{ color:"var(--pax-t4)" }}>Not set</span>}
+            </p>
+            {displayShift && (
+              <p className="text-xs m-0 mt-0.5 flex items-center gap-1" style={{ color:"var(--pax-t3)" }}>
+                <IClock size={10} color="var(--pax-t4)" sw={2}/> {displayShift}
+              </p>
+            )}
+          </div>
+          {setBookingDate && <ChangeBtn onClick={() => onOpenDateModal?.()}/>}
+        </div>
+
+        <div className="mx-5 h-px" style={{ background:"var(--pax-brd3)" }}/>
+        {/* Guests */}
+        <div className="flex items-start justify-between gap-3 px-5 py-4">
+          <div className="min-w-0">
+            <p className="font-semibold text-sm m-0 mb-0.5" style={{ color:"var(--pax-t1)" }}>Guests</p>
+            <p className="text-sm m-0" style={{ color: totalGuests > 0 ? "var(--pax-t2)" : "var(--pax-t4)" }}>
+              {totalGuests > 0
+                ? `${adultCount} adult${adultCount !== 1 ? "s" : ""}${childCount > 0 ? ` · ${childCount} child${childCount !== 1 ? "ren" : ""}` : ""}`
+                : "Not set"}
+            </p>
+          </div>
+          {setAdultCount && <ChangeBtn onClick={() => onOpenGuestsModal?.()}/>}
+        </div>
+
+        {/* Package / custom menu */}
+        {(selectedPackage || (menuTab === "custom" && customMenuItems.length > 0)) && (
+          <><div className="mx-5 h-px" style={{ background:"var(--pax-brd3)" }}/>
+          <div className="px-5 py-3">
+            <p className="font-semibold text-sm m-0 mb-0.5" style={{ color:"var(--pax-t1)" }}>Menu</p>
+            <p className="text-sm m-0 flex items-center gap-1.5" style={{ color:"var(--pax-t2)" }}>
+              <IUtensils size={12} color="var(--pax-t3)" sw={2}/>
+              {selectedPackage ? selectedPackage.package_name : `${customMenuItems.length} custom item${customMenuItems.length !== 1 ? "s" : ""}`}
+            </p>
+          </div>
+          </>
+        )}
+
+        {/* Price details */}
+        <div className="px-5 py-3">
+          {!hasPrice ? (
+            <div className="text-center py-2">
+              {menuTab === "custom" && customMenuItems.length > 0 ? (
+                <>
+                  <p className="font-semibold text-sm m-0 mb-1" style={{ color:"var(--pax-t2)" }}>Custom Pricing</p>
+                  <p className="text-xs m-0 leading-relaxed" style={{ color:"var(--pax-t4)" }}>Price will be discussed after the enquiry is submitted</p>
+                </>
+              ) : (
+                <>
+                  <p className="font-semibold text-sm m-0 mb-1" style={{ color:"var(--pax-t2)" }}>No price yet</p>
+                  <p className="text-xs m-0" style={{ color:"var(--pax-t4)" }}>Select a package and add guests</p>
+                </>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2.5">
+              <p className="font-semibold text-sm m-0" style={{ color:"var(--pax-t1)" }}>Price details</p>
+              {priceRows.map((r, i) => <Row key={i} label={r.label} value={r.value}/>)}
+              {minimumCharge > 0 && (
+                <div className="flex justify-between gap-2">
+                  <span className="text-sm flex items-center gap-1" style={{ color:"var(--pax-t2)" }}>
+                    <IWarn size={12} color="#D97706" sw={2}/> Min. Guest Charge
+                  </span>
+                  <span className="text-sm flex-shrink-0 text-[#D97706]">{fmt(minimumCharge)}</span>
+                </div>
+              )}
+              <SectionDivider/>
+              <div className="flex items-center justify-between gap-2 pt-0.5">
+                <span className="font-bold text-sm" style={{ color:"var(--pax-t1)" }}>Estimated Total</span>
+                <span className="text-base font-bold flex-shrink-0" style={{ color:"var(--pax-t1)" }}>{fmt(total)}</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+      </div>
+
+    </div>
+  );
+}
+
+
+// ─── GuestCounter ─────────────────────────────────────────────────────────────
+// Standalone guest count section — rendered at top of merged Step 1.
+function GuestCounter({ adultCount, setAdultCount, childCount, setChildCount }) {
+  const total    = adultCount + childCount;
+  const belowMin = total > 0 && total < MINIMUM_PAX;
+
+  const CounterRow = ({ label, sub, value, onChange }) => (
+    <div className="flex items-center justify-between gap-4 py-4 border-b last:border-b-0" style={{ borderColor:"var(--pax-brd3)" }}>
+      <div className="min-w-0">
+        <p className="font-medium text-[0.9375rem] m-0 leading-tight" style={{ color:"var(--pax-t1)" }}>{label}</p>
+        <p className="text-xs m-0 mt-0.5" style={{ color:"var(--pax-t4)" }}>{sub}</p>
+      </div>
+      {/* Joined pill control */}
+      <div className="flex items-center flex-shrink-0 rounded-xl overflow-hidden border" style={{ borderColor:"var(--pax-brd)" }}>
+        <button
+          type="button"
+          aria-label={`Decrease ${label}`}
+          disabled={value === 0}
+          onClick={() => onChange(Math.max(0, value - 1))}
+          className="pax-counter-btn flex items-center justify-center w-10 h-10 border-0 cursor-pointer transition-colors disabled:opacity-35 disabled:cursor-not-allowed hover:bg-[var(--pax-muted2)]"
+          style={{ background:"var(--pax-card)", color: value === 0 ? "var(--pax-t4)" : "var(--pax-t1)" }}
+        >
+          <IMinus size={14} sw={2.5}/>
+        </button>
+        <div className="w-px self-stretch" style={{ background:"var(--pax-brd)" }}/>
+        <input
+          type="number"
+          min={0}
+          max={9999}
+          value={value}
+          onChange={e => onChange(Math.max(0, parseInt(e.target.value) || 0))}
+          aria-label={`${label} count`}
+          className="w-14 h-10 text-center font-bold text-base border-0 focus:outline-none appearance-none"
+          style={{ color:"var(--pax-t1)", background:"var(--pax-card)", fontFamily:"inherit" }}
+        />
+        <div className="w-px self-stretch" style={{ background:"var(--pax-brd)" }}/>
+        <button
+          type="button"
+          aria-label={`Increase ${label}`}
+          onClick={() => onChange(value + 1)}
+          className="pax-counter-btn flex items-center justify-center w-10 h-10 border-0 cursor-pointer transition-colors"
+          style={{ background:"var(--pax-card)", color:"var(--pax-t1)" }}
+          onMouseEnter={e => e.currentTarget.style.background = "var(--pax-muted2)"}
+          onMouseLeave={e => e.currentTarget.style.background = "var(--pax-card)"}
+        >
+          <IPlus size={14} sw={2.5}/>
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <Section bare title="Guest Count" subtitle="How many guests are attending your event?">
+      <div className={belowMin ? "mb-4" : ""}>
+        <CounterRow label="Adults"   sub="Age 13 and above" value={adultCount} onChange={setAdultCount}/>
+        <CounterRow label="Children" sub="Age 2–12 years"   value={childCount} onChange={setChildCount}/>
+      </div>
+      {belowMin && (
+        <InfoBanner color="amber" icon={<IWarn size={16} color="#92400E" sw={2}/>}>
+          Minimum capacity is <strong>{MINIMUM_PAX} guests</strong>. A minimum charge applies for the shortfall of {MINIMUM_PAX - total} guests.
+        </InfoBanner>
+      )}
+    </Section>
   );
 }
 
 // ─── Step 2 — Food Menu ───────────────────────────────────────────────────────
-function StepFoodMenu({ menuTab, packagesList, menuCategories, loadingPackages, selectedPackage, packageComplete, adultCount, openPackageModal, customMenuItems, openCustomMenuModal, removeCustomItem, onSwitchTab, error }) {
+function StepFoodMenu({ menuTab, packagesList, loadingPackages, selectedPackage, adultCount, openPackageModal, customMenuItems, openCustomMenuModal, removeCustomItem, onSwitchTab }) {
   const groupedCustom = useMemo(() => {
-    const map = {};
-    customMenuItems.forEach(item => { const cat = item.category_name || "Other"; if (!map[cat]) map[cat] = []; map[cat].push(item); });
-    return map;
+    const m = {};
+    customMenuItems.forEach(i => { const c = i.category_name || "Other"; if (!m[c]) m[c] = []; m[c].push(i); });
+    return m;
   }, [customMenuItems]);
 
-  const customPerPersonTotal = useMemo(() => customMenuItems.reduce((sum, i) => sum + (i.price || 0), 0), [customMenuItems]);
-  const catName = (id) => menuCategories.find(c => c.id === id)?.name || `Category ${id}`;
-
   return (
-    <div>
-      <h2 style={{ fontSize: "1.375rem", fontWeight: 700, color: "#111827", margin: "0 0 0.375rem 0" }}>Food Menu Selection</h2>
-      <p style={{ color: "#6b7280", margin: "0 0 1.5rem 0", fontSize: "0.9375rem" }}>Choose a preset package or build your own custom menu.</p>
-      {error && <Banner tone="warning" message={error} />}
-      <div style={{ display: "flex", background: "#f3f4f6", borderRadius: "0.5rem", padding: "0.25rem", marginBottom: "1.5rem", width: "fit-content" }}>
-        {[{ id: "packages", label: "Preset Packages" }, { id: "custom", label: "Custom Menu" }].map(tab => (
-          <button key={tab.id} type="button" className="pv-btn" onClick={() => onSwitchTab(tab.id)} style={{ padding: "0.5rem 1.25rem", borderRadius: "0.375rem", border: "none", fontWeight: 500, fontSize: "0.9375rem", cursor: "pointer", transition: "all 0.2s", background: menuTab === tab.id ? "white" : "transparent", color: menuTab === tab.id ? "#111827" : "#6b7280", boxShadow: menuTab === tab.id ? "0 1px 3px rgba(0,0,0,0.1)" : "none" }}>{tab.label}</button>
-        ))}
-      </div>
+    <Section bare title="Food Menu" subtitle="Choose a preset package or build your own custom menu.">
 
-      {menuTab === "packages" && (
-        loadingPackages ? (
-          <div style={{ textAlign: "center", padding: "3rem", color: "#9ca3af" }}>
-            <div style={{ width: "2rem", height: "2rem", border: "2px solid #e5e7eb", borderTopColor: "#8368ef", borderRadius: "50%", animation: "spin 1s linear infinite", margin: "0 auto 1rem" }} />
-            <p style={{ margin: 0 }}>Loading packages…</p>
-          </div>
-        ) : packagesList.length === 0 ? (
-          <div className="pv-fade-in" style={{ textAlign: "center", padding: "3rem 2rem", color: "#9ca3af", border: "2px dashed #e5e7eb", borderRadius: "0.5rem" }}>
-            <p style={{ fontWeight: 600, margin: "0 0 0.375rem 0", color: "#6b7280" }}>No preset packages for this venue yet</p>
-            <p style={{ margin: "0 0 1.25rem 0", fontSize: "0.875rem" }}>Build a custom menu from the full catalogue instead.</p>
-            <button type="button" className="pv-btn" onClick={() => onSwitchTab("custom")} style={{ padding: "0.625rem 1.5rem", background: "#8368ef", color: "white", border: "none", borderRadius: "0.5rem", fontWeight: 600, cursor: "pointer" }}>Build Custom Menu</button>
-          </div>
-        ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))", gap: "1rem" }}>
-            {packagesList.map((pkg, i) => {
-              const isSel = selectedPackage?.id === pkg.id;
-              const isComplete = isSel && packageComplete;
-              const totalReq = (pkg.category_requirements || []).reduce((s, r) => s + r.count, 0);
-              return (
-                <div key={pkg.id} className="pv-card pv-pop" style={{ animationDelay: `${i * 60}ms`, background: "white", border: `2px solid ${isSel ? "#8368ef" : "#e5e7eb"}`, borderRadius: "0.75rem", padding: "1.25rem", cursor: "pointer", position: "relative", boxShadow: isSel ? "0 0 0 3px rgba(131,104,239,0.15)" : "none" }} onClick={() => openPackageModal(pkg)}>
-                  {isSel && (
-                    <span style={{ position: "absolute", top: "0.75rem", right: "0.75rem", background: isComplete ? "#10b981" : "#8368ef", color: "white", borderRadius: "9999px", padding: "0.2rem 0.6rem", fontSize: "0.75rem", fontWeight: 600, transition: "background 0.2s" }}>{isComplete ? "Ready" : "In progress"}</span>
-                  )}
-                  <h3 style={{ fontWeight: 700, color: "#111827", margin: "0 0 0.375rem 0", fontSize: "1rem", paddingRight: "4.5rem" }}>{pkg.package_name}</h3>
-                  <p style={{ fontWeight: 700, color: "#8368ef", margin: "0 0 0.75rem 0", fontSize: "1.125rem" }}>{fmt(pkg.package_amount)} <span style={{ fontSize: "0.8125rem", color: "#6b7280", fontWeight: 400 }}>package price</span></p>
-                  <div style={{ display: "flex", gap: "0.375rem", flexWrap: "wrap", marginBottom: "0.75rem" }}>
-                    {pkg.package_food_type === 1 && <span style={{ fontSize: "0.7rem", padding: "0.2rem 0.5rem", background: "#dcfce7", color: "#166534", borderRadius: "9999px", fontWeight: 600 }}>Veg</span>}
-                    {pkg.package_food_type === 2 && <span style={{ fontSize: "0.7rem", padding: "0.2rem 0.5rem", background: "#fee2e2", color: "#991b1b", borderRadius: "9999px", fontWeight: 600 }}>Non-Veg</span>}
-                  </div>
-                  {pkg.category_requirements?.length > 0 && (
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: "0.25rem", marginBottom: "0.75rem" }}>
-                      {pkg.category_requirements.slice(0, 4).map(r => <span key={r.id} style={{ fontSize: "0.75rem", color: "#6b7280", background: "#f3f4f6", padding: "0.2rem 0.5rem", borderRadius: "0.25rem" }}>{r.count} × {catName(r.id)}</span>)}
-                      {pkg.category_requirements.length > 4 && <span style={{ fontSize: "0.75rem", color: "#9ca3af" }}>+{pkg.category_requirements.length - 4}</span>}
-                    </div>
-                  )}
-                  <p style={{ margin: "0.625rem 0 0", fontSize: "0.8125rem", color: "#6b7280" }}>{totalReq} item{totalReq === 1 ? "" : "s"} to choose · guests: {adultCount} * {pkg.package_amount} = { fmt(pkg.package_amount * adultCount)} </p>
-                  <p style={{ margin: "0.375rem 0 0", fontSize: "0.8125rem", color: "#8368ef", fontWeight: 500 }}>{isSel ? "Click to edit selection →" : "Click to customise menu →"}</p>
-                </div>
-              );
-            })}
-          </div>
-        )
-      )}
+        {/* Tab switcher — underline style */}
+        <div className="flex border-b mb-7" style={{ borderColor:"var(--pax-brd3)" }}>
+          {[{ id:"packages", label:"Preset Packages" }, { id:"custom", label:"Custom Menu" }].map(tab => {
+            const active = menuTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => onSwitchTab(tab.id)}
+                className="relative px-4 py-2.5 border-0 text-sm cursor-pointer transition-colors bg-transparent"
+                style={{ color: active ? "var(--pax-t1)" : "var(--pax-t4)", fontWeight: active ? 600 : 400 }}
+              >
+                {tab.label}
+                {active && <span className="absolute bottom-0 left-0 right-0 h-[2px]" style={{ background:"var(--pax-t1)" }}/>}
+              </button>
+            );
+          })}
+        </div>
 
-      {menuTab === "custom" && (
-        customMenuItems.length === 0 ? (
-          <div className="pv-fade-in" onClick={openCustomMenuModal} style={{ textAlign: "center", padding: "3rem 2rem", border: "2px dashed #d1d5db", borderRadius: "0.75rem", cursor: "pointer" }}>
-            <div style={{ color: "#8368ef", display: "inline-block", marginBottom: "1rem" }}><SpoonIco /></div>
-            <p style={{ fontWeight: 600, color: "#374151", margin: "0 0 0.5rem 0", fontSize: "1rem" }}>Build Your Custom Menu</p>
-            <p style={{ color: "#9ca3af", fontSize: "0.875rem", margin: "0 0 1.25rem 0" }}>Choose from our full menu catalogue</p>
-            <button type="button" className="pv-btn" style={{ padding: "0.625rem 1.5rem", background: "#8368ef", color: "white", border: "none", borderRadius: "0.5rem", fontWeight: 600, cursor: "pointer" }}>Browse Menu Items</button>
-          </div>
-        ) : (
-          <div className="pv-fade-in">
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem" }}>
-              <p style={{ fontWeight: 600, color: "#111827", margin: 0 }}>{customMenuItems.length} items selected · {fmt(customPerPersonTotal)} / person</p>
-              <button type="button" className="pv-btn" onClick={openCustomMenuModal} style={{ padding: "0.5rem 1rem", background: "white", border: "1.5px solid #8368ef", color: "#8368ef", borderRadius: "0.375rem", fontWeight: 600, cursor: "pointer", fontSize: "0.875rem" }}>Edit Menu</button>
-            </div>
-            <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: "0.5rem" }}>
-              {Object.entries(groupedCustom).map(([cat, items]) => (
-                <div key={cat} style={{ borderBottom: "1px solid #f3f4f6", padding: "1rem 1.25rem" }}>
-                  <p style={{ fontSize: "0.7rem", fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 0.5rem 0" }}>{cat}</p>
-                  {items.map(item => (<div key={item.id} style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.3rem 0" }}><span style={{ color: item.food_type === 1 ? "#16a34a" : "#dc2626", fontSize: "0.875rem" }}>●</span><span style={{ flex: 1, fontSize: "0.875rem", color: "#374151" }}>{item.item_name}</span><span style={{ fontSize: "0.8125rem", color: "#6b7280", fontWeight: 500 }}>{fmt(item.price)}</span><button type="button" onClick={() => removeCustomItem(item.id)} style={{ background: "none", border: "none", color: "#9ca3af", cursor: "pointer", padding: "0.25rem", display: "flex" }}><XIco s={14} /></button></div>))}
-                </div>
+        {/* Packages tab */}
+        {menuTab === "packages" && (
+          loadingPackages ? (
+            <div className="grid gap-4 md:grid-cols-2">
+              {[1,2,3,4].map(n => (
+                <div key={n} className="rounded-2xl h-52" style={{ background:"linear-gradient(90deg,var(--pax-muted2) 25%,var(--pax-brd) 50%,var(--pax-muted2) 75%)", backgroundSize:"200% 100%", animation:"shimmer 1.4s infinite" }}/>
               ))}
             </div>
-          </div>
-        )
-      )}
-    </div>
+          ) : packagesList.length === 0 ? (
+            <div className="text-center py-12 px-8 rounded-2xl border-2 border-dashed" style={{ borderColor:"var(--pax-brd)" }}>
+              <IUtensils size={32} color="#D1D5DB" sw={1.25}/>
+              <p className="font-semibold mt-4 mb-1 m-0" style={{ color:"var(--pax-t2)" }}>No packages available</p>
+              <p className="text-sm m-0" style={{ color:"var(--pax-t4)" }}>Please contact the venue directly.</p>
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2">
+              {packagesList.map(pkg => {
+                const isSel  = selectedPackage?.id === pkg.id;
+                const perPax = pkg.package_amount || 0;
+                const pkgTotal = perPax * adultCount;
+                return (
+                  <div
+                    key={pkg.id}
+                    className="pkg-card relative rounded-2xl p-5 cursor-pointer border flex flex-col gap-4"
+                    onClick={() => openPackageModal(pkg)}
+                    role="button"
+                    tabIndex={0}
+                    aria-pressed={isSel}
+                    onKeyDown={e => e.key === "Enter" && openPackageModal(pkg)}
+                    style={{
+                      background: "var(--pax-card)",
+                      borderColor: isSel ? "var(--pax-t2)" : "var(--pax-brd3)",
+                      boxShadow: isSel ? "inset 0 0 0 1px var(--pax-t2)" : "none",
+                    }}
+                  >
+                    {/* Badge row */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex flex-wrap gap-1.5">
+                        {pkg.package_food_type === 1 && (
+                          <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[0.6875rem] font-bold bg-[#F0FDF4] text-[#15803D]">
+                            <ILeaf size={10} color="#15803D" sw={2}/> Veg
+                          </span>
+                        )}
+                        {pkg.package_food_type === 2 && (
+                          <span className="px-2.5 py-0.5 rounded-full text-[0.6875rem] font-bold bg-[#FFF1F2] text-[#BE123C]">Non-Veg</span>
+                        )}
+                        {pkg.categories?.length > 0 && (
+                          <span className="px-2.5 py-0.5 rounded-full text-[0.6875rem] font-semibold" style={{ background:"var(--pax-muted2)", color:"var(--pax-t3)" }}>
+                            {pkg.categories.length} courses
+                          </span>
+                        )}
+                      </div>
+                      {isSel && (
+                        <span className="px-2.5 py-0.5 rounded-full text-[0.6875rem] font-medium flex-shrink-0" style={{ background:"var(--pax-t1)", color:"var(--pax-card)" }}>
+                          Selected
+                        </span>
+                      )}
+                      {pkg.is_popular && !isSel && (
+                        <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[0.6875rem] font-medium flex-shrink-0" style={{ background:"var(--pax-muted2)", color:"var(--pax-t3)" }}>
+                          Popular
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Name + price inline */}
+                    <div className="flex items-baseline justify-between gap-3 min-w-0">
+                      <h4 className="font-bold text-base m-0 truncate" style={{ color:"var(--pax-t1)" }}>{pkg.package_name}</h4>
+                      <p className="m-0 flex-shrink-0">
+                        <span className="font-bold text-base" style={{ color:"var(--pax-t1)" }}>{fmt(perPax)}</span>
+                        <span className="text-xs font-normal" style={{ color:"var(--pax-t4)" }}>/person</span>
+                      </p>
+                    </div>
+
+                    {/* Total row */}
+                    <div className="flex items-center justify-between pt-3.5 border-t mt-auto" style={{ borderColor: isSel ? "var(--pax-pl)" : "var(--pax-brd3)" }}>
+                      {adultCount > 0 ? (
+                        <>
+                          <span className="text-[0.8125rem]" style={{ color:"var(--pax-t4)" }}>{adultCount} × {fmt(perPax)}</span>
+                          <span className="font-bold text-base" style={{ color:"var(--pax-t1)" }}>{fmt(pkgTotal)}</span>
+                        </>
+                      ) : (
+                        <span className="text-[0.8125rem]" style={{ color:"var(--pax-t4)" }}>Set guest count to see total</span>
+                      )}
+                    </div>
+
+                  </div>
+                );
+              })}
+            </div>
+          )
+        )}
+
+        {/* Custom tab */}
+        {menuTab === "custom" && (
+          customMenuItems.length === 0 ? (
+            <div
+              onClick={openCustomMenuModal}
+              className="text-center py-14 px-8 rounded-2xl border-2 border-dashed cursor-pointer transition-all hover:border-[var(--pax-p)] hover:bg-[var(--pax-pll)]"
+              style={{ borderColor:"var(--pax-brd)" }}
+            >
+              <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background:"var(--pax-muted2)" }}>
+                <IUtensils size={22} color="var(--pax-t3)" sw={1.75}/>
+              </div>
+              <p className="font-bold text-base m-0 mb-1.5" style={{ color:"var(--pax-t1)" }}>Build Your Custom Menu</p>
+              <p className="text-sm m-0 mb-6 leading-relaxed" style={{ color:"var(--pax-t4)" }}>Pick items from our full catalogue across all categories</p>
+              <BtnPrimary type="button" onClick={e => { e.stopPropagation(); openCustomMenuModal(); }}>
+                Browse Menu Items
+              </BtnPrimary>
+            </div>
+          ) : (
+            <div>
+              <div className="flex items-center justify-between mb-5">
+                <div>
+                  <p className="font-bold text-[0.9375rem] m-0" style={{ color:"var(--pax-t1)" }}>{customMenuItems.length} items selected</p>
+                  <p className="text-[0.8125rem] m-0 mt-0.5" style={{ color:"var(--pax-t4)" }}>{Object.keys(groupedCustom).length} categories</p>
+                </div>
+                <BtnSecondary type="button" onClick={openCustomMenuModal} style={{ height:"38px", fontSize:"0.875rem" }}>
+                  Edit Selection
+                </BtnSecondary>
+              </div>
+              <div className="rounded-2xl overflow-hidden border" style={{ borderColor:"var(--pax-brd3)" }}>
+                {Object.entries(groupedCustom).map(([cat, items], gi) => (
+                  <div key={cat} className="px-4 py-3.5" style={{ borderBottom: gi < Object.keys(groupedCustom).length - 1 ? "1px solid var(--pax-brd3)" : "none" }}>
+                    <p className="text-[0.6875rem] font-bold uppercase tracking-[0.05em] m-0 mb-2.5" style={{ color:"var(--pax-t4)" }}>{cat}</p>
+                    {items.map(item => (
+                      <div key={item.id} className="flex items-center gap-2 py-1">
+                        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: item.food_type === 1 ? "#16A34A" : "#DC2626" }}/>
+                        <span className="flex-1 text-[0.9375rem]" style={{ color:"var(--pax-t2)" }}>{item.item_name}</span>
+                        <button
+                          type="button"
+                          aria-label={`Remove ${item.item_name}`}
+                          onClick={() => removeCustomItem(item.id)}
+                          className="flex p-1 rounded-md border-0 cursor-pointer transition-colors hover:text-red-500 bg-transparent"
+                          style={{ color:"var(--pax-t4)" }}
+                        >
+                          <IClose size={14} sw={2}/>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        )}
+    </Section>
   );
 }
 
+
 // ─── Step 3 — Requirements ────────────────────────────────────────────────────
 function StepRequirements({ dietary, setDietary, allergies, setAllergies, otherAllergy, setOtherAllergy, servingPref, setServingPref, notes, setNotes }) {
+
+  // Chip: hides the real input visually, pure pill appearance
+  const Chip = ({ checked, onChange, label, type = "checkbox", name }) => (
+    <label
+      className="pax-chip flex items-center gap-1.5 px-4 py-2 rounded-full cursor-pointer select-none border"
+      style={{
+        borderColor: checked ? "var(--pax-t1)" : "var(--pax-brd)",
+        background:  "var(--pax-card)",
+        color:       checked ? "var(--pax-t1)" : "var(--pax-t3)",
+      }}
+    >
+      <input type={type} name={name} checked={checked} onChange={onChange} className="sr-only"/>
+      {checked && <ICheck size={12} color="var(--pax-t1)" sw={2.5}/>}
+      <span className={`text-sm ${checked ? "font-semibold" : "font-medium"}`}>{label}</span>
+    </label>
+  );
+
+  const ServingCard = ({ label, checked, onChange }) => (
+    <label
+      className="pax-chip flex flex-col items-center gap-2 p-4 rounded-xl cursor-pointer select-none border text-center transition-all"
+      style={{
+        borderColor: checked ? "var(--pax-t1)" : "var(--pax-brd)",
+        background:  "var(--pax-card)",
+        boxShadow:   "none",
+      }}
+    >
+      <input type="radio" name="servingPref" checked={checked} onChange={onChange} className="sr-only"/>
+      <span className="text-[0.9375rem]" style={{ color: "var(--pax-t1)", fontWeight: checked ? 600 : 400 }}>
+        {label}
+      </span>
+      {checked && <ICheckCirc size={16} color="var(--pax-t1)" sw={2}/>}
+    </label>
+  );
+
   return (
-    <div>
-      <h2 style={{ fontSize: "1.375rem", fontWeight: 700, color: "#111827", margin: "0 0 0.375rem 0" }}>Special Requirements</h2>
-      <p style={{ color: "#6b7280", margin: "0 0 1.5rem 0", fontSize: "0.9375rem" }}>Help us tailor your event perfectly.</p>
-      <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: "0.5rem", padding: "1.25rem", marginBottom: "1rem" }}>
-        <h3 style={{ fontWeight: 600, color: "#111827", margin: "0 0 1rem 0", fontSize: "1rem" }}>Dietary Restrictions</h3>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(155px,1fr))", gap: "0.75rem" }}>
-          {DIETARY_OPTIONS.map(opt => (<label key={opt.id} style={{ display: "flex", alignItems: "center", gap: "0.625rem", cursor: "pointer" }}><input type="checkbox" checked={!!dietary[opt.id]} onChange={e => setDietary(p => ({ ...p, [opt.id]: e.target.checked }))} style={{ width: "1.125rem", height: "1.125rem", accentColor: "#8368ef" }} /><span style={{ fontSize: "0.9375rem", color: "#374151" }}>{opt.label}</span></label>))}
+    <div className="pax-card flex flex-col rounded-2xl border p-6" style={{ background:"var(--pax-card)", borderColor:"var(--pax-brd3)" }}>
+
+      {/* Dietary restrictions */}
+      <Section bare title="Dietary Restrictions" subtitle="Select all that apply to your guest group.">
+        <div className="flex flex-wrap gap-2">
+          {DIETARY_OPTIONS.map(opt => (
+            <Chip
+              key={opt.id}
+              type="checkbox"
+              checked={!!dietary[opt.id]}
+              onChange={e => setDietary(p => ({ ...p, [opt.id]: e.target.checked }))}
+              label={opt.label}
+            />
+          ))}
         </div>
-      </div>
-      <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: "0.5rem", padding: "1.25rem", marginBottom: "1rem" }}>
-        <h3 style={{ fontWeight: 600, color: "#111827", margin: "0 0 1rem 0", fontSize: "1rem" }}>Allergies</h3>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(155px,1fr))", gap: "0.75rem" }}>
-          {ALLERGY_OPTIONS.map(opt => (<label key={opt.id} style={{ display: "flex", alignItems: "center", gap: "0.625rem", cursor: "pointer" }}><input type="checkbox" checked={!!allergies[opt.id]} onChange={e => setAllergies(p => ({ ...p, [opt.id]: e.target.checked }))} style={{ width: "1.125rem", height: "1.125rem", accentColor: "#8368ef" }} /><span style={{ fontSize: "0.9375rem", color: "#374151" }}>{opt.label}</span></label>))}
+      </Section>
+
+      <Divider className="my-7"/>
+      {/* Food allergies */}
+      <Section bare title="Food Allergies" subtitle="Important for our kitchen team.">
+        <div className="flex flex-wrap gap-2">
+          {ALLERGY_OPTIONS.map(opt => (
+            <Chip
+              key={opt.id}
+              type="checkbox"
+              checked={!!allergies[opt.id]}
+              onChange={e => setAllergies(p => ({ ...p, [opt.id]: e.target.checked }))}
+              label={opt.label}
+            />
+          ))}
         </div>
-        {allergies.other && (<input type="text" placeholder="Please specify other allergies" value={otherAllergy} onChange={e => setOtherAllergy(e.target.value)} style={{ marginTop: "0.875rem", width: "100%", padding: "0.625rem 0.875rem", border: "1.5px solid #d1d5db", borderRadius: "0.375rem", fontSize: "0.9375rem" }} />)}
-      </div>
-      <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: "0.5rem", padding: "1.25rem", marginBottom: "1rem" }}>
-        <h3 style={{ fontWeight: 600, color: "#111827", margin: "0 0 1rem 0", fontSize: "1rem" }}>Serving Preference</h3>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(150px,1fr))", gap: "0.75rem" }}>
-          {SERVING_PREFS.map(pref => (<label key={pref} style={{ display: "flex", alignItems: "center", gap: "0.625rem", cursor: "pointer" }}><input type="radio" name="servingPref" value={pref} checked={servingPref === pref} onChange={() => setServingPref(pref)} style={{ width: "1.125rem", height: "1.125rem", accentColor: "#8368ef" }} /><span style={{ fontSize: "0.9375rem", color: "#374151" }}>{pref}</span></label>))}
+        {allergies.other && (
+          <div className="mt-4">
+            <PaxInput
+              label="Specify other allergies"
+              value={otherAllergy}
+              onChange={e => setOtherAllergy(e.target.value)}
+              placeholder="Please describe the allergy"
+              type="text"
+            />
+          </div>
+        )}
+      </Section>
+
+      <Divider className="my-7"/>
+      {/* Serving style */}
+      <Section bare title="Serving Style" subtitle="How would you like the food to be served?">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {SERVING_PREFS.map(pref => (
+            <ServingCard
+              key={pref}
+              label={pref}
+              checked={servingPref === pref}
+              onChange={() => setServingPref(pref)}
+            />
+          ))}
         </div>
-      </div>
-      <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: "0.5rem", padding: "1.25rem" }}>
-        <h3 style={{ fontWeight: 600, color: "#111827", margin: "0 0 0.375rem 0", fontSize: "1rem" }}>Additional Notes</h3>
-        <p style={{ fontSize: "0.875rem", color: "#6b7280", margin: "0 0 0.75rem 0" }}>Special requests, decor preferences, or anything else?</p>
-        <textarea rows={4} placeholder="E.g. Floral centerpiece theme, live music setup, etc." value={notes} onChange={e => setNotes(e.target.value)} style={{ width: "100%", padding: "0.75rem", border: "1.5px solid #d1d5db", borderRadius: "0.5rem", fontSize: "0.9375rem", resize: "vertical", lineHeight: 1.5 }} />
-      </div>
+      </Section>
+
+      <Divider className="my-7"/>
+      {/* Additional notes */}
+      <Section bare title="Additional Notes">
+        <FieldWrap hint="Decor theme, live music, seating preferences, or any other special requests">
+          <textarea
+            rows={4}
+            value={notes}
+            onChange={e => setNotes(e.target.value)}
+            placeholder="E.g. Garden-themed decor, live ghazal music setup, bride's side left-facing..."
+            className="pax-input w-full p-4 rounded-xl resize-y leading-relaxed border-[1.5px] focus:outline-none"
+            style={{
+              borderColor: "var(--pax-brd)",
+              color: "var(--pax-t1)",
+              background: "var(--pax-card)",
+              fontSize: "0.9375rem",
+              fontFamily: "inherit",
+            }}
+          />
+        </FieldWrap>
+      </Section>
     </div>
   );
 }
 
 // ─── Step 4 — Contact ─────────────────────────────────────────────────────────
 function StepContact({ name, setName, email, setEmail, phone, setPhone, org, setOrg, errors }) {
-  const field = (lbl, val, set, type, ph, err, req) => (
-    <div>
-      <label style={{ display: "block", fontWeight: 500, color: "#374151", marginBottom: "0.375rem", fontSize: "0.9375rem" }}>{lbl}{req && <span style={{ color: "#ef4444" }}> *</span>}</label>
-      <input type={type} value={val} onChange={e => set(e.target.value)} placeholder={ph} style={{ width: "100%", padding: "0.75rem 1rem", border: `1.5px solid ${err ? "#ef4444" : "#d1d5db"}`, borderRadius: "0.5rem", fontSize: "0.9375rem", transition: "border-color 0.2s, box-shadow 0.2s" }} />
-      {err && <p className="pv-fade-in" style={{ color: "#ef4444", fontSize: "0.8125rem", margin: "0.375rem 0 0" }}>{err}</p>}
-    </div>
-  );
   return (
-    <div>
-      <h2 style={{ fontSize: "1.375rem", fontWeight: 700, color: "#111827", margin: "0 0 0.375rem 0" }}>Contact Information</h2>
-      <p style={{ color: "#6b7280", margin: "0 0 1.5rem 0", fontSize: "0.9375rem" }}>We will use these details to send your quote.</p>
-      <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: "0.5rem", padding: "1.5rem", display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-        {field("Full Name", name, setName, "text", "Your full name", errors.name, true)}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-          {field("Email", email, setEmail, "email", "your@email.com", errors.email, true)}
-          {field("Phone", phone, setPhone, "tel", "+91 XXXXX XXXXX", errors.phone, true)}
+    <Section title="Contact Information" subtitle="We will send your quote and updates to these details." className="pax-card">
+        <div className="flex flex-col gap-5">
+          <PaxInput
+            label="Full Name"
+            required
+            type="text"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            placeholder="Your full name"
+            error={errors.name}
+            icon={<IUsers size={16} color="var(--pax-t4)" sw={1.75}/>}
+          />
+          <div className="grid sm:grid-cols-2 gap-5">
+            <PaxInput
+              label="Email Address"
+              required
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="you@email.com"
+              error={errors.email}
+              icon={<IMail size={16} color="var(--pax-t4)" sw={1.75}/>}
+            />
+            <PaxInput
+              label="Phone Number"
+              required
+              type="tel"
+              value={phone}
+              onChange={e => setPhone(e.target.value)}
+              placeholder="+91 XXXXX XXXXX"
+              error={errors.phone}
+              icon={<IPhone size={16} color="var(--pax-t4)" sw={1.75}/>}
+            />
+          </div>
+          <FieldWrap label="Organization" hint="Company or organization name (optional)">
+            <div className="relative">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 flex pointer-events-none" style={{ color:"var(--pax-t4)" }}>
+                <IBuild size={16} sw={1.75}/>
+              </span>
+              <input
+                type="text"
+                value={org}
+                onChange={e => setOrg(e.target.value)}
+                placeholder="Company name"
+                className="pax-input w-full h-12 rounded-xl text-[0.9375rem] border-[1.5px] focus:outline-none"
+                style={{ paddingLeft:"42px", paddingRight:"14px", borderColor:"var(--pax-brd)", color:"var(--pax-t1)", background:"var(--pax-card)", fontFamily:"inherit" }}
+              />
+            </div>
+          </FieldWrap>
         </div>
-        <div>
-          <label style={{ display: "block", fontWeight: 500, color: "#374151", marginBottom: "0.375rem", fontSize: "0.9375rem" }}>Organization <span style={{ color: "#9ca3af", fontWeight: 400, fontSize: "0.8125rem" }}>(optional)</span></label>
-          <input type="text" value={org} onChange={e => setOrg(e.target.value)} placeholder="Company or organization name" style={{ width: "100%", padding: "0.75rem 1rem", border: "1.5px solid #d1d5db", borderRadius: "0.5rem", fontSize: "0.9375rem" }} />
-        </div>
-      </div>
-    </div>
+    </Section>
   );
 }
 
 // ─── Step 5 — Review ──────────────────────────────────────────────────────────
-function RSection({ title, children, last }) { return (<div style={{ borderBottom: last ? "none" : "1px solid #f3f4f6" }}><div style={{ padding: "0.75rem 1.25rem", background: "#f9fafb", borderBottom: "1px solid #f3f4f6" }}><p style={{ fontWeight: 600, color: "#374151", margin: 0, fontSize: "0.9375rem" }}>{title}</p></div><div style={{ padding: "0.875rem 1.25rem" }}>{children}</div></div>); }
-function RRow({ label, value }) { return (<div style={{ display: "flex", gap: "1rem", marginBottom: "0.5rem", alignItems: "flex-start" }}><span style={{ minWidth: "130px", fontSize: "0.875rem", color: "#6b7280", flexShrink: 0 }}>{label}</span><span style={{ fontSize: "0.875rem", color: "#111827", fontWeight: 500 }}>{String(value ?? "—")}</span></div>); }
-
 function StepReview({ ctx, adultCount, childCount, menuTab, selectedPackage, customMenuItems, dietary, allergies, otherAllergy, servingPref, notes, name, email, phone, org, pricing }) {
-  const actD = Object.entries(dietary).filter(([, v]) => v).map(([k]) => DIETARY_OPTIONS.find(o => o.id === k)?.label).filter(Boolean);
-  const actA = Object.entries(allergies).filter(([, v]) => v).map(([k]) => k === "other" ? (otherAllergy || "Other") : ALLERGY_OPTIONS.find(o => o.id === k)?.label).filter(Boolean);
-  const grp = useMemo(() => { const m = {}; customMenuItems.forEach(i => { const c = i.category_name || "Other"; if (!m[c]) m[c] = []; m[c].push(i); }); return m; }, [customMenuItems]);
+  const actD = Object.entries(dietary).filter(([,v]) => v).map(([k]) => DIETARY_OPTIONS.find(o => o.id === k)?.label).filter(Boolean);
+  const actA = Object.entries(allergies).filter(([,v]) => v).map(([k]) => k === "other" ? (otherAllergy || "Other") : ALLERGY_OPTIONS.find(o => o.id === k)?.label).filter(Boolean);
+  const grp  = useMemo(() => {
+    const m = {};
+    customMenuItems.forEach(i => { const c = i.category_name || "Other"; if (!m[c]) m[c] = []; m[c].push(i); });
+    return m;
+  }, [customMenuItems]);
+
+  const ReviewRow = ({ label, value }) => value ? (
+    <div className="flex gap-4 py-2.5 border-b last:border-0" style={{ borderColor:"var(--pax-brd3)" }}>
+      <span className="text-[0.8125rem] flex-shrink-0 w-28 pt-px" style={{ color:"var(--pax-t4)" }}>{label}</span>
+      <span className="text-[0.9375rem] font-medium leading-snug" style={{ color:"var(--pax-t1)" }}>{String(value)}</span>
+    </div>
+  ) : null;
+
+  const ReviewBlock = ({ icon, title, children }) => (
+    <div className="rounded-2xl overflow-hidden" style={{ border:"1px solid var(--pax-brd3)" }}>
+      <div className="flex items-center gap-2.5 px-5 py-3.5" style={{ background:"var(--pax-muted)" }}>
+        <span style={{ color:"var(--pax-t3)" }}>{icon}</span>
+        <p className="font-bold text-[0.8125rem] uppercase tracking-[0.04em] m-0" style={{ color:"var(--pax-t2)" }}>{title}</p>
+      </div>
+      <div className="px-5 py-1">{children}</div>
+    </div>
+  );
+
   return (
-    <div>
-      <h2 style={{ fontSize: "1.375rem", fontWeight: 700, color: "#111827", margin: "0 0 0.375rem 0" }}>Review &amp; Submit</h2>
-      <p style={{ color: "#6b7280", margin: "0 0 1.5rem 0", fontSize: "0.9375rem" }}>Please review your enquiry before submitting.</p>
-      <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: "0.75rem", overflow: "hidden" }}>
-        <RSection title="Event Details"><RRow label="Event Type" value={ctx.eventType} /><RRow label="Date" value={fmtDate(ctx.date)} /><RRow label="Shift" value={ctx.shift} />{ctx.venueName && <RRow label="Venue" value={ctx.venueName} />}</RSection>
-        <RSection title="Guest Count"><RRow label="Adults" value={adultCount} />{childCount > 0 && <RRow label="Children" value={childCount} />}<RRow label="Total" value={adultCount + childCount} /></RSection>
-        <RSection title="Menu Selection">
-          {menuTab === "packages" && selectedPackage ? (<><RRow label="Package" value={selectedPackage.package_name} /><RRow label="Package Price" value={fmt(selectedPackage.package_amount)} /></>) : menuTab === "custom" && customMenuItems.length > 0 ? (<><RRow label="Type" value="Custom Menu" />{Object.entries(grp).map(([c, it]) => <RRow key={c} label={c} value={it.map(i => i.item_name).join(", ")} />)}</>) : (<RRow label="Menu" value="Not selected" />)}
-        </RSection>
-        {(actD.length > 0 || actA.length > 0 || servingPref || notes) && (<RSection title="Special Requirements">{actD.length > 0 && <RRow label="Dietary" value={actD.join(", ")} />}{actA.length > 0 && <RRow label="Allergies" value={actA.join(", ")} />}{servingPref && <RRow label="Serving" value={servingPref} />}{notes && <RRow label="Notes" value={notes} />}</RSection>)}
-        <RSection title="Contact Information" last><RRow label="Name" value={name} /><RRow label="Email" value={email} /><RRow label="Phone" value={phone} />{org && <RRow label="Organization" value={org} />}</RSection>
+    <div className="pax-card flex flex-col gap-5 rounded-2xl border p-6" style={{ background:"var(--pax-card)", borderColor:"var(--pax-brd3)" }}>
+      <div>
+        <h2 className="font-extrabold text-[1.375rem] m-0 mb-1" style={{ color:"var(--pax-t1)" }}>Review &amp; Submit</h2>
+        <p className="text-[0.9375rem] m-0" style={{ color:"var(--pax-t3)" }}>Everything looks good? Submit your enquiry below.</p>
       </div>
-      {pricing.total > 0 && (<div style={{ marginTop: "1.25rem", background: "#f5f3ff", border: "1px solid #ede9fe", borderRadius: "0.75rem", padding: "1.25rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}><span style={{ fontWeight: 600, color: "#6d28d9", fontSize: "1rem" }}>Estimated Total</span><span style={{ fontWeight: 700, color: "#8368ef", fontSize: "1.5rem" }}>{fmt(pricing.total)}</span></div>)}
-      <div style={{ display: "flex", gap: "0.75rem", padding: "0.875rem 1rem", background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "0.5rem", marginTop: "1.25rem" }}>
-        <div style={{ color: "#3b82f6", flexShrink: 0, marginTop: "1px" }}><InfoIco s={16} /></div>
-        <p style={{ color: "#1e40af", margin: 0, fontSize: "0.875rem", lineHeight: 1.5 }}>By submitting this enquiry, you agree to receive a detailed quote via email within 24 hours. No payment is required at this stage.</p>
-      </div>
+
+      <ReviewBlock title="Event Details" icon={<ICalendar size={14} sw={2}/>}>
+        <ReviewRow label="Event Type" value={ctx.eventType}/>
+        <ReviewRow label="Date"       value={fmtDate(ctx.date)}/>
+        <ReviewRow label="Shift"      value={ctx.shift}/>
+        <ReviewRow label="Venue"      value={ctx.venueName}/>
+      </ReviewBlock>
+
+      <ReviewBlock title="Guest Count" icon={<IUsers size={14} sw={2}/>}>
+        <ReviewRow label="Adults"       value={adultCount}/>
+        {childCount > 0 && <ReviewRow label="Children" value={childCount}/>}
+        <ReviewRow label="Total Guests" value={adultCount + childCount}/>
+      </ReviewBlock>
+
+      <ReviewBlock title="Menu Selection" icon={<IUtensils size={14} sw={2}/>}>
+        {menuTab === "packages" && selectedPackage ? (
+          <>
+            <ReviewRow label="Package" value={selectedPackage.package_name}/>
+            <ReviewRow label="Rate"    value={`${fmt(selectedPackage.package_amount)} / person`}/>
+          </>
+        ) : menuTab === "custom" && customMenuItems.length > 0 ? (
+          <>
+            <ReviewRow label="Type" value="Custom Menu"/>
+            {Object.entries(grp).map(([c, its]) => (
+              <ReviewRow key={c} label={c} value={its.map(i => i.item_name).join(", ")}/>
+            ))}
+          </>
+        ) : (
+          <ReviewRow label="Menu" value="Not yet selected"/>
+        )}
+      </ReviewBlock>
+
+      {(actD.length > 0 || actA.length > 0 || servingPref || notes) && (
+        <ReviewBlock title="Special Requirements" icon={<IFile size={14} sw={2}/>}>
+          {actD.length > 0 && <ReviewRow label="Dietary"       value={actD.join(", ")}/>}
+          {actA.length > 0 && <ReviewRow label="Allergies"     value={actA.join(", ")}/>}
+          {servingPref      && <ReviewRow label="Serving Style" value={servingPref}/>}
+          {notes            && <ReviewRow label="Notes"         value={notes}/>}
+        </ReviewBlock>
+      )}
+
+      <ReviewBlock title="Contact Details" icon={<IUsers size={14} sw={2}/>}>
+        <ReviewRow label="Name"         value={name}/>
+        <ReviewRow label="Email"        value={email}/>
+        <ReviewRow label="Phone"        value={phone}/>
+        {org && <ReviewRow label="Organization" value={org}/>}
+      </ReviewBlock>
+
+      {pricing.total > 0 && (
+        <div
+          className="flex justify-between items-center rounded-2xl px-6 py-5 border"
+          style={{ background:"var(--pax-muted)", borderColor:"var(--pax-brd3)" }}
+        >
+          <div>
+            <p className="text-[0.8125rem] font-semibold m-0 mb-0.5" style={{ color:"var(--pax-t2)" }}>Estimated Total</p>
+            <p className="text-[0.8125rem] m-0" style={{ color:"var(--pax-t4)" }}>Incl. applicable taxes</p>
+          </div>
+          <span className="font-bold text-[1.875rem]" style={{ color:"var(--pax-t1)" }}>{fmt(pricing.total)}</span>
+        </div>
+      )}
+
+      <InfoBanner color="blue">
+        By submitting, you agree to receive a quote via email within 24 hours. No payment is required at this stage.
+      </InfoBanner>
     </div>
   );
 }
 
-// ─── PackageModal ─────────────────────────────────────────────────────────────
-function PackageModal({ pkg, menuCategories, menuItems, selections, setSelections, onCancel, onConfirm }) {
-  const [expandedCats, setExpandedCats] = useState({});
-  const [limitNotice, setLimitNotice] = useState(null); // { catId }
 
-  const allowedSet = useMemo(() => new Set(pkg?.allowed_item_ids || []), [pkg]);
+// ─── PackageModal ─────────────────────────────────────────────────────────────
+function PackageModal({ pkg, menuCategories, menuItems, selections, setSelections, onCancel, onConfirm, isMobile }) {
+  useLockScroll(onCancel);
+  const [expanded,    setExpanded]    = useState({});
+  const [showPreview, setShowPreview] = useState(false);
 
   const categories = useMemo(() => {
     if (!pkg || !menuCategories) return [];
-    const reqMap = new Map((pkg.category_requirements || []).map(r => [r.id, r.count]));
-    return menuCategories
-      .filter(c => reqMap.has(c.id))
-      .map(c => ({ id: c.id, name: c.name, required: reqMap.get(c.id) }));
+    const ids = new Set((pkg.categories || []).map(c => c.id ?? c));
+    return ids.size > 0 ? menuCategories.filter(c => ids.has(c.id)) : menuCategories;
   }, [pkg, menuCategories]);
 
-  const forCat = (cid) => {
-    const inCat = (menuItems || []).filter(i => i.category_id === cid);
-    if (allowedSet.size === 0) return inCat; // no restriction data — allow full category
-    return inCat.filter(i => allowedSet.has(i.id));
-  };
+  const toggle     = id => setExpanded(p => ({ ...p, [id]: !p[id] }));
+  const toggleItem = (catId, item) => setSelections(p => {
+    const cur = p[catId] || [];
+    return { ...p, [catId]: cur.some(i => i.id === item.id) ? cur.filter(i => i.id !== item.id) : [...cur, item] };
+  });
+  const done   = categories.filter(c => (selections[c.id] || []).length > 0).length;
+  const allOk  = categories.length > 0 && done === categories.length;
+  const forCat = cid => (menuItems || []).filter(i => i.category_id === cid);
+  const preview = useMemo(() => {
+    const m = {};
+    categories.forEach(c => { const s = selections[c.id] || []; if (s.length) m[c.name] = s; });
+    return m;
+  }, [categories, selections]);
 
-  const toggleCat = (id) => setExpandedCats(p => ({ ...p, [id]: !p[id] }));
+  const totalSelected = Object.values(preview).flat().length;
 
-  const toggleItem = (catId, item, required) => {
-    setSelections(p => {
-      const cur = p[catId] || [];
-      const exists = cur.some(i => i.id === item.id);
-      if (exists) return { ...p, [catId]: cur.filter(i => i.id !== item.id) };
-      if (cur.length >= required) {
-        setLimitNotice({ catId });
-        return p;
-      }
-      return { ...p, [catId]: [...cur, item] };
-    });
-  };
-
-  useEffect(() => {
-    if (!limitNotice) return;
-    const t = setTimeout(() => setLimitNotice(null), 2200);
-    return () => clearTimeout(t);
-  }, [limitNotice]);
-
-  const done = categories.filter(c => (selections[c.id] || []).length === c.required).length;
-  const allOk = categories.length > 0 && done === categories.length;
-  const preview = useMemo(() => { const m = {}; categories.forEach(c => { const s = selections[c.id] || []; if (s.length) m[c.name] = s; }); return m; }, [categories, selections]);
-
-  return (
-    <div className="pv-fade-in" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10000, overflowY: "auto", padding: "1rem" }}>
-      <div className="pv-scale-in" style={{ background: "white", borderRadius: "1rem", maxWidth: "1200px", width: "95%", maxHeight: "85vh", height: "100%", display: "grid", gridTemplateColumns: "1.5fr 1fr", overflow: "hidden" }}>
-        {/* Left panel */}
-        <div style={{ overflowY: "auto", borderRight: "1px solid #e5e7eb", display: "flex", flexDirection: "column" }}>
-          <div style={{ padding: "1.5rem", borderBottom: "1px solid #e5e7eb", background: "#fafafa", position: "sticky", top: 0, zIndex: 10 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <div>
-                <h2 style={{ fontWeight: 700, color: "#111827", margin: "0 0 0.25rem 0", fontSize: "1.25rem" }}>{pkg?.package_name}</h2>
-                <p style={{ color: "#6b7280", margin: 0, fontSize: "0.875rem" }}>Select exactly the required number of items per category</p>
-              </div>
-              <button type="button" onClick={onCancel} style={{ width: "2rem", height: "2rem", display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", color: "#6b7280", cursor: "pointer", borderRadius: "0.375rem" }}><XIco /></button>
-            </div>
+  // ── Shared accordion (plain render fn, not a component) ──
+  const maxPerCat = pkg?.max_items_per_category || 2;
+  const renderAccordion = (px = "px-7") => categories.map((cat, ci) => {
+    const catItems = forCat(cat.id), catSel = selections[cat.id] || [], isOpen = !!expanded[cat.id];
+    const isAtMax = catSel.length >= maxPerCat;
+    const isFull  = catSel.length > 0;
+    return (
+      <div key={cat.id} className="mb-3 rounded-xl overflow-hidden border transition-colors duration-200" style={{ borderColor: isFull ? "#BBF7D0" : "var(--pax-muted2)" }}>
+        <div className="flex items-center gap-3 px-4 py-4 cursor-pointer" style={{ background: isFull ? "#F0FDF4" : "var(--pax-muted)" }} onClick={() => toggle(cat.id)}>
+          <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-[0.8125rem] flex-shrink-0" style={{ background: isFull ? "#059669" : P, color:"#fff" }}>
+            {isFull ? <ICheck size={13} color="#fff" sw={2.5}/> : ci + 1}
           </div>
-          <div style={{ padding: "1rem 1.5rem", background: "#fffbeb", borderBottom: "1px solid #fde68a", fontWeight: 600, fontSize: "0.9375rem", color: "#92400e" }}>
-            Menu Selection Progress: {done}/{categories.length} completed
+          <div className="flex-1">
+            <p className="font-bold text-[0.9375rem] m-0" style={{ color:"var(--pax-t1)" }}>{cat.name}</p>
+            <p className="text-[0.8125rem] m-0 mt-px font-semibold" style={{ color: isFull ? "#059669" : "var(--pax-t4)" }}>
+              {isFull
+                ? `${catSel.length}/${maxPerCat} items selected${isAtMax ? " · Max reached" : ""}`
+                : `Select up to ${maxPerCat} items`}
+            </p>
           </div>
-          <div style={{ padding: "1.5rem", flex: 1, overflowY: "auto" }}>
-            {categories.map((cat, ci) => {
-              const catItems = forCat(cat.id), catSel = selections[cat.id] || [], isOpen = !!expandedCats[cat.id];
-              const atLimit = catSel.length >= cat.required;
-              const isDone = catSel.length === cat.required;
-              return (
-                <div key={cat.id} style={{ marginBottom: "1.5rem", paddingBottom: "0.5rem", borderBottom: ci < categories.length - 1 ? "1px solid #e5e7eb" : "none" }}>
-                  <div style={{ display: "flex", gap: "1rem", alignItems: "flex-start" }}>
-                    <div style={{ width: "2rem", height: "2rem", borderRadius: "50%", background: isDone ? "#10b981" : "#8368ef", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "0.875rem", flexShrink: 0, transition: "background 0.2s" }}>
-                      {isDone ? <ChkIcon s={14} c="white" /> : ci + 1}
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.625rem" }}>
-                        <div>
-                          <p style={{ fontWeight: 600, color: "#111827", margin: "0 0 0.2rem 0" }}>{cat.name}</p>
-                          <p style={{ color: isDone ? "#10b981" : "#6b7280", fontSize: "0.8125rem", margin: 0, fontWeight: isDone ? 600 : 400 }}>{catSel.length} of {cat.required} selected{atLimit && !isDone ? "" : ""}</p>
-                        </div>
-                        <button type="button" className="pv-btn" onClick={() => toggleCat(cat.id)} style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.375rem 0.875rem", background: "#f3f4f6", border: "1px solid #d1d5db", borderRadius: "0.375rem", color: "#374151", fontWeight: 600, fontSize: "0.8125rem", cursor: "pointer", flexShrink: 0 }}>
-                          {isOpen ? "Collapse" : "Select"} <ChevD r={isOpen} />
-                        </button>
-                      </div>
-                      {catSel.length > 0 && !isOpen && (<div style={{ display: "flex", flexWrap: "wrap", gap: "0.375rem" }}>{catSel.map(item => <span key={item.id} style={{ fontSize: "0.75rem", padding: "0.2rem 0.5rem", background: "#f5f3ff", border: "1px solid #ede9fe", borderRadius: "0.25rem", color: "#6d28d9" }}>{item.item_name}</span>)}</div>)}
-                      {limitNotice?.catId === cat.id && (
-                        <p className="pv-fade-in" style={{ margin: "0.5rem 0 0", fontSize: "0.8125rem", color: "#d97706", fontWeight: 600 }}>You can only choose {cat.required} item{cat.required === 1 ? "" : "s"} here — remove one to swap.</p>
-                      )}
-                      {isOpen && (
-                        <div style={{ marginTop: "0.75rem", padding: "1rem", background: "#f9fafb", borderRadius: "0.5rem", border: "1px solid #e5e7eb" }}>
-                          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(190px,1fr))", gap: "0.625rem" }}>
-                            {catItems.map(item => {
-                              const isSel = catSel.some(i => i.id === item.id);
-                              const disabled = !isSel && atLimit;
-                              return (
-                                <div key={item.id} onClick={() => toggleItem(cat.id, item, cat.required)} style={{ display: "flex", alignItems: "center", gap: "0.625rem", padding: "0.625rem 0.75rem", border: `2px solid ${isSel ? "#8368ef" : "#e5e7eb"}`, borderRadius: "0.375rem", cursor: disabled ? "not-allowed" : "pointer", transition: "all 0.15s", background: isSel ? "#f5f3ff" : disabled ? "#f9fafb" : "white", opacity: disabled ? 0.5 : 1 }}>
-                                  <input type="checkbox" checked={isSel} readOnly style={{ width: "1.125rem", height: "1.125rem", accentColor: "#8368ef", flexShrink: 0, pointerEvents: "none" }} />
-                                  <span style={{ flex: 1, fontSize: "0.875rem", color: "#374151", fontWeight: 500 }}>{item.item_name}</span>
-                                  <span style={{ color: item.food_type === 1 ? "#16a34a" : "#dc2626", fontSize: "0.875rem", flexShrink: 0 }}>●</span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-                    </div>
+          <IChevD rot={isOpen} size={18} color="var(--pax-t3)" sw={2}/>
+        </div>
+        {catSel.length > 0 && !isOpen && (
+          <div className="px-4 pt-2 pb-3.5 flex flex-wrap gap-1.5">
+            {catSel.map(item => (
+              <span key={item.id} className="text-xs px-2.5 py-0.5 rounded-full font-medium border" style={{ background:"var(--pax-muted2)", color:"var(--pax-t2)", borderColor:"var(--pax-brd3)" }}>
+                {item.item_name}
+              </span>
+            ))}
+          </div>
+        )}
+        {isOpen && (
+          <div className="px-4 py-4 border-t" style={{ background:"var(--pax-card)", borderColor:"var(--pax-brd3)" }}>
+            <div className="grid gap-2" style={{ gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))" }}>
+              {catItems.map(item => {
+                const isSel     = catSel.some(i => i.id === item.id);
+                const isDisabled = isAtMax && !isSel;
+                return (
+                  <div key={item.id}
+                    onClick={() => !isDisabled && toggleItem(cat.id, item)}
+                    className="flex items-center gap-2 px-3 py-2.5 rounded-xl border transition-all"
+                    style={{
+                      borderColor: isSel ? P : "var(--pax-brd)",
+                      background: isSel ? "var(--pax-pll)" : isDisabled ? "var(--pax-muted)" : "var(--pax-card)",
+                      cursor: isDisabled ? "not-allowed" : "pointer",
+                      opacity: isDisabled ? 0.45 : 1,
+                    }}>
+                    <input type="checkbox" checked={isSel} readOnly disabled={isDisabled} className="w-3.5 h-3.5 flex-shrink-0 pointer-events-none" style={{ accentColor:P }}/>
+                    <span className="flex-1 text-sm" style={{ color: isSel ? P : "var(--pax-t2)", fontWeight: isSel ? 600 : 400 }}>{item.item_name}</span>
+                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: item.food_type === 1 ? "#16A34A" : "#DC2626" }}/>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
-          <div style={{ position: "sticky", bottom: 0, background: "white", padding: "1.25rem 1.5rem", display: "flex", justifyContent: "flex-end", gap: "0.75rem", borderTop: "1px solid #eee" }}>
-            <button type="button" className="pv-btn" onClick={onCancel} style={{ padding: "0.625rem 1.25rem", background: "transparent", border: "1px solid #d1d5db", color: "#374151", borderRadius: "0.375rem", fontWeight: 500, cursor: "pointer" }}>Cancel</button>
-            <button type="button" className="pv-btn" onClick={onConfirm} disabled={!allOk} style={{ padding: "0.625rem 1.5rem", background: allOk ? "#8368ef" : "#ccc", color: "white", border: "none", borderRadius: "0.375rem", fontWeight: 600, cursor: allOk ? "pointer" : "not-allowed" }}>{allOk ? "Confirm Selection" : `Select ${categories.reduce((s,c)=>s+Math.max(0,c.required-(selections[c.id]||[]).length),0)} more`}</button>
+        )}
+      </div>
+    );
+  });
+
+  // ── Shared header ──
+  const renderHeader = (compact = false) => (
+    <div className={`flex-shrink-0 border-b ${compact ? "px-6 py-4" : "px-7 py-6"}`} style={{ borderColor:"var(--pax-brd3)" }}>
+      <div className="flex justify-between items-start">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.06em] m-0 mb-1" style={{ color:"var(--pax-t4)" }}>Customise Package</p>
+          <h2 className={`font-extrabold m-0 ${compact ? "text-lg" : "text-xl"}`} style={{ color:"var(--pax-t1)" }}>{pkg?.package_name}</h2>
+          {!compact && <p className="text-sm m-0 mt-1" style={{ color:"var(--pax-t4)" }}>Select at least one item from each category</p>}
+        </div>
+        <button type="button" aria-label="Close modal" onClick={onCancel}
+          className="w-8 h-8 rounded-xl flex items-center justify-center cursor-pointer flex-shrink-0 border transition-colors hover:bg-[var(--pax-muted2)]"
+          style={{ background:"var(--pax-card)", borderColor:"var(--pax-brd)", color:"var(--pax-t3)" }}>
+          <IClose size={16} sw={2}/>
+        </button>
+      </div>
+      <div className={compact ? "mt-3" : "mt-4"}>
+        <div className="flex justify-between mb-1.5">
+          <span className="text-[0.8125rem] font-semibold" style={{ color:"var(--pax-t2)" }}>Progress</span>
+          <span className="text-[0.8125rem] font-bold" style={{ color: allOk ? "#059669" : P }}>{done}/{categories.length} categories</span>
+        </div>
+        <div className="h-1.5 rounded-full overflow-hidden" style={{ background:"var(--pax-muted2)" }}>
+          <div className="h-full rounded-full transition-all duration-300" style={{ width:`${categories.length ? (done / categories.length) * 100 : 0}%`, background: allOk ? "#059669" : P }}/>
+        </div>
+      </div>
+    </div>
+  );
+
+  // ── Shared "View Selection" toggle ──
+  const renderSelectionToggle = () => (
+    <div className="flex-shrink-0 border-t" style={{ borderColor:"var(--pax-brd3)" }}>
+      <button type="button" onClick={() => setShowPreview(p => !p)}
+        className="w-full flex items-center justify-center gap-2.5 px-6 py-3 border-0 font-semibold text-[0.9375rem] cursor-pointer"
+        style={{ background:"var(--pax-muted)", color:"var(--pax-t2)" }}>
+        <span className="rounded-full px-2 py-px text-[0.8125rem] font-bold" style={{ background:P, color:"#fff" }}>{totalSelected}</span>
+        {showPreview ? "Hide" : "View"} Selection
+        <IChevD rot={showPreview} size={16} sw={2}/>
+      </button>
+      {showPreview && (
+        <div className="max-h-[30vh] overflow-y-auto px-6 py-3.5 border-t" style={{ borderColor:"var(--pax-brd3)", background:"var(--pax-card)" }}>
+          {Object.keys(preview).length === 0
+            ? <p className="text-center m-0 py-4 text-sm" style={{ color:"var(--pax-t4)" }}>No items selected yet</p>
+            : Object.entries(preview).map(([catName, items]) => (
+              <div key={catName} className="mb-3.5">
+                <p className="text-[0.6875rem] font-bold uppercase tracking-[0.05em] m-0 mb-2" style={{ color:"var(--pax-t4)" }}>{catName}</p>
+                {items.map(item => (
+                  <div key={item.id} className="flex items-center gap-2 py-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: item.food_type === 1 ? "#16A34A" : "#DC2626" }}/>
+                    <span className="text-sm" style={{ color:"var(--pax-t2)" }}>{item.item_name}</span>
+                  </div>
+                ))}
+              </div>
+            ))
+          }
+        </div>
+      )}
+    </div>
+  );
+
+  // ── Shared action bar ──
+  const renderActionBar = () => (
+    <div className="flex-shrink-0 flex items-center justify-between gap-3 px-6 py-4 border-t" style={{ borderColor:"var(--pax-brd3)", background:"var(--pax-card)" }}>
+      <BtnSecondary type="button" onClick={onCancel}>Cancel</BtnSecondary>
+      <BtnPrimary type="button" onClick={onConfirm} disabled={!allOk}>
+        {allOk ? "Confirm Selection" : `${categories.length - done} categor${categories.length - done === 1 ? "y" : "ies"} remaining`}
+      </BtnPrimary>
+    </div>
+  );
+
+  // ── Mobile: bottom-sheet (same pattern as CustomMenuModal) ──
+  if (isMobile) return (
+    <div className="fixed inset-0 flex items-end z-[10000] backdrop-blur-sm" style={{ background:"rgba(15,15,15,0.6)" }}>
+      <div className="pax-sheet flex flex-col w-full rounded-t-3xl max-h-[92vh]" style={{ background:"var(--pax-card)" }}>
+        {renderHeader(true)}
+        <div className="flex-1 overflow-y-auto px-5 py-4">{renderAccordion()}</div>
+        {renderSelectionToggle()}
+        {renderActionBar()}
+      </div>
+    </div>
+  );
+
+  // ── Desktop: centered two-column modal ──
+  return (
+    <div className="fixed inset-0 flex items-center justify-center z-[10000] p-4 backdrop-blur-sm" style={{ background:"rgba(15,15,15,0.6)" }}>
+      <div className="pax-modal flex flex-col w-[95%] h-[86vh] overflow-hidden rounded-3xl shadow-2xl" style={{ background:"var(--pax-card)", maxWidth:"1200px" }}>
+        <div className="grid flex-1 min-h-0 overflow-hidden" style={{ gridTemplateColumns:"1.5fr 1fr" }}>
+          {/* Left panel */}
+          <div className="flex flex-col overflow-hidden border-r" style={{ borderColor:"var(--pax-brd3)" }}>
+            {renderHeader()}
+            <div className="flex-1 overflow-y-auto px-7 py-5">{renderAccordion()}</div>
+          </div>
+          {/* Right preview */}
+          <div className="flex flex-col overflow-hidden" style={{ background:"var(--pax-muted)" }}>
+            <div className="flex-shrink-0 px-7 py-6 border-b" style={{ background:"var(--pax-card)", borderColor:"var(--pax-brd3)" }}>
+              <p className="font-extrabold text-base m-0" style={{ color:"var(--pax-t1)" }}>Menu Preview</p>
+              <p className="text-[0.8125rem] m-0 mt-1" style={{ color:"var(--pax-t4)" }}>{totalSelected} items selected</p>
+            </div>
+            {Object.keys(preview).length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+                <div className="w-12 h-12 rounded-full flex items-center justify-center mb-3" style={{ background:"var(--pax-muted2)" }}>
+                  <IUtensils size={20} color="#D1D5DB" sw={1.5}/>
+                </div>
+                <p className="font-semibold m-0 mb-1" style={{ color:"var(--pax-t3)" }}>Nothing here yet</p>
+                <p className="text-[0.8125rem] m-0" style={{ color:"var(--pax-t4)" }}>Your menu will appear as you select items</p>
+              </div>
+            ) : (
+              <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-4">
+                {Object.entries(preview).map(([catName, items]) => (
+                  <div key={catName} className="rounded-xl px-4 py-4 border" style={{ background:"var(--pax-card)", borderColor:"var(--pax-brd3)" }}>
+                    <p className="text-[0.6875rem] font-bold uppercase tracking-[0.05em] m-0 mb-3" style={{ color:"var(--pax-t4)" }}>{catName}</p>
+                    {items.map(item => (
+                      <div key={item.id} className="flex items-center gap-2 py-1">
+                        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: item.food_type === 1 ? "#16A34A" : "#DC2626" }}/>
+                        <span className="text-sm" style={{ color:"var(--pax-t2)" }}>{item.item_name}</span>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
-        {/* Right preview */}
-        <div style={{ background: "#fafafa", overflowY: "auto", display: "flex", flexDirection: "column" }}>
-          <div style={{ padding: "1.5rem", background: "white", fontWeight: 700, fontSize: "1.125rem", color: "#111827", borderBottom: "1px solid #e5e7eb", position: "sticky", top: 0 }}>Menu Preview</div>
-          {Object.keys(preview).length === 0 ? (
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "2rem", color: "#9ca3af", textAlign: "center" }}>
-              <p style={{ fontWeight: 600, margin: "0 0 0.5rem", color: "#6b7280" }}>No items selected yet</p>
-              <p style={{ fontSize: "0.875rem", margin: 0 }}>Select items from the left panel</p>
-            </div>
-          ) : (
-            <div style={{ padding: "1.5rem", display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-              {Object.entries(preview).map(([catName, items]) => (
-                <div key={catName} className="pv-pop" style={{ background: "white", borderRadius: "0.5rem", padding: "1rem", border: "1px solid #e5e7eb" }}>
-                  <p style={{ fontSize: "0.7rem", fontWeight: 700, color: "#6b7280", letterSpacing: "0.05em", textTransform: "uppercase", margin: "0 0 0.75rem 0" }}>{catName}</p>
-                  {items.map(item => (<div key={item.id} style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.4rem 0", fontSize: "0.875rem", color: "#374151" }}><span style={{ color: item.food_type === 1 ? "#16a34a" : "#dc2626" }}>●</span>{item.item_name}</div>))}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        {renderActionBar()}
       </div>
     </div>
   );
@@ -588,62 +1497,106 @@ function PackageModal({ pkg, menuCategories, menuItems, selections, setSelection
 
 // ─── CustomMenuModal ──────────────────────────────────────────────────────────
 function CustomMenuModal({ menuCategories, menuItems, selected, setSelected, onClose, onConfirm, isMobile }) {
-  const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState("all");
-  const [activeCat, setActiveCat] = useState(() => menuCategories?.[0]?.id || null);
-  const [expandSel, setExpandSel] = useState(false);
+  useLockScroll(onClose);
+  const [search,   setSearch]   = useState("");
+  const [filter,   setFilter]   = useState("all");
+  const [activeCat, setActiveCat] = useState(null);
+  const [showSel,  setShowSel]  = useState(false);
 
   const visible = useMemo(() => {
     let items = activeCat ? (menuItems || []).filter(i => i.category_id === activeCat) : (menuItems || []);
-    if (filter === "veg") items = items.filter(i => i.food_type === 1);
+    if (filter === "veg")    items = items.filter(i => i.food_type === 1);
     if (filter === "nonveg") items = items.filter(i => i.food_type !== 1);
     if (search) items = items.filter(i => i.item_name?.toLowerCase().includes(search.toLowerCase()));
     return items;
   }, [menuItems, activeCat, filter, search]);
 
-  const toggleItem = (item) => setSelected(p => p.some(i => i.id === item.id) ? p.filter(i => i.id !== item.id) : [...p, item]);
-  const grpSel = useMemo(() => { const m = {}; selected.forEach(item => { const c = item.category_name || "Other"; if (!m[c]) m[c] = []; m[c].push(item); }); return m; }, [selected]);
-  const selectedTotal = useMemo(() => selected.reduce((sum, i) => sum + (i.price || 0), 0), [selected]);
+  const toggle  = item => setSelected(p => p.some(i => i.id === item.id) ? p.filter(i => i.id !== item.id) : [...p, item]);
+  const grpSel  = useMemo(() => {
+    const m = {};
+    selected.forEach(i => { const c = i.category_name || "Other"; if (!m[c]) m[c] = []; m[c].push(i); });
+    return m;
+  }, [selected]);
 
-  const Header = () => (
-    <div style={{ borderBottom: "1px solid #e5e7eb", background: "#fafafa", flexShrink: 0 }}>
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem", padding: "1.5rem 1.5rem 1rem" }}>
-        <div style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start" }}>
-          <div style={{ color: "#8368ef" }}><SpoonIco /></div>
-          <div><h2 style={{ fontWeight: 700, color: "#111827", margin: "0 0 0.25rem 0", fontSize: "1.25rem" }}>Custom Menu</h2><p style={{ color: "#6b7280", margin: 0, fontSize: "0.875rem" }}>{selected.length} items selected</p></div>
+  const FilterPill = ({ active, onClick, children }) => (
+    <button
+      type="button"
+      onClick={onClick}
+      className="px-3.5 py-1.5 rounded-full border text-[0.8125rem] cursor-pointer whitespace-nowrap flex-shrink-0 transition-all"
+      style={{
+        borderColor: active ? P : "var(--pax-brd)",
+        background:  active ? "var(--pax-pll)" : "var(--pax-card)",
+        color:       active ? P : "var(--pax-t2)",
+        fontWeight:  active ? 700 : 500,
+      }}
+    >
+      {children}
+    </button>
+  );
+
+  const FiltersBar = () => (
+    <div className="flex-shrink-0 flex flex-col gap-3 px-6 py-3.5 border-b" style={{ background:"var(--pax-card)", borderColor:"var(--pax-brd3)" }}>
+      <div className="relative">
+        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 flex pointer-events-none" style={{ color:"var(--pax-t4)" }}>
+          <ISearch size={16} sw={2}/>
+        </span>
+        <input
+          type="text"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search menu items..."
+          className="pax-input w-full h-[42px] rounded-xl text-sm border-[1.5px] focus:outline-none"
+          style={{ paddingLeft:"42px", paddingRight:"14px", color:"var(--pax-t1)", background:"var(--pax-card)", borderColor:"var(--pax-brd)", fontFamily:"inherit" }}
+        />
+      </div>
+      <div className="relative">
+        <div className="flex gap-1.5 overflow-x-auto pb-px scrollbar-none" style={{ scrollbarWidth:"none", msOverflowStyle:"none" }}>
+          <FilterPill active={filter === "all"}    onClick={() => setFilter("all")}>All</FilterPill>
+          <FilterPill active={filter === "veg"}    onClick={() => setFilter("veg")}>Veg</FilterPill>
+          <FilterPill active={filter === "nonveg"} onClick={() => setFilter("nonveg")}>Non-Veg</FilterPill>
+          <div className="w-px flex-shrink-0 mx-0.5" style={{ background:"var(--pax-brd)" }}/>
+          <FilterPill active={activeCat === null} onClick={() => setActiveCat(null)}>All Courses</FilterPill>
+          {(menuCategories || []).map(cat => (
+            <FilterPill key={cat.id} active={activeCat === cat.id} onClick={() => setActiveCat(cat.id)}>
+              {cat.name}
+            </FilterPill>
+          ))}
+          <div className="w-6 flex-shrink-0"/>
         </div>
-        <button type="button" onClick={onClose} style={{ width: "2rem", height: "2rem", display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", color: "#6b7280", cursor: "pointer", borderRadius: "0.375rem", flexShrink: 0 }}><XIco /></button>
-      </div>
-      <div style={{ position: "relative", padding: "0 1.5rem 0.875rem" }}>
-        <div style={{ position: "absolute", left: "2.25rem", top: "50%", transform: "translateY(-50%)", color: "#9ca3af", pointerEvents: "none", display: "flex" }}><SrchIco /></div>
-        <input type="text" placeholder="Search menu items…" value={search} onChange={e => setSearch(e.target.value)} style={{ width: "100%", padding: "0.625rem 1rem 0.625rem 2.75rem", border: "1px solid #d1d5db", borderRadius: "0.5rem", fontSize: "0.875rem" }} />
-      </div>
-      <div style={{ display: "flex", gap: "0.5rem", padding: "0 1.5rem 0.875rem" }}>
-        {[["all", "All"], ["veg", "🟢 Veg"], ["nonveg", "🔴 Non-Veg"]].map(([v, l]) => (<button key={v} type="button" className="pv-btn" onClick={() => setFilter(v)} style={{ padding: "0.375rem 0.875rem", border: "1px solid #d1d5db", borderRadius: "0.375rem", background: filter === v ? "#8368ef" : "white", color: filter === v ? "white" : "#374151", fontWeight: 500, fontSize: "0.8125rem", cursor: "pointer" }}>{l}</button>))}
-      </div>
-      <div style={{ display: "flex", gap: "0.5rem", padding: "0 1.5rem 1.25rem", overflowX: "auto" }}>
-        <button type="button" className="pv-btn" onClick={() => setActiveCat(null)} style={{ padding: "0.375rem 0.875rem", border: "1px solid #d1d5db", borderRadius: "0.375rem", background: activeCat === null ? "#8368ef" : "white", color: activeCat === null ? "white" : "#374151", fontWeight: 500, fontSize: "0.8125rem", cursor: "pointer", whiteSpace: "nowrap" }}>All</button>
-        {(menuCategories || []).map(cat => (<button key={cat.id} type="button" className="pv-btn" onClick={() => setActiveCat(cat.id)} style={{ padding: "0.375rem 0.875rem", border: "1px solid #d1d5db", borderRadius: "0.375rem", background: activeCat === cat.id ? "#8368ef" : "white", color: activeCat === cat.id ? "white" : "#374151", fontWeight: 500, fontSize: "0.8125rem", cursor: "pointer", whiteSpace: "nowrap" }}>{cat.name}</button>))}
+        {/* Right fade + arrow hint */}
+        <div className="absolute right-0 top-0 bottom-0 flex items-center pointer-events-none" style={{ width:"48px", background:"linear-gradient(to right, transparent, var(--pax-card) 70%)" }}>
+          <svg className="absolute right-0.5" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--pax-t4)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
+        </div>
       </div>
     </div>
   );
 
-  const Grid = () => (
-    <div style={{ flex: 1, overflowY: "auto", padding: "1.25rem 1.5rem" }}>
+  const ItemsGrid = () => (
+    <div className="flex-1 overflow-y-auto px-6 py-5">
       {visible.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "3rem", color: "#9ca3af" }}><p style={{ fontWeight: 500, margin: 0 }}>No items found</p></div>
+        <div className="text-center py-12">
+          <ISearch size={28} color="#D1D5DB" sw={1.5}/>
+          <p className="font-semibold mt-3 mb-1 m-0" style={{ color:"var(--pax-t3)" }}>No items found</p>
+          <p className="text-sm m-0" style={{ color:"var(--pax-t4)" }}>Try a different search or filter</p>
+        </div>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))", gap: "0.625rem" }}>
-          {visible.map((item, i) => {
-            const isSel = selected.some(s => s.id === item.id);
+        <div className="grid gap-2.5" style={{ gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))" }}>
+          {visible.map(item => {
+            const isSel = selected.some(i => i.id === item.id);
             return (
-              <div key={item.id} className="pv-pop" style={{ animationDelay: `${Math.min(i, 12) * 25}ms`, display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.875rem 1rem", background: isSel ? "#f5f3ff" : "white", border: `2px solid ${isSel ? "#8368ef" : "#e5e7eb"}`, borderRadius: "0.5rem", cursor: "pointer", transition: "all 0.15s" }} onClick={() => toggleItem(item)}>
-                <input type="checkbox" checked={isSel} readOnly style={{ width: "1.125rem", height: "1.125rem", accentColor: "#8368ef", flexShrink: 0, pointerEvents: "none" }} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: "block", fontSize: "0.9375rem", fontWeight: 600, color: "#111827" }}>{item.item_name}</span>
-                  <span style={{ display: "block", fontSize: "0.8125rem", color: "#6b7280", marginTop: "0.125rem" }}>{fmt(item.price)} / person</span>
-                </div>
-                <span style={{ color: item.food_type === 1 ? "#16a34a" : "#dc2626", flexShrink: 0 }}>●</span>
+              <div
+                key={item.id}
+                onClick={() => toggle(item)}
+                className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl cursor-pointer border transition-all hover:shadow-sm"
+                style={{ borderColor: isSel ? P : "var(--pax-brd)", background: isSel ? "var(--pax-pll)" : "var(--pax-card)" }}
+              >
+                <input type="checkbox" checked={isSel} readOnly className="w-3.5 h-3.5 flex-shrink-0 pointer-events-none" style={{ accentColor:P }}/>
+                <span className="flex-1 text-[0.9375rem]" style={{ color: isSel ? P : "var(--pax-t1)", fontWeight: isSel ? 600 : 400 }}>
+                  {item.item_name}
+                </span>
+                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: item.food_type === 1 ? "#16A34A" : "#DC2626" }}/>
               </div>
             );
           })}
@@ -652,75 +1605,136 @@ function CustomMenuModal({ menuCategories, menuItems, selected, setSelected, onC
     </div>
   );
 
-  const Right = () => (
-    <div style={{ display: "flex", flexDirection: "column", background: "#fafafa", overflow: "hidden", borderLeft: "1px solid #e5e7eb" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1.25rem 1.5rem", borderBottom: "1px solid #e5e7eb", flexShrink: 0 }}>
-        <h3 style={{ fontWeight: 700, color: "#111827", margin: 0, fontSize: "1.125rem" }}>Your Selection</h3>
-        <span style={{ fontSize: "0.875rem", fontWeight: 600, color: "#8368ef", background: "white", padding: "0.25rem 0.625rem", borderRadius: "9999px", border: "1px solid #ede9fe" }}>{selected.length} items</span>
+  const SelectionPanel = () => (
+    <div className="flex flex-col overflow-hidden border-l" style={{ background:"var(--pax-muted)", borderColor:"var(--pax-brd3)" }}>
+      <div className="flex-shrink-0 flex justify-between items-center px-6 py-5 border-b" style={{ background:"var(--pax-card)", borderColor:"var(--pax-brd3)" }}>
+        <p className="font-extrabold text-base m-0" style={{ color:"var(--pax-t1)" }}>Your Selection</p>
+        <span className="text-[0.8125rem] font-medium px-2.5 py-0.5 rounded-full border" style={{ color:"var(--pax-t2)", background:"var(--pax-muted2)", borderColor:"var(--pax-brd3)" }}>
+          {selected.length} items
+        </span>
       </div>
       {selected.length === 0 ? (
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "2rem", color: "#9ca3af" }}>
-          <div style={{ marginBottom: "0.75rem" }}><SpoonIco /></div>
-          <p style={{ fontWeight: 500, margin: 0 }}>No items selected yet</p>
+        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+          <IUtensils size={24} color="#D1D5DB" sw={1.5}/>
+          <p className="font-semibold mt-3 mb-1 m-0" style={{ color:"var(--pax-t3)" }}>Nothing selected</p>
+          <p className="text-[0.8125rem] m-0" style={{ color:"var(--pax-t4)" }}>Click items on the left to add them</p>
         </div>
       ) : (
-        <div style={{ flex: 1, overflowY: "auto", padding: "1.25rem 1.5rem" }}>
+        <div className="flex-1 overflow-y-auto px-6 py-4">
           {Object.entries(grpSel).map(([cat, items]) => (
-            <div key={cat} style={{ marginBottom: "1.25rem" }}>
-              <p style={{ fontSize: "0.7rem", fontWeight: 700, color: "#6b7280", letterSpacing: "0.05em", textTransform: "uppercase", margin: "0 0 0.625rem 0" }}>{cat}</p>
-              {items.map(item => (<div key={item.id} className="pv-pop" style={{ display: "flex", alignItems: "center", gap: "0.625rem", padding: "0.625rem 0.75rem", background: "white", borderRadius: "0.375rem", marginBottom: "0.375rem", border: "1px solid #e5e7eb" }}><span style={{ color: item.food_type === 1 ? "#16a34a" : "#dc2626", fontSize: "0.875rem" }}>●</span><span style={{ flex: 1, fontSize: "0.875rem", color: "#374151", fontWeight: 500 }}>{item.item_name}</span><span style={{ fontSize: "0.8125rem", color: "#6b7280" }}>{fmt(item.price)}</span><button type="button" onClick={() => toggleItem(item)} style={{ background: "none", border: "none", color: "#9ca3af", cursor: "pointer", padding: "0.25rem", display: "flex" }}><XIco s={14} /></button></div>))}
+            <div key={cat} className="mb-5">
+              <p className="text-[0.6875rem] font-bold uppercase tracking-[0.05em] m-0 mb-2.5" style={{ color:"var(--pax-t4)" }}>{cat}</p>
+              {items.map(item => (
+                <div key={item.id} className="flex items-center gap-2 px-2.5 py-2 rounded-xl mb-1.5 border" style={{ background:"var(--pax-card)", borderColor:"var(--pax-brd3)" }}>
+                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: item.food_type === 1 ? "#16A34A" : "#DC2626" }}/>
+                  <span className="flex-1 text-sm font-medium" style={{ color:"var(--pax-t2)" }}>{item.item_name}</span>
+                  <button
+                    type="button"
+                    aria-label={`Remove ${item.item_name}`}
+                    onClick={() => toggle(item)}
+                    className="flex items-center p-0.5 rounded-md border-0 bg-transparent cursor-pointer transition-colors hover:text-red-500"
+                    style={{ color:"var(--pax-t4)" }}
+                  >
+                    <IClose size={13} sw={2}/>
+                  </button>
+                </div>
+              ))}
             </div>
           ))}
         </div>
       )}
-      <div style={{ padding: "1.25rem 1.5rem", borderTop: "1px solid #e5e7eb", background: "white", flexShrink: 0 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.875rem" }}>
-          <span style={{ fontSize: "0.875rem", color: "#6b7280" }}>Per person</span>
-          <span style={{ fontWeight: 700, color: "#8368ef", fontSize: "1.0625rem" }}>{fmt(selectedTotal)}</span>
-        </div>
-        <div style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem", padding: "0.75rem", background: "#eff6ff", borderRadius: "0.375rem", marginBottom: "1rem" }}>
-          <div style={{ color: "#3b82f6", flexShrink: 0, marginTop: "1px" }}><InfoIco s={13} /></div>
-          <span style={{ fontSize: "0.75rem", color: "#1e40af", lineHeight: 1.4 }}>Prices shown are per guest; the final total is confirmed in your quote.</span>
-        </div>
-        <button type="button" className="pv-btn" onClick={onConfirm} style={{ width: "100%", padding: "0.75rem", background: "#8368ef", color: "white", border: "none", borderRadius: "0.5rem", fontWeight: 600, cursor: "pointer", fontSize: "0.9375rem" }}>Confirm Selection ({selected.length})</button>
+      <div className="flex-shrink-0 px-6 py-4 border-t flex flex-col gap-3" style={{ borderColor:"var(--pax-brd3)", background:"var(--pax-card)" }}>
+        <InfoBanner color="blue">
+          <span className="text-[0.8125rem]">Custom menu pricing will be quoted separately by the venue.</span>
+        </InfoBanner>
+        <BtnPrimary type="button" onClick={onConfirm} style={{ width:"100%" }}>
+          Confirm Selection ({selected.length})
+        </BtnPrimary>
       </div>
     </div>
   );
 
-  if (isMobile) {
-    return (
-      <div className="pv-fade-in" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", zIndex: 10000 }}>
-        <div className="pv-scale-in" style={{ background: "white", borderRadius: "1rem 1rem 0 0", width: "100%", maxHeight: "95vh", display: "flex", flexDirection: "column" }}>
-          <div style={{ display: "flex", flexDirection: "column", overflow: "hidden", flex: 1 }}><Header /><Grid /></div>
-          <div style={{ background: "white", borderTop: "2px solid #e5e7eb", flexShrink: 0 }}>
-            <button type="button" onClick={() => setExpandSel(p => !p)} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.75rem", padding: "0.875rem 1.5rem", background: "#f9fafb", border: "none", color: "#374151", fontWeight: 600, cursor: "pointer", fontSize: "0.9375rem" }}>
-              <span style={{ background: "#8368ef", color: "white", borderRadius: "9999px", padding: "0.2rem 0.6rem", fontSize: "0.875rem", fontWeight: 700 }}>{selected.length}</span>
-              {expandSel ? "Hide" : "View"} Selection · {fmt(selectedTotal)} / person <ChevD r={expandSel} />
-            </button>
-            {expandSel && (
-              <div style={{ maxHeight: "40vh", overflowY: "auto", padding: "1rem 1.5rem", borderTop: "1px solid #e5e7eb" }}>
-                {selected.length === 0 ? <p style={{ color: "#9ca3af", textAlign: "center", margin: 0 }}>No items selected</p> : Object.entries(grpSel).map(([cat, items]) => (
-                  <div key={cat} style={{ marginBottom: "1rem" }}>
-                    <p style={{ fontSize: "0.7rem", fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 0.5rem" }}>{cat}</p>
-                    {items.map(item => (<div key={item.id} style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.375rem 0" }}><span style={{ color: item.food_type === 1 ? "#16a34a" : "#dc2626" }}>●</span><span style={{ flex: 1, fontSize: "0.875rem" }}>{item.item_name}</span><span style={{ fontSize: "0.8125rem", color: "#6b7280" }}>{fmt(item.price)}</span><button type="button" onClick={() => toggleItem(item)} style={{ background: "none", border: "none", color: "#9ca3af", cursor: "pointer", display: "flex" }}><XIco s={14} /></button></div>))}
+  if (isMobile) return (
+    <div className="fixed inset-0 flex items-end z-[10000] backdrop-blur-sm" style={{ background:"rgba(15,15,15,0.6)" }}>
+      <div className="pax-sheet flex flex-col w-full rounded-t-3xl max-h-[95vh]" style={{ background:"var(--pax-card)" }}>
+        <div className="flex-shrink-0 flex justify-between items-center px-6 py-5 border-b" style={{ borderColor:"var(--pax-brd3)" }}>
+          <div>
+            <p className="font-extrabold text-lg m-0" style={{ color:"var(--pax-t1)" }}>Custom Menu</p>
+            <p className="text-[0.8125rem] m-0 mt-0.5" style={{ color:"var(--pax-t4)" }}>{selected.length} items selected</p>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Close"
+            className="w-8 h-8 rounded-xl flex items-center justify-center cursor-pointer border hover:bg-[var(--pax-muted2)]"
+            style={{ background:"var(--pax-card)", borderColor:"var(--pax-brd)" }}>
+            <IClose size={16} sw={2}/>
+          </button>
+        </div>
+        <FiltersBar/>
+        <ItemsGrid/>
+        <div className="flex-shrink-0 border-t-2" style={{ borderColor:"var(--pax-brd3)" }}>
+          <button
+            type="button"
+            onClick={() => setShowSel(p => !p)}
+            className="w-full flex items-center justify-center gap-3 px-6 py-3.5 border-0 font-semibold cursor-pointer text-[0.9375rem]"
+            style={{ background:"var(--pax-muted)", color:"var(--pax-t2)" }}
+          >
+            <span className="rounded-full px-2 py-px text-[0.8125rem] font-bold" style={{ background:P, color:"#fff" }}>{selected.length}</span>
+            {showSel ? "Hide" : "View"} Selection <IChevD rot={showSel} size={16} sw={2}/>
+          </button>
+          {showSel && (
+            <div className="max-h-[35vh] overflow-y-auto px-6 py-3.5 border-t" style={{ borderColor:"var(--pax-brd3)" }}>
+              {selected.length === 0
+                ? <p className="text-center m-0 py-4" style={{ color:"var(--pax-t4)" }}>No items selected yet</p>
+                : Object.entries(grpSel).map(([cat, items]) => (
+                  <div key={cat} className="mb-3.5">
+                    <p className="text-[0.6875rem] font-bold uppercase tracking-[0.05em] m-0 mb-2" style={{ color:"var(--pax-t4)" }}>{cat}</p>
+                    {items.map(item => (
+                      <div key={item.id} className="flex items-center gap-2 py-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full" style={{ background: item.food_type === 1 ? "#16A34A" : "#DC2626" }}/>
+                        <span className="flex-1 text-sm" style={{ color:"var(--pax-t2)" }}>{item.item_name}</span>
+                        <button type="button" onClick={() => toggle(item)} className="flex border-0 bg-transparent cursor-pointer hover:text-red-500 transition-colors" style={{ color:"var(--pax-t4)" }}>
+                          <IClose size={13} sw={2}/>
+                        </button>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            )}
-            <div style={{ padding: "1rem 1.5rem", borderTop: "1px solid #e5e7eb" }}>
-              <button type="button" className="pv-btn" onClick={onConfirm} style={{ width: "100%", padding: "0.875rem", background: "#8368ef", color: "white", border: "none", borderRadius: "0.5rem", fontWeight: 600, cursor: "pointer", fontSize: "1rem" }}>Confirm Selection ({selected.length})</button>
+                ))
+              }
             </div>
+          )}
+          <div className="px-6 py-3.5 pb-5">
+            <BtnPrimary type="button" onClick={onConfirm} style={{ width:"100%" }}>
+              Confirm Selection ({selected.length})
+            </BtnPrimary>
           </div>
         </div>
       </div>
-    );
-  }
+    </div>
+  );
 
   return (
-    <div className="pv-fade-in" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10000, padding: "1rem" }}>
-      <div className="pv-scale-in" style={{ background: "white", borderRadius: "1rem", maxWidth: "1400px", width: "95%", maxHeight: "90vh", height: "100%", display: "grid", gridTemplateColumns: "1fr 380px", overflow: "hidden" }}>
-        <div style={{ display: "flex", flexDirection: "column", overflow: "hidden" }}><Header /><Grid /></div>
-        <Right />
+    <div className="fixed inset-0 flex items-center justify-center z-[10000] p-4 backdrop-blur-sm" style={{ background:"rgba(15,15,15,0.6)" }}>
+      <div
+        className="pax-modal grid w-[95%] h-[85vh] overflow-hidden rounded-3xl shadow-2xl"
+        style={{ background:"var(--pax-card)", maxWidth:"1400px", gridTemplateColumns:"1fr 380px" }}
+      >
+        <div className="flex flex-col overflow-hidden">
+          <div className="flex-shrink-0 px-7 py-6 border-b" style={{ borderColor:"var(--pax-brd3)" }}>
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.06em] m-0 mb-1" style={{ color:P }}>Custom Menu</p>
+                <h2 className="font-extrabold text-xl m-0" style={{ color:"var(--pax-t1)" }}>Build Your Menu</h2>
+              </div>
+              <button type="button" onClick={onClose} aria-label="Close"
+                className="w-8 h-8 rounded-xl flex items-center justify-center cursor-pointer border hover:bg-[var(--pax-muted2)]"
+                style={{ background:"var(--pax-card)", borderColor:"var(--pax-brd)", color:"var(--pax-t3)" }}>
+                <IClose size={16} sw={2}/>
+              </button>
+            </div>
+          </div>
+          <FiltersBar/>
+          <ItemsGrid/>
+        </div>
+        <SelectionPanel/>
       </div>
     </div>
   );
@@ -728,15 +1742,18 @@ function CustomMenuModal({ menuCategories, menuItems, selected, setSelected, onC
 
 // ─── ConfirmDialog ────────────────────────────────────────────────────────────
 function ConfirmDialog({ title, message, onConfirm, onCancel }) {
+  useLockScroll(onCancel);
   return (
-    <div className="pv-fade-in" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10001, padding: "1rem" }}>
-      <div className="pv-scale-in" style={{ background: "white", borderRadius: "0.75rem", padding: "2rem", maxWidth: "400px", width: "100%", textAlign: "center", boxShadow: "0 20px 60px rgba(0,0,0,0.15)" }}>
-        <div style={{ display: "flex", justifyContent: "center", marginBottom: "1rem", color: "#f59e0b" }}><WarnIco /></div>
-        <h3 style={{ fontWeight: 700, color: "#111827", margin: "0 0 0.75rem", fontSize: "1.25rem" }}>{title}</h3>
-        <p style={{ color: "#6b7280", margin: "0 0 1.5rem", lineHeight: 1.5 }}>{message}</p>
-        <div style={{ display: "flex", gap: "0.75rem" }}>
-          <button type="button" className="pv-btn" onClick={onCancel} style={{ flex: 1, padding: "0.625rem 1.25rem", background: "transparent", border: "1px solid #d1d5db", color: "#374151", borderRadius: "0.375rem", fontWeight: 500, cursor: "pointer" }}>Cancel</button>
-          <button type="button" className="pv-btn" onClick={onConfirm} style={{ flex: 1, padding: "0.625rem 1.25rem", background: "#8368ef", color: "white", border: "none", borderRadius: "0.375rem", fontWeight: 600, cursor: "pointer" }}>Confirm</button>
+    <div className="fixed inset-0 flex items-center justify-center z-[10001] p-4 backdrop-blur-sm" style={{ background:"rgba(15,15,15,0.6)" }}>
+      <div className="pax-modal rounded-2xl p-8 w-full shadow-2xl" style={{ background:"var(--pax-card)", maxWidth:"420px" }}>
+        <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-5 border border-[#FDE68A] bg-[#FFFBEB]">
+          <IWarn size={22} color="#D97706" sw={2}/>
+        </div>
+        <h3 className="font-extrabold text-xl text-center m-0 mb-2.5" style={{ color:"var(--pax-t1)" }}>{title}</h3>
+        <p className="text-center text-[0.9375rem] leading-relaxed m-0 mb-7" style={{ color:"var(--pax-t3)" }}>{message}</p>
+        <div className="flex gap-3">
+          <BtnSecondary type="button" onClick={onCancel} style={{ flex:1 }}>Cancel</BtnSecondary>
+          <BtnPrimary   type="button" onClick={onConfirm} style={{ flex:1 }}>Confirm</BtnPrimary>
         </div>
       </div>
     </div>
@@ -745,119 +1762,161 @@ function ConfirmDialog({ title, message, onConfirm, onCancel }) {
 
 // ─── SuccessModal ─────────────────────────────────────────────────────────────
 function SuccessModal({ refNum, onClose }) {
+  useLockScroll(onClose);
   return (
-    <div className="pv-fade-in" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10002, padding: "1rem" }}>
-      <div className="pv-scale-in" style={{ background: "white", borderRadius: "0.75rem", padding: "2rem", maxWidth: "28rem", width: "100%", textAlign: "center" }}>
-        <div style={{ display: "flex", justifyContent: "center", marginBottom: "1.5rem", animation: "popIn 0.5s cubic-bezier(0.16,1,0.3,1) both" }}><OkCircle /></div>
-        <h2 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#111827", margin: "0 0 0.75rem" }}>Enquiry Submitted!</h2>
-        <p style={{ color: "#6b7280", margin: "0 0 1.5rem", lineHeight: 1.5 }}>Your booking enquiry has been received. We will send you a detailed quote within 24 hours.</p>
+    <div className="fixed inset-0 flex items-center justify-center z-[10002] p-4 backdrop-blur-sm" style={{ background:"rgba(15,15,15,0.6)" }}>
+      <div className="pax-modal text-center rounded-3xl px-8 py-10 w-full shadow-2xl" style={{ background:"var(--pax-card)", maxWidth:"30rem" }}>
+        <div className="pax-pop w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 border-2 border-[#A7F3D0] bg-[#ECFDF5]">
+          <ICheckCirc size={40} color="#059669" sw={2}/>
+        </div>
+        <p className="text-xs font-bold uppercase tracking-[0.08em] m-0 mb-2 text-[#059669]">Enquiry Submitted</p>
+        <h2 className="text-[1.625rem] font-extrabold m-0 mb-3" style={{ color:"var(--pax-t1)" }}>You are all set!</h2>
+        <p className="text-[0.9375rem] leading-relaxed m-0 mb-7" style={{ color:"var(--pax-t3)" }}>
+          Our venue team will review your enquiry and send a detailed quote within 24 hours.
+        </p>
         {refNum && (
-          <div style={{ background: "#f3f4f6", padding: "1rem", borderRadius: "0.5rem", marginBottom: "1.5rem" }}>
-            <span style={{ display: "block", fontSize: "0.875rem", color: "#6b7280", marginBottom: "0.25rem" }}>Reference Number</span>
-            <span style={{ display: "block", fontSize: "1.25rem", fontWeight: 700, color: "#8368ef", fontFamily: "Courier New, monospace" }}>{refNum}</span>
+          <div className="rounded-xl px-5 py-4 mb-6 border" style={{ background:"var(--pax-muted)", borderColor:"var(--pax-brd3)" }}>
+            <p className="text-xs font-bold uppercase tracking-[0.06em] m-0 mb-1.5" style={{ color:"var(--pax-t4)" }}>Reference Number</p>
+            <p className="text-[1.375rem] font-bold m-0" style={{ color:"var(--pax-t1)", fontFamily:"Courier New, monospace", letterSpacing:"0.05em" }}>{refNum}</p>
           </div>
         )}
-        <div style={{ display: "flex", gap: "0.75rem", flexDirection: "column" }}>
-          <div style={{ display: "flex", gap: "0.5rem", padding: "0.875rem", background: "#f0fdf4", borderRadius: "0.5rem", alignItems: "flex-start" }}>
-            <ChkIcon s={16} c="#16a34a" />
-            <span style={{ fontSize: "0.875rem", color: "#15803d", textAlign: "left", lineHeight: 1.5 }}>A confirmation has been logged. Our team will reach out within 24 hours with a detailed quote.</span>
-          </div>
-          <button type="button" className="pv-btn" onClick={onClose} style={{ width: "100%", padding: "0.75rem", background: "#8368ef", color: "white", border: "none", borderRadius: "0.5rem", fontWeight: 600, cursor: "pointer", fontSize: "1rem" }}>Back to Home</button>
+        <div className="flex gap-2 items-start text-left rounded-xl px-4 py-3.5 mb-6 border border-[#BBF7D0] bg-[#F0FDF4]">
+          <span className="flex-shrink-0 flex mt-px"><ICheckCirc size={16} color="#059669" sw={2}/></span>
+          <p className="text-sm leading-relaxed m-0 text-[#065F46]">
+            A confirmation has been logged. Our team will reach out within 24 hours with a detailed quote tailored to your requirements.
+          </p>
         </div>
+        <BtnPrimary type="button" onClick={onClose} style={{ width:"100%", justifyContent:"center" }}>
+          Back to Home
+        </BtnPrimary>
       </div>
     </div>
   );
 }
 
 // ─── MobileBottomBar ──────────────────────────────────────────────────────────
-function MobileBottomBar({ pricing, showPanel, onToggle }) {
+function MobileBottomBar({ pricing, showPanel, onToggle, ctx, coverImage, selectedPackage, menuTab, customMenuItems, adultCount, childCount, bookingEventType, setBookingEventType, bookingDate, setBookingDate, bookingShift, setBookingShift, venueshifts, onOpenDateModal, onOpenGuestsModal }) {
   return (
-    <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "white", borderTop: "1px solid #e5e7eb", boxShadow: "0 -4px 6px -1px rgba(0,0,0,0.1)", zIndex: 40 }}>
+    <div className="fixed bottom-0 left-0 right-0 z-40 border-t" style={{ background:"var(--pax-card)", borderColor:"var(--pax-brd3)" }}>
       {showPanel && (
-        <div className="pv-fade-in" style={{ borderTop: "1px solid #e5e7eb", maxHeight: "70vh", overflowY: "auto" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem 1rem", borderBottom: "1px solid #e5e7eb", position: "sticky", top: 0, background: "white" }}>
-            <h3 style={{ fontWeight: 600, color: "#111827", margin: 0 }}>Price Breakdown</h3>
-            <button type="button" onClick={onToggle} style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer", display: "flex" }}><XIco /></button>
+        <div className="pax-sheet max-h-[75vh] overflow-y-auto" style={{ borderColor:"var(--pax-brd2)" }}>
+          <div className="sticky top-0 flex justify-between items-center px-5 py-4 border-b" style={{ background:"var(--pax-card)", borderColor:"var(--pax-brd3)", zIndex:1 }}>
+            <p className="font-bold m-0" style={{ color:"var(--pax-t1)" }}>Summary</p>
+            <button type="button" onClick={onToggle} className="flex border-0 bg-transparent cursor-pointer" style={{ color:"var(--pax-t3)" }}>
+              <IClose size={18} sw={2}/>
+            </button>
           </div>
-          <div style={{ padding: "1rem" }}><PricingCard pricing={pricing} /></div>
+          <SummaryCard
+            pricing={pricing}
+            ctx={ctx}
+            coverImage={coverImage}
+            selectedPackage={selectedPackage}
+            menuTab={menuTab}
+            customMenuItems={customMenuItems}
+            adultCount={adultCount}
+            childCount={childCount}
+            bookingEventType={bookingEventType}
+            setBookingEventType={setBookingEventType}
+            bookingDate={bookingDate}
+            setBookingDate={setBookingDate}
+            bookingShift={bookingShift}
+            setBookingShift={setBookingShift}
+            venueshifts={venueshifts}
+            onOpenDateModal={onOpenDateModal}
+            onOpenGuestsModal={onOpenGuestsModal}
+            flat
+          />
         </div>
       )}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.875rem 1.5rem", background: "#fafafa" }}>
-        <div>
-          <p style={{ fontSize: "0.75rem", color: "#6b7280", fontWeight: 500, margin: "0 0 0.2rem" }}>Estimated Total</p>
-          <p style={{ fontSize: "1.125rem", fontWeight: 700, color: "#8368ef", margin: 0 }}>{fmt(pricing.total)}</p>
+      {!showPanel && (
+        <div className="flex items-center justify-between px-5 py-3.5">
+          <div>
+            <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.04em] m-0 mb-0.5" style={{ color:"var(--pax-t4)" }}>Estimated Total</p>
+            <p className="text-lg font-bold m-0" style={{ color:"var(--pax-t1)" }}>
+              {pricing.total > 0 ? fmt(pricing.total) : <span className="text-sm font-medium" style={{ color:"var(--pax-t4)" }}>Select menu &amp; guests</span>}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onToggle}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-full font-semibold text-sm cursor-pointer border transition-all"
+            style={{ background:"transparent", borderColor:"var(--pax-brd)", color:"var(--pax-t2)" }}
+          >
+            View Details <IChevD rot={false} size={15} sw={2}/>
+          </button>
         </div>
-        <button type="button" className="pv-btn" onClick={onToggle} style={{ display: "flex", alignItems: "center", gap: "0.4rem", padding: "0.5rem 0.875rem", background: "#8368ef", color: "white", border: "none", borderRadius: "0.5rem", fontWeight: 500, cursor: "pointer", fontSize: "0.8125rem" }}>
-          {showPanel ? "Hide" : "View"} Details <ChevD r={showPanel} />
-        </button>
-      </div>
+      )}
     </div>
   );
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
 export default function PaxEnquiryPage() {
-  const params      = useParams();
-  const router      = useRouter();
+  const params       = useParams();
+  const router       = useRouter();
   const searchParams = useSearchParams();
 
-  const locale   = params?.locale  ?? "en";
-  const country  = params?.country ?? "in";
-  const venueId  = params?.id      ?? "";
+  const locale  = params?.locale  ?? "en";
+  const country = params?.country ?? "in";
+  const venueId = params?.id      ?? "";
 
   const ctx = useMemo(() => ({
-    eventType: searchParams.get("eventType") ?? "",
-    date:      searchParams.get("date")      ?? "",
-    shift:     searchParams.get("shift")     ?? "",
-    guests:    parseInt(searchParams.get("guests") ?? "0", 10),
-    venueName: searchParams.get("venueName") ?? "",
+    eventType:       searchParams.get("eventType")       ?? "",
+    date:            searchParams.get("date")            ?? "",
+    shift:           searchParams.get("shift")           ?? "",
+    guests:          parseInt(searchParams.get("guests") ?? "0", 10),
+    venueName:       searchParams.get("venueName")       ?? "",
+    parentVenueName: searchParams.get("parentVenueName") ?? "",
+    venueImage:      searchParams.get("venueImage")      ?? "",
+    venueRating:     searchParams.get("venueRating")     ?? "4.5",
+    venueAddress:    searchParams.get("venueAddress")    ?? "",
   }), [searchParams]);
 
-  // ── core state ──────────────────────────────────────────────────────────────
-  const [step,          setStep]          = useState(1);
-  const [menuTab,       setMenuTab]       = useState("packages");
-  const [adultCount,    setAdultCount]    = useState(ctx.guests || 0);
-  const [childCount,    setChildCount]    = useState(0);
-  // data
+  // ── State ───────────────────────────────────────────────────────────────────
+  const [step,            setStep]            = useState(1);
+  const [menuTab,         setMenuTab]         = useState("packages");
+  const [adultCount,      setAdultCount]      = useState(ctx.guests || 0);
+  const [childCount,      setChildCount]      = useState(0);
   const [packagesList,    setPackagesList]    = useState([]);
   const [menuCategories,  setMenuCategories]  = useState([]);
   const [menuItems,       setMenuItems]       = useState([]);
   const [loadingPackages, setLoadingPackages] = useState(false);
-  const [catalogError,    setCatalogError]    = useState("");
-  // selection
+  const [venueImages,     setVenueImages]     = useState([]);
+  const [venueshifts,     setVenueshifts]     = useState([]);
+  const [bookingEventType, setBookingEventType] = useState(ctx.eventType);
+  const [bookingDate,      setBookingDate]      = useState(ctx.date);
+  const [bookingShift,     setBookingShift]     = useState(ctx.shift);
   const [selectedPackage, setSelectedPackage] = useState(null);
   const [pkgSelections,   setPkgSelections]   = useState({});
   const [customMenuItems, setCustomMenuItems] = useState([]);
-  // requirements
   const [dietary,      setDietary]      = useState({});
   const [allergies,    setAllergies]    = useState({});
   const [otherAllergy, setOtherAllergy] = useState("");
   const [servingPref,  setServingPref]  = useState("");
   const [notes,        setNotes]        = useState("");
-  // contact
   const [contactName,  setContactName]  = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [contactOrg,   setContactOrg]   = useState("");
   const [errors,       setErrors]       = useState({});
-  // modals
   const [showPkgModal,    setShowPkgModal]    = useState(false);
   const [pendingPkg,      setPendingPkg]      = useState(null);
   const [tempPkgSel,      setTempPkgSel]      = useState({});
+  const [initPkgSel,      setInitPkgSel]      = useState({});
   const [showCustomModal, setShowCustomModal] = useState(false);
+  const [showDateModal,   setShowDateModal]   = useState(false);
+  const [showGuestsModal, setShowGuestsModal] = useState(false);
   const [tempCustomItems, setTempCustomItems] = useState([]);
   const [confirm,         setConfirm]         = useState(null);
-  // success
   const [showSuccess, setShowSuccess] = useState(false);
   const [enquiryRef,  setEnquiryRef]  = useState("");
   const [submitting,  setSubmitting]  = useState(false);
-  const [submitError, setSubmitError] = useState("");
-  // draft / mobile
   const [hasDraft,        setHasDraft]        = useState(false);
   const [showMobilePanel, setShowMobilePanel] = useState(false);
   const [isMobile,        setIsMobile]        = useState(false);
 
-  // ── effects ─────────────────────────────────────────────────────────────────
+  // ── Effects ─────────────────────────────────────────────────────────────────
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 1024);
     check();
@@ -866,79 +1925,51 @@ export default function PaxEnquiryPage() {
   }, []);
 
   useEffect(() => {
-    try {
-      const r = localStorage.getItem(DRAFT_KEY);
-      if (r) { const d = JSON.parse(r); if (d.venueId === venueId) setHasDraft(true); }
-    } catch { /* ignore */ }
+    try { const r = localStorage.getItem(DRAFT_KEY); if (r) { const d = JSON.parse(r); if (d.venueId === venueId) setHasDraft(true); } } catch {}
   }, [venueId]);
 
   useEffect(() => {
-    try {
-      const p = JSON.parse(localStorage.getItem("userProfile") || "{}");
-      if (p.name)  setContactName(p.name);
-      if (p.email) setContactEmail(p.email);
-      if (p.phone) setContactPhone(p.phone);
-    } catch { /* ignore */ }
+    try { const p = JSON.parse(localStorage.getItem("userProfile") || "{}"); if (p.name) setContactName(p.name); if (p.email) setContactEmail(p.email); if (p.phone) setContactPhone(p.phone); } catch {}
   }, []);
 
-  // ── catalogue (packages + menu categories/items) ──────────────────────────────
-  const loadPax = useCallback(async () => {
+  useEffect(() => {
     setLoadingPackages(true);
-    setCatalogError("");
-    try {
-      const res = await loadPackage(venueId);
-      const { categories, items, packages } = normalizeCatalog(res?.data);
-      setMenuCategories(categories);
-      setMenuItems(items);
-      setPackagesList(packages);
-      // No preset packages for this venue yet — send guests straight to the
-      // custom menu builder instead of an empty "Preset Packages" tab.
-      if (packages.length === 0) setMenuTab("custom");
-    } catch (err) {
-      console.error("Failed to load menu catalogue:", err);
-      setCatalogError("We couldn't load the menu for this venue. Please try again.");
-    } finally {
-      setLoadingPackages(false);
-    }
+    loadMockData().then(({ packages, categories, items }) => {
+      setPackagesList(packages); setMenuCategories(categories); setMenuItems(items);
+    }).finally(() => setLoadingPackages(false));
   }, [venueId]);
 
   useEffect(() => {
-    loadPax();
-  }, [loadPax]);
+    if (!venueId) return;
+    let cancelled = false;
+    loadVenues(venueId).then(res => {
+      if (cancelled) return;
+      if (res?.data?.gallery?.length) setVenueImages(res.data.gallery);
+      if (res?.data?.shifts?.length)  setVenueshifts(res.data.shifts);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [venueId]);
 
-  // ── package completeness (exact count per category) ───────────────────────────
-  const packageComplete = useMemo(() => {
-    if (!selectedPackage) return false;
-    const reqs = selectedPackage.category_requirements || [];
-    if (reqs.length === 0) return true;
-    return reqs.every(r => (pkgSelections[r.id] || []).length === r.count);
-  }, [selectedPackage, pkgSelections]);
-
-  // ── pricing ─────────────────────────────────────────────────────────────────
+  // ── Pricing ─────────────────────────────────────────────────────────────────
   const pricing = useMemo(() => {
-    let foodTotal = 0, foodDesc = "", perPersonRate = 0;
+    let foodTotal = 0, foodDesc = "";
     if (menuTab === "packages" && selectedPackage) {
-      // Package prices are flat totals for the whole event, not per-guest.
-      foodTotal = (selectedPackage.package_amount  * adultCount )|| 0;
-      foodDesc  = `${selectedPackage.package_name} (package total)`;
+      foodTotal = (selectedPackage.package_amount || 0) * adultCount;
+      foodDesc  = `${selectedPackage.package_name} × ${adultCount} persons`;
     } else if (menuTab === "custom" && customMenuItems.length > 0) {
-      perPersonRate = customMenuItems.reduce((sum, i) => sum + (i.price || 0), 0);
-      foodTotal = perPersonRate * adultCount;
-      foodDesc  = `Custom Menu — ${customMenuItems.length} items (${adultCount} guests)`;
+      foodDesc = `Custom Menu (${customMenuItems.length} items)`;
     }
     const guestCount    = adultCount + childCount;
     const addonSummary  = 0;
-    // Minimum-pax charges only make sense for per-guest pricing (custom menu).
-    const minimumCharge = menuTab === "custom" && guestCount > 0 && guestCount < MINIMUM_PAX && foodTotal > 0
-      ? (MINIMUM_PAX - guestCount) * perPersonRate : 0;
-    const subtotal = foodTotal + addonSummary + minimumCharge;
-    const tax5     = foodTotal * FOOD_TAX;
-    const tax18    = addonSummary * ADDON_TAX;
-    const total    = subtotal + tax5 + tax18;
+    const minimumCharge = guestCount > 0 && guestCount < MINIMUM_PAX && foodTotal > 0 ? (MINIMUM_PAX - guestCount) * (selectedPackage?.package_amount || 0) : 0;
+    const subtotal      = foodTotal + addonSummary + minimumCharge;
+    const tax5          = foodTotal * FOOD_TAX;
+    const tax18         = addonSummary * ADDON_TAX;
+    const total         = subtotal + tax5 + tax18;
     return { foodDesc, foodTotal, addonSummary, minimumCharge, subtotal, tax5, tax18, total };
   }, [adultCount, childCount, menuTab, selectedPackage, customMenuItems]);
 
-  // ── draft ────────────────────────────────────────────────────────────────────
+  // ── Draft ────────────────────────────────────────────────────────────────────
   const saveDraft = useCallback(() => {
     localStorage.setItem(DRAFT_KEY, JSON.stringify({ venueId, step, menuTab, adultCount, childCount, selectedPackage, pkgSelections, customMenuItems, dietary, allergies, otherAllergy, servingPref, notes, contactName, contactEmail, contactPhone, contactOrg, ts: Date.now() }));
     setHasDraft(true);
@@ -948,320 +1979,369 @@ export default function PaxEnquiryPage() {
     try {
       const d = JSON.parse(localStorage.getItem(DRAFT_KEY) || "{}");
       if (!d.venueId) return;
-      if (d.step)           setStep(d.step);
-      if (d.menuTab)        setMenuTab(d.menuTab);
-      if (d.adultCount)     setAdultCount(d.adultCount);
-      if (d.childCount)     setChildCount(d.childCount);
+      if (d.step)            setStep(d.step);
+      if (d.menuTab)         setMenuTab(d.menuTab);
+      if (d.adultCount)      setAdultCount(d.adultCount);
+      if (d.childCount)      setChildCount(d.childCount);
       if (d.selectedPackage) setSelectedPackage(d.selectedPackage);
-      if (d.pkgSelections)  setPkgSelections(d.pkgSelections);
+      if (d.pkgSelections)   setPkgSelections(d.pkgSelections);
       if (d.customMenuItems) setCustomMenuItems(d.customMenuItems);
-      if (d.dietary)        setDietary(d.dietary);
-      if (d.allergies)      setAllergies(d.allergies);
-      if (d.otherAllergy)   setOtherAllergy(d.otherAllergy);
-      if (d.servingPref)    setServingPref(d.servingPref);
-      if (d.notes)          setNotes(d.notes);
-      if (d.contactName)    setContactName(d.contactName);
-      if (d.contactEmail)   setContactEmail(d.contactEmail);
-      if (d.contactPhone)   setContactPhone(d.contactPhone);
-      if (d.contactOrg)     setContactOrg(d.contactOrg);
+      if (d.dietary)         setDietary(d.dietary);
+      if (d.allergies)       setAllergies(d.allergies);
+      if (d.otherAllergy)    setOtherAllergy(d.otherAllergy);
+      if (d.servingPref)     setServingPref(d.servingPref);
+      if (d.notes)           setNotes(d.notes);
+      if (d.contactName)     setContactName(d.contactName);
+      if (d.contactEmail)    setContactEmail(d.contactEmail);
+      if (d.contactPhone)    setContactPhone(d.contactPhone);
+      if (d.contactOrg)      setContactOrg(d.contactOrg);
       setHasDraft(false);
-    } catch { /* ignore */ }
+    } catch {}
   };
-
   const dismissDraft = () => { localStorage.removeItem(DRAFT_KEY); setHasDraft(false); };
 
-  // ── navigation + validation ───────────────────────────────────────────────────
-  const validateStep = (s) => {
-    const e = {};
-    if (s === 1) {
-      if (adultCount + childCount <= 0) e.guests = "Please add at least 1 guest to continue.";
+  // ── Navigation ───────────────────────────────────────────────────────────────
+  const validateStep = s => {
+    if (s === 3) {
+      const e = {};
+      if (!contactName.trim())  e.name  = "Full name is required";
+      if (!contactEmail.trim()) e.email = "Email address is required";
+      if (!contactPhone.trim()) e.phone = "Phone number is required";
+      setErrors(e);
+      return Object.keys(e).length === 0;
     }
-    if (s === 2) {
-      if (menuTab === "packages") {
-        if (!selectedPackage) e.menu = "Please select a food package to continue.";
-        else if (!packageComplete) e.menu = "Finish your package menu selection — tap the package card to pick the remaining items.";
-      } else if (menuTab === "custom") {
-        if (customMenuItems.length === 0) e.menu = "Please add at least one item to your custom menu.";
-      }
-    }
-    if (s === 4) {
-      if (!contactName.trim())  e.name  = "Name is required";
-      if (!contactEmail.trim()) e.email = "Email is required";
-      else if (!EMAIL_RE.test(contactEmail.trim())) e.email = "Enter a valid email address";
-      if (!contactPhone.trim()) e.phone = "Phone is required";
-      else if (!PHONE_RE.test(contactPhone.trim())) e.phone = "Enter a valid phone number";
-    }
-    setErrors(e);
-    return Object.keys(e).length === 0;
+    return true;
   };
-  const goNext = () => { if (!validateStep(step)) return; setErrors({}); setStep(s => Math.min(5, s + 1)); window.scrollTo({ top: 0, behavior: "smooth" }); };
-  const goBack = () => { setErrors({}); setStep(s => Math.max(1, s - 1)); window.scrollTo({ top: 0, behavior: "smooth" }); };
+  const goNext = () => { if (!validateStep(step)) return; setErrors({}); setStep(s => Math.min(STEPS.length, s + 1)); window.scrollTo({ top:0, behavior:"smooth" }); };
+  const goBack = () => { setStep(s => Math.max(1, s - 1)); window.scrollTo({ top:0, behavior:"smooth" }); };
 
-  // ── tab switch ────────────────────────────────────────────────────────────────
-  const handleTabSwitch = (tab) => {
+  // ── Tab Switch ────────────────────────────────────────────────────────────────
+  const handleTabSwitch = tab => {
     if (tab === menuTab) return;
     const hasSel = menuTab === "packages" ? !!selectedPackage : customMenuItems.length > 0;
-    if (hasSel) {
-      setConfirm({ title: "Switch Menu Mode?", message: "Switching will clear your current menu selection.", onConfirm: () => { setMenuTab(tab); setSelectedPackage(null); setPkgSelections({}); setCustomMenuItems([]); setConfirm(null); } });
-    } else { setMenuTab(tab); }
+    if (hasSel) setConfirm({ title:"Switch Menu Mode?", message:"Switching will clear your current menu selection. This cannot be undone.", onConfirm:() => { setMenuTab(tab); setSelectedPackage(null); setPkgSelections({}); setCustomMenuItems([]); setConfirm(null); } });
+    else setMenuTab(tab);
   };
 
-  // ── package modal ─────────────────────────────────────────────────────────────
-  const openPackageModal = (pkg) => {
+  // ── Package Modal ─────────────────────────────────────────────────────────────
+  const openPackageModal = pkg => {
     if (selectedPackage && selectedPackage.id !== pkg.id) {
-      setConfirm({ title: "Switch Package?", message: `Switch to "${pkg.package_name}"? Current customizations will be cleared.`, onConfirm: () => { setPendingPkg(pkg); setTempPkgSel({}); setShowPkgModal(true); setConfirm(null); } });
+      setConfirm({ title:"Switch Package?", message:`Switch to "${pkg.package_name}"? Your current customisations will be cleared.`, onConfirm:() => { setPendingPkg(pkg); setTempPkgSel({}); setShowPkgModal(true); setConfirm(null); } });
     } else {
-      setPendingPkg(pkg);
-      setTempPkgSel(selectedPackage?.id === pkg.id ? { ...pkgSelections } : {});
-      setShowPkgModal(true);
+    const init = selectedPackage?.id === pkg.id ? { ...pkgSelections } : {};
+    setPendingPkg(pkg); setTempPkgSel(init); setInitPkgSel(init); setShowPkgModal(true);
+  }
+  };
+  const confirmPkg = () => { setSelectedPackage(pendingPkg); setPkgSelections(tempPkgSel); setShowPkgModal(false); setPendingPkg(null); };
+  const cancelPkg  = () => {
+    const hasChanges = JSON.stringify(tempPkgSel) !== JSON.stringify(initPkgSel);
+    if (hasChanges) {
+      setConfirm({ title:"Discard Selection?", message:"Leave without saving your item selections?", onConfirm:() => { setShowPkgModal(false); setPendingPkg(null); setConfirm(null); } });
+    } else {
+      setShowPkgModal(false);
+      setPendingPkg(null);
     }
   };
-  const confirmPkg = () => { setSelectedPackage(pendingPkg); setPkgSelections(tempPkgSel); setShowPkgModal(false); setPendingPkg(null); setErrors(e => ({ ...e, menu: undefined })); };
-  const cancelPkg  = () => { setConfirm({ title: "Cancel Selection?", message: "Discard your current selections?", onConfirm: () => { setShowPkgModal(false); setPendingPkg(null); setConfirm(null); } }); };
 
-  // ── custom menu modal ─────────────────────────────────────────────────────────
+  // ── Custom Menu ───────────────────────────────────────────────────────────────
   const openCustomMenuModal = () => { setTempCustomItems([...customMenuItems]); setShowCustomModal(true); };
-  const confirmCustom       = () => { setCustomMenuItems([...tempCustomItems]); setShowCustomModal(false); setErrors(e => ({ ...e, menu: undefined })); };
-
-  // ── submit ────────────────────────────────────────────────────────────────────
-  // const handleSubmit = async () => {
-  //   if (submitting) return;
-  //   if (!validateStep(4)) { setStep(4); return; } // safety net if user reached review via draft restore
-  //   setSubmitting(true);
-  //   setSubmitError("");
-  //   const ref = genRef();
-  //   try {
-  //     await submitEnquiry({
-  //       venue_id:     venueId,
-  //       event_type:   ctx.eventType,
-  //       event_date:   ctx.date,
-  //       shift:        ctx.shift,
-  //       adult_count:  adultCount,
-  //       child_count:  childCount,
-  //       menu_mode:    menuTab,
-  //       package_id:   selectedPackage?.id,
-  //       package_selections: pkgSelections,
-  //       custom_items: customMenuItems.map(i => i.id),
-  //       dietary:      Object.entries(dietary).filter(([, v]) => v).map(([k]) => k),
-  //       allergies:    Object.entries(allergies).filter(([, v]) => v).map(([k]) => k),
-  //       other_allergy: otherAllergy,
-  //       serving_pref: servingPref,
-  //       notes,
-  //       contact_name:  contactName,
-  //       contact_email: contactEmail,
-  //       contact_phone: contactPhone,
-  //       contact_org:   contactOrg,
-  //       estimated_total: pricing.total,
-  //       _ref: ref,
-  //     });
-  //     setEnquiryRef(ref);
-  //     localStorage.removeItem(DRAFT_KEY);
-  //     setShowSuccess(true);
-  //   } catch (err) {
-  //     console.error("PAX submit error:", err);
-  //     setSubmitError("We couldn't submit your enquiry. Please check your connection and try again.");
-  //   } finally {
-  //     setSubmitting(false);
-  //   }
-  // };
-  const handleSubmit = async () => {
-  if (submitting) return;
-
-  // Validation
-  if (menuTab === "packages" && !selectedPackage) {
-    setCatalogError("Please select a preset package.");
-    return;
-  }
-
-  if (menuTab === "custom" && customMenuItems.length === 0) {
-    setCatalogError("Please select at least one menu item.");
-    return;
-  }
-
-  setSubmitting(true);
-  setCatalogError("");
-
-  const ref = genRef();
-
-  const payload = {
-    venue_id: venueId,
-    event_type: ctx.eventType,
-    event_date: ctx.date,
-    shift: ctx.shift,
-
-    adult_count: adultCount,
-    child_count: childCount,
-
-    menu_mode: menuTab,
-    package_id:   selectedPackage?.id,
-    package_selections: pkgSelections,
-
-    // package_id:
-    //   menuTab === "packages" ? selectedPackage.id : null,
-
-    custom_items:
-      menuTab === "custom"
-        ? customMenuItems.map((item) => item.id)
-        : [], 
-
-    dietary: Object.entries(dietary)
-      .filter(([, value]) => value)
-      .map(([key]) => key),
-
-    allergies: Object.entries(allergies)
-      .filter(([, value]) => value)
-      .map(([key]) => key),
-
-    other_allergy: otherAllergy,
-    serving_pref: servingPref,
-    notes,
-
-    contact_name: contactName,
-    contact_email: contactEmail,
-    contact_phone: contactPhone,
-    contact_org: contactOrg,
-
-    estimated_total: pricing.total,
-    _ref: ref,
+  const confirmCustom       = () => { setCustomMenuItems([...tempCustomItems]); setShowCustomModal(false); };
+  const cancelCustom        = () => {
+    const hasSel = tempCustomItems.length > 0;
+    if (hasSel) {
+      setConfirm({ title:"Discard Selection?", message:"Leave without saving your item selections?", onConfirm:() => { setShowCustomModal(false); setConfirm(null); } });
+    } else {
+      setShowCustomModal(false);
+    }
   };
 
-  try {
-    //const response = await submitEnquiry(payload);
-
-    const response = await package_booking(payload)
-
-     setEnquiryRef(response?.data?.booking_code);
-
-    localStorage.removeItem(DRAFT_KEY);
-
-    setShowSuccess(true);
-  } catch (err) {
-    console.error(err);
-
-    setCatalogError(
-      err?.response?.data?.message ||
-      "Unable to submit your enquiry. Please try again."
-    );
-  } finally {
-    setSubmitting(false);
-  }
-};
-
+  // ── Submit ────────────────────────────────────────────────────────────────────
+  const handleSubmit = async () => {
+    if (submitting) return;
+    setSubmitting(true);
+    const ref = genRef();
+    try {
+      await submitMockEnquiry({ venue_id:venueId, event_type:ctx.eventType, event_date:ctx.date, shift:ctx.shift, adult_count:adultCount, child_count:childCount, menu_mode:menuTab, package_id:selectedPackage?.id, custom_items:customMenuItems.map(i => i.id), dietary:Object.entries(dietary).filter(([,v])=>v).map(([k])=>k), allergies:Object.entries(allergies).filter(([,v])=>v).map(([k])=>k), other_allergy:otherAllergy, serving_pref:servingPref, notes, contact_name:contactName, contact_email:contactEmail, contact_phone:contactPhone, contact_org:contactOrg, _ref:ref });
+      setEnquiryRef(ref); localStorage.removeItem(DRAFT_KEY); setShowSuccess(true);
+    } catch (err) { console.error("PAX submit error:", err); }
+    finally { setSubmitting(false); }
+  };
   const handleSuccessClose = () => { setShowSuccess(false); router.push(`/${locale}/${country}`); };
 
-  // ── render ────────────────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────────────────────
+  const stepTitles = ["Guests & Menu", "Requirements", "Contact Info", "Review & Submit"];
+  // gallery items may be plain URL strings or objects — handle both
+  const rawImg  = venueImages[0];
+  const apiImg  = rawImg ? (typeof rawImg === "string" ? rawImg : rawImg?.url || rawImg?.src || rawImg?.image || rawImg?.photo || "") : "";
+  const coverImage = apiImg || ctx.venueImage || null;
+
   return (
     <>
-      <style>{`
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes scaleIn { from { opacity: 0; transform: scale(0.94) translateY(6px); } to { opacity: 1; transform: scale(1) translateY(0); } }
-        @keyframes popIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
-        @keyframes pulseRing {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(131,104,239,0.35); }
-          50%      { box-shadow: 0 0 0 6px rgba(131,104,239,0); }
-        }
-        .pv-fade-in { animation: fadeInUp 0.32s ease both; }
-        .pv-scale-in { animation: scaleIn 0.28s cubic-bezier(0.16,1,0.3,1) both; }
-        .pv-pop { animation: popIn 0.3s cubic-bezier(0.16,1,0.3,1) both; }
-        .pv-card { transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease; }
-        .pv-card:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(17,24,39,0.08); }
-        .pv-btn { transition: transform 0.12s ease, filter 0.12s ease, box-shadow 0.12s ease; }
-        .pv-btn:hover:not(:disabled) { filter: brightness(1.04); }
-        .pv-btn:active:not(:disabled) { transform: scale(0.97); }
-        * { box-sizing: border-box; }
-        input, textarea { outline: none; }
-        input:focus, textarea:focus { border-color: #8368ef !important; box-shadow: 0 0 0 3px rgba(131,104,239,0.12); }
-        input[type=number]::-webkit-inner-spin-button,
-        input[type=number]::-webkit-outer-spin-button { opacity: 1; }
-        @media (prefers-reduced-motion: reduce) {
-          .pv-fade-in, .pv-scale-in, .pv-pop { animation: none !important; }
-          .pv-card, .pv-btn { transition: none !important; }
-        }
-      `}</style>
+      <style>{GLOBAL_CSS}</style>
 
-      <div style={{ minHeight: "100vh", background: "#f9fafb" }}>
-        {/* Top bar */}
-        <div style={{ background: "white", borderBottom: "1px solid #e5e7eb", padding: "1rem 0" }}>
-          <div style={{ maxWidth: "1300px", margin: "0 auto", padding: "0 1.5rem", display: "flex", alignItems: "center", gap: "1rem" }}>
-            <button type="button" className="pv-btn" onClick={() => router.back()} style={{ display: "flex", alignItems: "center", gap: "0.375rem", color: "#6b7280", background: "none", border: "none", cursor: "pointer", padding: "0.375rem 0.5rem", borderRadius: "0.375rem", fontSize: "0.9375rem" }}><ChevL /> Back</button>
-            <div>
-              <h1 style={{ fontWeight: 700, color: "#111827", margin: 0, fontSize: "1.125rem" }}>Event Booking Enquiry</h1>
-              {ctx.venueName && <p style={{ color: "#6b7280", margin: 0, fontSize: "0.8125rem" }}>{ctx.venueName}</p>}
+      {/* ── Sticky header ── */}
+      <header className="sticky top-0 z-40 border-b backdrop-blur-[8px]" style={{ background:"var(--pax-header)", borderColor:"var(--pax-brd3)", WebkitBackdropFilter:"blur(8px)" }}>
+        <div className="flex items-center h-[64px] md:h-[72px] px-5 sm:px-8 lg:px-10">
+          <img src={lightLogo?.src ?? lightLogo} alt="venuebook.in" width={140} height={28} className="h-7 md:h-8 w-auto dark:hidden"/>
+          <img src={darkLogo?.src ?? darkLogo}   alt="venuebook.in" width={140} height={28} className="h-7 md:h-8 w-auto hidden dark:block"/>
+        </div>
+      </header>
+
+      {/* ── Draft banner ── */}
+      {hasDraft && (
+        <div style={{ background:"var(--pax-pll)", borderBottom:`1px solid var(--pax-pl)` }}>
+          <div className="mx-auto max-w-[1280px] px-4 lg:px-8 py-3 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2 text-[0.9375rem] font-medium" style={{ color:P }}>
+              <IInfo size={16} color={P} sw={2}/> You have a saved draft for this venue.
+            </div>
+            <div className="flex gap-2 flex-shrink-0">
+              <BtnPrimary  type="button" onClick={loadDraft}    style={{ height:"34px", fontSize:"0.8125rem", padding:"0 14px" }}>Load Draft</BtnPrimary>
+              <BtnSecondary type="button" onClick={dismissDraft} style={{ height:"34px", fontSize:"0.8125rem", padding:"0 14px" }}>Dismiss</BtnSecondary>
             </div>
           </div>
         </div>
+      )}
 
-        {/* Draft banner */}
-        {hasDraft && (
-          <div className="pv-fade-in" style={{ background: "#eff6ff", borderBottom: "1px solid #bfdbfe" }}>
-            <div style={{ maxWidth: "1300px", margin: "0 auto", padding: "0.625rem 1.5rem", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#1e40af", fontSize: "0.9375rem" }}><InfoIco s={15} /> You have a saved draft for this venue.</div>
-              <div style={{ display: "flex", gap: "0.5rem", flexShrink: 0 }}>
-                <button type="button" className="pv-btn" onClick={loadDraft} style={{ padding: "0.375rem 0.875rem", background: "#3b82f6", color: "white", border: "none", borderRadius: "0.375rem", fontWeight: 600, cursor: "pointer", fontSize: "0.875rem" }}>Load Draft</button>
-                <button type="button" className="pv-btn" onClick={dismissDraft} style={{ padding: "0.375rem 0.875rem", background: "white", color: "#374151", border: "1px solid #d1d5db", borderRadius: "0.375rem", cursor: "pointer", fontSize: "0.875rem" }}>Dismiss</button>
-              </div>
-            </div>
-          </div>
-        )}
+      {/* ── Content ── */}
+      <main className="mx-auto max-w-[1280px] px-4 pt-6 pb-40 lg:px-8 lg:pb-12">
 
-        {/* Progress */}
-        <div style={{ background: "white", borderBottom: "1px solid #e5e7eb" }}>
-          <div style={{ maxWidth: "1300px", margin: "0 auto", padding: "0 1.5rem" }}>
-            <ProgressSteps current={step} />
-          </div>
+        {/* Back + title row */}
+        <div className="flex items-center gap-4 mb-8">
+          <button
+            type="button"
+            aria-label="Go back"
+            onClick={() => step > 1 ? goBack() : router.back()}
+            className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer border flex-shrink-0 transition-colors hover:bg-[var(--pax-muted2)]"
+            style={{ borderColor:"var(--pax-brd)", color:"var(--pax-t2)" }}
+          >
+            <IChevL size={16} sw={2} color="var(--pax-t2)"/>
+          </button>
+          <h1 className="text-2xl font-bold m-0 leading-tight" style={{ color:"var(--pax-t1)" }}>PAX Enquiry</h1>
+          <p className="text-xs m-0 ml-auto flex-shrink-0" style={{ color:"var(--pax-t4)" }}>
+            Step {step} of {STEPS.length} — {STEPS.find(s => s.id === step)?.label}
+          </p>
         </div>
 
-        {/* Content */}
-        <div style={{ maxWidth: "1300px", margin: "0 auto", padding: "2rem 1.5rem", paddingBottom: isMobile ? "6rem" : "2rem" }}>
-          {catalogError && <Banner tone="error" message={catalogError} onRetry={loadPax} />}
-          {submitError && <Banner tone="error" message={submitError} />}
-          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "2fr 1fr", gap: "2rem", alignItems: "start" }}>
-            {/* Left: step content */}
-            <div>
-              <div key={step} className="pv-fade-in" style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: "0.75rem", padding: "2rem", marginBottom: "1.5rem" }}>
-                {step === 1 && <StepEventDetails ctx={ctx} adultCount={adultCount} setAdultCount={setAdultCount} childCount={childCount} setChildCount={setChildCount} error={errors.guests} />}
-                {step === 2 && <StepFoodMenu menuTab={menuTab} packagesList={packagesList} menuCategories={menuCategories} loadingPackages={loadingPackages} selectedPackage={selectedPackage} packageComplete={packageComplete} adultCount={adultCount} openPackageModal={openPackageModal} customMenuItems={customMenuItems} openCustomMenuModal={openCustomMenuModal} removeCustomItem={(id) => setCustomMenuItems(p => p.filter(i => i.id !== id))} onSwitchTab={handleTabSwitch} error={errors.menu} />}
-                {step === 3 && <StepRequirements dietary={dietary} setDietary={setDietary} allergies={allergies} setAllergies={setAllergies} otherAllergy={otherAllergy} setOtherAllergy={setOtherAllergy} servingPref={servingPref} setServingPref={setServingPref} notes={notes} setNotes={setNotes} />}
-                {step === 4 && <StepContact name={contactName} setName={setContactName} email={contactEmail} setEmail={setContactEmail} phone={contactPhone} setPhone={setContactPhone} org={contactOrg} setOrg={setContactOrg} errors={errors} />}
-                {step === 5 && <StepReview ctx={ctx} adultCount={adultCount} childCount={childCount} menuTab={menuTab} selectedPackage={selectedPackage} customMenuItems={customMenuItems} dietary={dietary} allergies={allergies} otherAllergy={otherAllergy} servingPref={servingPref} notes={notes} name={contactName} email={contactEmail} phone={contactPhone} org={contactOrg} pricing={pricing} />}
-              </div>
+        {/* Two-column grid */}
+        <div className="grid gap-8 items-start lg:grid-cols-[1fr_380px]">
 
-              {/* Nav buttons */}
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem", flexWrap: "wrap" }}>
-                <button type="button" className="pv-btn" onClick={goBack} disabled={step === 1} style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", padding: "0.625rem 1.25rem", background: "white", border: "1px solid #d1d5db", borderRadius: "0.375rem", color: "#374151", fontWeight: 500, cursor: step === 1 ? "not-allowed" : "pointer", opacity: step === 1 ? 0.5 : 1, fontSize: "0.9375rem" }}><ChevL /> Back</button>
-                <div style={{ display: "flex", gap: "0.75rem" }}>
-                  {step < 5 && <button type="button" className="pv-btn" onClick={saveDraft} style={{ padding: "0.625rem 1.25rem", background: "white", border: "1px solid #d1d5db", color: "#374151", borderRadius: "0.375rem", fontWeight: 500, cursor: "pointer", fontSize: "0.9375rem" }}>Save Draft</button>}
-                  {step < 5 ? (
-                    <button type="button" className="pv-btn" onClick={goNext} style={{ padding: "0.625rem 1.5rem", background: "#8368ef", color: "white", border: "none", borderRadius: "0.375rem", fontWeight: 600, cursor: "pointer", fontSize: "0.9375rem" }}>Next →</button>
-                  ) : (
-                    <button type="button" className="pv-btn" onClick={handleSubmit} disabled={submitting} style={{ padding: "0.625rem 1.75rem", background: submitting ? "#a78bfa" : "#8368ef", color: "white", border: "none", borderRadius: "0.375rem", fontWeight: 600, cursor: submitting ? "not-allowed" : "pointer", fontSize: "0.9375rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                      {submitting && <span style={{ width: "1rem", height: "1rem", border: "2px solid rgba(255,255,255,0.4)", borderTopColor: "white", borderRadius: "50%", animation: "spin 0.7s linear infinite", display: "inline-block" }} />}
-                      {submitting ? "Submitting…" : "Submit Enquiry"}
-                    </button>
-                  )}
+          {/* ── Left: step content ── */}
+          <div className="min-w-0">
+            {/* Step 1 — Guest Count + Food Menu (merged) */}
+            {step === 1 && (
+              <div className="pax-card flex flex-col gap-0 rounded-2xl border p-6" style={{ background:"var(--pax-card)", borderColor:"var(--pax-brd3)" }}>
+                <GuestCounter
+                  adultCount={adultCount} setAdultCount={setAdultCount}
+                  childCount={childCount} setChildCount={setChildCount}
+                />
+                <Divider className="-mx-6 my-5"/>
+                <div className="flex flex-col gap-5">
+                <StepFoodMenu
+                  menuTab={menuTab}
+                  packagesList={packagesList}
+                  loadingPackages={loadingPackages}
+                  selectedPackage={selectedPackage}
+                  adultCount={adultCount}
+                  openPackageModal={openPackageModal}
+                  customMenuItems={customMenuItems}
+                  openCustomMenuModal={openCustomMenuModal}
+                  removeCustomItem={id => setCustomMenuItems(p => p.filter(i => i.id !== id))}
+                  onSwitchTab={handleTabSwitch}
+                />
+                <InfoBanner color="blue">
+                  This is an enquiry only. The venue will review your request, discuss requirements, and confirm availability before finalising.
+                </InfoBanner>
                 </div>
               </div>
-            </div>
-
-            {/* Right: pricing (desktop) */}
-            {!isMobile && (
-              <div style={{ position: "sticky", top: "6rem" }}>
-                <PricingCard pricing={pricing} />
-              </div>
             )}
+            {/* Step 2 — Requirements */}
+            {step === 2 && (
+              <StepRequirements
+                dietary={dietary}       setDietary={setDietary}
+                allergies={allergies}   setAllergies={setAllergies}
+                otherAllergy={otherAllergy} setOtherAllergy={setOtherAllergy}
+                servingPref={servingPref}   setServingPref={setServingPref}
+                notes={notes}           setNotes={setNotes}
+              />
+            )}
+            {/* Step 3 — Contact */}
+            {step === 3 && (
+              <StepContact
+                name={contactName}   setName={setContactName}
+                email={contactEmail} setEmail={setContactEmail}
+                phone={contactPhone} setPhone={setContactPhone}
+                org={contactOrg}     setOrg={setContactOrg}
+                errors={errors}
+              />
+            )}
+            {/* Step 4 — Review */}
+            {step === 4 && (
+              <StepReview
+                ctx={ctx}
+                adultCount={adultCount} childCount={childCount}
+                menuTab={menuTab}
+                selectedPackage={selectedPackage}
+                customMenuItems={customMenuItems}
+                dietary={dietary} allergies={allergies}
+                otherAllergy={otherAllergy}
+                servingPref={servingPref}
+                notes={notes}
+                name={contactName} email={contactEmail}
+                phone={contactPhone} org={contactOrg}
+                pricing={pricing}
+              />
+            )}
+
+            {/* ── Navigation bar ── */}
+            <div className="flex items-center justify-between gap-3 mt-8 pt-6 border-t" style={{ borderColor:"var(--pax-brd3)" }}>
+              {step > 1 && (
+                <button
+                  type="button"
+                  onClick={goBack}
+                  className="flex items-center gap-1.5 px-4 h-11 rounded-xl font-semibold text-[0.9375rem] transition-all border cursor-pointer hover:bg-[var(--pax-muted)] hover:border-[var(--pax-t4)]"
+                  style={{ background:"var(--pax-card)", borderColor:"var(--pax-brd)", color:"var(--pax-t2)" }}
+                >
+                  <IChevL size={16} sw={2.5} color="currentColor"/> Back
+                </button>
+              )}
+              {step === 1 && <div/>}
+
+              <div className="flex items-center gap-2.5">
+                {step < STEPS.length && (
+                  <button
+                    type="button"
+                    onClick={saveDraft}
+                    className="flex items-center gap-1.5 px-4 h-11 rounded-xl font-semibold text-[0.9375rem] transition-all border cursor-pointer hover:bg-[var(--pax-muted)] hover:border-[var(--pax-t4)]"
+                    style={{ background:"var(--pax-card)", borderColor:"var(--pax-brd)", color:"var(--pax-t2)" }}
+                    aria-label="Save draft"
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.25} strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
+                      <polyline points="17 21 17 13 7 13 7 21"/>
+                      <polyline points="7 3 7 8 15 8"/>
+                    </svg>
+                    Save Draft
+                  </button>
+                )}
+                {step < STEPS.length ? (
+                  <BtnPrimary type="button" onClick={goNext}>
+                    Continue <IArrowR size={16} color="#fff" sw={2.25}/>
+                  </BtnPrimary>
+                ) : (
+                  <BtnPrimary type="button" onClick={handleSubmit} loading={submitting} disabled={submitting}>
+                    {submitting ? "Submitting..." : <><ICheck size={16} color="#fff" sw={2.5}/> Submit Enquiry</>}
+                  </BtnPrimary>
+                )}
+              </div>
+            </div>
           </div>
+
+          {/* ── Right: sticky summary (desktop only) ── */}
+          {!isMobile && (
+            <div className="sticky top-[80px]">
+              <SummaryCard
+                pricing={pricing}
+                ctx={ctx}
+                coverImage={coverImage}
+                selectedPackage={selectedPackage}
+                menuTab={menuTab}
+                customMenuItems={customMenuItems}
+                adultCount={adultCount}
+                childCount={childCount}
+                setAdultCount={setAdultCount}
+                setChildCount={setChildCount}
+                bookingEventType={bookingEventType}
+                setBookingEventType={setBookingEventType}
+                bookingDate={bookingDate}
+                setBookingDate={setBookingDate}
+                bookingShift={bookingShift}
+                setBookingShift={setBookingShift}
+                venueshifts={venueshifts}
+                onOpenDateModal={() => setShowDateModal(true)}
+                onOpenGuestsModal={() => setShowGuestsModal(true)}
+              />
+            </div>
+          )}
         </div>
-      </div>
+      </main>
 
-      {/* Mobile bottom bar */}
-      {isMobile && <MobileBottomBar pricing={pricing} showPanel={showMobilePanel} onToggle={() => setShowMobilePanel(p => !p)} />}
+      {/* ── Mobile bottom price bar ── */}
+      {isMobile && (
+        <MobileBottomBar
+          pricing={pricing}
+          showPanel={showMobilePanel}
+          onToggle={() => setShowMobilePanel(p => !p)}
+          ctx={ctx}
+          coverImage={coverImage}
+          selectedPackage={selectedPackage}
+          menuTab={menuTab}
+          customMenuItems={customMenuItems}
+          adultCount={adultCount}
+          childCount={childCount}
+          bookingEventType={bookingEventType}
+          setBookingEventType={setBookingEventType}
+          bookingDate={bookingDate}
+          setBookingDate={setBookingDate}
+          bookingShift={bookingShift}
+          setBookingShift={setBookingShift}
+          venueshifts={venueshifts}
+          onOpenDateModal={() => setShowDateModal(true)}
+          onOpenGuestsModal={() => setShowGuestsModal(true)}
+        />
+      )}
 
-      {/* Modals */}
-      {showPkgModal && pendingPkg && <PackageModal pkg={pendingPkg} menuCategories={menuCategories} menuItems={menuItems} selections={tempPkgSel} setSelections={setTempPkgSel} onCancel={cancelPkg} onConfirm={confirmPkg} />}
-      {showCustomModal && <CustomMenuModal menuCategories={menuCategories} menuItems={menuItems} selected={tempCustomItems} setSelected={setTempCustomItems} onClose={() => setShowCustomModal(false)} onConfirm={confirmCustom} isMobile={isMobile} />}
-      {confirm && <ConfirmDialog title={confirm.title} message={confirm.message} onConfirm={confirm.onConfirm} onCancel={() => setConfirm(null)} />}
-      {showSuccess && <SuccessModal refNum={enquiryRef} onClose={handleSuccessClose} />}
+      {/* ── Modals (all at page root to clear sticky header stacking context) ── */}
+      {showDateModal && (
+        <ChangeDateModal
+          date={bookingDate || ctx.date}
+          shift={bookingShift || ctx.shift}
+          venueshifts={venueshifts}
+          onSave={(d, s) => { setBookingDate(d); setBookingShift(s); }}
+          onClose={() => setShowDateModal(false)}
+        />
+      )}
+      {showGuestsModal && (
+        <ChangeGuestsModal
+          adultCount={adultCount}
+          childCount={childCount}
+          onSave={(a, c) => { setAdultCount(a); setChildCount(c); }}
+          onClose={() => setShowGuestsModal(false)}
+        />
+      )}
+      {showPkgModal && pendingPkg && (
+        <PackageModal
+          pkg={pendingPkg}
+          menuCategories={menuCategories}
+          menuItems={menuItems}
+          selections={tempPkgSel}
+          setSelections={setTempPkgSel}
+          onCancel={cancelPkg}
+          onConfirm={confirmPkg}
+          isMobile={isMobile}
+        />
+      )}
+      {showCustomModal && (
+        <CustomMenuModal
+          menuCategories={menuCategories}
+          menuItems={menuItems}
+          selected={tempCustomItems}
+          setSelected={setTempCustomItems}
+          onClose={cancelCustom}
+          onConfirm={confirmCustom}
+          isMobile={isMobile}
+        />
+      )}
+      {confirm && (
+        <ConfirmDialog
+          title={confirm.title}
+          message={confirm.message}
+          onConfirm={confirm.onConfirm}
+          onCancel={() => setConfirm(null)}
+        />
+      )}
+      {showSuccess && (
+        <SuccessModal refNum={enquiryRef} onClose={handleSuccessClose}/>
+      )}
     </>
   );
 }
