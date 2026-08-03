@@ -2584,7 +2584,7 @@ const checked = selected.some((i) => i.id === item.id);
         </div>
 
         {/* ── RIGHT — Pricing summary sidebar ──────────────── */}
-        <div className="sticky top-[140px] h-fit">
+        <div className="sticky top-[96px] h-fit">
           <motion.div
             initial={{ opacity: 0, x: 12 }}
             animate={{ opacity: 1, x: 0 }}

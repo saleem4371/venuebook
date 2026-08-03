@@ -1019,7 +1019,7 @@ export default function CreateLeadWorkspace() {
             </AnimatePresence>
 
             {/* Desktop: always visible + sticky */}
-            <div className="hidden lg:block lg:sticky lg:top-[140px]">
+            <div className="hidden lg:block lg:sticky lg:top-[96px]">
               <SummaryPanel venue={form.venue} t={t} reserve={reserve} />
             </div>
           </div>
