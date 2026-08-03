@@ -109,10 +109,11 @@ export default function ReportsTopNav() {
 
       {/* ══ STICKY: Tab bar only ══════════════════════════════════════════════ */}
       {/*
-        Offset accounts for: main nav (~64px) + vendor nav tabs (~44px) = ~108px.
-        Only the slim tab bar is pinned — the header above naturally scrolls away.
+        Desktop offset is navbar height only (72px) — the vendor secondary
+        nav bar this used to account for is gone (replaced by VendorSidebar,
+        a left rail that doesn't take vertical space). Mobile unchanged.
       */}
-      <div className="md:sticky z-30 top-[108px] md:top-[116px] bg-white dark:bg-[#030712] mt-4">
+      <div className="md:sticky z-30 top-[108px] md:top-[72px] bg-white dark:bg-[#030712] mt-4">
         <ScrollableTabBar
           tabs={TABS}
           active={TABS.find((t) => pathname.includes(t.href))?.key ?? ""}
