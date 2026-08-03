@@ -13,3 +13,7 @@ export const send_messages = (data) => {
 export const all_messages = (data) => {
   return api.get(`/chat/all_messages`,data);
 };
+
+export const sendMessage = (data) => {
+  return api.get(`/chat/sendMessage`,data);
+};

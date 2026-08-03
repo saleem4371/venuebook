@@ -22,6 +22,11 @@ export const DeletePhotos  = async (data) => {
   return api.post(`/venue-listing/DeletePhotos`, data);
 };
 
+export const UpdateCoverPhotos  = async (data,listingId) => {
+  const playload = { listingId , data }
+  return api.post(`/venue-listing/UpdateCoverPhotos`, playload);
+};
+
 // export const saveSetting  = async (id,data) => {
 //   return api.put(`/venue-listing/saveSetting/${id}`, data);
 // };

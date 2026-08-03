@@ -58,3 +58,10 @@ export const totalLikedProperty  = async (data) => {
 export const getParent  = async (data,data1) => {
   return api.get(`/listing/getParent/${data}/${data1}`);
 };
+
+export const checkout_data_passes  = async (data) => {
+  return api.post(`/listing/checkoutdatapass`,data);
+};
+export const verify_checkout_token  = async (data) => {
+  return api.post(`/listing/verify_checkout_token`,data);
+};
