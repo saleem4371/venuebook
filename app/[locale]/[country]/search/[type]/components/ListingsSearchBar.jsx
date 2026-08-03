@@ -123,6 +123,56 @@ export default function ListingsSearchBar({
 
   const [searchData,  setSearchData]  = useState({ location: defaultValues.location || "" });
   const [sheetOpen,   setSheetOpen]   = useState(false);
+
+  /* ── Re-sync when a NEW navigation brings fresh defaultValues ──────────
+     `dates`/`searchData` above are seeded from `defaultValues` only once,
+     at mount (that's what useState(() => ...) means). A home-screen
+     redirect that lands on this already-mounted page passes a brand new
+     `defaultValues` prop (new location/date/guests), but these two
+     `useState`s never re-run on their own — so the fields kept showing
+     stale or empty values even though the URL and parent state were
+     already correct.
+
+     This effect watches a serialized signature of the incoming
+     defaultValues and, whenever it's genuinely different from what's
+     currently applied, re-seeds `dates`/`searchData` AND bumps
+     `syncTick`. `syncTick` is folded into a `key` below so that
+     LocationAutoComplete / GuestPicker — both uncontrolled components that
+     only read `defaultValue` once — remount and pick up the fresh value
+     instead of staying frozen on whatever they first rendered with. */
+  const defaultsSignature = [
+    defaultValues.location,
+    defaultValues.date,
+    defaultValues.checkin,
+    defaultValues.checkout,
+    defaultValues.startdate,
+    defaultValues.enddate,
+    defaultValues.guests,
+  ].join("|");
+
+  const appliedSignatureRef = useRef(defaultsSignature);
+  const [syncTick, setSyncTick] = useState(0);
+
+  useEffect(() => {
+    if (defaultsSignature === appliedSignatureRef.current) return;
+    appliedSignatureRef.current = defaultsSignature;
+
+    setDates({
+      date:      parseDateParam(defaultValues.date),
+      checkin:   parseDateParam(defaultValues.checkin),
+      checkout:  parseDateParam(defaultValues.checkout),
+      startdate: parseDateParam(defaultValues.startdate),
+      enddate:   parseDateParam(defaultValues.enddate),
+    });
+    setSearchData((p) => ({
+      ...p,
+      location: defaultValues.location || "",
+      guests:   defaultValues.guests   || "",
+    }));
+    setSyncTick((t) => t + 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultsSignature]);
+
   // Mirrors MobileSearchSheet's current selection so the collapsed "Where
   // to?" trigger button above reflects it too, not just the sheet's own
   // sticky summary bar (same pattern as HeroSection.jsx's mobileSummary).
@@ -198,7 +248,7 @@ export default function ListingsSearchBar({
 
         {visibleFields.map((field, i) => (
           <SearchField
-            key={`${activeCategory}-${field.id}`}
+            key={`${activeCategory}-${field.id}-${syncTick}`}
             field={field}
             tint={tint}
             category={activeCategory}
