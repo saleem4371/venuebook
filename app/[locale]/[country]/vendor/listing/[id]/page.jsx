@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
@@ -22,6 +23,15 @@ import {
   AlertCircle,
   X,
   ExternalLink,
+  Building2,
+  Trees,
+  Camera,
+  Briefcase,
+  Warehouse,
+  Compass,
+  MapPin,
+  Monitor,
+  Smartphone,
 } from "lucide-react";
 import StepRenderer from "./steps/StepRenderer";
 import { steps as ALL_STEPS, isStepCompleted } from "./steps/stepsConfig";
@@ -48,6 +58,7 @@ import {
   saveAddonsStep,
   saveTermsStep,
   DeletePhotos,
+  UpdateCoverPhotos,
   getAddon
 } from "@/services/vendor.service";
 
@@ -98,7 +109,7 @@ const CATEGORY_THEME = {
 const CATEGORY_CONFIG = {
   venues: {
     label: "Venue",
-    emoji: "🏛️",
+    Icon: Building2,
     steps: [
       "photo",
       "basic",
@@ -120,7 +131,7 @@ const CATEGORY_CONFIG = {
   },
   farmstays: {
     label: "Farmstay",
-    emoji: "🌿",
+    Icon: Trees,
     steps: ["photo", "basic", "capacity", "amenities", "location", "pricing", "tags", "terms"],
     titles: {
       basic: "Property Details",
@@ -132,7 +143,7 @@ const CATEGORY_CONFIG = {
   },
   studios: {
     label: "Studio",
-    emoji: "🎬",
+    Icon: Camera,
     steps: ["photo", "basic", "amenities", "location", "pricing", "tags", "addons", "terms"],
     titles: {
       basic: "Studio Details",
@@ -144,7 +155,7 @@ const CATEGORY_CONFIG = {
   },
   workspaces: {
     label: "Workspace",
-    emoji: "💼",
+    Icon: Briefcase,
     steps: ["photo", "basic", "capacity", "amenities", "location", "pricing", "terms"],
     titles: {
       basic: "Space Details",
@@ -155,7 +166,7 @@ const CATEGORY_CONFIG = {
   },
   rentals: {
     label: "Rental",
-    emoji: "🏠",
+    Icon: Warehouse,
     steps: ["photo", "capacity", "amenities", "location", "pricing", "tags", "terms"],
     titles: {
       basic: "Property Details",
@@ -166,7 +177,7 @@ const CATEGORY_CONFIG = {
   },
   experiences: {
     label: "Experience",
-    emoji: "✨",
+    Icon: Compass,
     steps: ["photo", "basic", "capacity", "amenities", "location", "pricing", "addons", "terms"],
     titles: {
       basic: "Experience Details",
@@ -407,7 +418,7 @@ function SettingsContent({ section, isDark, brand = DEFAULT_BRAND, form, setForm
       <div className="space-y-4">
         <SettingCard title="Listing Status" description="Control whether this listing is visible to guests." tk={tk}>
           <Segmented
-            options={[{ value: "draft", label: "Draft" }, { value: "live", label: "🟢 Live" }]}
+            options={[{ value: "draft", label: "Draft" }, { value: "live", label: "Live" }]}
             value={pub.status}
             onChange={(v) => setPub((p) => ({ ...p, status: v }))}
             tk={tk}
@@ -547,8 +558,8 @@ function SettingsContent({ section, isDark, brand = DEFAULT_BRAND, form, setForm
         {/* <SettingCard title="Booking Type" tk={tk}>
           <Segmented
             options={[
-              { value: "instant", label: "⚡ Instant Book" },
-              { value: "request", label: "📋 Request to Book" },
+              { value: "instant", label: "Instant Book" },
+              { value: "request", label: "Request to Book" },
             ]}
             value={res.type}
             onChange={(v) => setRes((p) => ({ ...p, type: v }))}
@@ -833,15 +844,34 @@ function SettingsContent({ section, isDark, brand = DEFAULT_BRAND, form, setForm
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   PREVIEW MODAL — FIX: was never rendered/wired up
-───────────────────────────────────────────────────────────────────────────── */
-function PreviewModal({ form, listingId, isDark, onClose, catCfg }) {
-  const tk = tokens(isDark);
+   PREVIEW MODAL
+   Shows the REAL public listing page (search/[type]/[id]) in an iframe —
+   not a hand-built summary card — so what the vendor sees here is exactly
+   what a guest sees, with no risk of the two drifting apart. A Desktop /
+   Mobile toggle resizes the iframe's viewport, the same pattern most page
+   builders use for a device preview.
 
-  /* Build a safe preview URL — adjust base path to your actual public listing route */
-  const previewUrl = listingId
-    ? `/listings/${listingId}?preview=1`
-    : null;
+   Falls back to a lightweight summary card only when there's no
+   listingId yet (a brand-new, unsaved listing has no public page to
+   iframe).
+
+   Portaled to document.body (not just position:fixed in place) — the
+   editor's PageMainWrapper carries an always-on framer-motion
+   transform/filter, which turns plain `position:fixed` into "fixed
+   relative to that box" instead of the real viewport. Same fix already
+   applied to EditorLoadingOverlay / CategoryTransitionOverlay elsewhere
+   in this app.
+───────────────────────────────────────────────────────────────────────────── */
+function PreviewModal({ form, listingId, isDark, onClose, catCfg, category, locale, country }) {
+  const tk = tokens(isDark);
+  const [device, setDevice] = useState("desktop"); // 'desktop' | 'mobile'
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  const previewUrl =
+    listingId && category && locale && country
+      ? `/${locale}/${country}/search/${category}/${listingId}?preview=1`
+      : null;
 
   const coverPhoto = (() => {
     const p = form?.photos?.[0];
@@ -850,73 +880,103 @@ function PreviewModal({ form, listingId, isDark, onClose, catCfg }) {
     return p.src || p.url || p.path || null;
   })();
 
-  return (
-    /* Backdrop — full-screen faux viewport so it contributes layout height */
+  if (!mounted) return null;
+
+  return createPortal(
+    /* Full-screen takeover — desktop only (the trigger buttons are both
+       md:-gated; there's no small-screen entry point into this modal
+       anymore, see AdminLayout/ListingEditor). No backdrop padding or
+       centering needed since the shell fills the entire viewport. */
     <div
       style={{
         position: "fixed",
         inset: 0,
-        zIndex: 999,
-        background: "rgba(0,0,0,0.72)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        backdropFilter: "blur(6px)",
-        WebkitBackdropFilter: "blur(6px)",
+        zIndex: 9999,
+        background: "rgba(8,10,20,0.58)",
+        backdropFilter: "blur(14px) saturate(140%)",
+        WebkitBackdropFilter: "blur(14px) saturate(140%)",
       }}
-      onClick={onClose}
     >
       <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 16 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 16 }}
-        transition={{ duration: 0.2, ease: "easeOut" }}
-        onClick={(e) => e.stopPropagation()}
+        initial={{ opacity: 0, scale: 0.99 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.99 }}
+        transition={{ duration: 0.18, ease: "easeOut" }}
         style={{
           background: tk.panel,
-          border: `1px solid ${tk.border}`,
-          borderRadius: "24px",
-          boxShadow: tk.shadow,
-          width: "min(560px, calc(100vw - 32px))",
-          maxHeight: "calc(100vh - 64px)",
-          overflowY: "auto",
+          width: "100%",
+          height: "100%",
+          overflow: "hidden",
           position: "relative",
+          display: "flex",
+          flexDirection: "column",
         }}
       >
         {/* Modal header */}
         <div
-          className="flex items-center justify-between px-6 py-4 sticky top-0 z-10"
+          className="flex items-center justify-between gap-3 px-5 py-3.5 shrink-0"
           style={{
             background: tk.panel,
             borderBottom: `1px solid ${tk.border}`,
           }}
         >
-          <div className="flex items-center gap-2">
-            <span className="text-base">{catCfg?.emoji}</span>
-            <p className="text-[15px] font-bold" style={{ color: tk.text }}>
-              Listing Preview
+          <div className="flex items-center gap-2 min-w-0">
+            {catCfg?.Icon && <catCfg.Icon size={15} className="shrink-0" style={{ color: tk.muted }} />}
+            <p className="text-[14px] font-bold truncate" style={{ color: tk.text }}>
+              {previewUrl ? "Listing Preview" : "Listing Preview (not saved yet)"}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Desktop / Mobile toggle — only meaningful once there's a
+                real page to resize */}
+            {previewUrl && (
+              <div
+                className="flex items-center gap-0.5 p-0.5 rounded-full"
+                style={{ background: tk.trackBg }}
+              >
+                {[
+                  { key: "desktop", Icon: Monitor, label: "Desktop" },
+                  { key: "mobile", Icon: Smartphone, label: "Mobile" },
+                ].map(({ key, Icon, label }) => (
+                  <button
+                    key={key}
+                    onClick={() => setDevice(key)}
+                    aria-label={label}
+                    title={label}
+                    className="flex items-center gap-1.5 h-7 px-3 rounded-full text-[11px] font-semibold cursor-pointer transition-colors"
+                    style={
+                      device === key
+                        ? { background: tk.panel, color: tk.text, boxShadow: tk.shadow }
+                        : { color: tk.muted }
+                    }
+                  >
+                    <Icon size={12} />
+                    <span className="hidden sm:inline">{label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
             {previewUrl && (
               <a
                 href={previewUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-semibold transition-all"
-                style={{
-                  background: "rgba(164,75,243,0.12)",
-                  border: "1px solid rgba(164,75,243,0.22)",
-                  color: "#a44bf3",
-                }}
+                className="hidden sm:flex items-center gap-1.5 h-8 px-3 rounded-full text-[12px] font-semibold transition-colors"
+                style={{ background: tk.trackBg, color: tk.muted }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = tk.text)}
+                onMouseLeave={(e) => (e.currentTarget.style.color = tk.muted)}
               >
                 <ExternalLink size={12} />
                 Open full page
               </a>
             )}
+
             <button
               onClick={onClose}
-              className="w-8 h-8 rounded-xl flex items-center justify-center cursor-pointer transition-all"
+              aria-label="Close"
+              className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer transition-colors"
               style={{ background: tk.trackBg, color: tk.muted }}
             >
               <X size={14} />
@@ -924,114 +984,124 @@ function PreviewModal({ form, listingId, isDark, onClose, catCfg }) {
           </div>
         </div>
 
-        {/* Cover image */}
-        <div
-          className="w-full"
-          style={{
-            aspectRatio: "16/9",
-            background: tk.trackBg,
-            overflow: "hidden",
-          }}
-        >
-          {coverPhoto ? (
-            <img src={coverPhoto} alt="Cover" className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center gap-2">
-              <Eye size={28} style={{ color: tk.dimmed }} />
-              <p className="text-[12px]" style={{ color: tk.dimmed }}>
-                No cover photo yet
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* Listing info */}
-        <div className="px-6 py-5 space-y-4">
-          <div>
-            <h2 className="text-[20px] font-bold" style={{ color: tk.text }}>
-              {form?.title || (
-                <span style={{ color: tk.dimmed }}>Untitled listing</span>
-              )}
-            </h2>
-            {(form?.city || form?.state) && (
-              <p className="text-[13px] mt-1" style={{ color: tk.muted }}>
-                📍 {[form.city, form.state].filter(Boolean).join(", ")}
-              </p>
-            )}
-          </div>
-
-          {form?.description && (
-            <p className="text-[13px] leading-relaxed" style={{ color: tk.muted }}>
-              {form.description}
-            </p>
-          )}
-
-          {/* Capacity */}
-          {(form?.minCapacity || form?.maxCapacity) && (
-            <div
-              className="flex items-center gap-3 px-4 py-3 rounded-xl"
-              style={{ background: tk.trackBg, border: `1px solid ${tk.border}` }}
-            >
-              <Users size={16} style={{ color: tk.muted }} />
-              <div>
-                <p className="text-[12px] font-semibold" style={{ color: tk.text }}>
-                  Capacity
-                </p>
-                <p className="text-[11px]" style={{ color: tk.muted }}>
-                  {form.minCapacity}–{form.maxCapacity} guests
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Photo count */}
-          {form?.photos?.length > 0 && (
-            <div className="flex items-center gap-2">
-              <div
-                className="flex -space-x-2"
-                style={{ direction: "ltr" }}
-              >
-                {form.photos.slice(0, 4).map((p, i) => {
-                  const src =
-                    typeof p === "string" ? p : p?.src || p?.url || p?.path || "";
-                  return src ? (
-                    <img
-                      key={i}
-                      src={src}
-                      alt=""
-                      className="w-8 h-8 rounded-lg object-cover"
-                      style={{
-                        border: `2px solid ${tk.panel}`,
-                        zIndex: 4 - i,
-                      }}
-                    />
-                  ) : null;
-                })}
-              </div>
-              <p className="text-[12px]" style={{ color: tk.muted }}>
-                {form.photos.length} photo{form.photos.length !== 1 ? "s" : ""}
-              </p>
-            </div>
-          )}
-
-          {/* No data notice */}
-          {!form?.title && !form?.description && !form?.photos?.length && (
-            <div
-              className="flex items-center gap-3 px-4 py-4 rounded-xl"
+        {/* ── Body ── */}
+        {previewUrl ? (
+          /* Real public page, live — the iframe IS the preview, so
+             desktop/mobile always matches what a guest actually gets. */
+          <div
+            className="flex-1 min-h-0 flex items-center justify-center overflow-hidden"
+            style={{ background: tk.trackBg, padding: device === "mobile" ? "16px" : 0 }}
+          >
+            <iframe
+              key={device}
+              src={previewUrl}
+              title="Listing preview"
+              className="bg-white"
               style={{
-                background: "rgba(245,158,11,0.06)",
-                border: "1px solid rgba(245,158,11,0.16)",
+                width: device === "mobile" ? "min(400px, 100%)" : "100%",
+                height: "100%",
+                border: device === "mobile" ? `8px solid ${tk.text}` : "none",
+                borderRadius: device === "mobile" ? "28px" : 0,
+                boxShadow: device === "mobile" ? "0 12px 32px rgba(0,0,0,0.28)" : "none",
               }}
+            />
+          </div>
+        ) : (
+          /* No listingId yet — nothing to iframe, fall back to a plain
+             summary of what's been entered so far. */
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            <div
+              className="w-full"
+              style={{ aspectRatio: "16/9", background: tk.trackBg, overflow: "hidden" }}
             >
-              <AlertCircle size={16} style={{ color: "#f59e0b" }} />
-              <p className="text-[12px]" style={{ color: "#fcd34d" }}>
-                Complete some steps to see a fuller preview
-              </p>
+              {coverPhoto ? (
+                <img src={coverPhoto} alt="Cover" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center gap-2">
+                  <Eye size={28} style={{ color: tk.dimmed }} />
+                  <p className="text-[12px]" style={{ color: tk.dimmed }}>
+                    No cover photo yet
+                  </p>
+                </div>
+              )}
             </div>
-          )}
-        </div>
+
+            <div className="px-6 py-5 space-y-4">
+              <div>
+                <h2 className="text-[20px] font-bold" style={{ color: tk.text }}>
+                  {form?.title || <span style={{ color: tk.dimmed }}>Untitled listing</span>}
+                </h2>
+                {(form?.city || form?.state) && (
+                  <p className="text-[13px] mt-1 flex items-center gap-1" style={{ color: tk.muted }}>
+                    <MapPin size={12} className="shrink-0" />
+                    {[form.city, form.state].filter(Boolean).join(", ")}
+                  </p>
+                )}
+              </div>
+
+              {form?.description && (
+                <p className="text-[13px] leading-relaxed" style={{ color: tk.muted }}>
+                  {form.description}
+                </p>
+              )}
+
+              {(form?.minCapacity || form?.maxCapacity) && (
+                <div
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl"
+                  style={{ background: tk.trackBg, border: `1px solid ${tk.border}` }}
+                >
+                  <Users size={16} style={{ color: tk.muted }} />
+                  <div>
+                    <p className="text-[12px] font-semibold" style={{ color: tk.text }}>
+                      Capacity
+                    </p>
+                    <p className="text-[11px]" style={{ color: tk.muted }}>
+                      {form.minCapacity}–{form.maxCapacity} guests
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {form?.photos?.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <div className="flex -space-x-2" style={{ direction: "ltr" }}>
+                    {form.photos.slice(0, 4).map((p, i) => {
+                      const src = typeof p === "string" ? p : p?.src || p?.url || p?.path || "";
+                      return src ? (
+                        <img
+                          key={i}
+                          src={src}
+                          alt=""
+                          className="w-8 h-8 rounded-lg object-cover"
+                          style={{ border: `2px solid ${tk.panel}`, zIndex: 4 - i }}
+                        />
+                      ) : null;
+                    })}
+                  </div>
+                  <p className="text-[12px]" style={{ color: tk.muted }}>
+                    {form.photos.length} photo{form.photos.length !== 1 ? "s" : ""}
+                  </p>
+                </div>
+              )}
+
+              <div
+                className="flex items-center gap-3 px-4 py-4 rounded-xl"
+                style={{
+                  background: "rgba(245,158,11,0.06)",
+                  border: "1px solid rgba(245,158,11,0.16)",
+                }}
+              >
+                <AlertCircle size={16} style={{ color: "#f59e0b" }} />
+                <p className="text-[12px]" style={{ color: "#fcd34d" }}>
+                  Save this listing to see the live desktop &amp; mobile preview
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </motion.div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -1412,6 +1482,13 @@ export default function ListingEditor() {
  await DeletePhotos(image);
 
   // api delete logic
+};  
+
+const onUpdateCoverImage = async (data,listingId) => {
+ 
+ await UpdateCoverPhotos(data,listingId);
+
+  // api delete logic
 };
 
 
@@ -1431,7 +1508,6 @@ export default function ListingEditor() {
 
   /* ── Active step derived ──────────────────────────────────────────────────── */
   const activeStepObj = categorySteps.find((s) => s.key === activeStep);
-  const stepIndex = categorySteps.findIndex((s) => s.key === activeStep);
   const stepDone = activeStep ? isStepCompleted(activeStep, form) : false;
   const isOptional = activeStepObj?.required === false;
 
@@ -1504,15 +1580,10 @@ export default function ListingEditor() {
         if (cancelled) return;
         setEvent(resEvent?.data ?? []);
         setProperty(resProp?.data?.data ?? []);
-        const mergedData = (resAmen?.data?.data ?? []).map((group) => ({
-          ...group,
-          children: (group.children ?? []).map((item) => ({
-            ...item,
-            icon: "Check",
-            color: "",
-          })),
-        }));
-        setAmenities(mergedData);
+        // Real amenity icon names (e.g. "Wifi", "Zap") come straight from
+        // the API, same convention the start-listing flow uses — no need
+        // to override them (that was clobbering every icon with "Check").
+        setAmenities(resAmen?.data?.data ?? []);
         setAddons(resAddon?.data ?? []);
       } catch (err) {
         if (!cancelled) console.error("Amenities load error:", err);
@@ -1630,7 +1701,7 @@ export default function ListingEditor() {
   if (isPageLoading) {
     return (
       <div
-        className="-mx-4 sm:-mx-6 md:-mx-8 lg:-mx-10 -mb-24 h-[calc(100vh-64px)] md:h-[calc(100vh-72px)]"
+        className="-mx-4 sm:-mx-6 md:-mx-8 lg:-mx-10 -mb-24 h-[100dvh]"
         style={{ background: tk.page }}
       >
         <LoadingScreen isDark={isDark} />
@@ -1648,6 +1719,9 @@ export default function ListingEditor() {
             listingId={listingId}
             isDark={isDark}
             catCfg={catCfg}
+            category={activeCategory}
+            locale={params?.locale}
+            country={params?.country}
             onClose={() => setShowPreview(false)}
           />
         )}
@@ -1656,7 +1730,7 @@ export default function ListingEditor() {
       <div
         className={[
           "-mx-4 sm:-mx-6 md:-mx-8 lg:-mx-10 -mb-24",
-          "h-[calc(100vh-64px)] md:h-[calc(100vh-72px)]",
+          "h-[100dvh]",
           "flex flex-col overflow-hidden",
         ].join(" ")}
         style={{ background: tk.page }}
@@ -1665,87 +1739,82 @@ export default function ListingEditor() {
             GLOBAL HEADER
         ════════════════════════════════════════════════════ */}
         <header
-          className="shrink-0 flex items-center justify-between gap-4 px-4 md:px-6"
+          className="shrink-0 flex items-center justify-between gap-4 px-5 md:px-7"
           style={{
             background: tk.panel,
             borderBottom: `1px solid ${tk.border}`,
-            minHeight: "70px",
+            minHeight: "76px",
           }}
         >
           <div className="flex items-center gap-4 min-w-0">
+            {/* Back — icon-only, larger tap target. The arrow already
+                says "go back"; a text label next to it was redundant. */}
             <button
               onClick={() => router.back()}
-              className="hidden md:flex items-center gap-1.5 text-[13px] font-medium cursor-pointer transition-colors shrink-0"
+              aria-label="Back"
+              title="Back"
+              className="hidden md:flex items-center justify-center w-10 h-10 rounded-full transition-colors cursor-pointer shrink-0"
               style={{ color: tk.muted }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = tk.text)}
-              onMouseLeave={(e) => (e.currentTarget.style.color = tk.muted)}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = tk.text;
+                e.currentTarget.style.background = tk.trackBg;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = tk.muted;
+                e.currentTarget.style.background = "transparent";
+              }}
             >
-              <ArrowLeft size={14} /> Back
+              <ArrowLeft size={19} />
             </button>
 
             {!mobileShowContent && (
               <button
                 onClick={() => router.back()}
-                className="flex md:hidden items-center gap-1.5 text-[13px] font-medium cursor-pointer transition-colors shrink-0"
+                aria-label="Back"
+                title="Back"
+                className="flex md:hidden items-center justify-center w-10 h-10 rounded-full transition-colors cursor-pointer shrink-0"
                 style={{ color: tk.muted }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = tk.text)}
-                onMouseLeave={(e) => (e.currentTarget.style.color = tk.muted)}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = tk.text;
+                  e.currentTarget.style.background = tk.trackBg;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = tk.muted;
+                  e.currentTarget.style.background = "transparent";
+                }}
               >
-                <ArrowLeft size={14} /> Back
+                <ArrowLeft size={19} />
               </button>
             )}
 
             {mobileShowContent && (
               <button
                 onClick={() => setMobileShowContent(false)}
-                className="md:hidden flex items-center gap-1.5 text-[13px] font-medium cursor-pointer transition-colors shrink-0"
+                className="md:hidden flex items-center gap-1.5 h-10 pl-2 pr-3 rounded-full text-[13px] font-medium cursor-pointer transition-colors shrink-0"
                 style={{ color: tk.muted }}
               >
-                <ArrowLeft size={14} /> Steps
+                <ArrowLeft size={18} /> Steps
               </button>
             )}
 
-            <div className="w-px h-5 shrink-0" style={{ background: tk.border }} />
+            <div className="w-px h-6 shrink-0" style={{ background: tk.border }} />
 
             <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="text-base leading-none shrink-0">{catCfg.emoji}</span>
-                <h1 className="text-[18px] font-bold truncate" style={{ color: tk.text }}>
-                  Listing Editor
-                </h1>
-                <span
-                  className="hidden sm:inline-flex shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full"
-                  style={
-                    allCompleted
-                      ? {
-                          background: "rgba(16,185,129,0.12)",
-                          border: "1px solid rgba(16,185,129,0.22)",
-                          color: "#6ee7b7",
-                        }
-                      : {
-                          background: `${catTheme.ring}0.10)`,
-                          border: `1px solid ${catTheme.ring}0.20)`,
-                          color: catTheme.accent,
-                        }
-                  }
-                >
-                  {allCompleted
-                    ? form.publish_status === 1
-                      ? "Published"
-                      : "Ready to Publish"
-                    : `${progress}%`}
-                </span>
-              </div>
+              <h1 className="text-[23px] font-bold truncate tracking-tight" style={{ color: tk.text }}>
+                Listing Editor
+              </h1>
               <p className="text-[11px] mt-0.5" style={{ color: tk.dimmed }}>
                 {completedCount} of {categorySteps.length} sections complete
               </p>
             </div>
           </div>
 
-          {/* FIX: Preview button now opens the PreviewModal */}
+          {/* Preview — kept neutral (no accent tint) rather than reading
+              as a colored primary action; a small mr- pulls it in from
+              the header's edge instead of sitting flush against it. */}
           <button
             onClick={() => setShowPreview(true)}
-            className="hidden md:flex items-center gap-2 px-4 py-2 rounded-xl text-[12px] font-semibold transition-all cursor-pointer shrink-0"
+            className="hidden md:flex items-center gap-2 h-10 px-5 mr-1 rounded-full text-[13px] font-semibold transition-all duration-200 cursor-pointer shrink-0"
             style={{
               background: tk.trackBg,
               border: `1px solid ${tk.border}`,
@@ -1753,14 +1822,14 @@ export default function ListingEditor() {
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.color = tk.text;
-              e.currentTarget.style.borderColor = "rgba(164,75,243,0.38)";
+              e.currentTarget.style.borderColor = tk.dimmed;
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.color = tk.muted;
               e.currentTarget.style.borderColor = tk.border;
             }}
           >
-            <Eye size={14} /> Preview
+            <Eye size={15} /> Preview
           </button>
         </header>
 
@@ -1798,22 +1867,27 @@ export default function ListingEditor() {
                   style={{ background: tk.card, border: `1px solid ${tk.border}` }}
                 >
                   <div
-                    className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-base"
+                    className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
                     style={{
                       background: `${catTheme.ring}0.12)`,
                       border: `1px solid ${catTheme.ring}0.22)`,
                     }}
                   >
-                    {catCfg.emoji}
+                    <catCfg.Icon size={16} style={{ color: catTheme.accent }} />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-[13px] font-bold truncate leading-tight" style={{ color: tk.text }}>
                       {form?.title || "Untitled Listing"}
                     </p>
                     <p className="text-[11px] mt-0.5" style={{ color: tk.muted }}>
-                      {allCompleted ? "Ready to publish" : `${progress}% complete`}
+                      {allCompleted ? "Ready to publish" : "In progress"}
                     </p>
                   </div>
+                  {/* Progress ring is the single place the percentage
+                      shows (the text above used to repeat it as "67%
+                      complete" — redundant). Complete state swaps the
+                      number for a checkmark instead of a "100", which
+                      read as oddly cartoonish at this size. */}
                   <div className="relative w-10 h-10 shrink-0">
                     <svg className="w-full h-full -rotate-90" viewBox="0 0 40 40">
                       <circle cx="20" cy="20" r="16" fill="none" strokeWidth="3.5" stroke={tk.trackBg} />
@@ -1827,10 +1901,14 @@ export default function ListingEditor() {
                       />
                     </svg>
                     <span
-                      className="absolute inset-0 flex items-center justify-center text-[10px] font-black tabular-nums"
+                      className="absolute inset-0 flex items-center justify-center"
                       style={{ color: allCompleted ? "#10b981" : catTheme.accent }}
                     >
-                      {progress}
+                      {allCompleted ? (
+                        <Check size={14} strokeWidth={2.75} />
+                      ) : (
+                        <span className="text-[10px] font-semibold tabular-nums">{progress}</span>
+                      )}
                     </span>
                   </div>
                 </div>
@@ -1871,7 +1949,7 @@ export default function ListingEditor() {
                     color: "#fcd34d",
                   }}
                 >
-                  <span className="shrink-0">⚠️</span>
+                  <AlertCircle size={13} className="shrink-0" />
                   Complete all steps below to publish
                 </div>
               )}
@@ -1881,49 +1959,21 @@ export default function ListingEditor() {
             {sidebarTab === "workspace" && (
               <>
                 <div className="p-4 flex-1">
-                  <div className="relative">
+                  {/* Plain checklist — no connecting timeline/subway-line
+                      between rows. The editor lets you jump to any step
+                      freely, so a linear "journey map" was misleading as
+                      well as visually heavy; a small status badge per
+                      row is enough. */}
+                  <div className="space-y-1.5">
                     {categorySteps.map((step, idx) => {
                       const done = isStepCompleted(step.key, form);
                       const isAct = sidebarTab === "workspace" && activeStep === step.key;
-                      const isLast = idx === categorySteps.length - 1;
 
                       return (
-                        <div key={step.key} className="relative flex items-center gap-3 mb-1">
-                          {!isLast && (
-                            <div
-                              className="absolute left-[15px] w-[2px]"
-                              style={{
-                                top: "calc(50% + 16px)",
-                                height: "calc(100% - 28px)",
-                                background: done ? "rgba(16,185,129,0.45)" : tk.border,
-                              }}
-                            />
-                          )}
-                          <div
-                            className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 z-10 relative transition-all duration-200"
-                            style={{
-                              background: done ? "#10b981" : isAct ? `${catTheme.ring}0.18)` : tk.card,
-                              border: done
-                                ? "2px solid #10b981"
-                                : isAct
-                                ? `2px solid ${catTheme.accent}`
-                                : `2px solid ${tk.border}`,
-                            }}
-                          >
-                            {done ? (
-                              <Check size={13} strokeWidth={2.5} style={{ color: "#fff" }} />
-                            ) : (
-                              <span
-                                className="text-[11px] font-bold tabular-nums"
-                                style={{ color: isAct ? catTheme.accent : tk.muted }}
-                              >
-                                {idx + 1}
-                              </span>
-                            )}
-                          </div>
+                        <div key={step.key} className="flex items-center gap-2.5">
                           <button
                             onClick={() => selectStep(step.key)}
-                            className="flex-1 flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-left transition-all duration-150 cursor-pointer min-w-0 mb-1"
+                            className="flex-1 flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-left transition-all duration-150 cursor-pointer min-w-0"
                             style={{
                               background: isAct ? `${catTheme.ring}0.10)` : "transparent",
                               border: isAct ? `1px solid ${catTheme.ring}0.22)` : `1px solid ${tk.border}`,
@@ -1950,7 +2000,7 @@ export default function ListingEditor() {
                                   color: tk.muted,
                                 }}
                               >
-                                {done ? "✓ Complete" : isAct ? "In progress" : "Pending"}
+                                {done ? "Complete" : isAct ? "In progress" : "Pending"}
                               </p>
                             </div>
                             {!done && (
@@ -2088,18 +2138,12 @@ export default function ListingEditor() {
                     transition={{ duration: 0.14, ease: "easeOut" }}
                     className="absolute inset-0 flex flex-col overflow-hidden"
                   >
-                    {/* Step sub-header */}
-                    <div
-                      className="px-6 md:px-8 pt-3 pb-3 shrink-0"
-                      style={{ background: tk.panel, borderBottom: `1px solid ${tk.border}` }}
-                    >
-                      <p className="text-[11px] font-semibold uppercase tracking-widest mb-1" style={{ color: tk.dimmed }}>
-                        Step {stepIndex + 1} of {categorySteps.length}
-                      </p>
-                      <p className="text-[17px] font-bold" style={{ color: tk.text }}>
-                        {activeStepObj?.title}
-                      </p>
-                    </div>
+                    {/* Step sub-header removed — it repeated the same
+                        title StepRenderer's own step component already
+                        shows just below (e.g. "Photo tour" up here vs.
+                        "Photos" + a description right underneath). The
+                        step's own heading is the richer of the two, so
+                        it's now the only one. */}
 
                     <AnimatePresence>
                       {stepError && (
@@ -2126,42 +2170,21 @@ export default function ListingEditor() {
                         categorys={categorys}
                         addonList={addons}
                          onDeleteImgeFile={onDeleteImgeFile}
+                         onUpdateCoverImage={onUpdateCoverImage}
+                         listingId={listingId}
                       />
                     </div>
                   </motion.div>
                 ) : null}
               </AnimatePresence>
-            </div>
+            </div>                                                                                        
           </main>
         </div>
 
-        {/* ════════════════════════════════════════════════════
-            MOBILE FIXED PREVIEW BUTTON
-        ════════════════════════════════════════════════════ */}
-        {!mobileShowContent && (
-          <div
-            className="md:hidden fixed bottom-0 left-0 right-0 px-4 pb-5 pt-3 z-50"
-            style={{
-              background: isDark ? "rgba(11,17,32,0.96)" : "rgba(255,255,255,0.96)",
-              backdropFilter: "blur(20px)",
-              WebkitBackdropFilter: "blur(20px)",
-              borderTop: `1px solid ${tk.border}`,
-            }}
-          >
-            {/* FIX: mobile preview button also opens the modal */}
-            <button
-              onClick={() => setShowPreview(true)}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-[13px] font-semibold transition-all cursor-pointer"
-              style={{
-                background: tk.trackBg,
-                border: `1px solid ${tk.border}`,
-                color: tk.muted,
-              }}
-            >
-              <Eye size={14} /> Preview Listing
-            </button>
-          </div>
-        )}
+        {/* Mobile preview entry point removed — a device-toggle preview
+            of a public page doesn't make sense when you're already on a
+            small screen. Preview is desktop-only now (header button is
+            md:-gated); see PreviewModal. */}
 
         {/* ════════════════════════════════════════════════════
             BOTTOM ACTION BAR

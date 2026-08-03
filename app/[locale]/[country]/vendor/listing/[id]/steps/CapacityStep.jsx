@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, AlertCircle, Users, BedDouble, MonitorCheck, Armchair, DoorOpen, Bath } from "lucide-react";
+import { AlertCircle, Users, BedDouble, MonitorCheck, Armchair, DoorOpen, Bath } from "lucide-react";
 import { getCategoryTheme } from "./categoryTheme";
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -153,13 +153,14 @@ export default function CapacityStep({ form, setForm, category = "venues" }) {
   const [touched, setTouched] = useState({});
   const touch = (key) => setTouched((p) => ({ ...p, [key]: true }));
 
-  const inputStyle = (hasErr, isValid) => ({
+  /* Only the error state gets a highlighted border/glow — a green
+     "success" ring on every filled field was firing across nearly the
+     whole form at once and read as noise rather than useful feedback. */
+  const inputStyle = (hasErr) => ({
     background: tk.inputBg,
-    border:     `1px solid ${hasErr ? "#f87171" : isValid ? "#34d399" : tk.inputBd}`,
+    border:     `1px solid ${hasErr ? "#f87171" : tk.inputBd}`,
     color:      tk.text,
-    boxShadow:  hasErr   ? "0 0 0 3px rgba(248,113,113,0.12)"
-               : isValid ? "0 0 0 3px rgba(52,211,153,0.10)"
-               : "none",
+    boxShadow:  hasErr ? "0 0 0 3px rgba(248,113,113,0.12)" : "none",
   });
 
   const isValid     = config.validate(form);
@@ -208,7 +209,7 @@ export default function CapacityStep({ form, setForm, category = "venues" }) {
                   onBlur={() => touch(field.key)}
                   placeholder={field.placeholder}
                   className="w-full px-4 py-3 rounded-xl text-[14px] font-medium outline-none transition-all focus:ring-2 focus:ring-violet-500/20"
-                  style={inputStyle(hasErr, isValid && !!form[field.key])}
+                  style={inputStyle(hasErr)}
                 />
                 <span
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-medium pointer-events-none"
@@ -217,16 +218,13 @@ export default function CapacityStep({ form, setForm, category = "venues" }) {
                   {field.unit}
                 </span>
               </div>
+              {/* Only surfaces an error now — a green "All set" on every
+                  filled field fired across nearly the whole form at once. */}
               <AnimatePresence mode="wait">
                 {hasErr ? (
                   <motion.div key="err" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex items-center gap-1.5">
                     <AlertCircle size={12} style={{ color: "#f87171" }} />
                     <span className="text-[12px]" style={{ color: "#f87171" }}>Enter a valid number</span>
-                  </motion.div>
-                ) : isValid && form[field.key] ? (
-                  <motion.div key="ok" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex items-center gap-1.5">
-                    <Check size={12} strokeWidth={3} style={{ color: "#34d399" }} />
-                    <span className="text-[12px]" style={{ color: "#34d399" }}>All set</span>
                   </motion.div>
                 ) : null}
               </AnimatePresence>

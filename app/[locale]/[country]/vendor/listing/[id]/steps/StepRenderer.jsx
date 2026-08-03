@@ -13,7 +13,7 @@ import AddonsStep    from "./AddonsStep";
 import TermsStep     from "./TermsStep";
 
 export default function StepRenderer({ step, form, setForm, category , amenities , property ,
-   event,categorys,  onDeleteImgeFile,addonList} ) {
+   event,categorys,  onDeleteImgeFile,addonList , onUpdateCoverImage,listingId} ) {
  // const props = { form, setForm, category, amenities };
 
 
@@ -26,12 +26,13 @@ export default function StepRenderer({ step, form, setForm, category , amenities
   property,
   event,
   categorys,
-  addonList
-}), [form, setForm, category, amenities , property, event,categorys,addonList]);
+  addonList,
+  listingId
+}), [form, setForm, category, amenities , property, event,categorys,addonList,listingId]);
 
 
   switch (step) {
-    case "photo":     return <PhotoStep     {...props} onDeleteImgeFile={onDeleteImgeFile}/>;
+    case "photo":     return <PhotoStep     {...props} onDeleteImgeFile={onDeleteImgeFile} onUpdateCoverImage={onUpdateCoverImage}/>;
     case "basic":     return <BasicStep     {...props} />;
     case "tags":      return <TagsStep      {...props} />;
     case "addons":    return <AddonsStep    {...props} />;

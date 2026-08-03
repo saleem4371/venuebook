@@ -2512,7 +2512,7 @@ export default function TeamManagementPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#030712] mt-[-56px] md:mt-[-20px]">
+    <div className="min-h-screen bg-white dark:bg-[#030712]">
 
       {/* ── OVERLAYS ── */}
       <AnimatePresence>
@@ -2553,7 +2553,7 @@ export default function TeamManagementPage() {
       <div className="">
 
         {/* HEADER */}
-        <div className="px-5 sm:px-6 lg:px-8 pt-8 pb-0">
+        <div className="px-4 sm:px-6 md:px-8 lg:px-10 pt-8 pb-0">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-50">Team Management</h1>
@@ -2583,7 +2583,7 @@ export default function TeamManagementPage() {
         </div>
 
         {/* STATS */}
-        <div className="px-5 sm:px-6 lg:px-8 pt-6">
+        <div className="px-4 sm:px-6 md:px-8 lg:px-10 pt-6">
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             <StatCard label="Total Members" value={stats.total}       icon={Users}       color="purple" trend="Workspace size" />
             <StatCard label="Admins"        value={stats.admins}      icon={ShieldCheck} color="amber"  trend="Full access"   />
@@ -2595,7 +2595,7 @@ export default function TeamManagementPage() {
         </div>
 
         {/* TABS */}
-        <div className="px-5 sm:px-6 lg:px-8 pt-5">
+        <div className="px-4 sm:px-6 md:px-8 lg:px-10 pt-5">
           <ScrollableTabBar
             tabs={TABS_CONFIG.map(tab => ({
               key:   tab.id,
@@ -2608,7 +2608,7 @@ export default function TeamManagementPage() {
         </div>
 
         {/* SEARCH + CONTROLS */}
-        <div className="px-5 sm:px-6 lg:px-8 pt-3 pb-5">
+        <div className="px-4 sm:px-6 md:px-8 lg:px-10 pt-3 pb-5">
           {/* Mobile: [Search + Filter + Toggle] / sm+: [Search──────][Filter][Toggle] */}
           <div className="flex flex-col sm:flex-row sm:items-center gap-2">
             <div className="flex items-center flex-1 gap-2">
@@ -2686,7 +2686,7 @@ export default function TeamManagementPage() {
         </div>
 
         {/* MEMBERS LIST */}
-        <div className="px-5 sm:px-6 lg:px-8 pb-28">
+        <div className="px-4 sm:px-6 md:px-8 lg:px-10 pb-28">
           {filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
               <div className="h-14 w-14 rounded-2xl bg-gray-100 dark:bg-white/[0.04] flex items-center justify-center mb-3">

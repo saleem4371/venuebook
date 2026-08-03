@@ -4,7 +4,13 @@
  * ChatThread
  * ──────────────────────────────────────────────────────────────────
  * Right panel — renders the full message thread for an active
- * conversation plus the composer.
+ * conversation plus the composer. Structure/view mirrors the
+ * customer-facing ChatThread (app/[locale]/[country]/messages/
+ * components/ChatThread.jsx) — same header anatomy, same bubble
+ * styling, same logical/RTL-safe properties, same safe-area-aware
+ * composer. The booking/lead context card and its status badges stay
+ * vendor-specific (guests/leads/bookings taxonomy), since that's the
+ * vendor's own data model, not a copy/paste from the customer version.
  *
  * Features:
  *   • Sticky header with back button (mobile), avatar, status, actions
@@ -13,7 +19,10 @@
  *   • Avatar shown for first message in each incoming group
  *   • Sender name shown for group-style conversations
  *   • Animated typing indicator (3-dot bounce)
- *   • Simulated reply after send for demo purposes
+ *   • Thread fetched per-conversation via conservation_messages() —
+ *     the list endpoint only returns summaries
+ *   • Sends persist via send_messages(), with optimistic UI + failed
+ *     status on error
  *   • File attachment preview + send
  *   • Send on Enter (Shift+Enter for newline)
  *   • Scroll-to-bottom on new messages
@@ -23,7 +32,33 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { ChevronLeft, Paperclip, Send, MoreHorizontal, Info, X, Building2, Calendar, Hash, CheckCircle2, Clock4, AlertCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslations } from "next-intl";
 import { CATEGORY_STYLES, MOCK_CATEGORIES } from "../_data";
+import { conservation_messages, send_messages } from "@/services/chat.service";
+
+/* ── Normalize a raw API message into the shape this UI renders ───
+   The list endpoint (/chat/all_messages) only returns conversation
+   summaries — no embedded `messages` array — so the thread has to be
+   fetched separately per conversation (/chat/messages/:id) and mapped
+   onto the fields this component already knows how to render. Field
+   names are defensive guesses (role/from/sender_type, text/message,
+   time/created_at) since multiple shapes show up elsewhere in this
+   codebase (see ChatPanel in vendor/reservations/manage_reserve) —
+   confirm against the real API response and tighten this once the
+   backend contract is settled. */
+function normalizeMessage(m, idx) {
+  const isMine = m.role === "me" || m.from === "me" || m.sender_type === "vendor" || m.is_mine === true;
+  return {
+    id: m.id ?? m._id ?? `msg_${idx}`,
+    role: isMine ? "me" : "them",
+    text: m.text ?? m.message ?? m.content ?? "",
+    time: m.time ?? (m.created_at ? new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""),
+    date: m.date ?? (m.created_at ? new Date(m.created_at).toLocaleDateString() : "Today"),
+    sender: m.sender ?? m.sender_name,
+    file: m.file ?? (m.attachment_url ? { preview: m.attachment_url } : undefined),
+    status: m.status ?? "sent",
+  };
+}
 
 /* ── Typing dots animation ─────────────────────────────────────── */
 function TypingIndicator({ contact }) {
@@ -66,7 +101,7 @@ function MessageBubble({ msg, contact, isContinuation }) {
     >
       {/* Avatar for incoming (only on first in a group) */}
       {!isMe && (
-        <div className="w-7 h-7 shrink-0 mr-2 self-end">
+        <div className="w-7 h-7 shrink-0 me-2 self-end">
           {!isContinuation ? (
             <div
               className={`w-7 h-7 rounded-full bg-gradient-to-br ${contact.color} flex items-center justify-center text-[9px] font-bold text-white`}
@@ -81,7 +116,7 @@ function MessageBubble({ msg, contact, isContinuation }) {
       <div className={`max-w-[72%] sm:max-w-[60%] flex flex-col gap-0.5 ${isMe ? "items-end" : "items-start"}`}>
         {/* Sender name (group chats / team) */}
         {!isMe && msg.sender && !isContinuation && (
-          <span className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 ml-1">
+          <span className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 ms-1">
             {msg.sender}
           </span>
         )}
@@ -125,22 +160,41 @@ function MessageBubble({ msg, contact, isContinuation }) {
 
 /* ── Main component ────────────────────────────────────────────── */
 export default function ChatThread({ conversation: conv, onBack }) {
-  const [messages,    setMessages]    = useState(conv.messages);
+  const t = useTranslations("vendor.messages");
+  const [messages,    setMessages]    = useState(conv.messages ?? []);
   const [input,       setInput]       = useState("");
   const [isTyping,    setIsTyping]    = useState(false);
   const [filePreview, setFilePreview] = useState(null);
   const bottomRef = useRef(null);
   const textareaRef = useRef(null);
 
-  const categoryLabel = MOCK_CATEGORIES.find((c) => c.key === conv.category)?.label;
-  const categoryStyle = CATEGORY_STYLES[conv.category] ?? CATEGORY_STYLES.system;
-
-  /* Reset state when conversation changes */
+  /* Reset local state and fetch the real thread when the conversation
+     changes. The summary object from /chat/all_messages doesn't carry
+     a `messages` array, so this was previously left undefined and
+     crashed the render below (messages.reduce on undefined) — which is
+     why the panel came up completely blank instead of showing a chat
+     or even an error. */
   useEffect(() => {
-    setMessages(conv.messages);
+    let cancelled = false;
+    setMessages(conv.messages ?? []);
     setInput("");
     setFilePreview(null);
     setIsTyping(false);
+
+    async function loadThread() {
+      try {
+        const res = await conservation_messages(conv.id);
+        const raw = res?.data?.data ?? res?.data ?? [];
+        if (!cancelled && Array.isArray(raw)) {
+          setMessages(raw.map(normalizeMessage));
+        }
+      } catch (err) {
+        console.error("Failed to load conversation thread", err);
+      }
+    }
+    loadThread();
+
+    return () => { cancelled = true; };
   }, [conv.id]);
 
   /* Scroll to bottom whenever messages update */
@@ -170,33 +224,27 @@ export default function ChatThread({ conversation: conv, onBack }) {
       status: "sent",
     };
 
-    setMessages((prev) => [...prev, newMsg]);
+    setMessages((prev) => [...(prev ?? []), newMsg]);
     setInput("");
     setFilePreview(null);
 
-    /* Simulate delivery ticks */
-    setTimeout(() => {
-      setMessages((prev) =>
-        prev.map((m) => (m.id === newMsg.id ? { ...m, status: "delivered" } : m)),
-      );
-    }, 700);
-
-    /* Simulate typing + reply */
-    setIsTyping(true);
-    setTimeout(() => {
-      setIsTyping(false);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id:   `msg_${Date.now() + 1}`,
-          role: "them",
-          text: "Thank you for your message! We'll review this and get back to you shortly.",
-          time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-          date: "Today",
-        },
-      ]);
-    }, 1800);
-  }, [input, filePreview]);
+    /* Persist to the backend, then reconcile the optimistic bubble's
+       delivery status. The previous version never called the API at
+       all — it only simulated a canned "Thank you" reply locally, so
+       nothing sent here actually reached the customer. */
+    send_messages({ conversation_id: conv.id, text, message: text })
+      .then(() => {
+        setMessages((prev) =>
+          prev.map((m) => (m.id === newMsg.id ? { ...m, status: "delivered" } : m)),
+        );
+      })
+      .catch((err) => {
+        console.error("Failed to send message", err);
+        setMessages((prev) =>
+          prev.map((m) => (m.id === newMsg.id ? { ...m, status: "failed" } : m)),
+        );
+      });
+  }, [input, filePreview, conv.id]);
 
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -221,9 +269,10 @@ export default function ChatThread({ conversation: conv, onBack }) {
   }, {});
 
   const canSend = input.trim().length > 0 || !!filePreview;
+  const showContext = conv.venue && ["guests", "leads", "bookings"].includes(conv.category);
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-gray-950">
+    <div className="flex flex-col h-full min-h-0 bg-white dark:bg-gray-950">
 
       {/* ── Header ──────────────────────────────────────────────── */}
       <div className="shrink-0 flex items-center gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-800 bg-white/98 dark:bg-gray-950/98 backdrop-blur-sm">
@@ -232,9 +281,9 @@ export default function ChatThread({ conversation: conv, onBack }) {
         <button
           onClick={onBack}
           aria-label="Back to conversations"
-          className="md:hidden flex items-center justify-center w-8 h-8 -ml-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors shrink-0"
+          className="md:hidden flex items-center justify-center w-8 h-8 -ms-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors shrink-0"
         >
-          <ChevronLeft size={18} className="text-gray-600 dark:text-gray-400" />
+          <ChevronLeft size={18} className="text-gray-600 dark:text-gray-400 rtl:rotate-180" />
         </button>
 
         {/* Avatar + online dot */}
@@ -244,25 +293,26 @@ export default function ChatThread({ conversation: conv, onBack }) {
           >
             {conv.contact.initials}
           </div>
-          {conv.contact.isOnline && (
-            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-gray-950" />
-          )}
+          <span
+            aria-hidden="true"
+            className={[
+              "absolute bottom-0 end-0 w-2.5 h-2.5 rounded-full ring-2 ring-white dark:ring-gray-950",
+              conv.contact.isOnline ? "bg-emerald-500" : "bg-gray-300 dark:bg-gray-600",
+            ].join(" ")}
+          />
         </div>
 
-        {/* Name + venue/subject */}
+        {/* Name + venue/subject — category is already shown on the inbox
+            row and, where relevant, in the context card below, so it
+            isn't repeated here. */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <p className="text-[14px] font-semibold text-gray-900 dark:text-gray-100 leading-tight truncate">
               {conv.contact.name}
             </p>
-            {categoryLabel && (
-              <span className={`shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full leading-none ${categoryStyle.pill}`}>
-                {categoryLabel}
-              </span>
-            )}
           </div>
           <p className="text-[11px] text-gray-400 dark:text-gray-500 truncate leading-tight mt-0.5">
-            {conv.venue ?? conv.subject}
+            {conv.contact.isOnline ? t("online") : (conv.venue ?? conv.subject)}
           </p>
         </div>
 
@@ -289,7 +339,7 @@ export default function ChatThread({ conversation: conv, onBack }) {
         a venue attached. Team, Support and System threads skip this.
         Gives the vendor instant context: venue, event, ref, status.
       */}
-      {conv.venue && ["guests", "leads", "bookings"].includes(conv.category) && (
+      {showContext && (
         <div className="shrink-0 px-4 py-2.5 bg-violet-50/70 dark:bg-violet-950/20 border-b border-violet-100 dark:border-violet-900/40">
           <div className="flex items-start gap-3">
 
@@ -347,7 +397,7 @@ export default function ChatThread({ conversation: conv, onBack }) {
       )}
 
       {/* ── Messages area ───────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 [scrollbar-width:thin] [scrollbar-color:theme(colors.gray.200)_transparent] dark:[scrollbar-color:theme(colors.gray.800)_transparent]">
+      <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 [scrollbar-width:thin] [scrollbar-color:theme(colors.gray.200)_transparent] dark:[scrollbar-color:theme(colors.gray.800)_transparent]">
 
         {Object.entries(grouped).map(([date, msgs]) => (
           <div key={date}>
@@ -417,13 +467,13 @@ export default function ChatThread({ conversation: conv, onBack }) {
       </AnimatePresence>
 
       {/* ── Composer ────────────────────────────────────────────── */}
-      <div className="shrink-0 px-4 py-3 border-t border-gray-100 dark:border-gray-800 bg-white/98 dark:bg-gray-950/98 backdrop-blur-sm">
-        <div className="flex items-end gap-2">
+      <div className="shrink-0 px-4 pt-3 pb-[max(env(safe-area-inset-bottom),12px)] md:pb-3 border-t border-gray-100 dark:border-gray-800 bg-white/98 dark:bg-gray-950/98 backdrop-blur-sm">
+        <div className="flex items-center gap-2">
 
           {/* Attach button */}
           <label
-            aria-label="Attach file"
-            className="flex items-center justify-center w-9 h-9 mb-0.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer shrink-0"
+            aria-label={t("attach")}
+            className="flex items-center justify-center w-9 h-9 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer shrink-0"
           >
             <Paperclip size={16} className="text-gray-400 dark:text-gray-500" />
             <input type="file" className="hidden" onChange={handleFile} accept="image/*,.pdf,.doc,.docx" />
@@ -436,7 +486,7 @@ export default function ChatThread({ conversation: conv, onBack }) {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Type a message…"
+              placeholder={t("typeMessage")}
               rows={1}
               className="
                 w-full resize-none overflow-hidden
@@ -458,15 +508,15 @@ export default function ChatThread({ conversation: conv, onBack }) {
             onClick={handleSend}
             disabled={!canSend}
             whileTap={canSend ? { scale: 0.88 } : {}}
-            aria-label="Send message"
+            aria-label={t("send")}
             className={[
-              "flex items-center justify-center w-9 h-9 mb-0.5 rounded-full shrink-0 transition-all duration-150",
+              "flex items-center justify-center w-9 h-9 rounded-full shrink-0 transition-all duration-150",
               canSend
                 ? "bg-violet-600 dark:bg-violet-500 text-white shadow-sm hover:bg-violet-700 dark:hover:bg-violet-600 cursor-pointer"
                 : "bg-gray-100 dark:bg-gray-800 text-gray-300 dark:text-gray-600 cursor-not-allowed",
             ].join(" ")}
           >
-            <Send size={15} strokeWidth={2.2} className={canSend ? "-translate-x-px" : ""} />
+            <Send size={15} strokeWidth={2.2} className="rtl:-scale-x-100" />
           </motion.button>
 
         </div>

@@ -114,14 +114,10 @@ export default function LocationStep({ form, category = "venues" }) {
         </p>
       </div>
 
-      {/* ── Main card ── */}
-      <div
-        className="rounded-2xl overflow-hidden"
-        style={{ background: tk.card, border: `1px solid ${tk.border}`, boxShadow: tk.shadow }}
-      >
-        {hasLocation ? (
-          <>
-            {/* ── Map ── */}
+      {hasLocation ? (
+        <>
+          {/* ── Map — just corner rounding, no card bg/border/shadow ── */}
+          <div className="rounded-2xl overflow-hidden">
             <ReadonlyLocationMap
               address={fullAddress}
               lat={formLat}
@@ -133,67 +129,64 @@ export default function LocationStep({ form, category = "venues" }) {
               pinEnd={pinEnd}
               height="380px"
             />
-
-            {/* ── Divider ── */}
-            <div style={{ height: "1px", background: tk.border }} />
-
-            {/* ── Location details grid ── */}
-            <div className="p-6">
-
-              {/* Full address — full width row */}
-              <div className="mb-6 pb-6" style={{ borderBottom: `1px solid ${tk.borderSub}` }}>
-                <p
-                  className="text-[10px] font-bold uppercase tracking-widest mb-1.5"
-                  style={{ color: tk.label }}
-                >
-                  Address
-                </p>
-                <div className="flex items-start gap-2">
-                  <MapPin size={14} className="shrink-0 mt-0.5" style={{ color: theme.accent }} />
-                  <p className="text-[15px] font-semibold leading-snug" style={{ color: tk.text }}>
-                    {fullAddress}
-                  </p>
-                </div>
-              </div>
-
-              {/* 2-column grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
-                <Cell label="Latitude"  value={formLat ? String(formLat) : "Auto-detected via address"} tk={tk} theme={theme} />
-                <Cell label="Longitude" value={formLng ? String(formLng) : "Auto-detected via address"} tk={tk} theme={theme} />
-
-                <div style={{ height: "1px", background: tk.borderSub }} className="sm:col-span-2" />
-
-                <Cell label="City"    value={city}    tk={tk} theme={theme} />
-                <Cell label="State"   value={state}   tk={tk} theme={theme} />
-                <Cell label="Pincode" value={pincode} tk={tk} theme={theme} />
-                <Cell label="Country" value={country} tk={tk} theme={theme} />
-              </div>
-
-            </div>
-          </>
-        ) : (
-          /* ── Empty state ── */
-          <div className="flex flex-col items-center justify-center gap-4 py-20 px-6">
-            <div
-              className="w-14 h-14 rounded-2xl flex items-center justify-center"
-              style={{
-                background: `${theme.ring}0.10)`,
-                border:     `1px solid ${theme.ring}0.22)`,
-              }}
-            >
-              <Navigation2 size={24} style={{ color: theme.accent }} />
-            </div>
-            <div className="text-center max-w-sm">
-              <p className="text-[15px] font-semibold mb-1.5" style={{ color: tk.text }}>
-                No location configured
-              </p>
-              <p className="text-[13px] leading-relaxed" style={{ color: tk.sub }}>
-                Location data hasn't been added yet. Please contact support to configure the address for this listing.
-              </p>
-            </div>
           </div>
-        )}
-      </div>
+
+          {/* ── Location details — plain, normally placed (no card wrapper) ── */}
+          <div>
+
+            {/* Full address — full width row */}
+            <div className="mb-6 pb-6" style={{ borderBottom: `1px solid ${tk.borderSub}` }}>
+              <p
+                className="text-[10px] font-bold uppercase tracking-widest mb-1.5"
+                style={{ color: tk.label }}
+              >
+                Address
+              </p>
+              <div className="flex items-start gap-2">
+                <MapPin size={14} className="shrink-0 mt-0.5" style={{ color: theme.accent }} />
+                <p className="text-[15px] font-semibold leading-snug" style={{ color: tk.text }}>
+                  {fullAddress}
+                </p>
+              </div>
+            </div>
+
+            {/* 2-column grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
+              <Cell label="Latitude"  value={formLat ? String(formLat) : "Auto-detected via address"} tk={tk} theme={theme} />
+              <Cell label="Longitude" value={formLng ? String(formLng) : "Auto-detected via address"} tk={tk} theme={theme} />
+
+              <div style={{ height: "1px", background: tk.borderSub }} className="sm:col-span-2" />
+
+              <Cell label="City"    value={city}    tk={tk} theme={theme} />
+              <Cell label="State"   value={state}   tk={tk} theme={theme} />
+              <Cell label="Pincode" value={pincode} tk={tk} theme={theme} />
+              <Cell label="Country" value={country} tk={tk} theme={theme} />
+            </div>
+
+          </div>
+        </>
+      ) : (
+        /* ── Empty state — plain, no card ── */
+        <div className="flex flex-col items-center justify-center gap-4 py-16 px-6">
+          <div
+            className="w-14 h-14 rounded-2xl flex items-center justify-center"
+            style={{
+              background: `${theme.ring}0.10)`,
+              border:     `1px solid ${theme.ring}0.22)`,
+            }}
+          >
+            <Navigation2 size={24} style={{ color: theme.accent }} />
+          </div>
+          <div className="text-center max-w-sm">
+            <p className="text-[15px] font-semibold mb-1.5" style={{ color: tk.text }}>
+              No location configured
+            </p>
+            <p className="text-[13px] leading-relaxed" style={{ color: tk.sub }}>
+              Location data hasn't been added yet. Please contact support to configure the address for this listing.
+            </p>
+          </div>
+        </div>
+      )}
 
     </div>
   );

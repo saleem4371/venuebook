@@ -3,7 +3,12 @@
 /* ══════════════════════════════════════════════════════════════════
    MESSAGES PAGE — Full Dedicated Inbox
    ─────────────────────────────────────
-   Airbnb/Linear-inspired communication center for hospitality CRM.
+   Structure/view mirrors the customer-facing Messages page 1:1 (see
+   app/[locale]/[country]/messages/page.jsx) — edge-to-edge split pane,
+   no separate page-header card, title + unread badge live inside the
+   ConversationList sidebar header instead. Data source, category
+   taxonomy (guests/leads/bookings/team/support/system) and the
+   all_messages() API call are untouched — only presentation changed.
 
    Layout:
      Desktop : Left sidebar (conversation list) + Right panel (chat)
@@ -14,37 +19,39 @@
      ?conversation=<id>  → active conversation
 
    No modal, no popover, no dropdown — this is a dedicated full page.
+   The vendor shell (layout.jsx) already supplies the top offset
+   (navbar height) and left inset (VendorSidebar width) for this
+   full-bleed route, so this page only owns its own fill-height.
 ══════════════════════════════════════════════════════════════════ */
 
-import { Suspense, useCallback ,useEffect,useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { MessageCircle } from "lucide-react";
 
-import PageHeader         from "../components/PageHeader";
 import ConversationList   from "./components/ConversationList";
 import ChatThread         from "./components/ChatThread";
-import { MOCK_CONVERSATIONS } from "./_data";
 
 import { all_messages } from '@/services/chat.service'
 
 /* ── Empty state (desktop: no conversation selected) ─────────────── */
 function EmptyConversationState() {
+  const t = useTranslations("vendor.messages");
   return (
-    <div className="flex flex-1 flex-col items-center justify-center text-center">
-      <div className="relative mb-5">
-        <div className="absolute inset-0 rounded-full bg-violet-100 blur-xl opacity-50" />
-        <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/20">
-          <MessageCircle className="h-8 w-8 text-violet-600 dark:text-violet-400" />
+    <div className="flex flex-col items-center justify-center h-full gap-5 px-8 text-center bg-gray-50/50 dark:bg-gray-950">
+      <div className="relative">
+        <div className="w-16 h-16 rounded-2xl bg-violet-50 dark:bg-violet-950/50 flex items-center justify-center shadow-sm">
+          <MessageCircle size={28} className="text-violet-400 dark:text-violet-500" strokeWidth={1.5} />
         </div>
+        <div className="absolute -inset-2 rounded-3xl border border-violet-100 dark:border-violet-900/40 pointer-events-none" />
       </div>
 
       <div>
-        <p className="mb-1.5 text-[15px] font-semibold text-gray-800 dark:text-gray-200">
-          Select a conversation
+        <p className="text-[15px] font-semibold text-gray-800 dark:text-gray-200 mb-1.5">
+          {t("selectConversation")}
         </p>
-        <p className="max-w-[220px] text-[13px] leading-relaxed text-gray-400 dark:text-gray-500">
-          Choose a thread from the sidebar to start messaging.
+        <p className="text-[13px] text-gray-400 dark:text-gray-500 leading-relaxed max-w-[220px]">
+          {t("selectConversationSub")}
         </p>
       </div>
     </div>
@@ -53,180 +60,120 @@ function EmptyConversationState() {
 
 /* ── Inner page — requires Suspense for useSearchParams ──────────── */
 function MessagesInner() {
-  const t            = useTranslations("vendor.messages");
   const searchParams = useSearchParams();
   const router       = useRouter();
   const pathname     = usePathname();
 
-    const [chats, setChat] = useState([]);
+  const [chats, setChat] = useState([]);
   const activeId   = searchParams.get("conversation");
-const activeConv =
-  chats.find((c) => String(c.id) === activeId) ?? null;
-
-const totalUnread = chats.reduce(
-  (sum, c) => sum + (c.unread || 0),
-  0
-);
-
+  const activeConv = chats.find((c) => String(c.id) === activeId) ?? null;
 
   useEffect(() => {
-    
-  
     const fetchData = async () => {
       try {
-        // Start progress bar
-       
-  
         // API call
         const res = await all_messages();
-        setChat(res?.data?.data || null);
-  
-      
-  
+        setChat(res?.data?.data || []);
       } catch (err) {
         console.error(err);
-       
       } finally {
         // if (interval) clearInterval(interval);
       }
     };
-  
+
     fetchData();
-  
-   
   }, []);
 
-  /* Active conversation from URL */
-
-  // const activeConv = chats.find((c) => c.id === activeId) ?? null;
-
-  /* Total unread badge for the page header */
-  // const totalUnread = chats.reduce((s, c) => s + c.unread, 0);
-
-  /* Navigate to a conversation — preserves other search params */
+  /* Navigate to a conversation — preserves other search params.
+     Uses replace (not push), matching the customer Messages page:
+     switching conversations is in-page UI state, not a new navigable
+     page — push would stack a history entry per conversation opened,
+     so the back button would have to walk through all of them before
+     it could leave the page at all. */
   const handleSelect = useCallback(
     (id) => {
       const p = new URLSearchParams(searchParams);
       p.set("conversation", id);
-      router.push(`${pathname}?${p.toString()}`, { scroll: false });
+      router.replace(`${pathname}?${p.toString()}`, { scroll: false });
     },
     [pathname, router, searchParams],
   );
 
-  /* Back to conversation list (mobile) */
+  /* Back to conversation list (mobile) — same reasoning, replace only. */
   const handleBack = useCallback(() => {
     const p = new URLSearchParams(searchParams);
     p.delete("conversation");
-    router.push(`${pathname}?${p.toString()}`, { scroll: false });
+    router.replace(`${pathname}?${p.toString()}`, { scroll: false });
   }, [pathname, router, searchParams]);
+
+  /* Leave the Messages page entirely — mirrors the customer page's
+     back arrow in the sidebar header. */
+  const handleGoBack = useCallback(() => {
+    router.back();
+  }, [router]);
 
   return (
     /*
-      Full-bleed wrapper.
-      - layout.jsx strips horizontal padding + pb-24 + space-y-6 for this route
-      - We own all padding/spacing here for full viewport control
-      - Height fills from below the fixed navbar to the bottom of the viewport:
-          mobile: 100dvh − 120px navbar offset
-          desktop: 100dvh − 140px navbar offset
+      Full-bleed, edge-to-edge — no card chrome (no margin/border/
+      rounded/shadow). Matches the customer Messages page exactly,
+      including HOW it gets its height: a self-computed
+      h-[calc(100dvh-Npx)], the same 64px/72px navbar offset
+      AdminLayout's own wrapper already reserves via pt- for this
+      route. That makes this box's own size independent of whatever
+      flexbox is doing in the ancestors between here and the shell —
+      it doesn't need h-full or flex-1 to propagate correctly through
+      motion.main/AdminLayout, it just states its own final size.
     */
-    <div className="flex flex-col h-[calc(100dvh-120px)] md:h-[calc(100dvh-140px)]">
+    <div className="h-[calc(100dvh-64px)] md:h-[calc(100dvh-72px)] flex overflow-hidden bg-white dark:bg-gray-950">
 
-      {/* ── Page header ────────────────────────────────────────── */}
-      <div className="px-4 sm:px-6 md:px-8 lg:px-10  pb-4 shrink-0">
-        <PageHeader
-          title={t("title")}
-          subtitle={t("subtitle")}
-          badge={
-            totalUnread > 0 ? (
-              <span className="flex h-6 min-w-[24px] items-center justify-center rounded-full bg-violet-600 dark:bg-violet-500 px-1.5 text-[11px] font-bold text-white leading-none">
-                {totalUnread}
-              </span>
-            ) : undefined
-          }
-        />
-      </div>
-
-      {/* ── Split-pane workspace ────────────────────────────────── */}
-      {/*
-        The workspace fills the remaining height after the header.
-        Uses a borderless card that matches the global shadow/card style.
-
-        Desktop : Left sidebar (340px / lg:380px) | Right thread panel (flex-1)
-        Mobile  : sidebar OR thread — toggled via `activeId` URL param
-                  (pure CSS, no JS state toggle)
-      */}
-      <div
-        className="
-          flex-1 min-h-0
-          mx-0 md:mx-4 lg:mx-6
-          mb-0 md:mb-4
-          flex overflow-hidden
-          border-t border-gray-100 dark:border-gray-800
-          md:rounded-2xl md:border md:shadow-sm
-          bg-white dark:bg-gray-950
-        "
+      {/* LEFT — Conversation list sidebar */}
+      <aside
+        className={[
+          "flex flex-col min-h-0 border-e border-gray-100 dark:border-gray-800",
+          "bg-white dark:bg-gray-950",
+          /* Desktop: always visible with fixed width */
+          "md:w-[340px] lg:w-[380px] md:flex-none md:flex",
+          /* Mobile: full-width when no conversation open, hidden when one is open */
+          activeId ? "hidden" : "flex w-full",
+        ].join(" ")}
       >
+        <ConversationList
+          conversations={chats}
+          activeId={activeId}
+          onSelect={handleSelect}
+          onBack={handleGoBack}
+        />
+      </aside>
 
-        {/* LEFT — Conversation list sidebar */}
-        <aside
-          className={[
-            "flex flex-col border-r border-gray-100 dark:border-gray-800",
-            "bg-white dark:bg-gray-950",
-            /* Desktop: always visible with fixed width */
-            "md:w-[340px] lg:w-[380px] md:flex-none md:flex",
-            /* Mobile: full-width when no conversation open, hidden when one is open */
-            activeId ? "hidden" : "flex w-full",
-          ].join(" ")}
-        >
-          <ConversationList
-            conversations={chats}
-            activeId={activeId}
-            onSelect={handleSelect}
+      {/* RIGHT — Chat thread or empty state */}
+      <section
+        className={[
+          "flex-1 flex flex-col min-w-0 min-h-0",
+          "bg-white dark:bg-gray-950",
+          /* Mobile: visible only when a conversation is active */
+          activeId ? "flex" : "hidden md:flex",
+        ].join(" ")}
+      >
+        {activeConv ? (
+          <ChatThread
+            conversation={activeConv}
+            onBack={handleBack}
           />
-        </aside>
+        ) : (
+          <EmptyConversationState />
+        )}
+      </section>
 
-        {/* DIVIDER — visible desktop only */}
-        {/* (handled by border-r on aside) */}
-
-        {/* RIGHT — Chat thread or empty state */}
-        <section
-          className={[
-            "flex-1 flex flex-col min-w-0",
-            "bg-white dark:bg-gray-950",
-            /* Mobile: visible only when a conversation is active */
-            activeId ? "flex" : "hidden md:flex",
-          ].join(" ")}
-        >
-          {activeConv ? (
-            <ChatThread
-              conversation={activeConv}
-              onBack={handleBack}
-            />
-          ) : (
-            <EmptyConversationState />
-          )}
-        </section>
-
-      </div>
     </div>
   );
 }
-
-// /* ── Main export — Suspense boundary required for useSearchParams ── */
-// export default function MessagesPage() {
-//   return (
-//     <Suspense fallback={null}>
-//       <MessagesInner />
-//     </Suspense>
-//   );
-// }
 
 /* ── Main export — Suspense boundary required for useSearchParams ── */
 export default function MessagesPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex h-[calc(100vh-120px)] items-center justify-center">
+        <div className="h-[calc(100dvh-64px)] md:h-[calc(100dvh-72px)] flex items-center justify-center">
           Loading...
         </div>
       }

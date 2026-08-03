@@ -601,7 +601,7 @@ const handleToggle = async (id) => {
 
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#030712] mt-[-56px] md:mt-[-20px]">
+    <div className="min-h-screen bg-white dark:bg-[#030712]">
 
       {/* Overlays */}
       <AnimatePresence>
@@ -656,7 +656,7 @@ const handleToggle = async (id) => {
       </div>
 
       {/* ══ HEADER ══ */}
-      <div className="px-5 sm:px-6 lg:px-8 pt-8 pb-0 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+      <div className="px-4 sm:px-6 md:px-8 lg:px-10 pt-8 pb-0 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-50">Add-ons Management</h1>
           <p className="text-sm text-gray-400 dark:text-gray-500 mt-0.5">
@@ -676,7 +676,7 @@ const handleToggle = async (id) => {
       </div>
 
       {/* ══ STATS ══ */}
-      <div className="px-5 sm:px-6 lg:px-8 pt-6">
+      <div className="px-4 sm:px-6 md:px-8 lg:px-10 pt-6">
         {loading ? <StatsBarSkeleton /> : (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <StatCard label="Total Add-ons"  value={stats.total}        icon={Layers}       color="purple"  sub="in catalog"               />
@@ -688,7 +688,7 @@ const handleToggle = async (id) => {
       </div>
 
       {/* ══ TABS ══ */}
-      <div className="px-5 sm:px-6 lg:px-8 pt-5">
+      <div className="px-4 sm:px-6 md:px-8 lg:px-10 pt-5">
         <ScrollableTabBar
           tabs={CATEGORY_LIST.map(cat => ({
             key:   cat,
@@ -734,7 +734,7 @@ const handleToggle = async (id) => {
       </div>
 
       {/* ══ TOOLBAR ══ */}
-      <div className="px-5 sm:px-6 lg:px-8 pt-3 pb-5">
+      <div className="px-4 sm:px-6 md:px-8 lg:px-10 pt-3 pb-5">
         {/* Mobile: [Search + Sort + Toggle] / sm+: one row */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-2">
           <div className="flex items-center flex-1 gap-2">
@@ -824,7 +824,7 @@ const handleToggle = async (id) => {
       </div>
 
       {/* ══ CONTENT ══ */}
-      <div className="px-5 sm:px-6 lg:px-8 pb-28">
+      <div className="px-4 sm:px-6 md:px-8 lg:px-10 pb-28">
         {view === "grid" && (
           loading ? <GridSkeleton /> : processed.length === 0 ? <EmptyState onAdd={openCreate} /> : (
             <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">

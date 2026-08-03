@@ -20,7 +20,7 @@ function usePricingModel() {
 
 function NotAvailableState({ reason, t }) {
   return (
-    <div className="relative flex min-h-[calc(100vh-120px)] w-full flex-col items-center justify-center overflow-hidden px-6 py-20 text-center">
+    <div className="relative flex min-h-[calc(100vh_-_64px)] md:min-h-[calc(100vh_-_72px)] w-full flex-col items-center justify-center overflow-hidden px-6 py-20 text-center">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute left-1/4 top-1/4 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-slate-200/60 blur-3xl dark:bg-white/[0.02]" />
         <div className="absolute right-1/4 bottom-1/4 h-80 w-80 translate-x-1/2 translate-y-1/2 rounded-full bg-slate-100/80 blur-3xl dark:bg-white/[0.015]" />
@@ -75,7 +75,7 @@ export default function PackagePage() {
     return <NotAvailableState reason="wrong_pricing" t={tFn} />;
 
   return (
-    <div className="min-h-screen w-full bg-white dark:bg-[#030712] mt-[-56px] md:mt-[-20px]">
+    <div className="min-h-screen w-full bg-white dark:bg-[#030712]">
       <PackagePageShell />
     </div>
   );

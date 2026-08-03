@@ -2,19 +2,22 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Building2, ArrowRight, Sparkles } from "lucide-react";
+import { Plus, Landmark, ArrowRight, Sparkles, LayoutGrid, List } from "lucide-react";
 import { useRouter, useParams } from "next/navigation";
 
 import VenueCard from "./components/VenueCard";
+import ListingsTable from "./components/ListingsTable";
 import CategorySelectModal from "./components/CategorySelectModal";
 import { usePropertyTypeModal } from "@/context/PropertyTypeModalContext";
 import { useVendorCategory } from "@/context/VendorCategoryContext";
+import EditorLoadingOverlay from "@/app/[locale]/[country]/vendor/components/EditorLoadingOverlay";
 
 import { LoadListing } from "@/services/vendor.service";
 
 import { useCategory } from "@/context/CategoryContext";
 
 import { listing_sub_check } from "@/services/listing.service";
+import { prefetchParent } from "@/services/parent.service";
 
 /* ─────────────────────────────────────────────────────────────────────────────
    CATEGORY META
@@ -158,6 +161,7 @@ export default function ListingPage() {
 
   const [loadData, setLoadData] = useState([]);
   const [catModalOpen, setCatModalOpen] = useState(false);
+  const [viewMode, setViewMode] = useState("grid"); // "grid" | "table"
 
 
   const router = useRouter();
@@ -183,9 +187,20 @@ export default function ListingPage() {
   const { openPropertyModal } = usePropertyTypeModal();
   const accent = CATEGORY_ACCENT_HEX[activeCategory] ?? CATEGORY_ACCENT_HEX.venues;
 
+  /* Kick off the parent-details data fetch as early as possible — on
+     hover/focus, before the tap even happens — so by the time the route
+     actually changes the request is already in flight (or resolved).
+     consumeParentPrefetch() on the destination page picks this up instead
+     of starting a fresh, sequential fetch after mount. */
+  const warmParentPrefetch = () => prefetchParent(activeCategory);
+
   const openParent = () => {
+    warmParentPrefetch();
     setParentLoading(true);
-    setTimeout(() => router.push(parentPath), 180);
+    /* Short delay just long enough for the overlay's fade-in to be
+       perceptible before the route swap — not an artificial wait for
+       data (that's already running in parallel via the prefetch above). */
+    setTimeout(() => router.push(`${parentPath}?cat=${activeCategory}`), 60);
   };
 
   // Step 1: open category picker
@@ -264,37 +279,23 @@ router.push(`/${locale}/${country}/start-listing/${category}/payment`);
 
   return (
     <div className="space-y-6">
-      {/* ── PARENT VENUE CARD ── */}
+      {/* ── PARENT VENUE SECTION ── plain row, not a card: no bg/border/
+          shadow box, just an icon + copy + text-link CTA sitting flush
+          on the page, separated from what's below by a hairline. ── */}
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="
-          relative overflow-hidden
-          flex items-center justify-between gap-4
-          px-6 py-5 rounded-2xl
-          bg-white dark:bg-gray-900
-          border border-gray-100 dark:border-white/[0.07]
-          shadow-[0_1px_8px_rgba(0,0,0,0.05)]
-          dark:shadow-[0_1px_8px_rgba(0,0,0,0.3)]
-        "
+        className="flex items-center justify-between gap-4 pb-5 border-b border-gray-100 dark:border-white/[0.07]"
       >
-        {/* Ambient background glow */}
-        <div
-          className="absolute -right-12 -top-12 w-48 h-48 rounded-full opacity-[0.07] blur-3xl pointer-events-none"
-          style={{
-            background: `radial-gradient(circle, ${meta.glow}, transparent)`,
-          }}
-        />
-
-        <div className="flex items-center gap-4 min-w-0 relative z-10">
+        <div className="flex items-center gap-3.5 min-w-0">
           <div
-            className={`w-11 h-11 rounded-xl bg-gradient-to-br ${meta.accent} flex items-center justify-center shrink-0 shadow-[0_2px_12px_rgba(139,92,246,0.30)]`}
+            className={`w-10 h-10 rounded-xl bg-gradient-to-br ${meta.accent} flex items-center justify-center shrink-0`}
           >
-            <Building2 size={19} className="text-white" />
+            <Landmark size={18} className="text-white" />
           </div>
           <div className="min-w-0">
-            <p className="text-[15px] font-bold text-gray-900 dark:text-white leading-tight">
+            <p className="text-[14px] font-bold text-gray-900 dark:text-white leading-tight">
               Parent Venue Details
             </p>
             <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed line-clamp-1">
@@ -305,16 +306,15 @@ router.push(`/${locale}/${country}/start-listing/${category}/payment`);
 
         <button
           onClick={openParent}
-          className={`
-            relative z-10 shrink-0 flex items-center gap-1.5
-            px-5 py-2.5 rounded-xl
-            text-[13px] font-semibold text-white
-            bg-gradient-to-r ${meta.accent}
-            hover:opacity-90
-            shadow-[0_2px_10px_rgba(139,92,246,0.28)]
-            hover:shadow-[0_4px_18px_rgba(139,92,246,0.40)]
-            active:scale-[0.97] transition-all duration-200 cursor-pointer
-          `}
+          onMouseEnter={warmParentPrefetch}
+          onFocus={warmParentPrefetch}
+          className="
+            shrink-0 flex items-center gap-1
+            text-[13px] font-semibold
+            text-gray-700 dark:text-gray-300
+            hover:text-gray-900 dark:hover:text-white
+            transition-colors cursor-pointer
+          "
         >
           View Details <ArrowRight size={14} />
         </button>
@@ -349,24 +349,49 @@ router.push(`/${locale}/${country}/start-listing/${category}/payment`);
           </AnimatePresence>
         </div>
 
-        <button
-          onClick={handleCreateListing}
-          className={`
-            shrink-0 flex items-center gap-1.5 h-9 px-4 rounded-xl
-            text-[12px] font-semibold text-white
-            bg-gradient-to-r ${meta.accent}
-            hover:opacity-90
-            shadow-[0_1px_8px_rgba(139,92,246,0.28)]
-            hover:shadow-[0_4px_14px_rgba(139,92,246,0.40)]
-            active:scale-[0.97] transition-all duration-200 cursor-pointer
-          `}
-        >
-          <Plus size={13} />
-          New Listing
-        </button>
+        <div className="flex items-center gap-2.5 shrink-0">
+          {/* Grid / table view toggle — single button, icon shows the
+              view you'll switch TO (not the current one). */}
+          <button
+            type="button"
+            onClick={() => setViewMode((m) => (m === "grid" ? "table" : "grid"))}
+            aria-label={viewMode === "grid" ? "Switch to table view" : "Switch to grid view"}
+            className="
+              flex items-center justify-center h-10 w-10 rounded-xl shrink-0
+              bg-white dark:bg-gray-900
+              border border-gray-200 dark:border-white/[0.08]
+              shadow-[0_1px_3px_rgba(0,0,0,0.04)]
+              text-gray-500 dark:text-gray-400
+              hover:text-gray-900 dark:hover:text-white
+              hover:border-gray-300 dark:hover:border-white/[0.14]
+              hover:shadow-[0_2px_8px_rgba(0,0,0,0.08)]
+              active:scale-[0.95]
+              transition-all duration-150 cursor-pointer
+            "
+          >
+            {viewMode === "grid" ? <List size={16} /> : <LayoutGrid size={16} />}
+          </button>
+
+          <button
+            onClick={handleCreateListing}
+            className={`
+              shrink-0 flex items-center gap-1.5 h-10 px-4 rounded-xl
+              text-[12px] font-semibold text-white
+              bg-gradient-to-r ${meta.accent}
+              hover:opacity-90
+              shadow-[0_1px_8px_rgba(139,92,246,0.28)]
+              hover:shadow-[0_4px_14px_rgba(139,92,246,0.40)]
+              active:scale-[0.97] transition-all duration-200 cursor-pointer
+            `}
+          >
+            <Plus size={13} />
+            New Listing
+          </button>
+        </div>
       </div>
 
-      {/* ── CARDS GRID ── */}
+
+      {/* ── LISTINGS — grid or table ── */}
       <AnimatePresence mode="wait">
         {pageLoading ? (
           /* Skeleton shimmer grid */
@@ -382,26 +407,38 @@ router.push(`/${locale}/${country}/start-listing/${category}/payment`);
             ))}
           </motion.div>
         ) : listings.length > 0 ? (
-          <motion.div
-            key={activeCategory + "-grid"}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.22 }}
-            className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5"
-          >
-            {loadData.map((listing, i) => (
-              <motion.div
-                key={listing.id}
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.07, duration: 0.24 }}
-                className="flex"
-              >
-                <VenueCard venue={listing} />
-              </motion.div>
-            ))}
-          </motion.div>
+          viewMode === "table" ? (
+            <motion.div
+              key={activeCategory + "-table"}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.22 }}
+            >
+              <ListingsTable listings={loadData} />
+            </motion.div>
+          ) : (
+            <motion.div
+              key={activeCategory + "-grid"}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.22 }}
+              className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5"
+            >
+              {loadData.map((listing, i) => (
+                <motion.div
+                  key={listing.id}
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.07, duration: 0.24 }}
+                  className="flex"
+                >
+                  <VenueCard venue={listing} />
+                </motion.div>
+              ))}
+            </motion.div>
+          )
         ) : (
           <motion.div
             key={activeCategory + "-empty"}
@@ -428,61 +465,11 @@ router.push(`/${locale}/${country}/start-listing/${category}/payment`);
         defaultCategory={activeCategory}
       />
 
-      {/* ── GLOBAL PARENT LOADER ── */}
-      <AnimatePresence>
-        {parentLoading && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[9999] flex items-center justify-center"
-          >
-            <div className="absolute inset-0 bg-white/70 dark:bg-gray-950/80 backdrop-blur-xl" />
-            <motion.div
-              initial={{ scale: 0.88, opacity: 0, y: 12 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              transition={{ type: "spring", stiffness: 280, damping: 22 }}
-              className="relative flex flex-col items-center gap-4"
-            >
-              <div className="relative w-14 h-14">
-                <svg className="animate-spin w-14 h-14" viewBox="0 0 56 56">
-                  <circle
-                    cx="28"
-                    cy="28"
-                    r="24"
-                    fill="none"
-                    stroke="url(#parentGrad)"
-                    strokeWidth="3.5"
-                    strokeDasharray="100 52"
-                    strokeLinecap="round"
-                  />
-                  <defs>
-                    <linearGradient
-                      id="parentGrad"
-                      x1="0%"
-                      y1="0%"
-                      x2="100%"
-                      y2="100%"
-                    >
-                      <stop offset="0%" stopColor="#7c3aed" />
-                      <stop offset="100%" stopColor="#6366f1" />
-                    </linearGradient>
-                  </defs>
-                </svg>
-                <div className="absolute inset-[5px] rounded-full bg-white dark:bg-gray-950" />
-              </div>
-              <div className="text-center">
-                <p className="text-[13px] font-semibold text-gray-800 dark:text-white">
-                  Loading Parent Details
-                </p>
-                <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">
-                  Please wait…
-                </p>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* ── GLOBAL PARENT LOADER ──
+          Shared EditorLoadingOverlay (same component listing→editor uses)
+          so this reads as the SAME overlay that parent_details/page.jsx
+          shows right after — no handoff between two different loaders. */}
+      <EditorLoadingOverlay show={parentLoading} title="Opening Parent Details" subtitle="Please wait…" />
 
     </div>
   );
@@ -492,18 +479,23 @@ router.push(`/${locale}/${country}/start-listing/${category}/payment`);
    SKELETON CARD
 ───────────────────────────────────────────────────────────────────────────── */
 function SkeletonCard() {
+  /* Matches VenueCard's current shape: one aspect-[4/3] image block, no
+     separate white footer underneath (that was the old two-section
+     layout) — so the skeleton mirrors the real card's silhouette instead
+     of the design it used to have. */
   return (
-    <div className="w-full rounded-2xl overflow-hidden bg-white dark:bg-gray-900 border border-gray-100 dark:border-white/[0.06]">
-      {/* Image shimmer */}
-      <div className="aspect-[16/10] bg-gradient-to-r from-gray-100 via-gray-200 to-gray-100 dark:from-gray-800 dark:via-gray-700 dark:to-gray-800 animate-pulse" />
-      {/* Body shimmer */}
-      <div className="px-5 pt-4 pb-5 space-y-3">
-        <div className="h-3 w-24 bg-gray-100 dark:bg-gray-800 rounded-full animate-pulse" />
-        <div className="grid grid-cols-2 gap-3">
-          <div className="h-16 bg-gray-100 dark:bg-gray-800 rounded-xl animate-pulse" />
-          <div className="h-16 bg-gray-100 dark:bg-gray-800 rounded-xl animate-pulse" />
+    <div className="relative w-full aspect-[4/3] rounded-[20px] overflow-hidden bg-gray-100 dark:bg-gray-900 border border-gray-100 dark:border-white/[0.06]">
+      <div className="absolute inset-0 bg-gradient-to-r from-gray-100 via-gray-200 to-gray-100 dark:from-gray-800 dark:via-gray-700 dark:to-gray-800 animate-pulse" />
+      {/* Faint placeholders for where the name / address / stat pills
+          will sit, so the skeleton reads as "card loading", not just a
+          blank rectangle. */}
+      <div className="absolute bottom-0 left-0 right-0 px-5 pb-4 space-y-2.5">
+        <div className="h-4 w-2/3 rounded-full bg-gray-300/70 dark:bg-gray-600/50 animate-pulse" />
+        <div className="h-3 w-1/2 rounded-full bg-gray-300/50 dark:bg-gray-600/40 animate-pulse" />
+        <div className="flex gap-2 pt-1">
+          <div className="h-6 w-20 rounded-lg bg-gray-300/50 dark:bg-gray-600/40 animate-pulse" />
+          <div className="h-6 w-20 rounded-lg bg-gray-300/50 dark:bg-gray-600/40 animate-pulse" />
         </div>
-        <div className="h-10 bg-gray-100 dark:bg-gray-800 rounded-xl animate-pulse" />
       </div>
     </div>
   );

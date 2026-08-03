@@ -2,32 +2,51 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { useParams, useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
-  Users, CalendarDays, MapPin, Pencil,
+  Users, CalendarDays, MapPin, ImageOff,
 } from "lucide-react";
 
 import { useVendorCategory } from "@/context/VendorCategoryContext";
+import { CATEGORY_COLORS } from "@/config/categoryConfig";
+import EditorLoadingOverlay from "@/app/[locale]/[country]/vendor/components/EditorLoadingOverlay";
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   PREMIUM VENUE CARD
-   - Full-bleed cover image with cinematic gradient overlay
-   - Glassmorphism status badge
-   - Hover: shadow bloom + image scale + subtle lift
-   - Dark mode aware
-   - Bottom section: stats + Editor CTA
+   VENUE CARD
+   - Category-tinted accent (violet for venues, emerald for farmstays, etc.)
+     instead of a hardcoded violet, matching the rest of the vendor shell.
+   - Stats live as glass pills over the image, inline with the name — one
+     glance, no separate boxed stat row underneath competing for attention.
+   - Cover image resolves defensively: some API responses hand back a full
+     URL, others a bare S3 key — handle both, and if the request still
+     404s (or venue.image is missing), fall back to a branded placeholder
+     instead of the browser's broken-image icon.
+   - Whole card is the click target (see VenueCard's tabIndex/role) — no
+     separate "Edit Listing" button; a small pencil badge fades in on
+     hover as the affordance instead.
 ───────────────────────────────────────────────────────────────────────────── */
 export default function VenueCard({ venue }) {
   const params = useParams();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
+  const [imgFailed, setImgFailed] = useState(false);
 
-   const { activeCategory } = useVendorCategory();
+  const { activeCategory, categoryConfig } = useVendorCategory();
+  const accent = CATEGORY_COLORS[categoryConfig?.color ?? "violet"];
 
   const BASE_URL = process.env.NEXT_PUBLIC_AWS_BUCKET_URL;
-
   const basePath = `/${params?.locale}/${params?.country}/vendor/listing`;
+
+  /* Some listings come back with a full URL already, others a bare S3
+     key that still needs the bucket prefix — handle both instead of
+     always concatenating (that produced broken double-prefixed URLs). */
+  const imgSrc = useMemo(() => {
+    if (!venue?.image) return null;
+    return venue.image.startsWith("http") ? venue.image : `${BASE_URL}/${venue.image}`;
+  }, [venue?.image, BASE_URL]);
+
+  const showPlaceholder = !imgSrc || imgFailed;
 
   useEffect(() => {
     if (venue?.id) router.prefetch(`${basePath}/${venue.id}`);
@@ -35,234 +54,159 @@ export default function VenueCard({ venue }) {
 
   const openEditor = (id) => {
     setLoading(true);
-    setTimeout(() => router.push(`${basePath}/${id}?category=${activeCategory}`), 160);
+    const query = `category=${activeCategory}&name=${encodeURIComponent(venue.name ?? "")}`;
+    setTimeout(() => router.push(`${basePath}/${id}?${query}`), 160);
   };
 
   const isActive = venue.status === 1;
-
 
   return (
     <>
       <motion.div
         whileHover={{ y: -5, scale: 1.005 }}
         transition={{ type: "spring", stiffness: 320, damping: 26 }}
+        onClick={() => openEditor(venue.id)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            openEditor(venue.id);
+          }
+        }}
+        role="button"
+        tabIndex={0}
+        aria-label={`Edit ${venue.name}`}
         className="
           group relative isolate w-full flex flex-col
-          rounded-2xl overflow-hidden
+          rounded-[20px] overflow-hidden cursor-pointer
           bg-white dark:bg-gray-900
           border border-gray-100 dark:border-white/[0.06]
           shadow-[0_2px_12px_rgba(0,0,0,0.06),0_1px_3px_rgba(0,0,0,0.04)]
-          hover:shadow-[0_20px_56px_rgba(99,102,241,0.16),0_8px_24px_rgba(0,0,0,0.10)]
+          hover:shadow-[0_20px_56px_-8px_var(--accent-shadow,rgba(99,102,241,0.28)),0_8px_24px_rgba(0,0,0,0.10)]
           dark:shadow-[0_2px_12px_rgba(0,0,0,0.3)]
-         dark:hover:shadow-[0_10px_30px_rgba(139,92,246,0.18)]
-          transition-all duration-500  
+          focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2
+          transition-all duration-500
         "
+        style={{ "--accent-shadow": `${accent.accent}40`, "--tw-ring-color": accent.accent }}
       >
-        {/* ── IMAGE AREA ── */}
-        <div className="relative aspect-[16/10] overflow-hidden shrink-0 bg-black">
+        {/* ── IMAGE AREA ── taller than before (4:3 vs the old 16:10) so
+            the card reads as more substantial, not just a thin strip. */}
+        <div className="relative aspect-[4/3] overflow-hidden shrink-0 bg-gray-100 dark:bg-gray-800">
+          {showPlaceholder ? (
+            /* Branded placeholder — never the browser's broken-image icon */
+            <div
+              className="absolute inset-0 flex flex-col items-center justify-center gap-2"
+              style={{ background: `linear-gradient(135deg, ${accent.accent}1a, ${accent.accent}05)` }}
+            >
+              <ImageOff size={22} className="text-gray-300 dark:text-gray-600" strokeWidth={1.5} />
+              <span className="text-[10px] font-medium text-gray-400 dark:text-gray-500">
+                No cover image
+              </span>
+            </div>
+          ) : (
+            <div className="absolute inset-0 overflow-hidden">
+              {/* Shimmer skeleton while loading */}
+              <AnimatePresence>
+                {!imgLoaded && (
+                  <motion.div
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="absolute inset-0 bg-gradient-to-r from-gray-100 via-gray-200 to-gray-100 dark:from-gray-800 dark:via-gray-700 dark:to-gray-800 animate-pulse"
+                  />
+                )}
+              </AnimatePresence>
 
-          {/* Fix rendering gaps */}
-  <div className="absolute inset-0 overflow-hidden ">
-
-          {/* Shimmer skeleton while loading */}
-          <AnimatePresence>
-            {!imgLoaded && (
-              <motion.div
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.3 }}
-                className="absolute inset-0 bg-gradient-to-r from-gray-100 via-gray-200 to-gray-100 dark:from-gray-800 dark:via-gray-700 dark:to-gray-800 animate-pulse"
+              <img
+                src={imgSrc}
+                alt={venue.name}
+                onLoad={() => setImgLoaded(true)}
+                onError={() => setImgFailed(true)}
+                className="
+                  absolute inset-0 block
+                  w-full h-full object-cover
+                  will-change-transform
+                  scale-[1.01]
+                  transition-transform duration-700 ease-out
+                  group-hover:scale-[1.06]
+                "
+                style={{
+                  transformOrigin: "center center",
+                  backfaceVisibility: "hidden",
+                  WebkitBackfaceVisibility: "hidden",
+                  transform: "translate3d(0,0,0)",
+                }}
               />
-            )}
-          </AnimatePresence>
+            </div>
+          )}
 
-          <img
-            src={`${BASE_URL}/${venue.image}`}
-            alt={venue.name}
-            onLoad={() => setImgLoaded(true)}
-  className="
-  absolute inset-0 block
-  w-full h-full object-cover
-  will-change-transform
-  scale-[1.01]
-  transition-transform duration-700 ease-out
-  group-hover:scale-[1.06]
-"
-style={{
-  transformOrigin: "center center",
-  backfaceVisibility: "hidden",
-  WebkitBackfaceVisibility: "hidden",
-  transform: "translate3d(0,0,0)",
-}}
-          />
+          {/* Tint only the bottom region where the name/address/stats
+              actually sit — the old inset-0 gradient darkened the whole
+              photo (including the plain top ⅓ that has nothing on it),
+              which muddied the image for no reason. The status badge no
+              longer depends on this for contrast (it's opaque on its
+              own now), so this can shrink safely. */}
+          <div className="absolute inset-x-0 bottom-0 h-[62%] bg-gradient-to-t from-black/85 via-black/35 to-transparent pointer-events-none" />
 
-          {/* Cinematic gradient overlay — bottom ⅔ */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent pointer-events-none" />
-
-          {/* Status badge — glass pill top-right */}
+          {/* Status badge — glass pill top-right. Background is nearly
+              opaque (not just a low-opacity tint) so it stays legible on
+              its own — the image's dark gradient overlay is strongest at
+              the bottom and barely reaches this top corner, and the
+              no-image placeholder can be light in light mode, so the
+              badge can't rely on whatever's behind it for contrast. */}
           <div className="absolute top-3 right-3 z-10">
             <div className={`
               flex items-center gap-1.5 px-3 py-1.5
               rounded-full backdrop-blur-md
-              text-[10px] font-bold tracking-wider
+              text-[10px] font-bold tracking-wider text-white
               border
+              shadow-[0_1px_4px_rgba(0,0,0,0.25)]
               ${isActive
-                ? "bg-emerald-500/20 border-emerald-400/30 text-emerald-300"
-                : "bg-red-500/20 border-red-400/30 text-red-300"
+                ? "bg-emerald-500/95 border-emerald-400/40"
+                : "bg-red-500/95 border-red-400/40"
               }
             `}>
-              <span className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-emerald-400" : "bg-red-400"} animate-pulse`} />
+              <span className={`w-1.5 h-1.5 rounded-full bg-white/90 animate-pulse`} />
               {isActive ? "ACTIVE" : "INACTIVE"}
             </div>
           </div>
 
-          {/* Title + address over image */}
-          <div className="absolute bottom-0 left-0 right-0 px-5 pb-5 z-10">
+          {/* Title + address + stat pills over image */}
+          <div className="absolute bottom-0 left-0 right-0 px-5 pb-4 z-10">
             <h3 className="
               text-[17px] font-bold text-white leading-snug line-clamp-2
               drop-shadow-sm
-              group-hover:text-violet-200 transition-colors duration-300
+              group-hover:text-white/90 transition-colors duration-300
             ">
               {venue.name}
             </h3>
-            <div className="flex items-center gap-1.5 mt-1.5">
+            <div className="flex items-center gap-1.5 mt-1.5 mb-3">
               <MapPin size={11} className="text-white/60 shrink-0" />
               <p className="text-[11px] text-white/60 line-clamp-1 leading-tight">
                 {venue.address}
               </p>
             </div>
+
+            {/* Glass stat pills */}
+            <div className="flex items-center gap-2 mb-3">
+              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/12 backdrop-blur-md border border-white/15 text-[11.5px] font-bold text-white tabular-nums">
+                <Users size={12} className="text-white/70" />
+                {(venue.guests ?? 0).toLocaleString()}
+                <span className="font-medium text-white/60 normal-case">guests</span>
+              </span>
+              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/12 backdrop-blur-md border border-white/15 text-[11.5px] font-bold text-white tabular-nums">
+                <CalendarDays size={12} className="text-white/70" />
+                {(venue.leads ?? 0).toLocaleString()}
+                <span className="font-medium text-white/60 normal-case">leads</span>
+              </span>
+            </div>
           </div>
-          </div>
-        </div>
-
-        {/* ── CARD BODY ── */}
-        <div className="
-  relative flex flex-col flex-1
-  px-5 pt-4 pb-5
-  bg-white dark:bg-[#0f172a]
-  before:absolute before:top-0 before:left-0 before:right-0
-  before:h-[2px]
-  before:bg-white dark:before:bg-[#0f172a]
-  before:-translate-y-[1px]
-  ">
-
-          {/* Parent label */}
-          <p className="text-[11px] font-semibold text-violet-500 dark:text-violet-400 uppercase tracking-widest mb-4">
-            {venue.parentName}
-          </p>
-
-          {/* Stats row */}
-          <div className="grid grid-cols-2 gap-3 mb-4">
-            <StatChip
-              icon={<Users size={13} className="text-violet-500 dark:text-violet-400" />}
-              value={venue.guests ?? 0}
-              label="Guests"
-              iconBg="bg-violet-50 dark:bg-violet-500/10"
-            />
-            <StatChip
-              icon={<CalendarDays size={13} className="text-emerald-500 dark:text-emerald-400" />}
-              value={venue.leads ?? 0}
-              label="Leads"
-              iconBg="bg-emerald-50 dark:bg-emerald-500/10"
-            />
-          </div>
-
-          {/* Editor CTA */}
-          <button
-            onClick={() => openEditor(venue.id)}
-            className="
-              w-full flex items-center justify-center gap-2
-              py-[11px] rounded-xl
-              text-[13px] font-semibold text-white
-              bg-gradient-to-r from-violet-600 to-indigo-500
-              hover:from-violet-700 hover:to-indigo-600
-              shadow-[0_2px_12px_rgba(139,92,246,0.30)]
-              hover:shadow-[0_6px_22px_rgba(139,92,246,0.46)]
-              active:scale-[0.97]
-              transition-all duration-200 cursor-pointer
-            "
-          >
-            <Pencil size={13} />
-            Edit Listing
-          </button>
         </div>
       </motion.div>
 
-      {/* ── GLOBAL PAGE TRANSITION LOADER ── */}
-      <AnimatePresence>
-        {loading && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[9999] flex items-center justify-center"
-          >
-            {/* Backdrop blur layer */}
-            <div className="absolute inset-0 bg-white/70 dark:bg-gray-950/80 backdrop-blur-xl" />
-
-            {/* Loader pill */}
-            <motion.div
-              initial={{ scale: 0.88, opacity: 0, y: 12 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              transition={{ type: "spring", stiffness: 280, damping: 22 }}
-              className="relative flex flex-col items-center gap-4"
-            >
-              {/* Gradient ring spinner */}
-              <div className="relative w-14 h-14">
-                <svg className="animate-spin w-14 h-14" viewBox="0 0 56 56">
-                  <circle
-                    cx="28" cy="28" r="24"
-                    fill="none" stroke="url(#spinGrad)"
-                    strokeWidth="3.5"
-                    strokeDasharray="100 52"
-                    strokeLinecap="round"
-                  />
-                  <defs>
-                    <linearGradient id="spinGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="#7c3aed" />
-                      <stop offset="100%" stopColor="#6366f1" />
-                    </linearGradient>
-                  </defs>
-                </svg>
-                <div className="absolute inset-[5px] rounded-full bg-white dark:bg-gray-950" />
-              </div>
-
-              <div className="text-center">
-                <p className="text-[13px] font-semibold text-gray-800 dark:text-white">
-                  Opening Editor
-                </p>
-                <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5 max-w-[160px] truncate">
-                  {venue.name}
-                </p>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* ── GLOBAL PAGE TRANSITION LOADER ──
+          Shared EditorLoadingOverlay (portaled to document.body) so this
+          phase reads as the SAME overlay that listing/[id]/page.jsx shows
+          right after — no black-then-white flash on navigation. */}
+      <EditorLoadingOverlay show={loading} title="Opening Editor" subtitle={venue.name} />
     </>
-  );
-}
-
-/* ─────────────────────────────────────────────────────────────────────────────
-   STAT CHIP
-───────────────────────────────────────────────────────────────────────────── */
-function StatChip({ icon, value, label, iconBg }) {
-  return (
-    <div className="
-      flex items-center gap-3 px-3.5 py-3
-      rounded-xl border border-gray-100 dark:border-white/[0.06]
-      bg-gray-50/60 dark:bg-white/[0.03]
-    ">
-      <div className={`w-8 h-8 rounded-lg ${iconBg} flex items-center justify-center shrink-0`}>
-        {icon}
-      </div>
-      <div>
-        <p className="text-[18px] font-bold text-gray-900 dark:text-white leading-none tabular-nums">
-          {value.toLocaleString()}
-        </p>
-        <p className="text-[9px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mt-[3px]">
-          {label}
-        </p>
-      </div>
-    </div>
   );
 }

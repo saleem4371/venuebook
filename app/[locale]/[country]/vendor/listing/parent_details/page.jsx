@@ -18,7 +18,8 @@ import {
 import { useRouter } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
 
-import { LoadParent, SaveParent } from "@/services/parent.service";
+import { LoadParent, SaveParent, consumeParentPrefetch } from "@/services/parent.service";
+import EditorLoadingOverlay from "@/app/[locale]/[country]/vendor/components/EditorLoadingOverlay";
 
 // ─── CATEGORY META ─────────────────────────────────────────────────────────────
 
@@ -396,8 +397,15 @@ export default function ParentPageManagement() {
   const [loadData, setLoadData] = useState([]);
 
   // Placeholder until the initial category-discovery call resolves with
-  // the vendor's real first category.
-  const [activeCat, setActiveCat] = useState("venues");
+  // the vendor's real first category. Seeded from `?cat=` when the vendor
+  // arrived via the listing page's "View Details" tap, so this matches
+  // whatever category prefetchParent() already started fetching there —
+  // otherwise the prefetch below would land under the wrong cache key and
+  // go to waste.
+  const [activeCat, setActiveCat] = useState(() => {
+    if (typeof window === "undefined") return "venues";
+    return new URLSearchParams(window.location.search).get("cat") || "venues";
+  });
 
   // Per-category fetch status: 'loading' | 'loaded' | 'error'. Drives
   // skeletons/spinners and acts as a simple client-side cache so a tab
@@ -578,7 +586,11 @@ export default function ParentPageManagement() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await LoadParent(activeCat);
+        // Reuse the in-flight/resolved request the listing page kicked off
+        // on hover/tap (see prefetchParent in services/parent.service.js)
+        // instead of firing a redundant, sequential fetch after mount.
+        const prefetched = consumeParentPrefetch(activeCat);
+        const res = prefetched ? await prefetched : await LoadParent(activeCat);
         const categories = res?.data?.category || [];
         setLoadData(categories);
 
@@ -750,13 +762,16 @@ export default function ParentPageManagement() {
   };
 
   if (!loadData.length) {
+    /* Same overlay listing/page.jsx shows on the "View Details" tap —
+       identical look (and full-screen, not confined below the header)
+       so this reads as one continuous loader instead of a handoff
+       between two different loading UIs. */
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="flex items-center gap-3 text-slate-500">
-          <div className="w-5 h-5 border-2 border-[#a44bf3] border-t-transparent rounded-full animate-spin" />
-          Loading...
-        </div>
-      </div>
+      <EditorLoadingOverlay
+        show
+        title="Opening Parent Details"
+        subtitle="Please wait…"
+      />
     );
   }
 

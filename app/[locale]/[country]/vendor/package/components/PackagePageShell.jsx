@@ -83,7 +83,7 @@ function StatCard({ label, value, icon: Icon, color = "purple" }) {
 function LoadingSkeleton() {
   return (
     <div className="w-full">
-      <div className="relative overflow-hidden border-b border-slate-200 bg-white px-4 sm:px-6 lg:px-10 py-8 dark:border-white/5 dark:bg-[#070b14]">
+      <div className="relative overflow-hidden border-b border-slate-200 bg-white px-4 sm:px-6 md:px-8 lg:px-10 py-8 dark:border-white/5 dark:bg-[#070b14]">
         <div className="absolute inset-0 bg-gradient-to-br from-violet-500/5 via-transparent to-sky-500/5" />
         <div className="relative space-y-4">
           <div className="h-7 w-48 animate-pulse rounded-xl bg-slate-200 dark:bg-white/[0.07]" />
@@ -98,7 +98,7 @@ function LoadingSkeleton() {
           </div>
         </div>
       </div>
-      <div className="border-b border-slate-200 px-4 sm:px-6 lg:px-10 py-3 dark:border-white/5">
+      <div className="border-b border-slate-200 px-4 sm:px-6 md:px-8 lg:px-10 py-3 dark:border-white/5">
         <div className="flex gap-1">
           {[1, 2, 3, 4].map((i) => (
             <div
@@ -108,7 +108,7 @@ function LoadingSkeleton() {
           ))}
         </div>
       </div>
-      <div className="px-4 sm:px-6 lg:px-10 py-6">
+      <div className="px-4 sm:px-6 md:px-8 lg:px-10 py-6">
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
           {Array.from({ length: 8 }).map((_, i) => (
             <div
@@ -403,7 +403,7 @@ const removeImage = () => {
   return (
     <div className="flex w-full flex-col pb-24 lg:pb-8">
       {/* ── Page Header ─────────────────────────────────────── */}
-      <div className="px-4 sm:px-6 lg:px-10 pt-8 pb-6">
+      <div className="px-4 sm:px-6 md:px-8 lg:px-10 pt-8 pb-6">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div className="pb-4">
             <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-50">
@@ -453,7 +453,7 @@ const removeImage = () => {
       </div>
 
       {/* ── Sticky Tab Bar ───────────────────────────────────── */}
-      <div className="sticky top-0 z-40 bg-white/90 dark:bg-[#070b14]/90 backdrop-blur-xl px-4 sm:px-6 lg:px-10">
+      <div className="sticky top-0 z-40 bg-white/90 dark:bg-[#070b14]/90 backdrop-blur-xl px-4 sm:px-6 md:px-8 lg:px-10">
         <ScrollableTabBar
           tabs={TABS.map((tab) => ({
             key: tab.id,
@@ -467,7 +467,7 @@ const removeImage = () => {
       </div>
 
       {/* ── Tab Content ──────────────────────────────────────── */}
-      <div className="flex-1 px-4 sm:px-6 lg:px-10 py-6">
+      <div className="flex-1 px-4 sm:px-6 md:px-8 lg:px-10 py-6">
         {pkg.activeTab === "categories" && (
           <CategoriesTab
             // categories={pkg.categories}
