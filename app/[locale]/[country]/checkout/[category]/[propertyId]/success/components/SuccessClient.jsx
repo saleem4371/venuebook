@@ -69,6 +69,7 @@ function normalizeBooking(raw) {
     // this booking's points as the running total for tier-progress purposes.
     newPointsTotal: pointsEarned,
     booking_type: item.booking_type,
+    earn_point: item.earn_point,
     reservation_end_date: formatDateTime(item.reservation_end_date),
   };
 }
@@ -325,7 +326,7 @@ function LoyaltyCelebration({ t, booking }) {
         ),
       )
     : 100;
-
+console.log(booking)
   return (
     <div className="rounded-2xl overflow-hidden border border-violet-200 dark:border-violet-800 bg-gradient-to-br from-violet-50 via-indigo-50 to-purple-50 dark:from-violet-900/20 dark:via-indigo-900/20 dark:to-purple-900/20">
       <div className="p-5 space-y-4">
@@ -334,10 +335,10 @@ function LoyaltyCelebration({ t, booking }) {
             🎉 {t("points_earned")}
           </p>
           <p className="text-4xl font-bold text-violet-900 dark:text-violet-100">
-            +{booking.pointsEarned.toLocaleString()}
+            +{booking.earn_point}
           </p>
           <p className="text-sm text-violet-600 dark:text-violet-300 mt-1">
-            {t("new_balance")}: {booking.newPointsTotal.toLocaleString()} pts
+            {t("new_balance")}: {booking.earn_point} pts
           </p>
         </div>
 

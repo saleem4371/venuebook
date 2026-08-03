@@ -1,49 +1,5 @@
 "use client";
 
-/**
- * /app/[locale]/[country]/profile/page.jsx
- *
- * Customer Profile — full redesign, v2.
- *
- * LAYOUT: desktop (lg+) is a FIXED, no-page-scroll 3-column dashboard
- * (identity/upcoming | bookings/offers | collections/recently-viewed/
- * notifications), per direct user request after seeing a reference
- * mockup. Full detail that doesn't fit a glance view — Account Settings
- * (now its own route, see IdentityPanel's onOpenSettings), the complete
- * Bookings list, Member/Farm Rewards detail — lives in slide-over drawers
- * or dedicated toggled views instead of being cut.
- *
- * Mobile/tablet (< lg) is now the SAME widget set as desktop
- * (IdentityPanel/GreetingBar/BookingsPanel/ReelsForYouSection/
- * OffersPanel/SuggestionsSection/CollectionsPanel/LikedPropertiesPanel/
- * RecentlyViewedPanel/NotificationsSection), reflowed into a single
- * scrolling column of three bordered card groups instead of 3 side-by-side
- * columns — not the old always-expanded, everything-stacked-at-once page
- * (ProfileHeader/QuickStats/MemberCard/FarmRewards/BookingsSection/
- * CollectionsSection/RecentlyViewed/OffersSection/AccountSettingsGrid/
- * PasswordCard, all removed from this page). Bookings uses the exact same
- * GreetingBar-driven toggle as desktop (feed ↔ full Bookings) instead of
- * an always-expanded inline section; Collections/Liked/Recently Viewed
- * each already send "View All" to their own real page, and Notifications'
- * "View All" already opens its own drawer — so none of those needed a new
- * toggle state, only Bookings did.
- *
- * DATA REALITY (unchanged from v1 — see component headers for the full
- * breakdown):
- *   - user (name/email/avatar) — REAL, via useAuth().
- *   - Collections / Saved / Recently Viewed — REAL, same
- *     likedProperty/UserWishlist/UserWishlistCategory/UserCompare/
- *     recent_views calls collections/page.jsx already uses, fetched once
- *     here and passed to both the desktop widgets and the mobile fallback.
- *   - Bookings / Offers / Notifications — MOCK, no confirmed
- *     customer-facing endpoint exists yet (see BookingsPanel.jsx header).
- *   - Loyalty/membership — REAL SYSTEM (config/checkoutConfig.js), reused
- *     everywhere a points/tier number appears so they all agree.
- *
- * Nothing in /hooks/useRegion.js, /hooks/useCurrency.js, /hooks/useLocale.js,
- * /context/RegionContext.jsx, next-intl config, or the theme system was
- * touched — this page only consumes them.
- */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
@@ -61,6 +17,9 @@ import {
   addCompareAPI,
   removeCompareAPI,
 } from "@/services/venues.service";
+
+import { profile_main_page , allbookingData } from '@/services/profile.service';
+
 import { recent_views, Api_recommeded } from "@/services/home.service";
 import { usePreferredLocation } from "@/hooks/usePreferredLocation";
 import { POINTS_PER_INR } from "@/config/checkoutConfig";
@@ -143,6 +102,11 @@ export default function ProfilePage() {
   const [recentViews, setRecentViews] = useState([]);
   const [dataLoading, setDataLoading] = useState(true);
   const [wishlistVenue, setWishlistVenue] = useState(null);
+  const [bookingProfile, setBookingProfile] = useState([]);
+  const [bookingCurrent, setBookingCurrent] = useState({});
+  const [bookingUpcoming, setBookingUpcoming] = useState([]);
+  const [allBookings, SetAllBookings] = useState([]);
+  const [reservationHold, setreservationHold] = useState({});
 
   // Recommended venues — same source (Api_recommeded + the "vb_preferred_location"
   // localStorage key) home/page.jsx's own getRecommendedVenues() uses, fetched
@@ -199,26 +163,62 @@ export default function ProfilePage() {
     }
     setDataLoading(true);
     try {
-      const [likedRes, wlRes, catRes, cmpRes, rvRes] = await Promise.allSettled([
+      const [likedRes, wlRes, catRes, cmpRes, rvRes, resProfile, allBooks ] = await Promise.allSettled([
         likedProperty(),
         UserWishlist(),
         UserWishlistCategory(),
         UserCompare(),
         recent_views(),
+        profile_main_page(),
+        allbookingData(),
       ]);
       setLiked(likedRes.status === "fulfilled" ? unwrapList(likedRes.value) : []);
       setWishlist(wlRes.status === "fulfilled" ? unwrapList(wlRes.value) : []);
       setCollections(catRes.status === "fulfilled" ? unwrapList(catRes.value) : []);
       setCompares(cmpRes.status === "fulfilled" ? unwrapList(cmpRes.value) : []);
       setRecentViews(rvRes.status === "fulfilled" ? unwrapList(rvRes.value) : []);
+     // setBookingProfile(resProfile.status === "fulfilled" ? unwrapList(resProfile.value) : []);
+
+   setBookingProfile(
+  resProfile.status === "fulfilled"
+    ? resProfile.value?.data?.notification ?? []
+    : []
+);
+
+   setBookingCurrent(
+  resProfile.status === "fulfilled"
+    ? resProfile.value?.data?.currentBooking ?? {}
+    : {}
+);  
+setBookingUpcoming(
+  resProfile.status === "fulfilled"
+    ? resProfile.value?.data?.upcomingBookings ?? []
+    : {}
+);
+
+setreservationHold(
+  resProfile.status === "fulfilled"
+    ? resProfile.value?.data?.reservationHold ?? []
+    : {}
+);
+
+
+SetAllBookings(
+  allBooks.status === "fulfilled"
+    ? allBooks.value?.data.ALLBOOKINGS ?? []
+    : {}
+);
+
     } finally {
       setDataLoading(false);
     }
   }, [user]);
 
+
   useEffect(() => {
     load();
   }, [load]);
+
 
   // Same real preferred-location source home/page.jsx's own
   // getRecommendedVenues() reads from — but via the hook (hooks/
@@ -349,6 +349,7 @@ export default function ProfilePage() {
                 walletPoints={walletPoints}
                 onOpenSettings={() => router.push(`/${locale}/${country}/account/settings`)}
                 onOpenRewards={() => router.push(`/${locale}/${country}/account/settings?tab=rewards`)}
+               
               />
 
               {/* Reminder belt — always visible above Bookings, independent
@@ -359,8 +360,8 @@ export default function ProfilePage() {
                   "soonest" booking (see mockProfileData.js) and simply
                   doesn't render when there's nothing to show. */}
               <div className="p-4 flex flex-col gap-3">
-                <UpcomingBookingCard />
-                <ReserveHoldCard />
+                <UpcomingBookingCard  bookingCurrent={bookingCurrent} />
+                <ReserveHoldCard  reservationHold = {reservationHold }/>
               </div>
 
               <AnimatePresence>
@@ -370,7 +371,7 @@ export default function ProfilePage() {
                     layoutId="bookings-panel"
                     transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
                   >
-                    <BookingsPanel compact flat />
+                    <BookingsPanel compact flat  bookingUpcoming = {bookingUpcoming } allBookingData={allBookings}/> 
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -423,7 +424,7 @@ export default function ProfilePage() {
                     transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
                     className="flex flex-col flex-1 min-h-0 border-t border-gray-100 dark:border-gray-800"
                   >
-                    <BookingsPanel flat />
+                    <BookingsPanel flat bookingUpcoming = {bookingUpcoming } allBookingData={allBookings} />
                   </motion.div>
                 ) : (
                   <motion.div
@@ -455,7 +456,7 @@ export default function ProfilePage() {
               <CollectionsPanel flat collections={collections} wishlist={wishlist} loading={dataLoading} locale={locale} country={country} />
               <LikedPropertiesPanel flat liked={liked} loading={dataLoading} locale={locale} country={country} />
               <RecentlyViewedPanel flat recentViews={recentViews} loading={dataLoading} locale={locale} country={country} />
-              <NotificationsSection compact flat defaultOpen={openNotificationsOnLoad} />
+              <NotificationsSection compact flat defaultOpen={openNotificationsOnLoad} bookingProfile={bookingProfile} />
             </div>
           </div>
           </LayoutGroup>
@@ -500,8 +501,8 @@ export default function ProfilePage() {
                 behind it is visible anyway) so it doesn't render twice. */}
             {!showFullBookings && (
               <div className="p-4 flex flex-col gap-3">
-                <UpcomingBookingCard />
-                <ReserveHoldCard />
+                <UpcomingBookingCard bookingCurrent={bookingCurrent}/>
+                <ReserveHoldCard reservationHold = { reservationHold } />
               </div>
             )}
 
@@ -537,7 +538,7 @@ export default function ProfilePage() {
             <CollectionsPanel flat collections={collections} wishlist={wishlist} loading={dataLoading} locale={locale} country={country} />
             <LikedPropertiesPanel flat liked={liked} loading={dataLoading} locale={locale} country={country} />
             <RecentlyViewedPanel flat recentViews={recentViews} loading={dataLoading} locale={locale} country={country} />
-            <NotificationsSection compact flat defaultOpen={openNotificationsOnLoad} />
+            <NotificationsSection compact flat defaultOpen={openNotificationsOnLoad} bookingProfile={bookingProfile} />
           </div>
         </div>
       )}
@@ -547,7 +548,7 @@ export default function ProfilePage() {
           above. Mounted here rather than inside the mobile branch so it
           isn't clipped by that column's own layout/overflow rules. */}
       {!isDesktop && showFullBookings && (
-        <BookingsPanel fullScreen onBack={() => setShowFullBookings(false)} />
+        <BookingsPanel fullScreen onBack={() => setShowFullBookings(false)} bookingUpcoming = {bookingUpcoming }  allBookingData={allBookings}/>
       )}
 
       {/* Account Settings and Membership & Rewards both navigate to the

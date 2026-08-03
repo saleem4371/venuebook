@@ -42,8 +42,10 @@ import Script from "next/script";
 
 import {
   loadVenues,
-  loadAddons,
+  loadAddons
 } from "@/services/venue_details.service";
+
+import { verify_checkout_token } from "@/services/venues.service";
 
 
 import {
@@ -115,22 +117,54 @@ export default function CheckoutClient({ locale, country, category, propertyId }
 
   const searchParams = useSearchParams();
 
-  const booking = {
-    eventType: searchParams.get("eventType"),
-    bookingType: searchParams.get("bookingType"),
-    guests: Number(searchParams.get("guests") || 0),
-    date: searchParams.get("date"),
-    shift: searchParams.get("shift"),
-    venueName: searchParams.get("venueName"),
-    venueId: searchParams.get("venueId"),
-    category: searchParams.get("category"),
-    checkIn: searchParams.get("checkIn"),
-    checkOut: searchParams.get("checkOut"),
-    reserveEndDate: searchParams.get("reserveEndDate"),
-    reserveAmount: searchParams.get("reserveAmount"),
-  };
+    const token = searchParams.get("token");
+
+    const [tokenError, setTokenError] = useState(false);
+
+const [checkoutData, setCheckoutData] = useState(null);
+
+useEffect(() => {
+  if (!token) return;
+
+  verifyToken(token);
+}, [token]);
+
+const verifyToken = async (token) => {
+  try {
+    const res = await verify_checkout_token({token:token})
+    setCheckoutData(res.data);
+  } catch (err) {
+    console.error("Token verification failed:", err);
+    setTokenError(true);
+  }
+};
+
+const booking = {
+  eventType: checkoutData?.data?.eventType,
+  bookingType: checkoutData?.data?.bookingType,
+  guests: Number(checkoutData?.data?.guests || 0),
+  date: checkoutData?.data?.date,
+  shift: checkoutData?.data?.shift,
+  venueName: checkoutData?.data?.venueName,
+  venueId: checkoutData?.data?.venueId,
+  category: checkoutData?.data?.category,
+  checkIn: checkoutData?.data?.checkIn,
+  checkOut: checkoutData?.data?.checkOut,
+  reserveEndDate: checkoutData?.data?.reserveEndDate,
+  reserveAmount: Number(checkoutData?.data?.reserveAmount || 0),
+  plan_id: checkoutData?.data?.plan_id,
+};
 
   console.log(venueshifts);
+
+  //---------------------Wallet Point-----------------------//
+
+  const reward = rewards?.rewardBalance?.[0];
+  const loyaltyTier = rewards?.loyaltyTier;
+
+  const pointRate = loyaltyTier?.point_value || 1;
+
+  //---------------------Wallet Point-----------------------//
 
   const normCat = normalizeCategory(category);
   const catConfig = getCheckoutConfig(normCat);
@@ -139,7 +173,7 @@ export default function CheckoutClient({ locale, country, category, propertyId }
 
   /* ── Wallet state ─────────────────────────────────────────────────── */
   const walletPointsTotal = MOCK_WALLET.points;
-  const walletValueINR = walletPointsTotal * INR_PER_POINT;
+  const walletValueINR = walletPointsTotal * pointRate;
   // Absolute ₹ amount to redeem — None/50%/Max presets just set this to a
   // computed value; Custom lets the guest type any amount up to
   // financials.maxRedeemableINR. Replaces the old all-or-nothing toggle.
@@ -276,12 +310,15 @@ const toggleAddOn = (addon, action = "toggle") => {
       walletValueINR,
       Math.round(subtotalWithFees * MAX_WALLET_REDEMPTION_PERCENT)
     );
+    //wallet
+
+    const redeemAmountINRs = redeemAmountINR/pointRate;
 
     // Clamped so a stale custom amount (e.g. after addons change and lower
     // the max) can never discount more than the current maxRedeemableINR.
-    const rewardDiscountINR = Math.min(redeemAmountINR, maxRedeemableINR);
+    const rewardDiscountINR = Math.min(redeemAmountINRs, maxRedeemableINR);
     const pointsUsed = rewardDiscountINR > 0
-      ? Math.ceil(rewardDiscountINR / INR_PER_POINT)
+      ? Math.ceil(rewardDiscountINR / pointRate)
       : 0;
 
     const depositINR = catConfig.depositApplies ? (catConfig.depositAmountINR ?? 5000) : 0;
@@ -499,6 +536,7 @@ const toggleAddOn = (addon, action = "toggle") => {
 // };
 
 const handlePayment = async () => {
+  
   const payload = {
     booking: {
       booking_id: propertyId,
@@ -547,6 +585,11 @@ const handlePayment = async () => {
       securityDeposit: paymentSummarys?.securityDeposit,
       wallet_discount: financials.rewardDiscountINR,
       grand_total: paymentSummarys?.grandTotal,
+      //Points
+      pointsDiscount: paymentSummarys?.pointsDiscount,
+      earnedPoints: paymentSummarys?.earnedPoints,
+      burnPoint: paymentSummarys?.burnPoint,
+      payableNow: paymentSummarys?.payableNow,
 
       estimated_total:
         booking.bookingType === "reserve"
@@ -554,7 +597,6 @@ const handlePayment = async () => {
           : 0,
     },
   };
-
   try {
     setIsProcessing(true);
 
@@ -563,8 +605,7 @@ const handlePayment = async () => {
       booking.bookingType === "reserve"
         ? Number(booking.reserveAmount || 0)
         : Number(
-            paymentSummarys?.grandTotal ??
-              financials.totalINR ??
+            paymentSummarys?.payableNow ??
               0
           );
 
@@ -624,7 +665,20 @@ const handlePayment = async () => {
             booking_id: propertyId,
           });
 
-          const bookingResponse = await createOnlineBooking(payload);
+          // const bookingResponse = await createOnlineBooking(payload);
+
+          // Add Razorpay details to the payload
+const bookingPayload = {
+  ...payload,
+  payment: {
+    razorpay_payment_id: response.razorpay_payment_id,
+    razorpay_order_id: response.razorpay_order_id,
+    razorpay_signature: response.razorpay_signature,
+    payment_method: 'Online',
+  },
+};
+
+const bookingResponse = await createOnlineBooking(bookingPayload);
 
           router.push(
             `/${locale}/${country}/checkout/${category}/${bookingResponse.data.invoice_number}/success`
@@ -653,42 +707,77 @@ const handlePayment = async () => {
   }
 };
 
-    useEffect(() => {
-      if (!propertyId) return;
-      let cancelled = false;
+   useEffect(() => {
+  if (!propertyId || !checkoutData?.data?.plan_id) return;
 
-      const load = async () => {
-        setAddonsLoading(true);
-        try {
-          const [res,resp,rewards] = await Promise.all([
-              loadVenues(propertyId),
-              loadAddons(propertyId),
-              total_reward_in_your_account(),
-            // getGalleryCategory(listingId),
-          ]);
-          if (cancelled) return;
-          if (res?.data) SetImages(res.data.gallery);
-          if (res?.data) SetVenueData(res.data.venues);
-          if (res?.data) SetVenueshifts(res.data.shifts);
-          if (res?.data) SetVenueEvents(res.data.events);
-          if (res?.data) SetvenueSettings(res.data.venue_settings);
-          if (resp?.data) SetAddons(resp.data);
-          if (rewards?.data) SetRewards(rewards.data);
-          // if (resCt?.data) setCategory(resCt.data);
-        } catch (err) {
-          if (!cancelled) console.error("Listing load error:", err);
-        } finally {
-          if (!cancelled) setAddonsLoading(false);
-        }
-      };
+  let cancelled = false;
 
+  const load = async () => {
+    setAddonsLoading(true);
 
+    try {
+      const [res, resp, rewards] = await Promise.all([
+        loadVenues(propertyId),
+        loadAddons(propertyId),
+        total_reward_in_your_account(checkoutData.data.plan_id),
+      ]);
 
-      load();
-      return () => { cancelled = true; };
-    }, [propertyId]);
+      if (cancelled) return;
 
+      if (res?.data) {
+        SetImages(res.data.gallery);
+        SetVenueData(res.data.venues);
+        SetVenueshifts(res.data.shifts);
+        SetVenueEvents(res.data.events);
+        SetvenueSettings(res.data.venue_settings);
+      }
 
+      if (resp?.data) {
+        SetAddons(resp.data);
+      }
+
+      if (rewards?.data) {
+        SetRewards(rewards.data);
+      }
+    } finally {
+      if (!cancelled) setAddonsLoading(false);
+    }
+  };
+
+  load();
+
+  return () => {
+    cancelled = true;
+  };
+}, [propertyId, checkoutData]);
+
+if (tokenError) {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-8 text-center">
+        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
+          <span className="text-3xl">⏰</span>
+        </div>
+
+        <h2 className="text-2xl font-bold text-gray-900">
+          Booking Link Expired
+        </h2>
+
+        <p className="mt-3 text-gray-600">
+          This checkout session has expired or is no longer valid.
+          Please return to the property page and create a new booking.
+        </p>
+
+        <button
+          onClick={() => router.back()}
+          className="mt-6 w-full rounded-lg bg-blue-600 px-4 py-3 text-white font-semibold hover:bg-blue-700"
+        >
+          Back to Property
+        </button>
+      </div>
+    </div>
+  );
+}
   return (
     <div className="min-h-screen bg-white dark:bg-gray-950">
 
@@ -844,6 +933,7 @@ const handlePayment = async () => {
               disablePay={currentStep === 2 && (!isContactValid || !termsAccepted)}
               walletApplied={walletApplied}
               loading={addonsLoading}
+              rewards={loyaltyTier}
             />
           </div>
         </div>

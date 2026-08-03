@@ -40,9 +40,10 @@ export const PAYMENT_TONE = { paid: "green", partial: "amber", pending: "amber",
 export function BookingDetailModal({ booking: b, mode, t, tCat, format, locale, country, onClose }) {
   const [openSection, setOpenSection] = useState(mode === "invoice" ? "invoice" : mode === "manage" ? "manage" : null);
 
-  const dateLabel = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric" }).format(
-    new Date(b.date),
-  );
+  const dateLabel ='';
+  //  new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric" }).format(
+  //   new Date(b.date),
+  // );
 
   const toggleSection = (key) => setOpenSection((s) => (s === key ? null : key));
 

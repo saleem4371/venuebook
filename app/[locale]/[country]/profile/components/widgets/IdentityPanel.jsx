@@ -25,6 +25,7 @@ export default function IdentityPanel({
   onOpenSettings,
   onOpenRewards,
   flat = false,
+  bookingCurrent
 }) {
   const tIdentity = useTranslations("profile.identity");
 

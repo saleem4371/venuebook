@@ -64,7 +64,7 @@ function ConversationCard({ conv, isActive, onClick }) {
                 : "text-gray-700 dark:text-gray-300"
             }`}
           >
-            {conv.contact.name}
+            {conv.venue} 
           </span>
           <span className="text-[11px] md:text-[12px] text-gray-400 dark:text-gray-500 shrink-0 leading-none">
             {conv.time}
@@ -72,9 +72,9 @@ function ConversationCard({ conv, isActive, onClick }) {
         </div>
 
         {/* Row 2: venue / subject */}
-        {(conv.venue || conv.subject) && (
+        {(conv.venue || conv.booking_code) && (
           <p className="text-[11px] md:text-[12px] text-gray-400 dark:text-gray-500 truncate mb-1 leading-snug">
-            {conv.venue ?? conv.subject}
+           { conv.booking_code}
           </p>
         )}
 
@@ -200,7 +200,7 @@ export default function ConversationList({ conversations, activeId, onSelect, on
               </button>
             )}
             <h2 className="text-[15px] md:text-[17px] font-semibold text-gray-900 dark:text-gray-100 truncate">
-              {t("title")}
+              {t("title")} 
             </h2>
           </div>
           {totalUnread > 0 && (

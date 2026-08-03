@@ -19,7 +19,8 @@
  * itself.
  */
 
-import { Fragment } from "react";
+import { Fragment, useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { IconAward, IconTicket, IconCheck, IconCrown, IconLeaf, IconBuildingSkyscraper } from "@tabler/icons-react";
 
@@ -30,56 +31,109 @@ import FarmRewards from "@/app/[locale]/[country]/profile/components/FarmRewards
 import { MOCK_COUPONS } from "../../data/mockAccountData";
 import { SettingsCard, CardHeading } from "../ui";
 
+const STEP_REVEAL_DELAY_MS = 420; // pacing between each tier lighting up on mount
+
 /**
  * Tier journey stepper — bronze → silver → gold → diamond, with every
  * tier at or below the account's current one marked achieved (checkmark)
  * and the current tier itself marked with a crown, so reaching the top
  * tier (Diamond) reads as "here's the path you climbed", not just a
  * single static badge with no sense of progression.
+ *
+ * On mount/refresh this climbs the ladder visibly — step 1, then 2, then
+ * 3, etc. — pausing briefly at each rung (checkmark scales in, connector
+ * line fills left→right) instead of rendering the whole path already
+ * achieved. Re-plays whenever the resolved current tier changes.
  */
-function TierStepper({ walletPoints }) {
+function TierStepper({ walletPoints, rewards }) {
   const tm = useTranslations("membership");
-  const currentTier = getMembershipTier(walletPoints);
-  const currentIndex = MEMBERSHIP_TIERS.findIndex((tr) => tr.id === currentTier.id);
+
+  const tiers = rewards?.tier ?? [];
+
+  // The account's current membership id lives at rewards.rewads.mem_id in
+  // the real API payload (NOTE: "rewads", not "rewards" — easy typo, and
+  // one that silently breaks this whole component since findIndex then
+  // never matches anything). Falls back to the points-based mock lookup
+  // only when that field isn't present yet.
+  const memberTierId = rewards?.rewads?.mem_id;
+  const fallbackTier = getMembershipTier(walletPoints);
+  const currentIndex = tiers.findIndex(
+    (item) => item.id === (memberTierId ?? fallbackTier?.id),
+  );
+  const targetIndex = Math.max(currentIndex, 0);
+
+  const [step, setStep] = useState(0);
+
+  useEffect(() => {
+    setStep(0);
+    if (targetIndex === 0) return; // nothing to climb — already resting at step 0
+
+    let i = 0;
+    const timer = setInterval(() => {
+      i += 1;
+      setStep(i);
+      if (i >= targetIndex) clearInterval(timer);
+    }, STEP_REVEAL_DELAY_MS);
+
+    return () => clearInterval(timer);
+  }, [targetIndex]);
 
   return (
     <div className="flex items-start">
-      {MEMBERSHIP_TIERS.map((tier, i) => {
-        const achieved = i <= currentIndex;
-        const isCurrent = i === currentIndex;
-        const isLast = i === MEMBERSHIP_TIERS.length - 1;
+      {tiers.map((tier, i) => {
+        const achieved = i <= step;
+        const isCurrent = i === step && step === targetIndex;
+        const isLast = i === tiers.length - 1;
+
         return (
           <Fragment key={tier.id}>
             <div className="flex flex-col items-center gap-2 shrink-0">
-              <div
+              <motion.div
+                initial={false}
+                animate={{
+                  scale: achieved ? 1 : 0.88,
+                  backgroundColor: achieved ? tier.color : undefined,
+                }}
+                transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
                 className={`w-9 h-9 rounded-full flex items-center justify-center border-2 ${
                   achieved ? "border-transparent" : "bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
                 }`}
-                style={achieved ? { backgroundColor: tier.color, boxShadow: `0 4px 10px -2px ${tier.color}80` } : undefined}
+                style={achieved ? { boxShadow: `0 4px 10px -2px ${tier.color}80` } : undefined}
               >
                 {achieved ? (
-                  isCurrent ? (
-                    <IconCrown size={16} className="text-white" />
-                  ) : (
-                    <IconCheck size={16} className="text-white" />
-                  )
+                  <motion.span
+                    key={isCurrent ? "crown" : "check"}
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.25, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
+                    className="flex items-center justify-center"
+                  >
+                    {isCurrent ? <IconCrown size={16} className="text-white" /> : <IconCheck size={16} className="text-white" />}
+                  </motion.span>
                 ) : (
                   <span className="text-[11px] font-bold text-gray-400 dark:text-gray-500">{i + 1}</span>
                 )}
-              </div>
+              </motion.div>
+
               <span
-                className={`text-[10.5px] font-semibold whitespace-nowrap ${
+                className={`text-[10.5px] font-semibold whitespace-nowrap transition-colors duration-300 ${
                   achieved ? "text-gray-900 dark:text-gray-50" : "text-gray-400 dark:text-gray-500"
                 }`}
               >
-                {tm(`tier_${tier.id}`)}
+              {tm(`tier_${tier.name?.toLowerCase()}`)}
               </span>
             </div>
+
             {!isLast && (
-              <div
-                className={`flex-1 h-[3px] rounded-full mx-2 mt-[18px] ${i < currentIndex ? "" : "bg-gray-200 dark:bg-gray-700"}`}
-                style={i < currentIndex ? { backgroundColor: tier.color } : undefined}
-              />
+              <div className="flex-1 h-[3px] rounded-full mx-2 mt-[18px] bg-gray-200 dark:bg-gray-700 overflow-hidden">
+                <motion.div
+                  className="h-full rounded-full"
+                  style={{ backgroundColor: tier.color, transformOrigin: "left" }}
+                  initial={{ scaleX: 0 }}
+                  animate={{ scaleX: i < step ? 1 : 0 }}
+                  transition={{ duration: STEP_REVEAL_DELAY_MS / 1000, ease: "easeInOut" }}
+                />
+              </div>
             )}
           </Fragment>
         );
@@ -97,58 +151,82 @@ function TierStepper({ walletPoints }) {
  * booked, when, how many points it earned, and the running cumulative
  * total climbing toward the tier the user is at right now.
  */
-function PointsBookingJourney() {
+function PointsBookingJourney({ rewards }) {
   const t = useTranslations("accountSettings.rewards");
 
-  const rows = MOCK_BOOKINGS
-    .filter((b) => b.bookingType === "reservation" && b.bookingStatus !== "cancelled")
-    .slice()
-    .sort((a, b) => new Date(a.date) - new Date(b.date))
-    .reduce((acc, b) => {
-      const earned = Math.floor(b.amountINR * POINTS_PER_INR);
-      const cumulative = (acc[acc.length - 1]?.cumulative || 0) + earned;
-      acc.push({ ...b, earned, cumulative });
-      return acc;
-    }, []);
+  const rows = (rewards?.history || []).filter(
+    (item) => item.transaction_type === "reward"
+  );
 
   return (
-    <div className="rounded-2xl border border-gray-100 dark:border-gray-800 p-5 mb-5">
-      <div className="flex items-center justify-between mb-4">
-        <p className="text-[12px] font-semibold text-gray-700 dark:text-gray-200">{t("activityJourney")}</p>
-        <span className="text-[11px] text-gray-400 dark:text-gray-500">{rows.length} {t("bookingsCounted").toLowerCase()}</span>
+    <div className="rounded-2xl border border-gray-100 dark:border-gray-800 p-5">
+      <div className="flex items-center justify-between mb-5">
+        <p className="text-[13px] font-semibold text-gray-900 dark:text-gray-50">
+          {t("activityJourney")}
+        </p>
+
+        <span className="text-[11px] text-gray-400">
+          {rows.length} {t("bookingsCounted").toLowerCase()}
+        </span>
       </div>
 
       <div>
         {rows.map((r, i) => {
           const isLast = i === rows.length - 1;
-          const dateLabel = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(new Date(r.date));
+
           return (
-            <div key={r.bookingId} className="relative flex gap-3 pb-5 last:pb-0">
+            <div
+              key={r.id}
+              className="relative flex gap-3 pb-5 last:pb-0"
+            >
               {!isLast && (
                 <span className="absolute left-[13px] top-7 bottom-0 w-px bg-gradient-to-b from-violet-300 to-violet-100 dark:from-violet-700 dark:to-violet-900/20" />
               )}
-              <span className="relative z-10 shrink-0 w-7 h-7 rounded-full bg-violet-600 flex items-center justify-center text-white shadow-[0_2px_8px_-1px_rgba(124,58,237,0.5)]">
-                {r.category === "farmstays" ? <IconLeaf size={13} /> : <IconBuildingSkyscraper size={13} />}
+
+              <span className="relative z-10 shrink-0 w-7 h-7 rounded-full bg-green-600 flex items-center justify-center text-white">
+                <IconLeaf size={13} />
               </span>
-              <div className="flex-1 min-w-0 flex items-center justify-between gap-3 pt-0.5">
-                <div className="min-w-0">
-                  <p className="text-[12.5px] font-semibold text-gray-900 dark:text-gray-50 truncate">{r.propertyName}</p>
-                  <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">{dateLabel}</p>
+
+              <div className="flex-1 flex items-center justify-between">
+                <div>
+                  <p className="text-[12.5px] font-semibold text-gray-900 dark:text-gray-50">
+                    {r.child_venue_name || "Venue"}
+                  </p>
+
+                  <p className="text-[11px] text-gray-400 mt-0.5">
+                    {r.event_date || "-"}
+                  </p>
+
+                  <p className="text-[10px] text-gray-400 mt-1">
+                    #{r.booking_code}
+                  </p>
                 </div>
-                <div className="text-right shrink-0">
-                  <p className="text-[12.5px] font-bold text-green-600">+{r.earned.toLocaleString()}</p>
-                  <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">{r.cumulative.toLocaleString()} {t("runningTotal")}</p>
+
+                <div className="text-right">
+                  <p className="text-[13px] font-bold text-green-600">
+                    +{Number(r.points).toLocaleString()}
+                  </p>
+
+                  <p className="text-[10px] text-gray-400 mt-1">
+                    ₹{Number(r.total_amount || 0).toLocaleString()}
+                  </p>
                 </div>
               </div>
             </div>
           );
         })}
+
+        {rows.length === 0 && (
+          <div className="text-center py-8 text-gray-400">
+            No reward history found.
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-export default function Rewards() {
+export default function Rewards({ rewards }) {
   const t = useTranslations("accountSettings.rewards");
 
   const walletPoints = computeMockWalletPoints(POINTS_PER_INR);
@@ -159,18 +237,18 @@ export default function Rewards() {
 
       <div className="rounded-2xl border border-gray-100 dark:border-gray-800 p-5 mb-5">
         <p className="text-[12px] font-semibold text-gray-700 dark:text-gray-200 mb-4">{t("tierJourney")}</p>
-        <TierStepper walletPoints={walletPoints} />
+        <TierStepper walletPoints={walletPoints} rewards={rewards} />
       </div>
 
       <div className="space-y-4 mb-5">
-        <MemberCard walletPoints={walletPoints} />
-        <FarmRewards walletPoints={walletPoints} />
+        <MemberCard walletPoints={walletPoints} rewards={rewards} />
+        <FarmRewards walletPoints={walletPoints} rewards={rewards} />
       </div>
 
       {/* Points & booking journey — replaces the old flat lifetime-points /
           bookings-counted number boxes with the chronological story of how
           the account reached its current tier */}
-      <PointsBookingJourney />
+      <PointsBookingJourney rewards={rewards} />
 
       {/* Available coupons — Account-Settings-specific, not shown on Profile */}
       <div>

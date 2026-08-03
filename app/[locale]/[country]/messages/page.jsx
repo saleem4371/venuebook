@@ -1,22 +1,25 @@
 "use client";
 
 /* ══════════════════════════════════════════════════════════════════
-   CUSTOMER MESSAGES PAGE — Full Dedicated Inbox
-   ─────────────────────────────────────────────
-   Guest-facing communication center. Mirrors the vendor Messages UX
-   (split-pane inbox + thread) from the customer's point of view.
+   MESSAGES PAGE — Full Dedicated Inbox
+   ─────────────────────────────────────
+   Airbnb/Linear-inspired communication center for hospitality CRM.
 
    Layout:
      Desktop : Left sidebar (conversation list) + Right panel (chat)
      Tablet  : Adaptive split — sidebar collapses at md breakpoint
      Mobile  : Stacked — list screen → tap → full chat screen
 
-   URL pattern:
+   URL pattern (consistent with Reservations):
      ?conversation=<id>  → active conversation
 
-   The site navbar is fixed (h-16 / md:h-18). Customer routes own their
-   top offset, so this page pads itself to sit just below the navbar and
-   fills the remaining viewport height.
+   No modal, no popover, no dropdown — this is a dedicated full page.
+
+   NOTE: the avatar/name row + venue/booking context strip are rendered
+   together as ONE seamless header inside ChatThread.jsx (see that file)
+   so they read as a single connected block, not two stacked cards. This
+   page only owns the page-level PageHeader (title/subtitle/unread badge)
+   above the inbox — it does not duplicate the booking context card.
 ══════════════════════════════════════════════════════════════════ */
 
 import { Suspense, useCallback, useEffect, useState } from "react";
@@ -24,29 +27,30 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { MessageCircle } from "lucide-react";
 
-import { useUI } from "@/context/UIContext";
-import ConversationList from "./components/ConversationList";
-import ChatThread       from "./components/ChatThread";
+import PageHeader         from "./components/PageHeader";
+import ConversationList   from "./components/ConversationList";
+import ChatThread         from "./components/ChatThread";
 import { MOCK_CONVERSATIONS } from "./_data";
+
+import { all_messages, send_messages } from '@/services/chat.service'
 
 /* ── Empty state (desktop: no conversation selected) ─────────────── */
 function EmptyConversationState() {
-  const t = useTranslations("messages");
   return (
-    <div className="flex flex-col items-center justify-center h-full gap-5 px-8 text-center bg-gray-50/50 dark:bg-gray-950">
-      <div className="relative">
-        <div className="w-16 h-16 rounded-2xl bg-violet-50 dark:bg-violet-950/50 flex items-center justify-center shadow-sm">
-          <MessageCircle size={28} className="text-violet-400 dark:text-violet-500" strokeWidth={1.5} />
+    <div className="flex flex-1 flex-col items-center justify-center text-center">
+      <div className="relative mb-5">
+        <div className="absolute inset-0 rounded-full bg-violet-100 blur-xl opacity-50" />
+        <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/20">
+          <MessageCircle className="h-8 w-8 text-violet-600 dark:text-violet-400" />
         </div>
-        <div className="absolute -inset-2 rounded-3xl border border-violet-100 dark:border-violet-900/40 pointer-events-none" />
       </div>
 
       <div>
-        <p className="text-[15px] font-semibold text-gray-800 dark:text-gray-200 mb-1.5">
-          {t("selectConversation")}
+        <p className="mb-1.5 text-[15px] font-semibold text-gray-800 dark:text-gray-200">
+          Select a conversation
         </p>
-        <p className="text-[13px] text-gray-400 dark:text-gray-500 leading-relaxed max-w-[220px]">
-          {t("selectConversationSub")}
+        <p className="max-w-[220px] text-[13px] leading-relaxed text-gray-400 dark:text-gray-500">
+          Choose a thread from the sidebar to start messaging.
         </p>
       </div>
     </div>
@@ -55,121 +59,129 @@ function EmptyConversationState() {
 
 /* ── Inner page — requires Suspense for useSearchParams ──────────── */
 function MessagesInner() {
+  const t            = useTranslations("vendor.messages");
   const searchParams = useSearchParams();
   const router       = useRouter();
   const pathname     = usePathname();
-  const { setHideSiteChrome } = useUI();
 
-  /* Active conversation from URL */
-  const activeId   = searchParams.get("conversation");
-  const activeConv = MOCK_CONVERSATIONS.find((c) => String(c.id) === activeId) ?? null;
+  const [chats, setChat]   = useState([]);
+  const [loading, setLoading] = useState(true);
+  const activeId = searchParams.get("conversation");
 
-  /* ── Mobile full-screen thread detection ─────────────────────────
-     Below md (768px), opening a conversation replaces the list with a
-     full-screen chat. That view owns its own header (ChatThread), so the
-     site Navbar + BottomMenu step aside — mirrors native chat apps. */
-  const [isMobileWidth, setIsMobileWidth] = useState(false);
+  // Backend records may key on `_id` (Mongo-style) instead of `id` — match
+  // either so a real API payload doesn't silently fail to resolve the
+  // active conversation.
+  const activeConv =
+    chats.find((c) => String(c.id ?? c._id) === activeId) ?? null;
+
+  const totalUnread = chats.reduce((sum, c) => sum + (c.unread || 0), 0);
 
   useEffect(() => {
-    const mql  = window.matchMedia("(max-width: 767px)");
-    const sync = () => setIsMobileWidth(mql.matches);
-    sync();
-    mql.addEventListener("change", sync);
-    return () => mql.removeEventListener("change", sync);
+    let cancelled = false;
+
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const res = await all_messages();
+        // Fall back to [] (never null) — chats.find/.reduce below assume
+        // an array, and a missing/empty payload shouldn't crash the page.
+        if (!cancelled) setChat(res?.data?.data || []);
+      } catch (err) {
+        console.error(err);
+        if (!cancelled) setChat([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    fetchData();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const isFullscreenThread = Boolean(activeId) && isMobileWidth;
-
-  useEffect(() => {
-    setHideSiteChrome(isFullscreenThread);
-    return () => setHideSiteChrome(false);
-  }, [isFullscreenThread, setHideSiteChrome]);
-
-  /* Navigate to a conversation — preserves other search params.
-     Uses replace (not push): switching conversations is in-page UI
-     state, not a new navigable page. Pushing here would stack extra
-     history entries under /messages, so the back button would have to
-     step through every conversation ever opened before it could leave
-     the page — replace keeps "previous route" meaning whatever the
-     user was on before they entered Messages, not before they clicked
-     into a specific conversation. */
+  /* Navigate to a conversation — preserves other search params */
   const handleSelect = useCallback(
     (id) => {
       const p = new URLSearchParams(searchParams);
       p.set("conversation", id);
-      router.replace(`${pathname}?${p.toString()}`, { scroll: false });
+      router.push(`${pathname}?${p.toString()}`, { scroll: false });
     },
     [pathname, router, searchParams],
   );
 
-  /* Back to conversation list (mobile) — same reasoning, replace only. */
+  /* Back to conversation list (mobile) */
   const handleBack = useCallback(() => {
     const p = new URLSearchParams(searchParams);
     p.delete("conversation");
-    router.replace(`${pathname}?${p.toString()}`, { scroll: false });
+    router.push(`${pathname}?${p.toString()}`, { scroll: false });
   }, [pathname, router, searchParams]);
 
-  /* Leave the Messages page entirely — back to wherever the user came
-     from (e.g. account menu). Distinct from handleBack, which only
-     drops the active conversation. */
-  const handleGoBack = useCallback(() => {
-    router.back();
-  }, [router]);
+  const MessageClick = useCallback(async (formData) => {
+    return send_messages(formData);
+  }, []);
 
   return (
-    /* Sit below the fixed navbar (h-16 / md:h-18) and fill the rest.
-       When a thread is full-screen on mobile, the Navbar is hidden, so
-       the page reclaims that space instead of leaving a blank gap. */
-    <div className={isFullscreenThread ? "" : "pt-[64px] md:pt-[72px]"}>
+    <div className="flex h-[calc(100dvh-120px)] flex-col bg-gray-50 dark:bg-gray-900">
+
+      <div className="px-4 sm:px-6 md:px-8 lg:px-10 pb-4 shrink-0">
+        <PageHeader
+          title={t("title")}
+          subtitle={t("subtitle")}
+          badge={
+            totalUnread > 0 ? (
+              <span className="flex h-6 min-w-[24px] items-center justify-center rounded-full bg-violet-600 px-1.5 text-[11px] font-bold text-white">
+                {totalUnread}
+              </span>
+            ) : undefined
+          }
+        />
+      </div>
+
       <div
-        className={[
-          "flex flex-col",
-          isFullscreenThread ? "h-[100dvh]" : "h-[calc(100dvh-64px)] md:h-[calc(100dvh-72px)]",
-        ].join(" ")}
+        className="
+          flex-1 min-h-0
+          mx-0 md:mx-4 lg:mx-6
+          mb-0 md:mb-4
+          flex overflow-hidden
+          border-t border-gray-100 dark:border-gray-800
+          md:rounded-2xl md:border md:shadow-sm
+          bg-white dark:bg-gray-950
+        "
       >
-
-        {/* ── Split-pane workspace ───────────────────────────────
-             No page-level title here — the sidebar (ConversationList)
-             carries the "Messages" title + unread badge on its own. ──── */}
-        <div
-          className="
-            flex-1 min-h-0
-            flex overflow-hidden
-            bg-white dark:bg-gray-950
-          "
+        <aside
+          className={[
+            "flex flex-col border-r border-gray-100 dark:border-gray-800",
+            "bg-white dark:bg-gray-950",
+            "md:w-[340px] lg:w-[380px] md:flex-none md:flex",
+            activeId ? "hidden" : "flex w-full",
+          ].join(" ")}
         >
-          {/* LEFT — Conversation list sidebar */}
-          <aside
-            className={[
-              "flex flex-col border-e border-gray-100 dark:border-gray-800",
-              "bg-white dark:bg-gray-950",
-              "md:w-[340px] lg:w-[380px] md:flex-none md:flex",
-              activeId ? "hidden" : "flex w-full",
-            ].join(" ")}
-          >
-            <ConversationList
-              conversations={MOCK_CONVERSATIONS}
-              activeId={activeId}
-              onSelect={handleSelect}
-              onBack={handleGoBack}
-            />
-          </aside>
+          <ConversationList
+            conversations={chats}
+            activeId={activeId}
+            onSelect={handleSelect}
+            loading={loading}
+          />
+        </aside>
 
-          {/* RIGHT — Chat thread or empty state */}
-          <section
-            className={[
-              "flex-1 flex flex-col min-w-0",
-              "bg-white dark:bg-gray-950",
-              activeId ? "flex" : "hidden md:flex",
-            ].join(" ")}
-          >
-            {activeConv ? (
-              <ChatThread conversation={activeConv} onBack={handleBack} />
-            ) : (
-              <EmptyConversationState />
-            )}
-          </section>
-        </div>
+        <section
+          className={[
+            "flex-1 flex flex-col min-w-0",
+            "bg-white dark:bg-gray-950",
+            activeId ? "flex" : "hidden md:flex",
+          ].join(" ")}
+        >
+          {activeConv ? (
+            <ChatThread
+              conversation={activeConv}
+              onBack={handleBack}
+              SendMessageApi={MessageClick}
+            />
+          ) : (
+            <EmptyConversationState />
+          )}
+        </section>
       </div>
     </div>
   );
@@ -180,7 +192,9 @@ export default function MessagesPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex h-[calc(100dvh-64px)] md:h-[calc(100dvh-72px)] items-center justify-center pt-[64px] md:pt-[72px]" />
+        <div className="flex h-[calc(100vh-120px)] items-center justify-center">
+          Loading...
+        </div>
       }
     >
       <MessagesInner />

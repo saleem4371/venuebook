@@ -30,12 +30,34 @@ import { CalendarDays, Users, Settings2, FileText, MessageCircle } from "lucide-
 import { StatusBadge, GhostButton } from "./ui";
 import { STATUS_TONE, PAYMENT_TONE } from "./BookingDetailModal";
 import { CATEGORY_COLORS } from "../../data/mockProfileData";
+import { useRouter } from "next/navigation";
 
-export function BookingCard({ booking, t, tCat, format, locale, country, onOpen }) {
+
+
+export function BookingCard({ booking, t, tCat, format, locale, country, onOpen ,editBookingRequest }) {
+  const router = useRouter();
   const b = booking;
   const dateLabel = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(
     new Date(b.date),
   );
+
+  const openBookingChat = async (booking) => {
+
+   const chat_id =  await editBookingRequest({
+      booking_id: booking.id,
+      child_venue_id: booking.childVenueId,
+      message: 'Hello ',
+      category: 'bookings',
+      reference_type: 'booking',
+      vendor_id: booking.vendor_id,
+    });
+  router.push(
+    `/${locale}/${country}/messages?conversation=${chat_id}`
+  );
+};
+//?conversationId=${booking.conversationId}&bookingId=${booking.bookingId}&type=booking
+
+   
 
   return (
     <motion.div
@@ -70,12 +92,14 @@ export function BookingCard({ booking, t, tCat, format, locale, country, onOpen 
             alt=""
             className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
-          <span
-            className="absolute top-2 left-2 px-2 py-0.5 rounded-lg text-[9.5px] font-semibold text-white shadow"
-            style={{ backgroundColor: CATEGORY_COLORS[b.category] }}
-          >
-            {tCat(b.category.replace(/s$/, ""))}
-          </span>
+         <span
+  className="absolute top-2 left-2 px-2 py-0.5 rounded-lg text-[9.5px] font-semibold text-white shadow"
+  style={{
+    backgroundColor: CATEGORY_COLORS[b.category] || "#2563eb",
+  }}
+>
+  {b.category}
+</span>
         </div>
 
         <div className="flex-1 p-3.5 min-w-0">
@@ -89,24 +113,57 @@ export function BookingCard({ booking, t, tCat, format, locale, country, onOpen 
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-1.5">
-              <StatusBadge label={t(`status.${b.bookingStatus}`)} tone={STATUS_TONE[b.bookingStatus]} />
-              <StatusBadge label={t(`payment.${b.paymentStatus}`)} tone={PAYMENT_TONE[b.paymentStatus]} />
+              {/* <StatusBadge label={t(`status.${b.bookingStatus}`)} tone={STATUS_TONE[b.bookingStatus]} />
+              <StatusBadge label={t(`payment.${b.paymentStatus}`)} tone={PAYMENT_TONE[b.paymentStatus]} /> */}
+             {b.bookingStatus ==='cancelled'  ? (<>
+ <StatusBadge
+  label='Cancelled'
+  tone={STATUS_TONE[b.bookingStatus]}
+/>
+             </>):(<>
+                  <StatusBadge
+  label={t(`status.${b.bookingStatus}`)}
+  tone={STATUS_TONE[b.bookingStatus]}
+/>
+
+<StatusBadge
+  label={
+    b.paymentStatus === "-"
+      ? "-"
+      : t(`payment.${b.paymentStatus}`)
+  }
+  tone={PAYMENT_TONE[b.paymentStatus]}
+/>
+             </>)}
+         
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-[11.5px] text-gray-500 dark:text-gray-400">
-            <span className="inline-flex items-center gap-1.5">
-              <CalendarDays size={12} />
-              {dateLabel}
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <Users size={12} />
-              {b.guests} {t("guests")}
-            </span>
-            <span className="font-semibold text-gray-800 dark:text-gray-200">
-              {t("amountPaid")}: {format(b.amountINR)}
-            </span>
-          </div>
+         <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-[11.5px] text-gray-500 dark:text-gray-400">
+  <span className="inline-flex items-center gap-1.5">
+    <CalendarDays size={12} />
+    {dateLabel}
+  </span>
+
+  <span className="inline-flex items-center gap-1.5">
+    <Users size={12} />
+    {b.guests} Guests
+  </span>
+
+  <span className="font-semibold text-gray-800 dark:text-gray-200">
+    Booking Amount: {format(b.total_amount)}
+  </span>
+
+  <span className="font-semibold text-green-600">
+    Paid: {format(b.amount)}
+  </span>
+
+  {b.paymentStatus !== "paid" && b.paymentStatus !== "-" && (
+    <span className="font-semibold text-red-600">
+      Pending: {format(b.total_amount - b.amount)}
+    </span>
+  )}
+</div>
 
           <div className="flex flex-wrap gap-1.5 mt-2.5">
             <GhostButton onClick={() => onOpen("manage")}>
@@ -121,7 +178,7 @@ export function BookingCard({ booking, t, tCat, format, locale, country, onOpen 
               </GhostButton>
             )}
 
-            <GhostButton as={Link} href={`/${locale}/${country}/messages`}>
+            <GhostButton  onClick={() => openBookingChat(b)} >
               <MessageCircle size={13} />
               {t("message")}
             </GhostButton>

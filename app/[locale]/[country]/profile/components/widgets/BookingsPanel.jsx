@@ -1,70 +1,9 @@
 "use client";
 
-/**
- * /app/[locale]/[country]/profile/components/widgets/BookingsPanel.jsx
- *
- * Center column of the fixed dashboard — the real Bookings view, not a
- * teaser. It used to show a compact row list with a "View all" link that
- * opened the full detail behind a side drawer; per direct feedback the
- * drawer added a click for no reason, so this now renders the exact same
- * rich card (shared/BookingCard.jsx) that the mobile full-page stack uses
- * — photo, both status badges, date/guests/amount, actions — directly here.
- * It still scrolls WITHIN the panel (not the page), so this stays correct
- * at real scale (a customer's 47 bookings won't blow out the fixed layout).
- *
- * "Manage Booking" is an in-place VIEW SWAP, not a modal — per direct
- * feedback that a modal-over-modal-feeling overlay for something this
- * routine was heavier than it needed to be. Clicking it replaces this
- * panel's own header (title/subtitle/tabs) with a back button + the
- * booking's name/id/status badge, and swaps the card list for the full
- * ManageBookingView (Overview/Edit/Payment/Cancellation tabs + sidebar —
- * see shared/ManageBookingView.jsx), still inside this same SectionCard —
- * the center column never navigates to a real Next.js route or opens an
- * overlay for this. "Invoice" is unchanged and still opens
- * BookingDetailModal: an invoice is a real document meant to be
- * read/printed/downloaded on its own, which is a much better fit for a
- * focused overlay than a list-replacing inline view.
- *
- * `onBookingPatch` lets ManageBookingView push local payment/cancellation
- * state changes (e.g. paymentStatus flipping to "paid", bookingStatus
- * flipping to "cancelled") back up so this header's StatusBadge stays in
- * sync live — it does NOT mutate MOCK_BOOKINGS itself (same mock-only
- * limitation documented in ManageBookingView.jsx's own header comment).
- *
- * `compact` — used when page.jsx's Bookings↔Offers layout swap puts this
- * in the LEFT column instead of the center (see page.jsx's header comment):
- * a small icon+title card with a single empty-state message, matching its
- * new neighbors (Identity/Messages/Offers) instead of trying to fill a
- * whole column the way the center placement does.
- *
- * `embedded` — used when this sits BELOW the new Greeting/Reels/Suggestions
- * feed in the center column (see page.jsx) instead of being the column's
- * sole content. In that layout the CENTER COLUMN ITSELF owns the one
- * scrollbar for the whole feed, so this drops its own internal
- * `flex-1 min-h-0 overflow-y-auto` scroll ownership and just flows
- * naturally underneath — no nested/double scrollbars.
- *
- * This is also what renders (non-compact, non-embedded) when GreetingBar's
- * "Bookings" pill toggles `showFullBookings` on, filling the whole center
- * column on its own — the pill itself (icon/label swaps to "Back to
- * Feed") is the only way back, so this has no back button of its own
- * beyond the unrelated manage-view one above (out of a single booking's
- * detail, not out of this whole panel).
- *
- * `fullScreen` — mobile-only variant. On < 1024px the toggle no longer
- * swaps this in as just another embedded section of the same scrolling
- * page (that read as "part of the dashboard", not a real bookings screen);
- * `fullScreen` renders it as a true full-viewport takeover instead — fixed
- * over everything including the navbar, its own back button + title bar,
- * the list owning its own scroll underneath. `onBack` is that top-level
- * "leave bookings entirely" callback (distinct from the manage-view
- * `onBack` above, which only backs out of a single booking's detail).
- */
-
 import { useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { CalendarRange, PackageSearch, ArrowLeft } from "lucide-react";
 
 import { useCurrency } from "@/hooks/useCurrency";
@@ -73,31 +12,247 @@ import { BookingDetailModal, STATUS_TONE } from "../shared/BookingDetailModal";
 import { BookingCard } from "../shared/BookingCard";
 import { ManageBookingView } from "../shared/ManageBookingView";
 import BookingTabs, { filterBookingsByTab } from "../shared/BookingTabs";
-import { MOCK_BOOKINGS, CATEGORY_COLORS } from "../../data/mockProfileData";
+import { CATEGORY_COLORS } from "../../data/mockProfileData";
+import { useToast } from "@/components/ToastProvider";
 
-export default function BookingsPanel({ compact = false, flat = false, embedded = false, fullScreen = false, onBack }) {
+const IMAGE_BASE_URL = process.env.NEXT_PUBLIC_AWS_BUCKET_URL;
+
+import {
+  editBookingRequest,
+} from "@/services/payment.service";
+
+// Urgency tiers for the "days to go" badge. Anything today/tomorrow is
+// treated as urgent (blinking), this week is a soft pulse, and everything
+// beyond that is a calm, static badge — the animation is a signal, not
+// decoration, so it only fires when it means something.
+function getUrgency(daysLeft) {
+  if (daysLeft <= 1) return "urgent";
+  if (daysLeft <= 7) return "soon";
+  return "standard";
+}
+
+const URGENCY_STYLES = {
+  urgent: "bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400",
+  soon: "bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400",
+  standard: "bg-violet-50 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400",
+};
+
+function DaysLeftBadge({ daysLeft, label, className = "" }) {
+  const urgency = getUrgency(daysLeft);
+
+  return (
+    <span
+      className={`relative inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold shrink-0 ${URGENCY_STYLES[urgency]} ${className}`}
+    >
+      {urgency !== "standard" && (
+        <motion.span
+          className={`w-1.5 h-1.5 rounded-full ${urgency === "urgent" ? "bg-red-500" : "bg-amber-500"}`}
+          animate={{ opacity: [1, 0.25, 1] }}
+          transition={{
+            duration: urgency === "urgent" ? 0.9 : 1.6,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+        />
+      )}
+      {label}
+    </span>
+  );
+}
+
+// Maps a raw API booking row (allBookingData items) onto the shape
+// BookingCard/BookingDetailModal/ManageBookingView already expect (the
+// old MOCK_BOOKINGS shape) — keeps every downstream component's design
+// and props completely unchanged.
+// function mapApiBookingToCard(b) {
+//   return {
+//     id: b.id,
+//     bookingId: b.bookingId,
+//     eventDateId: b.eventDateId,
+//     propertyName: b.propertyName || b.venue_name_snapshot,
+//     image: b.image ? `${IMAGE_BASE_URL}/${b.image}` : "/images/placeholder.jpg",
+//     date: b.eventDate,
+//     guests: b.guests ?? 0,
+//     bookingStatus: b.bookingStatus || b.status || "confirmed",
+//     paymentStatus: b.bookingStatus!=='cancelled' ? b.total_amount <=b.totalPaid ? "paid" :'pending' :'-',
+//     category: b.name || "venues",
+//     amount: b.totalPaid ?? 0,
+//     venueCity: b.venue_city,
+//     venueState: b.venue_state,
+//     shiftName: b.shift_name,
+//     startTime: b.start_time,
+//     endTime: b.end_time,
+//     daysLeft: b.daysLeft,
+//     coverImage: b.coverImage,
+//     event_date: b.eventDate,
+//     child_venue_name: b.child_venue_name,
+//     venue_name_snapshot: b.venue_name_snapshot,
+//     total_amount: b.total_amount,
+//     address: b.address,
+//     paymentHistory: b.paymentHistory,
+//     // Keep the raw row around too, in case a deeper view (ManageBookingView,
+//     // BookingDetailModal) needs a field not covered by the mapping above.
+//     _raw: b,
+//   };
+// }
+function mapApiBookingToCard(b) {
+  const totalAmount = Number(b.total_amount || 0);
+  const totalPaid = Number(b.totalPaid || 0);
+
+  return {
+    id: b.id,
+    bookingId: b.bookingId,
+    eventDateId: b.eventDateId,
+    childVenueId: b.childVenueId,
+
+    propertyName: b.propertyName || b.venue_name_snapshot,
+
+    image: b.image
+      ? `${IMAGE_BASE_URL}/${b.image}`
+      : "/images/placeholder.jpg",
+
+    date: b.eventDate,
+    event_date: b.eventDate,
+
+    guests: Number(b.guests || 0),
+
+    bookingStatus: b.bookingStatus || b.status || "confirmed",
+
+    paymentStatus:
+      (b.bookingStatus || b.status) === "cancelled"
+        ? "-"
+        : totalPaid >= totalAmount
+        ? "paid"
+        : "pending",
+
+    category: b.name || "venues",
+
+    amount: totalPaid,
+    total_amount: b.total_amount,
+    totalPaid,
+
+    venueCity: b.venue_city,
+    venueState: b.venue_state,
+
+    shiftName: b.shift_name,
+    startTime: b.start_time,
+    endTime: b.end_time,
+
+    daysLeft: b.daysLeft,
+
+    coverImage: b.coverImage,
+
+    child_venue_name: b.child_venue_name,
+    venue_name_snapshot: b.venue_name_snapshot,
+
+    address: b.address,
+    vendor_id: b.vendor_id,
+
+    paymentHistory:
+      typeof b.paymentHistory === "string"
+        ? JSON.parse(b.paymentHistory || "[]")
+        : b.paymentHistory || [],
+
+    _raw: b,
+  };
+}
+
+// A single booking (bookingId) can legitimately have multiple rows if it
+// spans multiple event dates — bookingId alone is NOT a unique key in
+// that case, only bookingId+eventDateId is. This also collapses true
+// accidental duplicates (e.g. a double-fetch) since those share both ids.
+function uniqueKey(b) {
+  return `${b.bookingId}-${b.eventDateId ?? b.date ?? b.event_date ?? ""}`;
+}
+
+function dedupeByKey(list) {
+  const seen = new Set();
+  const out = [];
+  for (const item of list) {
+    const k = uniqueKey(item);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(item);
+  }
+  return out;
+}
+
+export default function BookingsPanel({
+  compact = false,
+  flat = false,
+  embedded = false,
+  fullScreen = false,
+  onBack,
+  bookingUpcoming = [],
+  allBookingData = [],
+}) {
   const t = useTranslations("profile.bookings");
   const tCat = useTranslations("card.badge");
   const { locale, country } = useParams();
   const { format } = useCurrency();
 
+   const toast = useToast();
+
   const [modal, setModal] = useState(null);
   const [manageBooking, setManageBooking] = useState(null);
   const [activeTab, setActiveTab] = useState("all");
 
+  // Real bookings from the API, mapped onto BookingCard's expected shape,
+  // deduped, newest first — replaces MOCK_BOOKINGS.
   const allBookings = useMemo(
-    () => [...MOCK_BOOKINGS].sort((a, b) => new Date(b.date) - new Date(a.date)),
-    [],
+    () =>
+      dedupeByKey([...allBookingData].map(mapApiBookingToCard)).sort(
+        (a, b) => new Date(b.date) - new Date(a.date),
+      ),
+    [allBookingData],
   );
   const bookings = useMemo(() => filterBookingsByTab(allBookings, activeTab), [allBookings, activeTab]);
 
+  // Real upcoming bookings from the API, deduped, closest first.
+  const upcoming = useMemo(
+    () =>
+      dedupeByKey(bookingUpcoming).sort(
+        (a, b) => new Date(a.event_date) - new Date(b.event_date),
+      ),
+    [bookingUpcoming],
+  );
+
+   const [editMessage, setEditMessage] = useState("");
+  
+    const [editLoading, setEditLoading] = useState(false);
+  
+  const onBookingRequest = async (playload) => {
+    
+    try {
+      //setEditLoading(true);
+  
+  
+      const res = await editBookingRequest(playload);
+  
+      toast.success("Your Message has been sent successfully.");
+
+
+      return res.data.conversationId
+  
+      setEditMessage("");
+     // setShowEditModal(false); // if using a modal
+  
+      // Optional: refresh booking details
+      // await getBookingDetails();
+  
+    } catch (error) {
+      console.error(error);
+      toast.error(
+        error?.response?.data?.message ||
+        "Failed to send edit request."
+      );
+    } finally {
+      //setEditLoading(false);
+    }
+  };
+
   if (compact) {
-    // Real data, not an assumed-empty placeholder — `compact` used to only
-    // ever render when there were zero bookings anywhere (the old
-    // hasBookings swap), so an unconditional EmptyState was correct then.
-    // Now it's the permanent LEFT-column card regardless of whether real
-    // bookings exist (see page.jsx), so it needs to actually check.
-    const preview = allBookings.slice(0, 2);
+    const preview = upcoming.slice(0, 2);
     return (
       <SectionCard flat={flat}>
         <SectionHeading
@@ -120,25 +275,34 @@ export default function BookingsPanel({ compact = false, flat = false, embedded 
           />
         ) : (
           <div className="space-y-2">
-            {preview.map((b) => (
-              <div key={b.bookingId} className="flex items-center gap-2.5">
-                <img src={b.image} alt="" className="w-9 h-9 rounded-lg object-cover shrink-0" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-[11.5px] font-semibold text-gray-900 dark:text-gray-50 truncate">
-                    {b.propertyName}
-                  </p>
-                  <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate">{b.date}</p>
+            {preview.map((b) => {
+              const venueName = b.child_venue_name || b.venue_name_snapshot;
+              const imageUrl = b.coverImage
+                ? `${IMAGE_BASE_URL}/${b.coverImage}`
+                : "/images/placeholder.jpg";
+              const dateLabel = b.event_date
+                ? new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(
+                    new Date(b.event_date),
+                  )
+                : "";
+              const daysToGoLabel =
+                b.daysLeft <= 0 ? "Today" : b.daysLeft === 1 ? "Tomorrow" : `In ${b.daysLeft} days`;
+              return (
+                <div key={uniqueKey(b)} className="flex items-center gap-2.5">
+                  <img src={imageUrl} alt="" className="w-9 h-9 rounded-lg object-cover shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11.5px] font-semibold text-gray-900 dark:text-gray-50 truncate">
+                      {venueName}
+                    </p>
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate">{dateLabel}</p>
+                  </div>
+                  <DaysLeftBadge daysLeft={b.daysLeft} label={daysToGoLabel} />
                 </div>
-                <StatusBadge
-                  label={t(`status.${b.bookingStatus}`)}
-                  tone={STATUS_TONE[b.bookingStatus]}
-                  className="shrink-0"
-                />
-              </div>
-            ))}
-            {allBookings.length > preview.length && (
+              );
+            })}
+            {upcoming.length > preview.length && (
               <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center pt-1">
-                +{allBookings.length - preview.length} more
+                +{upcoming.length - preview.length} more
               </p>
             )}
           </div>
@@ -179,10 +343,6 @@ export default function BookingsPanel({ compact = false, flat = false, embedded 
       ) : (
         <div className="p-4 pb-0">
           {fullScreen ? (
-            // Own back button + title instead of SectionHeading's icon
-            // treatment — this is the top bar of a full screen, not a
-            // section inside one, so it reads like a native list screen
-            // (back arrow + title) rather than a dashboard card header.
             <div className="flex items-center gap-2 mb-3.5">
               <button
                 type="button"
@@ -212,6 +372,7 @@ export default function BookingsPanel({ compact = false, flat = false, embedded 
         <div className={embedded ? "px-4 pb-4 pt-3" : "flex-1 min-h-0 overflow-y-auto px-4 pb-4 pt-3"}>
           <ManageBookingView
             booking={manageBooking}
+            allBookingData={allBookingData}
             t={t}
             tCat={tCat}
             format={format}
@@ -220,14 +381,10 @@ export default function BookingsPanel({ compact = false, flat = false, embedded 
             onInvoice={() => setModal({ booking: manageBooking, mode: "invoice" })}
             onBack={() => setManageBooking(null)}
             onBookingPatch={(patch) => setManageBooking((prev) => (prev ? { ...prev, ...patch } : prev))}
+            editBookingRequest = {onBookingRequest}
           />
         </div>
       ) : bookings.length === 0 ? (
-        // Same pt-3 top gap the populated list uses below (px-4 pb-4 pt-3),
-        // and flex-1 so the dashed box stretches to fill whatever vertical
-        // room the panel has instead of sitting at its own compact height —
-        // EmptyState's own items-center/justify-center then centers the
-        // icon/title/subtitle/CTA within that full height, not just at top.
         <div className={embedded ? "px-4 pb-4 pt-3" : "flex-1 min-h-0 flex flex-col px-4 pb-4 pt-3"}>
           <EmptyState
             icon={<PackageSearch size={20} className="text-violet-600" />}
@@ -242,7 +399,7 @@ export default function BookingsPanel({ compact = false, flat = false, embedded 
         <div className={embedded ? "px-4 pb-4 pt-3 space-y-3" : "flex-1 min-h-0 overflow-y-auto px-4 pb-4 pt-3 space-y-3"}>
           {bookings.map((b) => (
             <BookingCard
-              key={b.bookingId}
+              key={uniqueKey(b)}
               booking={b}
               t={t}
               tCat={tCat}
@@ -250,6 +407,7 @@ export default function BookingsPanel({ compact = false, flat = false, embedded 
               locale={locale}
               country={country}
               onOpen={(mode) => (mode === "manage" ? setManageBooking(b) : setModal({ booking: b, mode }))}
+               editBookingRequest = {onBookingRequest}
             />
           ))}
         </div>
@@ -272,10 +430,6 @@ export default function BookingsPanel({ compact = false, flat = false, embedded 
     </>
   );
 
-  // `fullScreen` bypasses SectionCard's card chrome entirely — a fixed,
-  // full-viewport surface above even the navbar (z-[150]) so it reads as
-  // its own screen, not another card in the page. BookingDetailModal
-  // (z-[999]) still layers correctly above this for Invoice.
   if (fullScreen) {
     return (
       <div className="fixed inset-0 z-[200] bg-white dark:bg-gray-950 flex flex-col">

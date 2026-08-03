@@ -110,7 +110,7 @@ function BreakdownGroup({ label, amount, format, items = [], tAria }) {
 }
 
 /* ─── Loyalty progress ───────────────────────────────────────────────── */
-function LoyaltyCallout({ financials, currentTier, pointsTotal, tSummary }) {
+function LoyaltyCallout({ financials, currentTier, pointsTotal, tSummary , earn_point  ,pointRate , finalTotal ,securityDeposit ,  onPointsChange, }) {
   // Uses the real wallet balance passed down from the parent instead of a
   // hardcoded placeholder, so this reflects the actual signed-in user.
   const progressPercent = currentTier.nextAt
@@ -124,18 +124,26 @@ function LoyaltyCallout({ financials, currentTier, pointsTotal, tSummary }) {
       )
     : 100;
 
+     const earns = Math.round((finalTotal - securityDeposit) * (earn_point / 100));
+
+  const const_point = earns * pointRate;
+
+  useEffect(() => {
+    onPointsChange?.(const_point);
+  }, [const_point, onPointsChange]);
+
   return (
     <div className="rounded-xl bg-gradient-to-br from-violet-50 to-indigo-50 dark:from-violet-900/20 dark:to-indigo-900/20 border border-violet-200 dark:border-violet-800 p-4 space-y-3">
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs font-medium text-violet-700 dark:text-violet-300 truncate">
-          {tSummary("earning_points")}
+       {tSummary("earning_points")} 
         </p>
         <p className="text-sm font-bold text-violet-900 dark:text-violet-100 shrink-0 whitespace-nowrap">
-          +{financials.pointsEarned.toLocaleString()} {tSummary("points_label")}
+          +{const_point.toLocaleString()} {tSummary("points_label")}
         </p>
       </div>
 
-      {currentTier.nextAt && (
+      {/* {currentTier.nextAt && (
         <div className="space-y-1.5">
           <div className="flex items-center justify-between gap-2 text-xs text-violet-600 dark:text-violet-400">
             <span className="truncate">{currentTier.label}</span>
@@ -155,7 +163,7 @@ function LoyaltyCallout({ financials, currentTier, pointsTotal, tSummary }) {
             />
           </div>
         </div>
-      )}
+      )} */}
     </div>
   );
 }
@@ -212,6 +220,7 @@ export default function BookingSummary({
   disablePay = false,
   walletApplied = false,
   loading = false,
+  rewards
 }) {
   const t = useTranslations("checkout.summary");
   const tBook = useTranslations("checkout.booking");
@@ -225,6 +234,8 @@ export default function BookingSummary({
   // page's BookingCard.jsx mobile pattern.
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
 
+  const [earnedPoints, setEarnedPoints] = useState(0);
+
   // -----------------------------
   // PRICE CALCULATION — memoized so the object identity only changes when
   // an actual input changes. Without this, `summary` was a brand-new object
@@ -233,6 +244,17 @@ export default function BookingSummary({
   // render loop, since setting parent state re-renders this component,
   // which built a new `summary`, which re-fired the effect, forever.
   // -----------------------------
+
+    //---------------------Wallet Point-----------------------//
+
+  const loyaltyTier = rewards;
+
+  const pointRate = loyaltyTier?.point_value || 1;
+  const earn_point = loyaltyTier?.earn_point || 1;
+
+  //---------------------Wallet Point-----------------------//
+
+
   const summary = useMemo(() => {
     let baseAmount = 0;
     let nights = 0;
@@ -290,6 +312,17 @@ export default function BookingSummary({
     const payableAmount = taxableAmount + gstAmount;
     const grandTotal = payableAmount + securityDeposit;
 
+    // NOTE: burn_point and earnedPoints are intentionally NOT computed here.
+    // - burn_point depends on pointsDiscount, which itself depends on
+    //   summary.grandTotal (computed below, outside this memo) — computing
+    //   it in here created a circular reference / temporal-dead-zone bug.
+    // - earnedPoints is live React state (set by LoyaltyCallout's
+    //   onPointsChange), and this memo's deps array doesn't include it, so
+    //   embedding it here would freeze it at a stale value until some other
+    //   dependency changed. Both are computed in the component body below,
+    //   after pointsDiscount/finalTotal exist, and merged into the object
+    //   sent via onSummaryChange.
+
     return {
       category: normCat,
       nights,
@@ -343,16 +376,32 @@ export default function BookingSummary({
       : 0;
   const finalTotal = Math.max(summary.grandTotal - pointsDiscount, 0);
 
-  useEffect(() => {
-    onSummaryChange?.({ ...summary, grandTotal: finalTotal, pointsDiscount });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [summary, finalTotal, pointsDiscount, onSummaryChange]);
+  // burn_point — how many loyalty points redeeming pointsDiscount actually
+  // burns. Computed here (not inside the summary memo) since it depends on
+  // pointsDiscount, which itself depends on summary.grandTotal. Doing this
+  // inside the memo would reference pointsDiscount before it exists.
+  const burnPoint = pointsDiscount * pointRate;
+
 
   const advanceAmount = paymentType === "advance"
     ? Math.round(finalTotal * ((catConfig?.advancePercent ?? 30) / 100))
     : finalTotal;
   const remainingAmount = Math.max(finalTotal - advanceAmount, 0);
   const payableNow =  booking.bookingType !== "reserve" ? (currentStep === 2 && paymentType === "advance" ? advanceAmount : finalTotal) : booking.reserveAmount;
+
+
+  useEffect(() => {
+    onSummaryChange?.({
+      ...summary,
+      grandTotal: finalTotal,
+      pointsDiscount,
+      earnedPoints, // live state value from LoyaltyCallout, not a stale memo snapshot
+      burnPoint,
+      payableNow
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [summary, finalTotal, pointsDiscount, earnedPoints, burnPoint,payableNow, onSummaryChange]);
+
 
   /* ── Breakdown group contents ────────────────────────────────────────
      Every group below shows a GROSS total (net + its own GST slice), with
@@ -554,6 +603,11 @@ export default function BookingSummary({
             currentTier={currentTier}
             pointsTotal={pointsTotal}
             tSummary={t}
+            earn_point  = {earn_point}
+            pointRate = {pointRate}
+            finalTotal = {finalTotal}
+            securityDeposit = {summary.securityDeposit}
+             onPointsChange={setEarnedPoints}
           />
         )}
 

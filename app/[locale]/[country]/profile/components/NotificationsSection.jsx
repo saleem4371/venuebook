@@ -39,7 +39,7 @@ const TYPE_TONE = {
   offer: { bg: "bg-orange-50 dark:bg-orange-900/30", text: "text-orange-600" },
 };
 
-export default function NotificationsSection({ compact = false, flat = false, defaultOpen = false }) {
+export default function NotificationsSection({ compact = false, flat = false, defaultOpen = false , bookingProfile }) {
   const t = useTranslations("profile.notifications");
   const tDrawer = useTranslations("profile.drawer");
   // `defaultOpen` lets a caller (page.jsx, reading ?section=notifications
@@ -47,7 +47,7 @@ export default function NotificationsSection({ compact = false, flat = false, de
   // full list instead of just the 3-row preview card.
   const [open, setOpen] = useState(defaultOpen);
 
-  const preview = MOCK_NOTIFICATIONS.slice(0, 3);
+  const preview = bookingProfile.slice(0, 3);
 
   return (
     <SectionCard flat={flat}>
@@ -64,7 +64,7 @@ export default function NotificationsSection({ compact = false, flat = false, de
           </span>
         }
         action={
-          MOCK_NOTIFICATIONS.length > 3 && (
+          bookingProfile.length > 3 && (
             <button
               type="button"
               onClick={() => setOpen(true)}
@@ -76,7 +76,7 @@ export default function NotificationsSection({ compact = false, flat = false, de
         }
       />
 
-      {MOCK_NOTIFICATIONS.length === 0 ? (
+      {bookingProfile.length === 0 ? (
         <EmptyState icon={<Bell size={20} className="text-gray-400" />} title={t("empty")} compact />
       ) : (
         <ul className="space-y-2.5">
@@ -88,7 +88,7 @@ export default function NotificationsSection({ compact = false, flat = false, de
 
       <SlideOverPanel open={open} onClose={() => setOpen(false)} title={tDrawer("notificationsTitle")}>
         <ul className="space-y-1">
-          {MOCK_NOTIFICATIONS.map((n) => (
+          {bookingProfile.map((n) => (
             <NotificationRow key={n.id} n={n} roomy />
           ))}
         </ul>
@@ -120,10 +120,10 @@ function NotificationRow({ n, roomy = false }) {
           {n.title}
         </p>
         <p className={`text-gray-500 dark:text-gray-400 ${roomy ? "text-[12px] mt-0.5" : "text-[11px] truncate"}`}>
-          {n.body}
+          {n.message}
         </p>
       </div>
-      <span className="shrink-0 text-[10px] text-gray-400 dark:text-gray-500 whitespace-nowrap">{n.time}</span>
+      <span className="shrink-0 text-[10px] text-gray-400 dark:text-gray-500 whitespace-nowrap">{n.created_at}</span>
     </li>
   );
 }
