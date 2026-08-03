@@ -97,6 +97,7 @@ export function ToastProvider({ children, position = "bottom-center" }) {
       {children}
       <div
         aria-live="polite"
+        suppressHydrationWarning
         className={`fixed z-[100] flex flex-col gap-2 pointer-events-none ${positionClass}`}
       >
         {toasts.map(t => (
