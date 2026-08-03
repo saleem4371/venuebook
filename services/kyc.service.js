@@ -4,9 +4,9 @@ import api from "@/lib/axios";
 
 export const SubmitKYC = (data) => api.post("/kyc/submit", data);
 
-export const kyc_status = () => api.get("/kyc/kyc_status");
+export const kyc_status = (config) => api.get("/kyc/kyc_status", config);
 
-export const each_kyc_status = () => api.get("/kyc/each_kyc_status");
+export const each_kyc_status = (config) => api.get("/kyc/each_kyc_status", config);
 export const suscription_detail = () => api.get("/kyc/suscription_detail");
 
 /* ─── Surepass proxy helpers (Next.js API routes) ─────────────────── */
