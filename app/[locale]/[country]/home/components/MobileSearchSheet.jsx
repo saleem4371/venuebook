@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
@@ -109,12 +109,21 @@ function FieldSection({ icon: Icon, label, value, isOpen, onToggle, tint, childr
 export default function MobileSearchSheet({ open, setOpen, onSummaryChange , itemDest}) {
   const { activeCategory } = useCategory();
   const params              = useParams();
+  const router              = useRouter();
+  const locale              = String(params?.locale || "en");
   const countryCode         = String(params?.country || "in").toLowerCase();
   const tint                = CATEGORY_TINTS[activeCategory] ?? CATEGORY_TINTS.venues;
   const config               = SHEET_CONFIG[activeCategory]   ?? SHEET_CONFIG.venues;
 
   const [openSection, setOpenSection] = useState("location");
   const [location,    setLocation]    = useState("");
+  // Raw payload from LocationAutoComplete's onSelect — kept alongside the
+  // display string above. `location` is just text for the UI (collapsed
+  // header, sticky summary bar); this holds the full object (mode, city,
+  // lat, lng, bounds, propertyQuery, ...) so handleSearch can still build
+  // proper query params (lat/lng, map bounds, ?q= for property-mode free
+  // text) instead of only ever seeing a flattened string.
+  const [locationValue, setLocationValue] = useState(null);
   const [startDate,   setStartDate]   = useState(null);
   const [endDate,     setEndDate]     = useState(null);
   const [guests,      setGuests]      = useState({});
@@ -154,18 +163,8 @@ export default function MobileSearchSheet({ open, setOpen, onSummaryChange , ite
   // match what's actually in the panel instead of a hand-maintained
   // parallel copy that could drift out of sync.
   const guestFields = getCategoryFields(activeCategory) ?? GUEST_CONFIGS[config.guestType] ?? GUEST_CONFIGS.guests;
-  // `guests` stays `{}` until the user actually touches a stepper (that's
-  // when GuestPicker's onChange first fires) — summarizing an empty object
-  // would otherwise show "0 adults" instead of the FieldSection's normal
-  // grey "Add guests" placeholder.
   const guestSummary = Object.keys(guests).length > 0 ? (summarizeFields(guestFields, guests) || "") : "";
   const guestSummaryDisplay = eventType ? [guestSummary, eventType].filter(Boolean).join(" · ") : guestSummary;
-
-  // Mirrors the current selection up to whoever opened this sheet (the
-  // homepage's collapsed "Where to?" trigger button) so that button can
-  // show the same live summary as the sticky bar inside the sheet itself,
-  // instead of staying on its static placeholder after the user has
-  // already picked a location/date/guests.
   useEffect(() => {
     onSummaryChange?.({ location, dateSummary, guestSummary: guestSummaryDisplay });
   }, [location, dateSummary, guestSummaryDisplay, onSummaryChange]);
@@ -174,23 +173,12 @@ export default function MobileSearchSheet({ open, setOpen, onSummaryChange , ite
     setOpenSection((prev) => (prev === section ? null : section));
 
   const handleClear = () => {
-    setLocation(""); setStartDate(null); setEndDate(null); setGuests({});
+    setLocation(""); setLocationValue(null); setStartDate(null); setEndDate(null); setGuests({});
     setDuration(null); setEventType(null);
     setOpenSection("location");
   };
 
   const isReady = !!location;
-
-  /* ── Live matching-listings estimate ──────────────────────────────────
-     No "count matching listings" endpoint exists anywhere in this
-     codebase. This calls the real /listing endpoint (the same one the
-     Search page itself uses — see LocationAutoComplete's identical call
-     for the full rationale) with the currently selected location and
-     reads how many rows come back. It's a genuine live count of what
-     LoadProperty currently returns for this location/category — not a
-     fabricated number — but it doesn't yet factor in the date/guest
-     selections (this simple picker has no dedicated backend params for
-     those), so treat it as an approximate, not a fully filtered count. */
   const [matchCount,   setMatchCount]   = useState(null);
   const [matchLoading, setMatchLoading] = useState(false);
   useEffect(() => {
@@ -214,6 +202,94 @@ export default function MobileSearchSheet({ open, setOpen, onSummaryChange , ite
   }, [activeCategory, location]);
 
   const ctaLabel = `Search ${activeCategory.charAt(0).toUpperCase()}${activeCategory.slice(1)}`;
+
+  // Builds the query string from everything currently selected in the sheet
+  // and pushes to the category's search results route. Mirrors the
+  // param-building logic already used elsewhere in the app (date/location/
+  // guests handling) so results pages get the same shape of params
+  // regardless of which entry point (desktop bar or this mobile sheet)
+  // produced them.
+  const handleSearch = () => {
+    const searchParams = new URLSearchParams();
+
+    const searchData = {
+      // Prefer the raw picker payload (has lat/lng/bounds/mode) — fall
+      // back to the plain string if for some reason only that was set.
+      location: locationValue ?? location,
+      ...(isRange
+        ? { startDate, endDate }
+        : { date: startDate }),
+      guests,
+      ...(duration ? { duration } : {}),
+      ...(eventType ? { eventType } : {}),
+    };
+
+    Object.entries(searchData).forEach(([key, value]) => {
+      if (value == null || value === "") return;
+
+      // Date
+      if (value instanceof Date) {
+        const y = value.getFullYear();
+        const m = String(value.getMonth() + 1).padStart(2, "0");
+        const d = String(value.getDate()).padStart(2, "0");
+        searchParams.set(key, `${y}-${m}-${d}`);
+        return;
+      }
+
+      // Location
+      if (key === "location") {
+        if (typeof value === "object") {
+          // Property-mode free-text payload from LocationAutoComplete (typed a
+          // name, hit Enter, no specific suggestion picked) — distinct shape
+          // from a location pick (no city/lat/lng), so it's routed to its own
+          // param instead of being silently dropped by the city/address
+          // fallback below.
+          if (value.mode === "property") {
+            if (value.propertyQuery) searchParams.set("q", value.propertyQuery);
+            return;
+          }
+
+          searchParams.set("location", value.city || value.address || "");
+
+          if (value.lat) searchParams.set("lat", value.lat);
+          if (value.lng) searchParams.set("lng", value.lng);
+
+          if (value.bounds) {
+            searchParams.set("north", value.bounds.north);
+            searchParams.set("south", value.bounds.south);
+            searchParams.set("east", value.bounds.east);
+            searchParams.set("west", value.bounds.west);
+          }
+        } else {
+          searchParams.set("location", value);
+        }
+        return;
+      }
+
+      // Guests
+      if (key === "guests") {
+        if (typeof value === "object") {
+          const total = Object.values(value).reduce(
+            (sum, n) => sum + Number(n || 0),
+            0
+          );
+
+          if (total > 0) {
+            searchParams.set("guests", String(total));
+          }
+        } else {
+          searchParams.set("guests", String(value));
+        }
+        return;
+      }
+
+      searchParams.set(key, String(value));
+    });
+
+    router.push(
+      `/${locale}/${countryCode}/search/${activeCategory}?${searchParams.toString()}`
+    );
+  };
 
   // Portal renders at document.body to escape any ancestor stacking contexts
   // (e.g. sticky z-30 SearchBar wrapper that would otherwise cap the sheet's z-index)
@@ -313,12 +389,14 @@ export default function MobileSearchSheet({ open, setOpen, onSummaryChange , ite
                     // ({ mode: "property", propertyName | propertyQuery }),
                     // not the plain city string Location mode sends —
                     // normalize both into the summary string this sheet
-                    // displays in the collapsed header.
+                    // displays in the collapsed header. The raw `value`
+                    // itself is kept in locationValue for handleSearch.
                     const summary =
                       typeof value === "string"
                         ? value
                         : value?.propertyName || value?.propertyQuery || value?.city || "";
                     setLocation(summary);
+                    setLocationValue(value);
                     if (summary) setOpenSection("date");
                   }}
                   onModeChange={setLocationLabel}
@@ -434,7 +512,11 @@ export default function MobileSearchSheet({ open, setOpen, onSummaryChange , ite
                 </button>
 
                 <button
-                  onClick={() => isReady && setOpen(false)}
+                  onClick={() => {
+                    if (!isReady) return;
+                    handleSearch();
+                    setOpen(false);
+                  }}
                   disabled={!isReady}
                   className="flex items-center gap-2 px-6 py-3.5 rounded-2xl text-white text-sm font-bold transition-all active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 flex-1 justify-center"
                   style={{ background: tint.hex, boxShadow: "0 6px 18px rgba(0,0,0,0.22)" }}
