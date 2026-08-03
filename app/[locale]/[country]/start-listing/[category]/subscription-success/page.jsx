@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useSearchParams, useRouter, useParams } from "next/navigation";
-import { verify_razorpay_subscription,verify_stripe_subscription } from "@/services/payment.service";
+import { verify_subscription,verify_stripe_subscription } from "@/services/payment.service";
 
 // ─── Lightweight canvas confetti ────────────────────────────────────────────
 function launchConfetti(canvas) {
@@ -147,18 +147,17 @@ export default function SuccessPage() {
 
       if (subscriptionId) {
         // Verify using subscription ID
-        // res = await verify_subscription(subscriptionId);
-        res = await verify_razorpay_subscription(subscriptionId);
+        res = await verify_subscription(subscriptionId);
       } else if (sessionId) {
         // Verify Stripe Checkout Session
         res = await verify_stripe_subscription(sessionId);
       }
 
       const subscriptionStatus =
-        res?.data?.subscription_status || res?.subscription_status|| res?.data.status;
+        res?.data?.subscription_status || res?.subscription_status;
 
       if (
-        subscriptionStatus === "ACTIVE" || subscriptionStatus === "active" ||
+        subscriptionStatus === "ACTIVE" ||
         subscriptionStatus === "BANK_APPROVAL_PENDING"
       ) {
         localStorage.removeItem("vb_pending_category");
