@@ -23,7 +23,6 @@ import { currency_icon,formatPrice , getCountry} from '@/lib/currency_format'
 import { SubmitKYC, each_kyc_status } from "@/services/kyc.service";
 
 /* ─── Design tokens ──────────────────────────────────────────────── */
-const KYC_KEY   = "vb_kyc_v4";
 const GRAD      = "linear-gradient(242deg,#a44bf3,#499ce8)";
 const GRAD_SOFT = "linear-gradient(242deg,rgba(164,75,243,0.08),rgba(73,156,232,0.08))";
 const COUNTRY   = { code: "IN", name: "India", flag: "🇮🇳" };
@@ -68,6 +67,50 @@ const certAnim = {
 };
 
 /* ════════════════════════════════════════════════════════════════════
+   BACKEND-DRIVEN STEP RESOLUTION
+   Backend is the single source of truth for how far a user has
+   progressed. No localStorage is used to persist/resume steps.
+════════════════════════════════════════════════════════════════════ */
+
+/** Helper — treats any of these backend values as "approved" */
+function isApproved(status) {
+  const v = (status || "").toString().toLowerCase();
+  return v === "approved" || v === "verified" || v === "active";
+}
+
+/**
+ * calculateActiveStep
+ * Given the latest KYC status payload from the backend (shape:
+ * { pan: {status}, aadhaar: {status}, gst: {status}, bank: {status}, doc: {status} })
+ * plus the locally-chosen account category (category is a UI-only choice,
+ * the backend has no concept of it until PAN is submitted), work out
+ * which step the wizard should resume on.
+ */
+function calculateActiveStep(status, category, docUploaded) {
+  if (!status) return category ? 1 : 0;
+
+  const panApproved = isApproved(status?.pan?.status ?? status?.pan?.verification_status);
+  if (!panApproved) return category ? 1 : 0;
+
+  if (!category) return 1; // PAN approved but we still don't know the account type
+
+  if (category === "business") {
+    const gstApproved = isApproved(status?.gst?.status ?? status?.gst?.verification_status) || !!status?.gst?.document_number;
+    if (!gstApproved) return 2;
+  } else {
+    const aadhaarApproved = isApproved(status?.aadhaar?.status ?? status?.aadhaar?.verification_status);
+    if (!aadhaarApproved) return 2;
+  }
+
+  const bankApproved = isApproved(status?.bank?.status ?? status?.bank?.verification_status);
+  if (!bankApproved) return 3;
+
+  if (!docUploaded) return 4;
+
+  return 5; // everything done → review / complete
+}
+
+/* ════════════════════════════════════════════════════════════════════
    ROOT MODAL COMPONENT
 ════════════════════════════════════════════════════════════════════ */
 export default function KYCModal({ open, setOpen , kycData ,kycStatus}) {
@@ -75,6 +118,7 @@ export default function KYCModal({ open, setOpen , kycData ,kycStatus}) {
   const [dir,       setDir]       = useState(1);
   const [submitted, setSubmitted] = useState(false);
   const [loading,   setLoading]   = useState(false);
+  const [statusLoading, setStatusLoading] = useState(false);
 
   const [category,    setCategory]    = useState(null);
   const [panData,     setPanData]     = useState(null);
@@ -82,191 +126,199 @@ export default function KYCModal({ open, setOpen , kycData ,kycStatus}) {
   const [bankData,    setBankData]    = useState(null);
   const [docData,     setDocData]     = useState(null);
 
+  /* Latest raw status payload from the backend — source of truth for
+     which step the wizard resumes on. Never persisted client-side. */
+  const [liveStatus, setLiveStatus] = useState(null);
+
+  const digilockerPopupRef = useRef(null);
+
   const countries = getCountry();
 
+  /* ── Apply a KYC status/data payload coming from the backend ────── */
+  const applyKycPayload = useCallback((data, statusMeta) => {
+    if (!data) return;
 
+    try {
+      // ---------------- PAN ----------------
+      if (data.pan) {
+        const panDetails =
+          typeof data.pan.doc_details === "string"
+            ? JSON.parse(data.pan.doc_details)
+            : data.pan.doc_details;
 
-  /* ── Restore from localStorage ─────────────────────────────────── */
+        const gstDetails = data.gst
+          ? typeof data.gst.doc_details === "string"
+            ? JSON.parse(data.gst.doc_details)
+            : data.gst.doc_details
+          : null;
 
+        const gstNumber =
+          data.gst?.document_number ||
+          gstDetails?.gstin_list?.[0]?.gstin ||
+          "";
 
-useEffect(() => {
-  if (!open || !kycData) return;
+        setPanData({
+          pan_number: data.pan.document_number,
+          company_name: panDetails?.full_name,
+          business_category: panDetails?.category,
+          registered_address: panDetails?.address?.full,
+          status: panDetails?.status,
+          verification_status: data.pan.verification_status,
+          fromBackend: true,
+        });
 
-  // Pending = start completely fresh. Wipe any cached draft and
-  // reset all step state instead of prefilling from kycData.
-  if (kycStatus?.kyc_status === "pending") {
-    localStorage.removeItem(KYC_KEY);
-    setCategory(null);
-    setPanData(null);
-    setAadhaarData(null);
-    setBankData(null);
-    setDocData(null);
-    setStep(0);
-    return;
-  }
+        setDocData(prev => ({
+          ...prev,
+          company_name: panDetails?.full_name,
+          pan_number: data.pan.document_number,
+          business_category: panDetails?.category,
+          registered_address: panDetails?.address?.full,
+          gst_number: gstNumber,
+          gst_details: gstDetails,
+          gstVerified: prev?.gstVerified || !!gstNumber,
+          fileName: data.pan.file_url?.split("/").pop() || prev?.fileName || "",
+        }));
+      }
 
-  try {
+      // ---------------- Aadhaar ----------------
+      // if (data.aadhaar) {
+      //   const details =
+      //     typeof data.aadhaar.doc_details.digilocker_metadata === "string"
+      //       ? JSON.parse(data.aadhaar.doc_details.digilocker_metadata)
+      //       : data.aadhaar.doc_details.digilocker_metadata;
 
-    setSubmitted(true);
-    // ---------------- PAN ----------------
-    if (kycData.pan) {
-      const panDetails =
-        typeof kycData.pan.doc_details === "string"
-          ? JSON.parse(kycData.pan.doc_details)
-          : kycData.pan.doc_details;
+      //   if (details) {
+      //     setAadhaarData({
+      //       full_name: details.name,
+      //       dob: details.dob,
+      //       gender: details.gender,
+      //       address: details.address,
+      //       aadhaar_number: details.masked_number,
+      //       fromBackend: true,
+      //     });
+      //   }
+      // }
+      if (data.aadhaar?.doc_details) {
+  // Parse doc_details if string
+  const doc =
+    typeof data.aadhaar.doc_details === "string"
+      ? JSON.parse(data.aadhaar.doc_details)
+      : data.aadhaar.doc_details;
 
-      // GST
-      const gstDetails = kycData.gst
-        ? typeof kycData.gst.doc_details === "string"
-          ? JSON.parse(kycData.gst.doc_details)
-          : kycData.gst.doc_details
-        : null;
+  const metadata = doc?.data?.digilocker_metadata || {};
+  const aadhaar = doc?.data?.aadhaar_xml_data || {};
 
-      const gstNumber =
-        kycData.gst?.document_number ||
-        gstDetails?.gstin_list?.[0]?.gstin ||
-        "";
+  setAadhaarData({
+    full_name: aadhaar.full_name || metadata.name || "",
+    dob: aadhaar.dob || metadata.dob || "",
+    gender: aadhaar.gender || metadata.gender || "",
+    address: aadhaar.full_address || "",
+    aadhaar_number: aadhaar.masked_aadhaar || "",
+    mobile: metadata.mobile_number || "",
+    profile_image: aadhaar.profile_image || "",
+    xml_url: doc?.data?.xml_url || "",
+    fromBackend: true,
+  });
+}
 
-      setPanData({
-        pan_number: kycData.pan.document_number,
-        company_name: panDetails.full_name,
-        business_category: panDetails.category,
-        registered_address: panDetails.address?.full,
-        status: panDetails.status,
-        verification_status: kycData.pan.verification_status,
-        fromBackend: true,
-      });
+      // ---------------- Bank ----------------
+      if (data.bank) {
+        setBankData({
+          account_holder: data.bank.business_name,
+          bank_name: data.bank.bank_name,
+          branch: data.bank.branch_name,
+          account_masked:
+            "XXXX XXXX " +
+            (data.bank.account_number?.slice(-4) || ""),
+          ifsc: data.bank.ifsc,
+          account_number: data.bank.account_number,
+          account_type: data.bank.account_type,
+          verification_status: data.bank.verification_status,
+          status: data.bank.verification_status,
+          fromBackend: true,
+        });
+      }
+    } catch (err) {
+      console.error("KYC Parse Error:", err);
+    }
+  }, []);
 
-      setDocData({
-        company_name: panDetails.full_name,
-        pan_number: kycData.pan.document_number,
-        business_category: panDetails.category,
-        registered_address: panDetails.address?.full,
-        gst_number: gstNumber,
-        gst_details: gstDetails,
-        gstVerified: !!gstNumber,
-        fileName: kycData.pan.file_url?.split("/").pop() || "",
-      });
+  /* ── Fetch the latest KYC status from the backend ───────────────── */
+  const fetchKycStatus = useCallback(async () => {
+    try {
+      setStatusLoading(true);
+      const res = await each_kyc_status();
+      const data = res?.data ?? res;
+      setLiveStatus(data);
+      applyKycPayload(data);
+
+      const docUploaded = !!(docData?.file || docData?.fileName || data?.pan?.file_url);
+      const nextStep = calculateActiveStep(data, category, docUploaded);
+      setStep(nextStep);
+      return data;
+    } catch (err) {
+      console.error("[fetchKycStatus]", err);
+      return null;
+    } finally {
+      setStatusLoading(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [applyKycPayload, category]);
+
+  /* ── On open: resolve the correct step from the backend ──────────
+     Backend is the source of truth — no localStorage is used here. */
+  useEffect(() => {
+    if (!open) return;
+
+    // A fresh / not-yet-started application starts clean at category select.
+    if (kycStatus?.kyc_status === "pending" && !kycData) {
+      setCategory(null);
+      setPanData(null);
+      setAadhaarData(null);
+      setBankData(null);
+      setDocData(null);
+      setLiveStatus(null);
+      setStep(0);
+      return;
     }
 
-    // ---------------- Aadhaar ----------------
-    if (kycData.aadhaar) {
-      const details =
-        typeof kycData.aadhaar.doc_details === "string"
-          ? JSON.parse(kycData.aadhaar.doc_details)
-          : kycData.aadhaar.doc_details;
+    setSubmitted(kycStatus?.kyc_status === "submitted" || kycStatus?.kyc_status === "under_review");
 
-      setAadhaarData({
-        full_name: details.name,
-        dob: details.dob,
-        gender: details.gender,
-        address: details.address,
-        aadhaar_number: details.masked_number,
-        fromBackend: true,
-      });
+    if (kycData) {
+      applyKycPayload(kycData, kycStatus);
+      setLiveStatus(kycData);
     }
 
-    // ---------------- Bank ----------------
-    if (kycData.bank) {
-      setBankData({
-        account_holder: kycData.bank.business_name,
-        bank_name: kycData.bank.bank_name,
-        branch: kycData.bank.branch_name,
-        account_masked:
-          "XXXX XXXX " +
-          (kycData.bank.account_number?.slice(-4) || ""),
-        ifsc: kycData.bank.ifsc,
-        account_number: kycData.bank.account_number,
-        account_type: kycData.bank.account_type,
-        verification_status: kycData.bank.verification_status,
-        status: kycData.bank.verification_status,
-        fromBackend: true,
-      });
-    }
-  } catch (err) {
-    console.error("KYC Parse Error:", err);
-  }
-}, [open, kycData, kycStatus]);
-
-  /* ── Persist to localStorage ───────────────────────────────────── */
-useEffect(() => {
-  if (!open) return;
- 
-
-  try {
-    localStorage.setItem(
-      KYC_KEY,
-      JSON.stringify({
-        category,
-        panData,
-        aadhaarData,
-        bankData,
-        docData: docData
-          ? {
-              ...docData,
-              // File objects can't be stored
-              file: undefined,
-              fileName: docData.file?.name ?? docData.fileName ?? null,
-            }
-          : null,
-        step,
-      })
-    );
-  } catch (err) {
-    console.error("[KYC Save]", err);
-  }
-}, [
-  open,
-  category,
-  panData,
-  aadhaarData,
-  bankData,
-  docData,
-  step,
-  kycStatus,
-]);
-  /* ── Pre-fill from backend if already verified ──────────────────── */
-
-useEffect(() => {
-    if (!open || !kycData) return;
-    if (kycStatus?.kyc_status === "pending") return;
-
-    if (kycData?.pan?.status === "verified") {
-      setPanData({
-        pan_number: kycData.pan.document_number,
-        company_name: kycData.pan.company_name,
-        status: "Active",
-        business_category: kycData.pan.business_category,
-        registered_address: kycData.pan.registered_address,
-        fromBackend: true,
-      });
-    }
-
-    if (kycData?.aadhaar?.status === "verified") {
-      setAadhaarData({
-        full_name: kycData.aadhaar.name,
-        dob: kycData.aadhaar.dob,
-        gender: kycData.aadhaar.gender,
-        address: kycData.aadhaar.address,
-        aadhaar_number:
-          kycData.aadhaar.masked_number ?? "XXXX XXXX XXXX",
-        fromBackend: true,
-      });
-    }
-
-    if (kycData?.bank?.status === "verified") {
-      setBankData({
-        account_holder: kycData.bank.account_holder_name,
-        bank_name: kycData.bank.bank_name,
-        branch: kycData.bank.branch,
-        account_masked:
-          "xxxx xxxx " + (kycData.bank.account_number?.slice(-4) || ""),
-        ifsc: kycData.bank.ifsc,
-        status: "Verified",
-        fromBackend: true,
-      });
-    }
+    // Always re-confirm against the backend on load/refresh instead of
+    // trusting any client-cached step.
+    fetchKycStatus();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, kycData, kycStatus]);
+
+  /* ── Listen for the DigiLocker popup callback ────────────────────
+     The DigiLocker callback page does:
+       window.opener.postMessage({ type: "DIGILOCKER_SUCCESS" }, "*")
+     We never open DigiLocker ourselves except from the explicit
+     "Verify Aadhaar" button click (see Step2Aadhaar). */
+  useEffect(() => {
+    function handleMessage(event) {
+      if (event?.data?.type !== "DIGILOCKER_SUCCESS") return;
+
+      // Close the popup if it's still open
+      if (digilockerPopupRef.current && !digilockerPopupRef.current.closed) {
+        digilockerPopupRef.current.close();
+      }
+      digilockerPopupRef.current = null;
+
+      // Refresh status from backend and move to whatever step follows
+      fetchKycStatus();
+    }
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchKycStatus]);
+
   /* ── Guard: step ≥1 requires category ──────────────────────────── */
   useEffect(() => {
     if (!open) return;
@@ -291,27 +343,22 @@ useEffect(() => {
     return true;
   }, [step, category, panData, aadhaarData, bankData, docData]);
 
-  // const goNext = () => {
-  //   if (!canAdvance()) return;
-  //   setDir(1);
-  //   setStep(s => Math.min(s + 1, 5));
-  // };
   const goNext = () => {
-  if (!canAdvance()) return;
+    if (!canAdvance()) return;
 
-  setDir(1);
+    setDir(1);
 
-  if (
-    step === 1 &&
-    category === "business" &&
-    docData?.gstVerified
-  ) {
-    setStep(3); // Skip GST step
-    return;
-  }
+    if (
+      step === 1 &&
+      category === "business" &&
+      docData?.gstVerified
+    ) {
+      setStep(3); // Skip GST step
+      return;
+    }
 
-  setStep((s) => Math.min(s + 1, 5));
-};
+    setStep((s) => Math.min(s + 1, 5));
+  };
 
   const goBack = () => {
     setDir(-1);
@@ -336,8 +383,9 @@ useEffect(() => {
       if (bankData?.account_masked)      fd.append("accountNo", bankData.account_masked);
       if (bankData?.ifsc)                fd.append("ifsc",      bankData.ifsc);
       await SubmitKYC(fd);
-      localStorage.removeItem(KYC_KEY);
       setSubmitted(true);
+      // Re-sync with backend so a future refresh resumes correctly.
+      fetchKycStatus();
     } catch(e) { console.error("[KYCModal]", e); }
     finally    { setLoading(false); }
   };
@@ -349,6 +397,27 @@ useEffect(() => {
       setLoading(false);
     }, 320);
   };
+
+
+
+useEffect(() => {
+  const handleMessage = (event) => {
+      console.log('-------------Reload-----Adhar card --------------------');
+     console.log(event);
+    if (event.data?.type !== "DIGILOCKER_SUCCESS") return;
+
+    console.log(event.data.data);
+
+
+// here refesh function call 
+  };
+
+  window.addEventListener("message", handleMessage);
+
+  return () => {
+    window.removeEventListener("message", handleMessage);
+  };
+}, []);
 
   if (typeof window === "undefined") return null;
 
@@ -420,15 +489,26 @@ useEffect(() => {
                           <Step0Category category={category} setCategory={setCategory} />
                         )}
                         {step === 1 && (
-                          <Step1PAN panData={panData} docData={docData} setPanData={setPanData} setDocData={setDocData} category ={category} />
+                          <Step1PAN
+                            panData={panData}
+                            docData={docData}
+                            setPanData={setPanData}
+                            setDocData={setDocData}
+                            category={category}
+                          />
                         )}
                         {step === 2 && (
                           category === "personal"
-                            ? <Step2Aadhaar aadhaarData={aadhaarData} setAadhaarData={setAadhaarData} />
+                            ? <Step2Aadhaar
+                                aadhaarData={aadhaarData}
+                                setAadhaarData={setAadhaarData}
+                                onVerified={fetchKycStatus}
+                                popupRef={digilockerPopupRef}
+                              />
                             : <Step2GST docData={docData} setDocData={setDocData} />
                         )}
                         {step === 3 && (
-                          <Step3Bank bankData={bankData} setBankData={setBankData} />
+                          <Step3Bank bankData={bankData} setBankData={setBankData} onVerified={fetchKycStatus} />
                         )}
                         {step === 4 && (
                           <Step4Doc docData={docData} setDocData={setDocData} panData={panData} />
@@ -712,8 +792,7 @@ function KYCFooter({ step, loading, canAdvance, onBack, onNext, onSubmit }) {
           className="inline-flex items-center gap-1.5 rounded-xl px-6 py-2.5
             text-sm font-semibold text-white
             disabled:opacity-40 disabled:cursor-not-allowed
-            cursor-pointer focus:outline-none shadow-md shadow-violet-500/15"
-          style={{ background: GRAD }}>
+            cursor-pointer focus:outline-none shadow-md shadow-violet-500/15">
           Continue <ChevronRight size={15} />
         </motion.button>
       )}
@@ -856,28 +935,23 @@ const handleVerify = async () => {
       pan: val,
     };
 
-    console.log("verifyPAN payload:", param);
-
     const data = await verifyPAN(param);
 
     setPanData(data);
     setPhase("verified");
 
     if (category === "business" && data?.gst_number) {
-  setDocData({
-    gstVerified: 'verified',
-    gst_number: data.gst_number,
-    company_name: data.company_name,
-    pan_number: data.pan_number,
-    business_category: data.business_category,
-    registered_address: data.registered_address,
-    gst_details: data.gst_details,
-  });
-}
-
-setPhase("verified");
-
-alert( docData?.gstVerified )
+      setDocData(prev => ({
+        ...prev,
+        gstVerified: 'verified',
+        gst_number: data.gst_number,
+        company_name: data.company_name,
+        pan_number: data.pan_number,
+        business_category: data.business_category,
+        registered_address: data.registered_address,
+        gst_details: data.gst_details,
+      }));
+    }
   } catch (e) {
     console.error(e);
     setError(e?.message || "Verification failed. Please try again.");
@@ -988,31 +1062,88 @@ function PANCertificate({ data }) {
 
 /* ════════════════════════════════════════════════════════════════════
    STEP 2A — AADHAAR VERIFICATION
+   DigiLocker is opened ONLY when the user clicks "Verify Aadhaar" /
+   "Continue with DigiLocker" below — never automatically, never on
+   mount, never on refresh.
 ════════════════════════════════════════════════════════════════════ */
-function Step2Aadhaar({ aadhaarData, setAadhaarData }) {
+function Step2Aadhaar({ aadhaarData, setAadhaarData, onVerified, popupRef }) {
   const [phase, setPhase] = useState(
     aadhaarData && aadhaarData !== "verified" ? "verified" : "input"
   );
   const [error, setError] = useState("");
 
-  const handleDigilockerVerify = async () => {
-    setError("");
-    try {
-      const res = await initializeDigilocker();
-      const url = res?.data?.data?.url;
-      if (url) {
-        window.open(url, "_blank", "noopener,noreferrer");
-        /* Mark as "pending DigiLocker callback" — 
-           actual data set via callback / polling in production */
-        setPhase("awaiting");
-      } else {
-        setError("Unable to initialize DigiLocker. Please try again.");
+  /* Poll while the popup is open so we notice completion even if the
+     callback page can't reach window.opener for some reason. */
+  useEffect(() => {
+    if (phase !== "awaiting") return;
+    const poll = setInterval(async () => {
+      if (popupRef?.current && popupRef.current.closed) {
+        clearInterval(poll);
+        // Popup closed — re-check status in case it succeeded.
+        if (onVerified) await onVerified();
       }
-    } catch(e) {
-      setError(e?.message || "Something went wrong.");
-    }
-  };
+    }, 1000);
+    return () => clearInterval(poll);
+  }, [phase, popupRef, onVerified]);
 
+// const handleDigilockerVerify = async () => {
+//   setError("");
+
+//   // Open synchronously to preserve the user-gesture context — do NOT
+//   // pass "noopener"/"noreferrer": we need window.opener intact so the
+//   // callback page's postMessage() can reach us, and we need the
+//   // window.open() return value (not null) to track/poll popup.closed.
+//   const popup = window.open("_blank", "digilocker", "width=700,height=800");
+
+//   if (!popup) {
+//     setError("Please allow popups for this site and try again.");
+//     return;
+//   }
+
+//   try {
+//     const res = await initializeDigilocker();
+//     const url = res?.data?.data?.url;
+
+//     if (url) {
+//       popup.location.href = url; // single, clean navigation — no write() race
+//       if (popupRef) popupRef.current = popup;
+//       setPhase("awaiting");
+//     } else {
+//       popup.close();
+//       setError("Unable to initialize DigiLocker. Please try again.");
+//     }
+//   } catch (e) {
+//     popup.close();
+//     setError(e?.message || "Something went wrong.");
+//   }
+// };
+const handleDigilockerVerify = async () => {
+  setError("");
+
+  try {
+    const res = await initializeDigilocker();
+    const url = res?.data?.data?.url;
+
+    if (!url) {
+      setError("Unable to initialize DigiLocker.");
+      return;
+    }
+
+    // Opens a NEW TAB
+    const newTab = window.open(url, "_blank");
+
+    if (!newTab) {
+      setError("Please allow popups for this site.");
+      return;
+    }
+
+    popupRef.current = newTab;
+    setPhase("awaiting");
+
+  } catch (e) {
+    setError(e?.message || "Something went wrong.");
+  }
+};
   if (phase === "verified" && aadhaarData && aadhaarData !== "verified") {
     return (
       <StepShell title="Aadhaar verification" icon={Fingerprint}
@@ -1188,11 +1319,6 @@ function Step2GST({ docData, setDocData }) {
         desc="GSTIN verified successfully against the GST Network.">
         <div className="space-y-4">
           <GSTCertificate data={docData} />
-          {/* <button type="button"
-            onClick={() => { setDocData(p => ({ ...p, gst:"", gstVerified:false })); setPhase("idle"); }}
-            className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-violet-500 transition cursor-pointer">
-            <RefreshCw size={11} /> Verify a different GSTIN
-          </button> */}
         </div>
       </StepShell>
     );
@@ -1263,8 +1389,6 @@ function Step2GST({ docData, setDocData }) {
 
 /* ─── GST Certificate ────────────────────────────────────────────── */
 function GSTCertificate({ data }) {
-  console.log('GST ')
-  console.log(data)
   const today = new Date().toLocaleDateString("en-IN", { day:"2-digit", month:"short", year:"numeric" });
 
   return (
@@ -1310,11 +1434,6 @@ function GSTCertificate({ data }) {
         <DocRow label="GSTIN"        value={data?.gst_number}              mono primary />
         <DocRow label="Legal name"   value={data?.company_name} />
         <DocRow label="Trade name"   value={data?.company_name} />
-        {/* <DocRow label="Status">
-          <StatusBadge active={data.status?.toLowerCase() === "active"} label={data.status ?? "Active"} />
-        </DocRow>
-        {data.state            && <DocRow label="State"        value={data.state} />}
-        {data.registrationDate && <DocRow label="Registration" value={data.registrationDate} />} */}
       </div>
 
       <CertFooter color="#0EA5E9" textColor="text-sky-800/60" iconColor="text-sky-400"
@@ -1327,7 +1446,7 @@ function GSTCertificate({ data }) {
 /* ════════════════════════════════════════════════════════════════════
    STEP 3 — BANK ACCOUNT VERIFICATION
 ════════════════════════════════════════════════════════════════════ */
-function Step3Bank({ bankData, setBankData }) {
+function Step3Bank({ bankData, setBankData, onVerified }) {
   const [phase,   setPhase]   = useState(bankData ? "verified" : "idle");
   const [account, setAccount] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -1370,6 +1489,9 @@ function Step3Bank({ bankData, setBankData }) {
       const data = await verifyBank(account.trim(), ifsc.trim().toUpperCase());
       setBankData(data);
       setPhase("verified");
+      // Bank is the last verification before Documents/Review — resync
+      // with the backend so a refresh resumes at the correct step.
+      if (onVerified) onVerified();
     } catch(e) {
       setErrors({ _: e?.message || "Verification failed. Please try again." });
       setPhase("idle");
