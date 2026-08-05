@@ -33,6 +33,7 @@ import ChatThread         from "./components/ChatThread";
 import { MOCK_CONVERSATIONS } from "./_data";
 
 import { all_messages, send_messages } from '@/services/chat.service'
+import { useRealtime } from "@/context/RealtimeContext";
 
 /* ── Empty state (desktop: no conversation selected) ─────────────── */
 function EmptyConversationState() {
@@ -68,6 +69,14 @@ function MessagesInner() {
   const [loading, setLoading] = useState(true);
   const activeId = searchParams.get("conversation");
 
+  // Messages for the currently open thread. Kept separate from `chats` so a
+  // realtime refetch of one conversation's messages doesn't require
+  // reshaping/merging the whole sidebar list.
+  const [activeMessages, setActiveMessages] = useState(null);
+  const [messagesLoading, setMessagesLoading] = useState(false);
+
+  const { refreshKey, realtime, socket } = useRealtime();
+
   // Backend records may key on `_id` (Mongo-style) instead of `id` — match
   // either so a real API payload doesn't silently fail to resolve the
   // active conversation.
@@ -76,29 +85,22 @@ function MessagesInner() {
 
   const totalUnread = chats.reduce((sum, c) => sum + (c.unread || 0), 0);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const res = await all_messages();
-        // Fall back to [] (never null) — chats.find/.reduce below assume
-        // an array, and a missing/empty payload shouldn't crash the page.
-        if (!cancelled) setChat(res?.data?.data || []);
-      } catch (err) {
-        console.error(err);
-        if (!cancelled) setChat([]);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-
-    fetchData();
-    return () => {
-      cancelled = true;
-    };
+  const fetchChats = useCallback(async () => {
+    try {
+      const res = await all_messages();
+      setChat(res?.data?.data || []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  // Initial load, plus refetch whenever a realtime event bumps refreshKey
+  // (e.g. new conversation, updated unread counts).
+  useEffect(() => {
+    fetchChats();
+  }, [refreshKey, fetchChats]);
 
   /* Navigate to a conversation — preserves other search params */
   const handleSelect = useCallback(
@@ -118,8 +120,49 @@ function MessagesInner() {
   }, [pathname, router, searchParams]);
 
   const MessageClick = useCallback(async (formData) => {
-    return send_messages(formData);
-  }, []);
+    const res = await send_messages(formData);
+    // Optimistically pull the thread forward immediately after sending,
+    // rather than waiting on the next realtime event.
+    if (activeId) {
+      try {
+        const fresh = await all_messages({ conversation_id: activeId });
+        setActiveMessages(fresh?.data?.data || []);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    return res;
+  }, [activeId]);
+
+  // Refetch the OPEN thread's messages whenever a realtime event fires or
+  // the user switches conversations. Previously this call's result was
+  // discarded, so incoming messages never actually reached ChatThread —
+  // that's the "realtime not refreshing" bug. Now it's stored in
+  // `activeMessages` and passed down below.
+  useEffect(() => {
+    if (!activeId) {
+      setActiveMessages(null);
+      return;
+    }
+
+    let cancelled = false;
+    setMessagesLoading(true);
+
+    all_messages({ conversation_id: activeId })
+      .then((res) => {
+        if (!cancelled) setActiveMessages(res?.data?.data || []);
+      })
+      .catch((err) => {
+        console.error(err);
+      })
+      .finally(() => {
+        if (!cancelled) setMessagesLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshKey, activeId]);
 
   return (
     <div className="flex h-[calc(100dvh-120px)] flex-col bg-gray-50 dark:bg-gray-900">
@@ -175,6 +218,8 @@ function MessagesInner() {
           {activeConv ? (
             <ChatThread
               conversation={activeConv}
+              messages={activeMessages ?? activeConv.messages ?? []}
+              messagesLoading={messagesLoading}
               onBack={handleBack}
               SendMessageApi={MessageClick}
             />

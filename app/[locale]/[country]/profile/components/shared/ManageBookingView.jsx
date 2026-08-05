@@ -70,7 +70,7 @@ import { GhostButton, PrimaryButton, SecondaryButton, StatusBadge } from "./ui";
 import { computeBookingTotals } from "../../data/bookingMath";
 import { MOCK_CANCELLATION_TIERS, CATEGORY_COLORS } from "../../data/mockProfileData";
 import dayjs from "dayjs";
-
+import { PaxBookingView } from "./PaxBookingView";
 import {
   createOrder,
   verifyPayment,
@@ -108,6 +108,8 @@ export function ManageBookingView({ booking: b, t, tCat, format, locale, country
   const toast = useToast();
   const [activeTab, setActiveTab] = useState("overview");
 
+  console.log(b.bookingStatus ==='pax')
+
   const isStayBased = STAY_BASED_CATEGORIES.has(b.category);
   const isFarmstay = b.category === "farmstays";
   const categoryLabel = tCat(b.category.replace(/s$/, ""));
@@ -117,6 +119,23 @@ export function ManageBookingView({ booking: b, t, tCat, format, locale, country
   // the venues color (violet, the app's existing default brand accent) for
   // any category not in the map.
   const categoryColor = CATEGORY_COLORS[b.category] || CATEGORY_COLORS.venues;
+
+    // "pax" bookings are multi-package inquiries that haven't settled on a
+ // single package yet, so they get their own page instead of the
+  // Overview/Edit/Payment/Cancel tabs below.
+  if (b.bookingStatus === "pax") {
+    return (
+      <PaxBookingView
+        booking={b}
+        t={t}
+        format={format}
+        locale={locale}
+        country={country}
+        categoryColor={categoryColor}
+        onBack={onBack}
+      />
+    );
+  }
 
   const eventDate = new Date(b.date);
   const invoiceDateObj = new Date(eventDate);

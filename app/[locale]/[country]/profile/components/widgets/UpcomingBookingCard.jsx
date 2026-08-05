@@ -26,13 +26,36 @@ export default function UpcomingBookingCard({ bookingCurrent }) {
 
   const booking = bookingCurrent;
 
-  if (!booking) {
-    return (
-      <div className="rounded-3xl bg-white dark:bg-gray-900 border border-dashed border-gray-200 dark:border-gray-700 p-4 text-center">
-        <p className="text-[12px] text-gray-400 dark:text-gray-500">{t("empty")}</p>
-      </div>
-    );
-  }
+
+if (
+  !booking ||
+  Object.keys(booking).length === 0 ||
+  !(booking.bookingId || booking.booking_id)
+) {
+  return (
+    <div className="rounded-3xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-8 text-center">
+      <CalendarClock
+        size={32}
+        className="mx-auto mb-4 text-violet-500"
+      />
+
+      <h3 className="text-lg font-semibold">
+        No Upcoming Bookings
+      </h3>
+
+      <p className="mt-2 text-sm text-gray-500">
+        Your upcoming reservations will appear here once you make a booking.
+      </p>
+
+      <Link
+        href={`/${locale}/${country}/search/venues`}
+        className="mt-5 inline-flex rounded-xl bg-violet-600 px-5 py-2.5 text-white"
+      >
+        Explore Venues
+      </Link>
+    </div>
+  );
+}
 
   const imageUrl = booking.coverImage
     ? `${IMAGE_BASE_URL}/${booking.coverImage}`
@@ -107,7 +130,7 @@ export default function UpcomingBookingCard({ bookingCurrent }) {
           </span>
           <span className="inline-flex items-center gap-1">
             <Users size={11} />
-            {booking.pax ?? 0}
+            {booking.total_pax ?? 0}
           </span>
         </div>
 

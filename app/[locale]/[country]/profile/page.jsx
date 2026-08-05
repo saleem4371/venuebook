@@ -306,22 +306,7 @@ SetAllBookings(
            can silently blow the 1fr center track past the viewport instead
            of wrapping/truncating — that's what was cutting the right column
            off-screen on real laptop widths.
-
-           The whole grid used to be 3 SEPARATE cards (each with its own
-           rounded corners/border/shadow) sitting in a `gap-3` grid — which
-           looked fine when every column's content filled its height, but
-           the moment one didn't (e.g. only 3 offers in the expanded Offers
-           view, or a short bookings list) that column read as a floating
-           box with dead space around it, disconnected from its neighbors.
-           Per direct feedback, this is now ONE continuous full-bleed
-           surface — no outer card border/shadow/margin either, it fills
-           the entire viewport width and height below the navbar — with
-           `divide-x` between Left/Center/Right in place of the old gap,
-           and each widget passes `flat` so it renders as a plain section
-           (no nested card chrome) separated from its neighbors by a
-           `divide-y` line instead of its own border+shadow+gap. A short
-           section now just reads as empty space within one continuous
-           page, not a mismatched floating card.
+           
            ════════════════════════════════════════════════════════════════ */
         <div className="flex flex-col h-screen pt-16 md:pt-[72px] overflow-hidden">
           <LayoutGroup>

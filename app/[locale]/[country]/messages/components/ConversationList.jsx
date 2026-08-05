@@ -13,6 +13,17 @@ import { Search, Pin, ChevronLeft, ChevronRight, ArrowLeft } from "lucide-react"
 import { useTranslations } from "next-intl";
 import { MESSAGE_CATEGORIES, CATEGORY_STYLES } from "../_data";
 
+// Backend records may key on `_id` (Mongo-style) instead of `id` — resolve
+// once, consistently, everywhere an id is needed (React key, active-state
+// match, onSelect). Using `conv.id` directly in some places and a
+// normalized id in others is what caused rows to go stale on refetch:
+// with `_id`-only payloads every `key={conv.id}` was `undefined`, so React
+// couldn't tell conversations apart and reused stale DOM nodes instead of
+// updating them.
+function getConvId(conv) {
+  return String(conv.id ?? conv._id ?? "");
+}
+
 /* ── Category pill ─────────────────────────────────────────────── */
 function CategoryPill({ category }) {
   const t = useTranslations("messages");
@@ -109,7 +120,7 @@ function ConversationCard({ conv, isActive, onClick }) {
 }
 
 /* ── Main component ────────────────────────────────────────────── */
-export default function ConversationList({ conversations, activeId, onSelect, onBack }) {
+export default function ConversationList({ conversations, activeId, onSelect, onBack, loading }) {
   const t = useTranslations("messages");
   const [search,   setSearch]   = useState("");
   const [category, setCategory] = useState("all");
@@ -325,7 +336,13 @@ export default function ConversationList({ conversations, activeId, onSelect, on
 
       {/* ── Conversation list ────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto md:pb-0 pb-[76px] [scrollbar-width:thin] [scrollbar-color:theme(colors.gray.200)_transparent] dark:[scrollbar-color:theme(colors.gray.800)_transparent]">
-        {filtered.length === 0 ? (
+        {loading ? (
+          <div className="flex flex-col items-center justify-center h-40 gap-2 px-6 text-center">
+            <p className="text-[13px] text-gray-400 dark:text-gray-500">
+              {t("loading", { defaultValue: "Loading…" })}
+            </p>
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-40 gap-2 px-6 text-center">
             <Search size={20} className="text-gray-300 dark:text-gray-700" />
             <p className="text-[13px] text-gray-400 dark:text-gray-500">
@@ -333,14 +350,17 @@ export default function ConversationList({ conversations, activeId, onSelect, on
             </p>
           </div>
         ) : (
-          filtered.map((conv) => (
-            <ConversationCard
-              key={conv.id}
-              conv={conv}
-              isActive={conv.id === activeId}
-              onClick={() => onSelect(conv.id)}
-            />
-          ))
+          filtered.map((conv) => {
+            const id = getConvId(conv);
+            return (
+              <ConversationCard
+                key={id}
+                conv={conv}
+                isActive={id === activeId}
+                onClick={() => onSelect(id)}
+              />
+            );
+          })
         )}
       </div>
     </div>

@@ -25,9 +25,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-export const BOOKING_TABS = ["all", "upcoming", "completed", "cancelled", "reservation", "enquiry", "drafted"];
+export const BOOKING_TABS = ["all", "upcoming", "completed", "cancelled", "reservation", "enquiry", "drafted","pax"];
 
-const STATUS_TABS = new Set(["upcoming", "completed", "cancelled","reservation" ,"enquiry"]);
+const STATUS_TABS = new Set(["upcoming", "completed", "cancelled","reservation" ,"enquiry","pax"]);
 const TYPE_TAB_MAP = { reservation: "reservation", enquiry: "enquiry", drafted: "draft" };
 
 export function filterBookingsByTab(bookings, tab) {
