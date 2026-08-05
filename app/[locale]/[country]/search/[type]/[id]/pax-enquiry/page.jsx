@@ -8,6 +8,9 @@ import PremiumCalendar from "../../components/listing/PremiumCalendar";
 import lightLogo from "@/assets/logo.svg";
 import darkLogo  from "@/assets/logo.png";
 
+import { verify_checkout_token } from "@/services/venues.service";
+import { loadPackage , package_booking } from '@/services/package.service'
+
 // ─── Lock body scroll while a modal is mounted ───────────────────────────────
 // Counter-based: only lock on first open, only unlock when last modal closes.
 // This prevents the race where two modals unmount in the same render and the
@@ -36,7 +39,7 @@ function useLockScroll(onEsc) {
   }, []);
 }
 
-// ─── Mock Data (unchanged) ────────────────────────────────────────────────────
+// ─── Mock Data (fallback only — used if the API returns nothing) ────────────
 const MOCK_CATEGORIES = [
   { id: 1, name: "Starters & Soups" },
   { id: 2, name: "Main Course" },
@@ -83,7 +86,6 @@ const MOCK_PACKAGES = [
   { id: "pkg_nonveg",   package_name: "Non-Veg Special", package_amount: 1500, package_food_type: 2, is_popular: false, max_items_per_category: 3, categories: [{ id: 1, name: "Starters & Soups" }, { id: 2, name: "Main Course" }, { id: 3, name: "Breads & Rice" }, { id: 4, name: "Desserts" }, { id: 5, name: "Beverages" }] },
   { id: "pkg_budget",   package_name: "Budget Bliss",    package_amount: 650,  package_food_type: 1, is_popular: false, max_items_per_category: 2, categories: [{ id: 2, name: "Main Course" }, { id: 3, name: "Breads & Rice" }] },
 ];
-function loadMockData() { return new Promise(r => setTimeout(() => r({ packages: MOCK_PACKAGES, categories: MOCK_CATEGORIES, items: MOCK_ITEMS }), 600)); }
 function submitMockEnquiry(p) { return new Promise(r => setTimeout(() => r({ success: true }), 1200)); }
 
 // ─── Constants (unchanged) ────────────────────────────────────────────────────
@@ -219,6 +221,70 @@ const GLOBAL_CSS = `
   ::-webkit-scrollbar-track { background:transparent; }
   ::-webkit-scrollbar-thumb { background:var(--pax-brd); border-radius:3px; }
 `;
+
+function normalizeCatalog(payload) {
+  const rawCategories = Array.isArray(payload?.category) ? payload.category : [];
+  const rawItemGroups = Array.isArray(payload?.items) ? payload.items : [];
+  const rawPackages   = Array.isArray(payload?.package) ? payload.package : [];
+
+  const categories = rawCategories
+    .filter(c => c?.cat_publish === 1 && c?.item_category && c.item_category.trim())
+    .map(c => ({ id: c.id, name: c.item_category }));
+
+  const publishedIds = new Set(categories.map(c => c.id));
+  const categoryById = new Map(categories.map(c => [c.id, c])); // NEW
+
+  const items = [];
+  const foodTypeById = new Map();
+  rawItemGroups.forEach(group => {
+    if (!publishedIds.has(group?.id)) return;
+    (group.package_item || []).forEach(pi => {
+      const foodType = pi.food_pre === 2 ? 2 : 1;
+      items.push({
+        id: pi.id,
+        category_id: pi.cat_id ?? group.id,
+        category_name: group.item_category,
+        item_name: pi.item_name,
+        price: Number(pi.item_price) || 0,
+        image: pi.image || "",
+        food_type: foodType,
+      });
+      foodTypeById.set(pi.id, foodType);
+    });
+  });
+
+  const packages = rawPackages
+    .filter(pkg => pkg?.package_status !== 0)
+    .map(pkg => {
+      const allowedItemIds = (pkg.package_items || []).map(Number);
+      const categoryRequirements = (pkg.category_items || [])
+        .filter(ci => ci?.category_id != null)
+        .map(ci => ({ id: ci.category_id, count: Math.max(1, Number(ci.count) || 1) }));
+
+      // Link the package to actual category objects via category_items —
+      // this is what PackageModal needs to only show relevant courses.
+      const pkgCategories = categoryRequirements
+        .map(cr => categoryById.get(cr.id))
+        .filter(Boolean);
+
+      const foodTypesInPkg = new Set(allowedItemIds.map(id => foodTypeById.get(id)).filter(Boolean));
+      const packageFoodType = foodTypesInPkg.size === 1 ? [...foodTypesInPkg][0] : undefined;
+
+      return {
+        id: pkg.id,
+        package_name: pkg.name,
+        package_amount: Number(pkg.price) || 0,
+        package_food_type: packageFoodType,
+        allowed_item_ids: allowedItemIds,
+        category_requirements: categoryRequirements,
+        categories: pkgCategories,        // <-- fixes the modal's category filter
+        is_popular: !!pkg.is_popular,
+      };
+    });
+
+  return { categories, items, packages };
+}
+
 
 // ─── ProgressSteps ────────────────────────────────────────────────────────────
 function ProgressSteps({ current }) {
@@ -421,11 +487,40 @@ function InfoBanner({ color = "blue", icon, children }) {
 // ChangeEventTypeModal removed — replaced by inline dropdown in SummaryCard
 
 // ─── ChangeDateModal ──────────────────────────────────────────────────────────
-function ChangeDateModal({ date, shift, venueshifts, onSave, onClose }) {
+// FIX (bug #1 — "edit date not selected when opened"):
+//   `selection` was being recomputed on every `onSelectionChange` fire, and
+//   the PremiumCalendar `key` was derived from that *live* state. If
+//   PremiumCalendar reports anything back on mount (very common), the key
+//   changed immediately and PremiumCalendar remounted, wiping out the
+//   seeded initial date before it was ever visible.
+//   Fix: derive the seed once from props via useMemo, and key/init the
+//   calendar off that stable value instead of the live selection state.
+//
+// FIX (bug #2 — "availability not showing in calendar"):
+//   bookingData / bookingFull / bookingParial were hardcoded to {}/[]/[],
+//   so PremiumCalendar had no availability info to render. These are now
+//   passed in as real props from the parent (fetched from the venue API).
+function ChangeDateModal({ date, shift, venueshifts, bookingData, bookingFull, bookingParial, onSave, onClose }) {
   useLockScroll(onClose);
   const [resetKey]      = useState(0);
   const [resetShiftKey] = useState(0);
-  const [selection, setSelection] = useState({ date: null, shift: null, shiftLabel: null });
+
+  // Seed from the currently booked date/shift instead of nulls, so the
+  // modal reflects "already selected" state the first time it opens.
+  // Computed once (memoized on the actual booked date/shift props) so it
+  // does NOT get recalculated every time PremiumCalendar reports a
+  // selection change back up to us.
+  const initialSelection = useMemo(() => {
+    if (!date) return { date: null, shift: null, shiftLabel: null };
+    const parsed = new Date(date);
+    return {
+      date: isNaN(parsed.getTime()) ? null : parsed,
+      shift: shift || null,
+      shiftLabel: shift || null,
+    };
+  }, [date, shift]);
+
+  const [selection, setSelection] = useState(initialSelection);
 
   const hasShifts = venueshifts.length > 0;
   const canSave   = !!selection.date && (!hasShifts || !!selection.shiftLabel);
@@ -454,16 +549,27 @@ function ChangeDateModal({ date, shift, venueshifts, onSave, onClose }) {
         {/* Calendar body */}
         <div className="flex-1 overflow-y-auto px-6 py-5">
           <PremiumCalendar
+            // key is derived from the STABLE, memoized initialSelection —
+            // not the live `selection` state — so the calendar only
+            // remounts when the booked date/shift actually changes (e.g.
+            // reopening the modal for a different booking), never as a
+            // side-effect of the user or PremiumCalendar itself updating
+            // `selection` while the modal is open.
+            key={`${initialSelection.date ? initialSelection.date.getTime() : "none"}-${initialSelection.shiftLabel || "none"}`}
             venueshifts={venueshifts}
-            bookingData={{}}
-            bookingFull={[]}
-            bookingParial={[]}
+            bookingData={bookingData || {}}
+            bookingFull={bookingFull || []}
+            bookingParial={bookingParial || []}
             category="venues"
             isMember={false}
             onSelectionChange={setSelection}
             resetKey={resetKey}
             resetShiftKey={resetShiftKey}
-            initialDate={date}
+            // Pass the SAME memoized date/shift used for the key above, so
+            // PremiumCalendar can't parse a different value than what the
+            // modal's own footer/summary displays.
+            initialDate={initialSelection.date}
+            initialShift={initialSelection.shiftLabel}
           />
         </div>
         {/* Footer */}
@@ -555,6 +661,9 @@ function SummaryCard({ pricing, ctx, coverImage, selectedPackage, menuTab, custo
 
   const [eventTypeOpen,   setEventTypeOpen]   = useState(false);
   const [eventTypeSearch, setEventTypeSearch] = useState("");
+
+   
+  
 
   const priceRows = [];
   if (selectedPackage && adultCount > 0)
@@ -1286,11 +1395,13 @@ function PackageModal({ pkg, menuCategories, menuItems, selections, setSelection
   const [expanded,    setExpanded]    = useState({});
   const [showPreview, setShowPreview] = useState(false);
 
+ 
+
   const categories = useMemo(() => {
-    if (!pkg || !menuCategories) return [];
-    const ids = new Set((pkg.categories || []).map(c => c.id ?? c));
-    return ids.size > 0 ? menuCategories.filter(c => ids.has(c.id)) : menuCategories;
-  }, [pkg, menuCategories]);
+  if (!pkg || !menuCategories) return [];
+  const ids = new Set((pkg.categories || []).map(c => c.id ?? c));
+  return ids.size > 0 ? menuCategories.filter(c => ids.has(c.id)) : menuCategories;
+}, [pkg, menuCategories]);
 
   const toggle     = id => setExpanded(p => ({ ...p, [id]: !p[id] }));
   const toggleItem = (catId, item) => setSelections(p => {
@@ -1299,7 +1410,13 @@ function PackageModal({ pkg, menuCategories, menuItems, selections, setSelection
   });
   const done   = categories.filter(c => (selections[c.id] || []).length > 0).length;
   const allOk  = categories.length > 0 && done === categories.length;
-  const forCat = cid => (menuItems || []).filter(i => i.category_id === cid);
+
+  // const forCat = cid => (menuItems || []).filter(i => i.category_id === cid);
+  const forCat = cid =>
+  (menuItems || []).filter(
+    i => i.category_id === cid &&
+    (!pkg?.allowed_item_ids?.length || pkg.allowed_item_ids.includes(i.id))
+  );
   const preview = useMemo(() => {
     const m = {};
     categories.forEach(c => { const s = selections[c.id] || []; if (s.length) m[c.name] = s; });
@@ -1309,11 +1426,25 @@ function PackageModal({ pkg, menuCategories, menuItems, selections, setSelection
   const totalSelected = Object.values(preview).flat().length;
 
   // ── Shared accordion (plain render fn, not a component) ──
-  const maxPerCat = pkg?.max_items_per_category || 2;
+  // const maxPerCat = pkg?.max_items_per_category || 2;
+  const getMaxPerCategory = (categoryId) => {
+  return (
+    pkg?.category_requirements?.find(
+      (c) => Number(c.id) === Number(categoryId)
+    )?.count ?? pkg?.max_items_per_category ?? 0
+  );
+};
+
+
+
   const renderAccordion = (px = "px-7") => categories.map((cat, ci) => {
     const catItems = forCat(cat.id), catSel = selections[cat.id] || [], isOpen = !!expanded[cat.id];
-    const isAtMax = catSel.length >= maxPerCat;
-    const isFull  = catSel.length > 0;
+   // const isAtMax = catSel.length >= maxPerCat;
+   
+
+    const maxPerCat = getMaxPerCategory(cat.id);
+const isAtMax = catSel.length >= maxPerCat;
+ const isFull  = catSel.length > 0;
     return (
       <div key={cat.id} className="mb-3 rounded-xl overflow-hidden border transition-colors duration-200" style={{ borderColor: isFull ? "#BBF7D0" : "var(--pax-muted2)" }}>
         <div className="flex items-center gap-3 px-4 py-4 cursor-pointer" style={{ background: isFull ? "#F0FDF4" : "var(--pax-muted)" }} onClick={() => toggle(cat.id)}>
@@ -1861,17 +1992,70 @@ export default function PaxEnquiryPage() {
   const country = params?.country ?? "in";
   const venueId = params?.id      ?? "";
 
+  const token = searchParams.get("token");
+
+  const [tokenError, setTokenError] = useState(false);
+const [catalogError,    setCatalogError]    = useState("");
+  // Holds the *unwrapped* payload returned by verify_checkout_token,
+  // i.e. { eventType, date, shift, guests, venueName, venueId, ... }
+  const [checkoutData, setCheckoutData] = useState(null);
+
+  useEffect(() => {
+    if (!token) return;
+
+    verifyToken(token);
+     loadPax();
+  }, [token]);
+
+  const verifyToken = async (token) => {
+    try {
+      const res = await verify_checkout_token({ token: token });
+      // res.data.data is the actual booking payload — do NOT re-wrap it in
+      // another `.data` when reading fields from checkoutData below.
+      setCheckoutData(res.data.data);
+    } catch (err) {
+      console.error("Token verification failed:", err);
+      setTokenError(true);
+    }
+  };
+
+    // ── catalogue (packages + menu categories/items) ──────────────────────────────
+  const loadPax = useCallback(async () => {
+    setLoadingPackages(true);
+    setCatalogError("");
+    try {
+      const res = await loadPackage(venueId);
+      const { categories, items, packages } = normalizeCatalog(res?.data);
+      setMenuCategories(categories);
+      setMenuItems(items);
+      setPackagesList(packages);
+      // No preset packages for this venue yet — send guests straight to the
+      // custom menu builder instead of an empty "Preset Packages" tab.
+      if (packages.length === 0) setMenuTab("custom");
+    } catch (err) {
+      console.error("Failed to load menu catalogue:", err);
+      setCatalogError("We couldn't load the menu for this venue. Please try again.");
+    } finally {
+      setLoadingPackages(false);
+    }
+  }, [venueId]);
+
+  useEffect(() => {
+    loadPax();
+  }, [loadPax]);
+
   const ctx = useMemo(() => ({
-    eventType:       searchParams.get("eventType")       ?? "",
-    date:            searchParams.get("date")            ?? "",
-    shift:           searchParams.get("shift")           ?? "",
-    guests:          parseInt(searchParams.get("guests") ?? "0", 10),
-    venueName:       searchParams.get("venueName")       ?? "",
+    eventType:       checkoutData?.eventType,
+    date:            checkoutData?.date,
+    shift:           checkoutData?.shift,
+    guests:          Number(checkoutData?.guests || 0),
+    venueName:       checkoutData?.venueName,
     parentVenueName: searchParams.get("parentVenueName") ?? "",
     venueImage:      searchParams.get("venueImage")      ?? "",
     venueRating:     searchParams.get("venueRating")     ?? "4.5",
     venueAddress:    searchParams.get("venueAddress")    ?? "",
-  }), [searchParams]);
+    venueId:         checkoutData?.venueId,
+  }), [checkoutData, searchParams]);
 
   // ── State ───────────────────────────────────────────────────────────────────
   const [step,            setStep]            = useState(1);
@@ -1884,6 +2068,11 @@ export default function PaxEnquiryPage() {
   const [loadingPackages, setLoadingPackages] = useState(false);
   const [venueImages,     setVenueImages]     = useState([]);
   const [venueshifts,     setVenueshifts]     = useState([]);
+  // FIX (bug #2 — availability): real booking data for PremiumCalendar,
+  // fetched from the venue API instead of being hardcoded to {}/[]/[].
+  const [venueBookingData,    setVenueBookingData]    = useState({});
+  const [venueBookingFull,    setVenueBookingFull]    = useState([]);
+  const [venueBookingParial,  setVenueBookingParial]  = useState([]);
   const [bookingEventType, setBookingEventType] = useState(ctx.eventType);
   const [bookingDate,      setBookingDate]      = useState(ctx.date);
   const [bookingShift,     setBookingShift]     = useState(ctx.shift);
@@ -1924,6 +2113,18 @@ export default function PaxEnquiryPage() {
     return () => window.removeEventListener("resize", check);
   }, []);
 
+  // Token verification resolves asynchronously, after the initial render has
+  // already set adultCount / bookingEventType / bookingDate / bookingShift
+  // from an empty ctx. Re-sync those fields once real checkout data arrives,
+  // but only if the user hasn't already started editing them.
+  useEffect(() => {
+    if (!checkoutData) return;
+    setAdultCount(prev => (prev === 0 ? (ctx.guests || 0) : prev));
+    setBookingEventType(prev => prev ?? ctx.eventType);
+    setBookingDate(prev => prev ?? ctx.date);
+    setBookingShift(prev => prev ?? ctx.shift);
+  }, [checkoutData]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     try { const r = localStorage.getItem(DRAFT_KEY); if (r) { const d = JSON.parse(r); if (d.venueId === venueId) setHasDraft(true); } } catch {}
   }, [venueId]);
@@ -1932,43 +2133,81 @@ export default function PaxEnquiryPage() {
     try { const p = JSON.parse(localStorage.getItem("userProfile") || "{}"); if (p.name) setContactName(p.name); if (p.email) setContactEmail(p.email); if (p.phone) setContactPhone(p.phone); } catch {}
   }, []);
 
-  useEffect(() => {
-    setLoadingPackages(true);
-    loadMockData().then(({ packages, categories, items }) => {
-      setPackagesList(packages); setMenuCategories(categories); setMenuItems(items);
-    }).finally(() => setLoadingPackages(false));
-  }, [venueId]);
-
+  // FIX (bug #3 — "package / item not loading dynamically"):
+  // This previously called loadMockData(), which always returns the
+  // hardcoded MOCK_PACKAGES / MOCK_CATEGORIES / MOCK_ITEMS regardless of
+  // venueId — so the menu never actually varied per venue. It's merged
+  // here with the venue-details fetch (gallery/shifts/availability) so
+  // there's a single real API call per venueId, and mock data is now only
+  // used as a fallback if the API returns nothing for that venue.
+  //
+  // NOTE: adjust the field names below (`res.data.packages`,
+  // `res.data.categories`/`menuCategories`, `res.data.items`/`menuItems`,
+  // `res.data.bookingData`, `res.data.bookingFull`, `res.data.bookingPartial`)
+  // to match whatever loadVenues() actually returns from your backend. If
+  // packages/menu come from a separate endpoint/service, swap that call in
+  // here instead.
   useEffect(() => {
     if (!venueId) return;
     let cancelled = false;
+    setLoadingPackages(true);
+
     loadVenues(venueId).then(res => {
       if (cancelled) return;
-      if (res?.data?.gallery?.length) setVenueImages(res.data.gallery);
-      if (res?.data?.shifts?.length)  setVenueshifts(res.data.shifts);
-    }).catch(() => {});
+      const d = res?.data || {};
+
+      if (d.gallery?.length) setVenueImages(d.gallery);
+      if (d.shifts?.length)  setVenueshifts(d.shifts);
+
+      // Availability for the calendar
+      setVenueBookingData(d.bookingData || d.booking_data || {});
+      setVenueBookingFull(d.bookingFull || d.booking_full || d.fullyBookedDates || []);
+      setVenueBookingParial(d.bookingParial || d.bookingPartial || d.booking_partial || d.partiallyBookedDates || []);
+
+      // Packages / menu — fall back to mock data only if the API has
+      // nothing for this venue, so the UI never renders completely empty.
+      const packages   = d.packages || d.pax_packages || [];
+      const categories = d.categories || d.menuCategories || d.menu_categories || [];
+      const items      = d.items || d.menuItems || d.menu_items || [];
+
+      // setPackagesList(packages.length   ? packages   : MOCK_PACKAGES);
+      // setMenuCategories(categories.length ? categories : MOCK_CATEGORIES);
+      // setMenuItems(items.length         ? items       : MOCK_ITEMS);
+    }).catch(err => {
+      console.error("Failed to load venue menu/availability data:", err);
+      if (!cancelled) {
+        // Fall back to mock data so the enquiry flow is still usable.
+        // setPackagesList(MOCK_PACKAGES);
+        // setMenuCategories(MOCK_CATEGORIES);
+        // setMenuItems(MOCK_ITEMS);
+      }
+    }).finally(() => { if (!cancelled) setLoadingPackages(false); });
+
     return () => { cancelled = true; };
   }, [venueId]);
 
   // ── Pricing ─────────────────────────────────────────────────────────────────
-  const pricing = useMemo(() => {
-    let foodTotal = 0, foodDesc = "";
-    if (menuTab === "packages" && selectedPackage) {
-      foodTotal = (selectedPackage.package_amount || 0) * adultCount;
-      foodDesc  = `${selectedPackage.package_name} × ${adultCount} persons`;
-    } else if (menuTab === "custom" && customMenuItems.length > 0) {
-      foodDesc = `Custom Menu (${customMenuItems.length} items)`;
-    }
-    const guestCount    = adultCount + childCount;
-    const addonSummary  = 0;
-    const minimumCharge = guestCount > 0 && guestCount < MINIMUM_PAX && foodTotal > 0 ? (MINIMUM_PAX - guestCount) * (selectedPackage?.package_amount || 0) : 0;
-    const subtotal      = foodTotal + addonSummary + minimumCharge;
-    const tax5          = foodTotal * FOOD_TAX;
-    const tax18         = addonSummary * ADDON_TAX;
-    const total         = subtotal + tax5 + tax18;
-    return { foodDesc, foodTotal, addonSummary, minimumCharge, subtotal, tax5, tax18, total };
-  }, [adultCount, childCount, menuTab, selectedPackage, customMenuItems]);
-
+const pricing = useMemo(() => {
+  let foodTotal = 0, foodDesc = "";
+  if (menuTab === "packages" && selectedPackage) {
+    foodTotal = (selectedPackage.package_amount || 0) * adultCount;
+    foodDesc  = `${selectedPackage.package_name} × ${adultCount} persons`;
+  } else if (menuTab === "custom" && customMenuItems.length > 0) {
+    const perPersonTotal = customMenuItems.reduce((sum, i) => sum + (Number(i.price) || 0), 0);
+    foodTotal = perPersonTotal * adultCount;
+    foodDesc  = `Custom Menu (${customMenuItems.length} items) × ${adultCount} persons`;
+  }
+  const guestCount    = adultCount + childCount;
+  const addonSummary  = 0;
+  const minimumCharge = guestCount > 0 && guestCount < MINIMUM_PAX && foodTotal > 0
+    ? (MINIMUM_PAX - guestCount) * (selectedPackage?.package_amount || 0)
+    : 0;
+  const subtotal = foodTotal + addonSummary + minimumCharge;
+  const tax5     = foodTotal * FOOD_TAX;
+  const tax18    = addonSummary * ADDON_TAX;
+  const total    = subtotal + tax5 + tax18;
+  return { foodDesc, foodTotal, addonSummary, minimumCharge, subtotal, tax5, tax18, total };
+}, [adultCount, childCount, menuTab, selectedPackage, customMenuItems]);
   // ── Draft ────────────────────────────────────────────────────────────────────
   const saveDraft = useCallback(() => {
     localStorage.setItem(DRAFT_KEY, JSON.stringify({ venueId, step, menuTab, adultCount, childCount, selectedPackage, pkgSelections, customMenuItems, dietary, allergies, otherAllergy, servingPref, notes, contactName, contactEmail, contactPhone, contactOrg, ts: Date.now() }));
@@ -2056,16 +2295,93 @@ export default function PaxEnquiryPage() {
   };
 
   // ── Submit ────────────────────────────────────────────────────────────────────
+  // const handleSubmit = async () => {
+  //   if (submitting) return;
+  //   setSubmitting(true);
+  //   const ref = genRef();
+  //   try {
+  //     await submitMockEnquiry({ venue_id:venueId, event_type:ctx.eventType, event_date:ctx.date, shift:ctx.shift, adult_count:adultCount, child_count:childCount, menu_mode:menuTab, package_id:selectedPackage?.id, custom_items:customMenuItems.map(i => i.id), dietary:Object.entries(dietary).filter(([,v])=>v).map(([k])=>k), allergies:Object.entries(allergies).filter(([,v])=>v).map(([k])=>k), other_allergy:otherAllergy, serving_pref:servingPref, notes, contact_name:contactName, contact_email:contactEmail, contact_phone:contactPhone, contact_org:contactOrg, _ref:ref });
+  //     setEnquiryRef(ref); localStorage.removeItem(DRAFT_KEY); setShowSuccess(true);
+  //   } catch (err) { console.error("PAX submit error:", err); }
+  //   finally { setSubmitting(false); }
+  // };
   const handleSubmit = async () => {
-    if (submitting) return;
-    setSubmitting(true);
-    const ref = genRef();
-    try {
-      await submitMockEnquiry({ venue_id:venueId, event_type:ctx.eventType, event_date:ctx.date, shift:ctx.shift, adult_count:adultCount, child_count:childCount, menu_mode:menuTab, package_id:selectedPackage?.id, custom_items:customMenuItems.map(i => i.id), dietary:Object.entries(dietary).filter(([,v])=>v).map(([k])=>k), allergies:Object.entries(allergies).filter(([,v])=>v).map(([k])=>k), other_allergy:otherAllergy, serving_pref:servingPref, notes, contact_name:contactName, contact_email:contactEmail, contact_phone:contactPhone, contact_org:contactOrg, _ref:ref });
-      setEnquiryRef(ref); localStorage.removeItem(DRAFT_KEY); setShowSuccess(true);
-    } catch (err) { console.error("PAX submit error:", err); }
-    finally { setSubmitting(false); }
+  if (submitting) return;
+
+  // Validation
+  if (menuTab === "packages" && !selectedPackage) {
+    setCatalogError("Please select a preset package.");
+    return;
+  }
+
+  if (menuTab === "custom" && customMenuItems.length === 0) {
+    setCatalogError("Please select at least one menu item.");
+    return;
+  }
+
+  setSubmitting(true);
+  setCatalogError("");
+
+  const ref = genRef();
+
+  const payload = {
+    venue_id: venueId,
+    event_type: ctx.eventType,
+    event_date: ctx.date,
+    shift: ctx.shift,
+
+    adult_count: adultCount,
+    child_count: childCount,
+
+    menu_mode: menuTab,
+    package_id:   selectedPackage?.id,
+    package_selections: pkgSelections,
+
+    // package_id:
+    //   menuTab === "packages" ? selectedPackage.id : null,
+
+    custom_items:
+      menuTab === "custom"
+        ? customMenuItems.map((item) => item.id)
+        : [], 
+
+    dietary: Object.entries(dietary)
+      .filter(([, value]) => value)
+      .map(([key]) => key),
+
+    allergies: Object.entries(allergies)
+      .filter(([, value]) => value)
+      .map(([key]) => key),
+
+    other_allergy: otherAllergy,
+    serving_pref: servingPref,
+    notes,
+
+    contact_name: contactName,
+    contact_email: contactEmail,
+    contact_phone: contactPhone,
+    contact_org: contactOrg,
+
+    estimated_total: pricing.total,
+    _ref: ref,
   };
+
+  try {
+    const response = await package_booking(payload)
+    setEnquiryRef(response?.data?.booking_code);
+    localStorage.removeItem(DRAFT_KEY);
+    setShowSuccess(true);
+  } catch (err) {
+    console.error(err);
+
+    setCatalogError(
+      err?.response?.data?.message ||
+      "Unable to submit your enquiry. Please try again."
+    );
+  } finally {
+    setSubmitting(false);
+  }
+};
   const handleSuccessClose = () => { setShowSuccess(false); router.push(`/${locale}/${country}`); };
 
   // ── Render ────────────────────────────────────────────────────────────────────
@@ -2149,8 +2465,8 @@ export default function PaxEnquiryPage() {
                   onSwitchTab={handleTabSwitch}
                 />
                 <InfoBanner color="blue">
-                  This is an enquiry only. The venue will review your request, discuss requirements, and confirm availability before finalising.
-                </InfoBanner>
+  <span className="text-[0.8125rem]">Prices shown are per guest and scale automatically with your guest count.</span>
+</InfoBanner>
                 </div>
               </div>
             )}
@@ -2296,6 +2612,9 @@ export default function PaxEnquiryPage() {
           date={bookingDate || ctx.date}
           shift={bookingShift || ctx.shift}
           venueshifts={venueshifts}
+          bookingData={venueBookingData}
+          bookingFull={venueBookingFull}
+          bookingParial={venueBookingParial}
           onSave={(d, s) => { setBookingDate(d); setBookingShift(s); }}
           onClose={() => setShowDateModal(false)}
         />

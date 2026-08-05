@@ -35,6 +35,7 @@ import {
   addLikedProperty,
   UserWishlist,
   UserWishlistCategory,
+  checkout_data_passes,
 } from "@/services/venues.service";
 
 // ─── Category-specific property meta ─────────────────────────────────────────
@@ -156,6 +157,7 @@ export default function ListingPage() {
 
   const [images,  SetImages]  = useState([]);
   const [galleyCategory,  SetGalleryCategory]  = useState([]);
+  const [categoryWiseGallery,  SetcategoryWiseGallery]  = useState([]);
   const [venueData,  SetVenueData]  = useState({});
   const [venueshifts,  SetVenueshifts]  = useState([]);
   const [bookingData,  SetBookingData]  = useState([]);
@@ -165,6 +167,7 @@ export default function ListingPage() {
   const [amenitiesgroup,  SetAmenitiesgroup]  = useState([]); 
   const [venueEvents,  SetVenueEvents]  = useState([]); 
   const [venueSettings,  SetvenueSettings]  = useState([]); 
+  const [subscription,  SetSubscription]  = useState({}); 
 
   const propertyName = catKey === "venues"
     ? "Monappa Heritage Convention Hall"
@@ -345,6 +348,8 @@ export default function ListingPage() {
 
         if (res?.data) SetVenueEvents(res.data.events);
         if (res?.data) SetvenueSettings(res.data.venue_settings);
+        if (res?.data) SetSubscription(res.data.user_subscriptions[0]);
+        if (res?.data) SetcategoryWiseGallery(res.data.categoryWiseGallery);
         // if (resCt?.data) setCategory(resCt.data);
       } catch (err) {
         if (!cancelled) console.error("Listing load error:", err);
@@ -438,6 +443,11 @@ export default function ListingPage() {
 
   const sendEnquiry = async (data) => {
   const response = await sendEnquiryApi(data);
+  return response;
+}; 
+
+const checkout_data_pass = async (data) => {
+  const response = await checkout_data_passes(data);
   return response;
 };
   // ── Full-page skeleton — shown until the API call resolves ─────────────────
@@ -919,6 +929,8 @@ export default function ListingPage() {
                 ctaSentinelRef={ctaSentinelRef}
                 onCTAChange={setNavCTAInfo}
                 sendEnquiry={sendEnquiry}
+                subscription={subscription}
+                checkoutdatapass={checkout_data_pass}
               />
 
               {/* Report this listing — below the card, Airbnb-style */}
@@ -1066,7 +1078,14 @@ export default function ListingPage() {
         onClearCheckout={clearCheckout}
         shiftAmount={venueSelection.shiftAmount}
         venue_settings={venueSettings}
+        ctaSentinelRef={ctaSentinelRef}
+        onCTAChange={setNavCTAInfo}
+        sendEnquiry={sendEnquiry}
+        subscription={subscription}
+        checkoutdatapass={checkout_data_pass}
       />
+
+                
 
       {/* About this Venue/Farmstay — full text modal */}
       {aboutOpen && (
@@ -1121,7 +1140,8 @@ export default function ListingPage() {
       {/* Photo tour overlay */}
       <AnimatePresence>
         {openTour && (
-          <PhotoTourOverlay key="photo-tour" images={images} category={category} onClose={() => setOpenTour(false)}  galleyCategory = { galleyCategory }/>
+          <PhotoTourOverlay key="photo-tour" images={images} category={category} onClose={() => setOpenTour(false)}  
+          galleyCategory = { galleyCategory } categoryWiseGallery = {categoryWiseGallery} />
         )}
       </AnimatePresence>
     </div>

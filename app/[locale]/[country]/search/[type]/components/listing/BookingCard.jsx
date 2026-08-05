@@ -524,6 +524,7 @@ function VenueCard({
   venue_settings,
   ctaSentinelRef,
   onCTAChange,
+  subscription,
 }) {
   const { format } = useCurrency();
   const [eventType, setEventType] = useState(null);
@@ -1637,6 +1638,8 @@ export default function BookingCard({
   ctaSentinelRef, // ref placed after CTA buttons — observed by IntersectionObserver
   onCTAChange, // ({ label, badge }) → void — fires whenever the primary CTA changes
   sendEnquiry,
+  subscription,
+  checkoutdatapass
 }) {
   const { format } = useCurrency();
   const catKey = normalizeCategory(category);
@@ -1659,6 +1662,8 @@ export default function BookingCard({
   const locale = params?.locale ?? "en";
   const country = params?.country ?? "in";
   const propertyId = params?.id ?? "1";
+
+   const plan_id = subscription?.plan_id ?? 0;
 
   const CardIcon = meta.icon;
 
@@ -1719,8 +1724,10 @@ export default function BookingCard({
   };
 
   const handleAction = useCallback(
-    (data) => {
+  async (data) => {
       const type = data.type ?? "";
+
+     
 
       if (type === "enquiry") {
         const guestCount =
@@ -1779,8 +1786,10 @@ const reserveExpiresAt = dayjs()
           ...(coverImage && { venueImage: coverImage }),
         });
 
+        const res = await checkoutdatapass(paxParams.toString())
+
         router.push(
-          `/${locale}/${country}/search/${catKey}/${propertyId}/pax-enquiry?${paxParams.toString()}`,
+          `/${locale}/${country}/search/${catKey}/${propertyId}/pax-enquiry?token=${res.data.token}`,
         );
 
         return;
@@ -1818,11 +1827,14 @@ const reserveExpiresAt = dayjs()
         ...(propertyId && { venueId: propertyId }),
         ...(catKey && { category: catKey }),
         reserveAmount: String(reserveAmount),
-        reserveEndDate
+        reserveEndDate,
+       plan_id
       });
 
+       const resp = await checkoutdatapass(checkoutParams.toString());
+
       router.push(
-        `/${locale}/${country}/checkout/${catKey}/${propertyId}?${checkoutParams.toString()}`,
+        `/${locale}/${country}/checkout/${catKey}/${propertyId}?token=${resp.data.token}`,
       );
     },
     [
@@ -1859,6 +1871,7 @@ const reserveExpiresAt = dayjs()
         venue_settings={venue_settings}
         ctaSentinelRef={!mobileOnly ? ctaSentinelRef : undefined}
         onCTAChange={!mobileOnly ? onCTAChange : undefined}
+        subscription={subscription}
       />
     ) : (
       <ReserveCard
@@ -1879,6 +1892,7 @@ const reserveExpiresAt = dayjs()
         highlightGuests={highlightGuests}
         ctaSentinelRef={!mobileOnly ? ctaSentinelRef : undefined}
         onCTAChange={!mobileOnly ? onCTAChange : undefined}
+         subscription={subscription}
       />
     );
 

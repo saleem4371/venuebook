@@ -42,6 +42,7 @@ import {
   totalLikedProperty,
   addLikedProperty,
   likedProperty,
+  checkoutdatapass
 } from "@/services/venues.service";
 
 import { findPropertyname } from "@/services/global.service";

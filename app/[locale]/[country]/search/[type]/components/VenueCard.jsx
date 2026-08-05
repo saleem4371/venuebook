@@ -572,6 +572,8 @@ const VenueCard = ({
   hoverVenue,
   isMapHighlighted = false,
 }) => {
+  console.log('-------------------Venue----------------')
+  console.log(venue)
   const { activeCategory } = useCategory();
 
   // This card renders inside a single-category grid (search page) as well
