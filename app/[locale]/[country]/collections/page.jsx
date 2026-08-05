@@ -77,6 +77,9 @@ import { resolveCollectionIcon } from "@/app/[locale]/[country]/search/[type]/co
 import ScrollableTabBar from "@/app/[locale]/[country]/vendor/components/ScrollableTabBar";
 import { logActivity } from "@/lib/activityLog";
 
+ const BASE_URL = process.env.NEXT_PUBLIC_AWS_BUCKET_URL;
+
+
 /* ═══════════════════════════════════════════════════════════════════════════
    DATA RESOLUTION — see file header. Mirrors compare/hooks/useCompareList.js
    so there's one resolution strategy for "thin relation row → full venue"
@@ -103,24 +106,59 @@ function unwrapList(res) {
 }
 
 function resolveVenue(raw) {
-  const id = extractId(raw);
-  if (!id) return null;
-  const staticMatch = STATIC_VENUES.find((v) => v.childVenueId === id);
-  const base =
-    staticMatch || {
-      childVenueId: id,
-      venueName: raw?.title || raw?.name || raw?.venueName || "Property",
-      category: raw?.category || raw?.property_type || "venues",
-      city: raw?.city || "",
-      state: raw?.state || "",
-      images: raw?.image ? [raw.image] : raw?.images || [],
-      minPrice: raw?.price || raw?.minPrice || null,
-      rating: raw?.rating || 4.5,
-      reviewCount: raw?.reviewCount || 0,
-    };
-  return enrichProperty(base);
-}
+  if (!raw) return null;
 
+  const images =
+    Array.isArray(raw.images) && raw.images.length
+      ? raw.images.map((img) => ({
+          image: img.image?.startsWith("http")
+            ? img.image
+            : `${BASE_URL}/${img.image}`,
+        }))
+      : raw.coverImage
+      ? [
+          {
+            image: raw.coverImage.startsWith("http")
+              ? raw.coverImage
+              : `${BASE_URL}/${raw.coverImage}`,
+          },
+        ]
+      : [];
+
+  return enrichProperty({
+    ...raw,
+
+    childVenueId:
+      raw.childVenueId ??
+      raw.child_venue_id ??
+      raw.property_id,
+
+    venueName:
+      raw.venueName ??
+      raw.name ??
+      raw.title,
+
+    category:
+      raw.category ??
+      raw.property_type ??
+      "venue",
+
+    images: raw.images,
+
+    coverImage: `${BASE_URL}/${raw.coverImage}`,
+
+    minPrice: Number(raw.minPrice || 0),
+    rating: Number(raw.rating || 0),
+    reviewCount: Number(raw.reviewCount || 0),
+    maxGuests: Number(raw.maxGuests || 0),
+
+    city: raw.city,
+    state: raw.state,
+
+    totalLikes: Number(raw.totalLikes || 0),
+    isLiked: Number(raw.isLiked || 0),
+  });
+}
 function formatUpdated(cat) {
   const raw = cat?.updated_at || cat?.updatedAt || cat?.modified_at;
   if (!raw) return null;
@@ -129,13 +167,6 @@ function formatUpdated(cat) {
   return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(d);
 }
 
-// `/home/recent_views` (services/home.service.js) is the one relation
-// endpoint in this app that already returns rich venue objects (name,
-// images, price, rating — see home/components/VenueCard.jsx, which reads
-// those fields directly with no fixture fallback). It's read defensively
-// for a view timestamp under several possible field names; if none of them
-// are present on any row, every item falls into a single "Earlier" bucket
-// rather than being mislabeled "Today".
 function extractViewedAt(raw) {
   const val =
     raw?.viewed_at ||
@@ -192,8 +223,7 @@ function CollectionsPageInner() {
 
   const { activeCategory } = useCategory();
 
-  const BASE_URL = process.env.NEXT_PUBLIC_AWS_BUCKET_URL;
-
+ 
   const load = useCallback(async () => {
     if (!user) {
       setLoading(false);
