@@ -210,41 +210,59 @@ export default function ChatThread({ conversation: conv, onBack }) {
     el.style.height = `${Math.min(el.scrollHeight, 112)}px`;
   }, [input]);
 
-  const handleSend = useCallback(() => {
-    const text = input.trim();
-    if (!text && !filePreview) return;
-
-    const newMsg = {
-      id:     `msg_${Date.now()}`,
-      role:   "me",
-      text,
-      time:   new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      date:   "Today",
-      file:   filePreview,
-      status: "sent",
-    };
-
-    setMessages((prev) => [...(prev ?? []), newMsg]);
-    setInput("");
-    setFilePreview(null);
-
-    /* Persist to the backend, then reconcile the optimistic bubble's
-       delivery status. The previous version never called the API at
-       all — it only simulated a canned "Thank you" reply locally, so
-       nothing sent here actually reached the customer. */
-    send_messages({ conversation_id: conv.id, text, message: text })
-      .then(() => {
-        setMessages((prev) =>
-          prev.map((m) => (m.id === newMsg.id ? { ...m, status: "delivered" } : m)),
-        );
-      })
-      .catch((err) => {
-        console.error("Failed to send message", err);
-        setMessages((prev) =>
-          prev.map((m) => (m.id === newMsg.id ? { ...m, status: "failed" } : m)),
-        );
-      });
-  }, [input, filePreview, conv.id]);
+  const handleSend = useCallback(async () => {
+  const text = input.trim();
+ 
+  if (!text && !filePreview) return;
+  
+  const newMsg = {
+    id: `msg_${Date.now()}`,
+    role: "me",
+    text,
+    time: new Date().toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    }),
+    date: "Today",
+    file: filePreview,
+    status: "sent",
+  };
+ 
+  setMessages((prev) => [...(prev ?? []), newMsg]);
+  setInput("");
+ 
+  // Save file before clearing preview
+  const file = filePreview;
+  setFilePreview(null);
+ 
+  try {
+    const formData = new FormData();
+ 
+    formData.append("conversationId", String(conv.id));
+    // formData.append("text", text);
+    formData.append("message", text);
+ 
+    if (file instanceof File) {
+      formData.append("attachment", file);
+    }
+ 
+    await send_messages(formData);
+ 
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === newMsg.id ? { ...m, status: "delivered" } : m,
+      ),
+    );
+  } catch (err) {
+    console.error("Failed to send message", err);
+ 
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === newMsg.id ? { ...m, status: "failed" } : m,
+      ),
+    );
+  }
+}, [input, filePreview, conv.id]);
 
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
