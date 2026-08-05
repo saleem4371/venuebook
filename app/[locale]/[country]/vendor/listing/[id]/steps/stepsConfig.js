@@ -1,7 +1,7 @@
 export const steps = [
   { key: "photo", title: "Photo tour", required: true },
   { key: "basic", title: "Basic details", required: true },
-  { key: "tags", title: "Tags & Categories", required: false },
+  { key: "tags", title: "Tags & Event Types", required: false },
   { key: "addons", title: "Addons", required: false },
   { key: "capacity", title: "Capacity", required: true },
   { key: "amenities", title: "Amenities", required: false },
@@ -90,10 +90,7 @@ export const isStepCompleted = (step, form = {}) => {
     }
 
     case "terms":
-      return (
-        form?.termsAccepted === true &&
-        !!form?.cancellationPolicy
-      );
+      return !!form?.cancellationPolicy;
 
     // optional
     case "tags":

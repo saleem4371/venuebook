@@ -173,12 +173,17 @@ function PageMainWrapper({ isListingEditor, isVenueEditor, isFullBleedPage, isFu
            clearance. Every other route gets this from AdminLayout's
            shared outer box instead. */
         isListingEditor ? (isVenueEditor ? "" : "mt-[64px] md:mt-[72px]") : "",
-        /* Breathing room — separate, optional, easy to opt out of per
-           page type. The listing editor and full-bleed routes
-           (package/teams/addons/messages) render nothing here since
-           they manage their own top spacing; every other page gets a
-           small default gap. */
-        isListingEditor || isFullBleed ? "" : "pt-[56px] md:pt-[24px]",
+        /* Breathing room — one consistent value at every breakpoint. This
+           used to be pt-[56px] md:pt-[24px] (more padding on mobile than
+           desktop, backwards for "breathing room"); checked whether that
+           56px on mobile was reserved clearance for VendorCategoryNavigator's
+           floating FAB — it isn't, that FAB is bottom-anchored (`bottom:`
+           inline style), not top, so there was no real dependency, just an
+           unexplained asymmetry that made the gap below the KYC row read
+           differently page to page. The listing editor and full-bleed
+           routes (package/teams/addons/messages) render nothing here since
+           they manage their own top spacing. */
+        isListingEditor || isFullBleed ? "" : "pt-4",
         /* Messages only: AdminLayout's outer box is a fixed-height flex
            column for this route (see layout.jsx comment), so this fills
            whatever's left after the KYC row. The page underneath gives
@@ -376,7 +381,7 @@ export default function AdminLayout({ children }) {
 
           {/* FLOATING ELEMENTS */}
           <div className="relative z-40">
-            <MessageFAB />
+            {!isListingEditor && <MessageFAB />}
             {!isListingEditor && <BottomDock />}
           </div>
 

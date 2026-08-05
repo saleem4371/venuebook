@@ -32,9 +32,38 @@ import {
   MapPin,
   Monitor,
   Smartphone,
+  FileText,
+  Package,
+  Sparkles,
+  Layers,
+  Zap,
+  MessageCircle,
+  Percent,
+  Ban,
+  Lock,
+  IndianRupee,
+  RotateCcw,
+  Wallet,
+  ChevronDown,
+  LayoutGrid,
 } from "lucide-react";
 import StepRenderer from "./steps/StepRenderer";
 import { steps as ALL_STEPS, isStepCompleted } from "./steps/stepsConfig";
+
+/* Leading icon per sidebar step — purely visual identity for each row,
+   not a status indicator (that's the "Complete/In progress/Pending" text
+   and the Req/Opt badge). Keyed by stepsConfig.js's step.key. */
+const STEP_ICONS = {
+  photo: Camera,
+  basic: FileText,
+  tags: Tag,
+  addons: Package,
+  capacity: Users,
+  amenities: Sparkles,
+  location: MapPin,
+  pricing: CreditCard,
+  terms: Shield,
+};
 import { useVendorCategory } from "@/context/VendorCategoryContext";
 
 import {
@@ -111,22 +140,22 @@ const CATEGORY_CONFIG = {
     label: "Venue",
     Icon: Building2,
     steps: [
-      "photo",
       "basic",
+      "photo",
       "capacity",
+      "tags",
       "amenities",
+      "terms",
+      "addons",
       "location",
       "pricing",
-      "tags",
-      "addons",
-      "terms",
     ],
     titles: {
       basic: "Basic Details",
       capacity: "Capacity & Seating",
       amenities: "Event Amenities",
       pricing: "Event Pricing",
-      addons: "Vendor Add-ons",
+      addons: "Add-ons",
     },
   },
   farmstays: {
@@ -191,12 +220,12 @@ const CATEGORY_CONFIG = {
 
 const SETTINGS_SECTIONS = [
   { key: "publication", label: "Publication", Icon: Globe },
-  { key: "payment", label: "Payment", Icon: CreditCard },
-  { key: "reserve", label: "Reserve", Icon: Calendar },
+  { key: "deposits", label: "Security Deposit", Icon: Shield, desc: "Manage security deposit requirements and refund policies for your venue." },
+  { key: "reserve", label: "Reserve", Icon: Calendar, desc: "Configure how long the venue is held and how the reserve payment works." },
   { key: "pax", label: "Pax", Icon: Users },
-  { key: "deposits", label: "Deposits", Icon: Shield },
-  { key: "availability", label: "Availability", Icon: Clock },
+  { key: "payment", label: "Payment", Icon: CreditCard },
   { key: "pricing", label: "Pricing", Icon: Tag },
+  { key: "availability", label: "Availability", Icon: Clock },
 ];
 
 /* ── Per-step validation rules ─────────────────────────────────────── */
@@ -233,10 +262,24 @@ const STEP_VALIDATORS = {
     return null;
   },
   terms: (form) => {
-    if (!form.termsAccepted) return "You must accept the terms to continue.";
+    if (!form.cancellationPolicy) return "Please select a cancellation policy.";
     return null;
   },
 };
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   IMAGE URL HELPER
+   Server-stored photos are a relative S3 key — needs NEXT_PUBLIC_AWS_BUCKET_URL
+   prefixed on (NOT NEXT_PUBLIC_API_URL, that's the backend API host). A local
+   not-yet-uploaded photo is a blob: URL and is left untouched, same for an
+   already-absolute http/https URL.
+───────────────────────────────────────────────────────────────────────────── */
+function resolveImageUrl(raw) {
+  if (!raw) return null;
+  if (/^(https?:|blob:|data:)/i.test(raw)) return raw;
+  const base = process.env.NEXT_PUBLIC_AWS_BUCKET_URL || "";
+  return `${base}/${raw}`.replace(/([^:])\/{2,}/g, "$1/");
+}
 
 /* ─────────────────────────────────────────────────────────────────────────────
    THEME TOKENS
@@ -309,20 +352,69 @@ function Segmented({ options, value, onChange, tk, brand = DEFAULT_BRAND }) {
   );
 }
 
-function SettingCard({ title, description, children, tk }) {
+/* Card-based option picker — icon + label + one-line explanation per
+   choice. No box-shadow; the selected state is a bold neutral black/white
+   border (matching the rest of the editor's de-colorized selection
+   language) instead of a filled brand-gradient pill like Segmented. */
+function OptionCards({ options, value, onChange, tk, isDark, cols = "sm:grid-cols-2" }) {
   return (
-    <div
-      className="rounded-2xl p-6"
-      style={{
-        background: tk.card,
-        border: `1px solid ${tk.border}`,
-        boxShadow: tk.shadow,
-      }}
-    >
+    <div className={`grid grid-cols-1 ${cols} gap-2.5`}>
+      {options.map((opt) => {
+        const isActive = value === opt.value;
+        const isDisabled = !!opt.disabled;
+        const Icon = opt.icon;
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            disabled={isDisabled}
+            onClick={() => !isDisabled && onChange(opt.value)}
+            className="flex items-start gap-3 text-left p-4 rounded-2xl transition-all duration-150 outline-none focus:outline-none focus-visible:outline-none"
+            style={{
+              background: isActive ? tk.trackBg : tk.card,
+              border: isActive ? `1.5px solid ${isDark ? "#ffffff" : "#0f172a"}` : `1px solid ${tk.border}`,
+              opacity: isDisabled ? 0.5 : 1,
+              cursor: isDisabled ? "not-allowed" : "pointer",
+            }}
+          >
+            <div
+              className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+              style={{ background: isActive ? tk.card : tk.trackBg }}
+            >
+              <Icon size={16} style={{ color: tk.text }} />
+            </div>
+            <div className="min-w-0 pt-0.5">
+              <div className="flex items-center gap-1.5">
+                <p className="text-[13px] font-bold leading-tight" style={{ color: tk.text }}>{opt.label}</p>
+                {isDisabled && <Lock size={11} style={{ color: tk.muted }} />}
+              </div>
+              <p className="text-[11.5px] mt-1 leading-snug" style={{ color: tk.muted }}>
+                {isDisabled && opt.disabledDesc ? opt.disabledDesc : opt.desc}
+              </p>
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/* Plain section, no card chrome (no background/border/shadow) — a bottom
+   divider plus generous vertical padding is enough to separate sections
+   when several are stacked in one panel. */
+function SettingCard({ title, description, children, tk }) {
+  // Border color set via inline style, width via Tailwind's border-b /
+  // last:border-b-0 classes — width and color are kept on separate
+  // properties on purpose. An inline `borderBottom` shorthand would set
+  // width+color together and always beat the `last:` class (inline
+  // styles trump classes regardless of specificity), which is exactly
+  // why the divider used to survive under the last card in a panel.
+  return (
+    <div className="py-6 first:pt-0 border-b last:border-b-0 last:pb-0" style={{ borderColor: tk.border }}>
       {(title || description) && (
         <div className="mb-5">
           {title && (
-            <h3 className="text-[15px] font-bold mb-1" style={{ color: tk.text }}>
+            <h3 className="text-[13.5px] font-bold mb-1" style={{ color: tk.text }}>
               {title}
             </h3>
           )}
@@ -338,21 +430,36 @@ function SettingCard({ title, description, children, tk }) {
   );
 }
 
-function SettingRow({ label, description, right, tk }) {
+function SettingRow({ label, description, right, tk, icon: Icon, noBorder = false }) {
+  // Explicit `noBorder` prop instead of trusting a `first:` CSS variant —
+  // pass noBorder on whichever SettingRow is actually first inside its
+  // SettingCard. Guaranteed correct regardless of how the border is
+  // implemented elsewhere, unlike relying on :first-child matching up
+  // with React's rendered DOM order.
   return (
     <div
-      className="flex items-center justify-between gap-4 py-3.5 first:pt-0"
-      style={{ borderTop: `1px solid ${tk.border}` }}
+      className="flex items-center justify-between gap-4 py-3.5"
+      style={{ borderTop: noBorder ? "none" : `1px solid ${tk.border}` }}
     >
-      <div className="min-w-0">
-        <p className="text-[13px] font-semibold" style={{ color: tk.text }}>
-          {label}
-        </p>
-        {description && (
-          <p className="text-[12px] mt-0.5 leading-relaxed" style={{ color: tk.muted }}>
-            {description}
-          </p>
+      <div className="flex items-start gap-3 min-w-0">
+        {Icon && (
+          <div
+            className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+            style={{ background: tk.trackBg }}
+          >
+            <Icon size={14} style={{ color: tk.text }} />
+          </div>
         )}
+        <div className="min-w-0">
+          <p className="text-[13px] font-semibold" style={{ color: tk.text }}>
+            {label}
+          </p>
+          {description && (
+            <p className="text-[12px] mt-0.5 leading-relaxed" style={{ color: tk.muted }}>
+              {description}
+            </p>
+          )}
+        </div>
       </div>
       <div className="shrink-0">{right}</div>
     </div>
@@ -362,7 +469,7 @@ function SettingRow({ label, description, right, tk }) {
 /* ─────────────────────────────────────────────────────────────────────────────
    SETTINGS CONTENT PANEL
 ───────────────────────────────────────────────────────────────────────────── */
-function SettingsContent({ section, isDark, brand = DEFAULT_BRAND, form, setForm }) {
+function SettingsContent({ section, isDark, brand = DEFAULT_BRAND, form, setForm, allCompleted = true }) {
   const tk = tokens(isDark);
 
   const updateSettings = useCallback(
@@ -381,26 +488,37 @@ function SettingsContent({ section, isDark, brand = DEFAULT_BRAND, form, setForm
 
   const settings = form?.settings || {};
 
-  const pub = settings.publication ?? { status: "draft", visible: true, search: true, instant: false };
+  const pub = settings.publication ?? { status: "draft", visible: true, search: true, instant: false, pricingModel: "venue", pauseFrom: "", pauseTo: "" };
   const setPub = (u) => updateSettings("publication", u);
 
-  const pay = settings.payment ?? { card: true, upi: true, bank: false, advance: "25" };
+  const pay = settings.payment ?? { allowPartial: false, advancePercent: 25 };
   const setPay = (u) => updateSettings("payment", u);
 
-  // const res = settings.reserve ?? { type: "instant", notice: "4hr", window: "1m" };
   const res = settings.reserve ?? {
-  type: "instant",      // instant | approval
-  amount: 5000,         // Reserve amount
-  notice: "4hr",        // Advance notice
-  period: "24hr",       // Hold duration
-  window: "1m",         // Booking window
-};
+    holdDuration: 24,
+    holdDurationUnit: "hours",   // hours | days
+    amountType: "fixed",         // fixed | percentage
+    fixedAmount: "",
+    percentAmount: 20,
+    refundable: false,
+    deductFromFinal: true,
+  };
   const setRes = (u) => updateSettings("reserve", u);
 
-  const pax = settings.pax ?? { min: "", max: "", children: true, pets: false, catering: true };
+  const pax = settings.pax ?? {
+    minGuests: "",
+    belowMinCharge: "",
+    extraChargesEnabled: false,
+    extraChargeType: "fixed",   // fixed | percentage
+    extraFixedCharge: "",
+    extraPercentCharge: "",
+  };
   const setPax = (u) => updateSettings("pax", u);
 
-  const dep = settings.deposits ?? { security: false, secAmt: "", waiver: false, wavAmt: "" };
+  const dep = settings.deposits ?? {
+    security: false, secAmt: "", waiver: false, wavAmt: "",
+    refundPolicy: "full", refundPercent: 50, refundTimelineDays: 7,
+  };
   const setDep = (u) => updateSettings("deposits", u);
 
   const avail = settings.availability ?? { schedule: "always", minStay: "1hr", buffer: "none" };
@@ -417,55 +535,117 @@ function SettingsContent({ section, isDark, brand = DEFAULT_BRAND, form, setForm
     publication: (
       <div className="space-y-4">
         <SettingCard title="Listing Status" description="Control whether this listing is visible to guests." tk={tk}>
-          <Segmented
-            options={[{ value: "draft", label: "Draft" }, { value: "live", label: "Live" }]}
+          <OptionCards
+            options={[
+              { value: "draft",  label: "Draft",  icon: FileText, desc: "Hidden from guests — edit freely before going live." },
+              {
+                value: "live", label: "Live", icon: Globe,
+                desc: "Visible and bookable by guests right now.",
+                disabled: !allCompleted,
+                disabledDesc: "Complete all required steps before going live.",
+              },
+              { value: "paused", label: "Paused",  icon: Clock,   desc: "Hidden for a date range — other dates stay bookable." },
+            ]}
             value={pub.status}
             onChange={(v) => setPub((p) => ({ ...p, status: v }))}
             tk={tk}
-            brand={brand}
+            isDark={isDark}
+            cols="sm:grid-cols-2 lg:grid-cols-3"
           />
-          <SettingRow
-            label="Show on public listing page"
-            description="Guests can discover this listing on browse pages"
-            right={<Toggle checked={pub.visible} onChange={(v) => setPub((p) => ({ ...p, visible: v }))} />}
+
+          {!allCompleted && (
+            <div
+              className="mt-3 flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl"
+              style={{ background: "rgba(245,158,11,0.10)", border: "1px solid rgba(245,158,11,0.24)" }}
+            >
+              <AlertCircle size={13} style={{ color: "#f59e0b" }} />
+              <p className="text-[11.5px] font-medium" style={{ color: tk.text }}>
+                Finish all required steps in "Your Space" to unlock the Live status.
+              </p>
+            </div>
+          )}
+
+          {/* Pause window — only the selected date range is closed off;
+              this does NOT block bookings outside that window. */}
+          <AnimatePresence>
+            {pub.status === "paused" && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <div
+                  className="mt-4 p-4 rounded-xl grid grid-cols-1 sm:grid-cols-2 gap-3"
+                  style={{ background: tk.trackBg, border: `1px solid ${tk.border}` }}
+                >
+                  <div>
+                    <p className="text-[11px] font-semibold mb-1.5" style={{ color: tk.muted }}>Pause From</p>
+                    <input
+                      type="date"
+                      value={pub.pauseFrom || ""}
+                      onChange={(e) => setPub((p) => ({ ...p, pauseFrom: e.target.value }))}
+                      className={INPUT_CLS}
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-semibold mb-1.5" style={{ color: tk.muted }}>Pause Until</p>
+                    <input
+                      type="date"
+                      value={pub.pauseTo || ""}
+                      onChange={(e) => setPub((p) => ({ ...p, pauseTo: e.target.value }))}
+                      className={INPUT_CLS}
+                      style={inputStyle}
+                    />
+                  </div>
+                </div>
+                <p className="text-[11px] mt-2.5 leading-relaxed" style={{ color: tk.muted }}>
+                  Guests can't book anything that falls inside this range. Dates outside it remain open as normal.
+                </p>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </SettingCard>
+        <SettingCard title="Pricing Model" description="How guests are charged for this listing." tk={tk}>
+          <OptionCards
+            options={[
+              { value: "venue", label: "Venue", icon: Building2, desc: "One flat price for the whole booking." },
+              { value: "pax",   label: "Pax",    icon: Users,     desc: "Price scales with the number of guests." },
+              { value: "both",  label: "Both",   icon: Layers,    desc: "Base venue price plus a per-guest charge." },
+            ]}
+            value={pub.pricingModel}
+            onChange={(v) => setPub((p) => ({ ...p, pricingModel: v }))}
             tk={tk}
-          />
-          <SettingRow
-            label="Include in search results"
-            description="This listing appears when guests filter by type or location"
-            right={<Toggle checked={pub.search} onChange={(v) => setPub((p) => ({ ...p, search: v }))} />}
-            tk={tk}
+            isDark={isDark}
+            cols="sm:grid-cols-2 lg:grid-cols-3"
           />
         </SettingCard>
         <SettingCard title="Booking Control" tk={tk}>
           <SettingRow
             label="Instant booking"
             description="Guests can confirm without host approval"
+            icon={Zap}
             right={<Toggle checked={pub.instant} onChange={(v) => setPub((p) => ({ ...p, instant: v }))} />}
             tk={tk}
           />
-           {/* <SettingRow
-            label="Reserve"
-            description="Guests can confirm without host approval"
-            right={<Toggle checked={pub.reserve} onChange={(v) => setPub((p) => ({ ...p, reserve: v }))} />}
-            tk={tk}
-          /> */}
           <SettingRow
-  label="Reserve Booking"
-  description="Allow guests to reserve by paying an advance amount."
-  right={
-    <Toggle
-      checked={pub.reserve}
-      onChange={(v) => setPub((p) => ({ ...p, reserve: v }))}
-    />
-  }
-  tk={tk}
-/>
-
-
-           <SettingRow
+            label="Reserve Booking"
+            description="Allow guests to reserve by paying an advance amount."
+            icon={Calendar}
+            right={
+              <Toggle
+                checked={pub.reserve}
+                onChange={(v) => setPub((p) => ({ ...p, reserve: v }))}
+              />
+            }
+            tk={tk}
+          />
+          <SettingRow
             label="Enquire"
             description="Guests can confirm without host approval"
+            icon={MessageCircle}
             right={<Toggle checked={pub.enquire} onChange={(v) => setPub((p) => ({ ...p, enquire: v }))} />}
             tk={tk}
           />
@@ -474,249 +654,442 @@ function SettingsContent({ section, isDark, brand = DEFAULT_BRAND, form, setForm
     ),
     payment: (
       <div className="space-y-4">
-        <SettingCard title="Accepted Payment Methods" tk={tk}>
-          {[
-            ["card", "Credit / Debit Card", "Visa, Mastercard, Amex, Rupay"],
-            ["upi", "UPI", "Google Pay, PhonePe, Paytm, BHIM"],
-            ["bank", "Bank Transfer", "NEFT / RTGS / IMPS"],
-          ].map(([k, label, desc]) => (
-            <SettingRow
-              key={k}
-              label={label}
-              description={desc}
-              right={<Toggle checked={pay[k]} onChange={(v) => setPay((p) => ({ ...p, [k]: v }))} />}
-              tk={tk}
-            />
-          ))}
-        </SettingCard>
-        <SettingCard title="Advance Payment" description="Percentage of total collected at the time of booking." tk={tk}>
-          <Segmented
-            options={[
-              { value: "0", label: "None" },
-              { value: "25", label: "25%" },
-              { value: "50", label: "50%" },
-              { value: "100", label: "Full" },
-            ]}
-            value={pay.advance}
-            onChange={(v) => setPay((p) => ({ ...p, advance: v }))}
+        <SettingCard tk={tk}>
+          <SettingRow
+            label="Allow Partial Payments"
+            description="Let guests pay in installments"
+            icon={CreditCard}
+            right={<Toggle checked={pay.allowPartial} onChange={(v) => setPay((p) => ({ ...p, allowPartial: v }))} />}
             tk={tk}
-            brand={brand}
+            noBorder
           />
+
+          <AnimatePresence>
+            {pay.allowPartial && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <div className="pt-5 mt-5" style={{ borderTop: `1px solid ${tk.border}` }}>
+                  <label className="block text-[12px] font-bold mb-1.5" style={{ color: tk.text }}>
+                    Advance Payment Required
+                  </label>
+                  <div className="relative max-w-[200px]">
+                    <input
+                      type="number"
+                      min="1"
+                      max="99"
+                      value={pay.advancePercent}
+                      onChange={(e) => setPay((p) => ({ ...p, advancePercent: e.target.value }))}
+                      placeholder="e.g. 25"
+                      className={INPUT_CLS}
+                      style={inputStyle}
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-medium pointer-events-none" style={{ color: tk.dimmed }}>%</span>
+                  </div>
+                  <p className="text-[11px] mt-1.5" style={{ color: tk.muted }}>
+                    Percentage required at time of booking (remaining paid later)
+                  </p>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </SettingCard>
       </div>
     ),
     reserve: (
       <div className="space-y-4">
-        {pub.reserve && (
-  <>
-  <SettingCard title="Booking Type" tk={tk}>
-    <SettingRow
-      label="Reserve Amount"
-      description="Amount guests must pay to reserve."
-      right={
-        <input
-          type="number"
-          value={res.amount}
-          onChange={(e) =>
-            setRes({ amount: Number(e.target.value) })
-          }
-           className={INPUT_CLS}
-                style={inputStyle}
-          placeholder="5000"
-        />
-      }
-      tk={tk}
-    />
+        <SettingCard tk={tk}>
 
-    <SettingRow
-      label="Reservation Period"
-      description="How long the reservation remains valid."
-      right={
-        <select
-          value={res.period}
-          onChange={(e) => setRes({ period: e.target.value })}
-           className={INPUT_CLS}
-                style={inputStyle}
-        >
-          <option value="6">6 Hours</option>
-<option value="12">12 Hours</option>
-<option value="24">24 Hours (1 Day)</option>
-<option value="48">48 Hours (2 Days)</option>
-<option value="72">72 Hours (3 Days)</option>
-<option value="96">96 Hours (4 Days)</option>
-<option value="120">120 Hours (5 Days)</option>
-<option value="144">144 Hours (6 Days)</option>
-<option value="168">168 Hours (7 Days)</option>
-        </select>
-      }
-      tk={tk}
-    />
-    </SettingCard>
-  </>
-)}
-
-        {/* <SettingCard title="Booking Type" tk={tk}>
-          <Segmented
-            options={[
-              { value: "instant", label: "Instant Book" },
-              { value: "request", label: "Request to Book" },
-            ]}
-            value={res.type}
-            onChange={(v) => setRes((p) => ({ ...p, type: v }))}
-            tk={tk}
-            brand={brand}
-          />
-        </SettingCard>
-        
-        <SettingCard title="Booking Window" tk={tk}>
-          <div className="space-y-4">
-            <div>
-              <p className="text-[12px] font-semibold mb-2" style={{ color: tk.muted }}>
-                Minimum advance notice
-              </p>
-              <Segmented
-                options={[
-                  { value: "1hr", label: "1 hr" },
-                  { value: "4hr", label: "4 hr" },
-                  { value: "24hr", label: "24 hr" },
-                  { value: "48hr", label: "48 hr" },
-                ]}
-                value={res.notice}
-                onChange={(v) => setRes((p) => ({ ...p, notice: v }))}
-                tk={tk}
-                brand={brand}
-              />
+          {/* Hold Duration — preset dropdown + Hours/Days unit toggle, same
+              combo-box shape as the ₹-prefixed amount fields below. Options
+              swap based on the selected unit so "24" reads as 24 hours vs
+              24 days rather than typing an arbitrary number. */}
+          <div>
+            <p className="text-[12px] font-bold mb-3" style={{ color: tk.text }}>Reserve Hold Duration</p>
+            <div
+              className="flex items-stretch rounded-xl overflow-hidden max-w-[280px]"
+              style={{ border: `1px solid ${tk.inputBd}`, background: tk.inputBg }}
+            >
+              <div className="relative flex-1 min-w-0">
+                <select
+                  value={res.holdDuration}
+                  onChange={(e) => setRes((p) => ({ ...p, holdDuration: e.target.value }))}
+                  className="w-full appearance-none px-4 py-3 pr-9 text-[14px] font-medium bg-transparent outline-none cursor-pointer"
+                  style={{ color: tk.text }}
+                >
+                  {(res.holdDurationUnit === "days"
+                    ? [1, 2, 3, 5, 7, 10, 14, 21, 30]
+                    : [1, 2, 4, 6, 12, 18, 24, 36, 48, 72]
+                  ).map((n) => (
+                    <option key={n} value={n}>
+                      {n} {n === 1 ? (res.holdDurationUnit === "days" ? "day" : "hour") : (res.holdDurationUnit === "days" ? "days" : "hours")}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: tk.dimmed }} />
+              </div>
+              <div className="flex items-center gap-0.5 p-1 shrink-0" style={{ borderLeft: `1px solid ${tk.inputBd}` }}>
+                {[{ value: "hours", label: "Hrs" }, { value: "days", label: "Days" }].map((u) => {
+                  const isActive = (res.holdDurationUnit || "hours") === u.value;
+                  return (
+                    <button
+                      key={u.value}
+                      type="button"
+                      onClick={() => setRes((p) => ({
+                        ...p,
+                        holdDurationUnit: u.value,
+                        // Reset to a sensible default for the new unit —
+                        // the previous value (e.g. "24" hours) usually
+                        // isn't a valid preset once the unit flips.
+                        holdDuration: u.value === "days" ? 7 : 24,
+                      }))}
+                      className="px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all duration-150 cursor-pointer outline-none focus:outline-none focus-visible:outline-none"
+                      style={{
+                        background: isActive ? tk.trackBg : "transparent",
+                        color: isActive ? tk.text : tk.muted,
+                      }}
+                    >
+                      {u.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-            <div>
-              <p className="text-[12px] font-semibold mb-2" style={{ color: tk.muted }}>
-                Maximum advance booking
-              </p>
-              <Segmented
-                options={[
-                  { value: "1w", label: "1 wk" },
-                  { value: "1m", label: "1 mo" },
-                  { value: "3m", label: "3 mo" },
-                  { value: "6m", label: "6 mo" },
-                ]}
-                value={res.window}
-                onChange={(v) => setRes((p) => ({ ...p, window: v }))}
-                tk={tk}
-                brand={brand}
-              />
-            </div>
+            <p className="text-[11px] mt-1.5" style={{ color: tk.muted }}>How long the venue will be held for the guest</p>
           </div>
-        </SettingCard> */}
+
+          {/* Amount Type */}
+          <div className="pt-5 mt-5" style={{ borderTop: `1px solid ${tk.border}` }}>
+            <p className="text-[12px] font-bold mb-3" style={{ color: tk.text }}>Reserve Amount Type</p>
+            <OptionCards
+              options={[
+                { value: "fixed",      label: "Fixed Amount", icon: IndianRupee, desc: "Set a specific fixed rupee amount" },
+                { value: "percentage", label: "Percentage",   icon: Percent,     desc: "Percentage of total booking amount" },
+              ]}
+              value={res.amountType}
+              onChange={(v) => setRes((p) => ({ ...p, amountType: v }))}
+              tk={tk}
+              isDark={isDark}
+              cols="sm:grid-cols-2"
+            />
+
+            <AnimatePresence mode="wait">
+              {res.amountType === "percentage" ? (
+                <motion.div key="pct" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="mt-3 mb-2">
+                  <label className="block text-[11px] font-semibold mb-1.5" style={{ color: tk.muted }}>Reserve Percentage</label>
+                  <div className="relative max-w-[200px]">
+                    <input
+                      type="number"
+                      min="1"
+                      max="100"
+                      value={res.percentAmount}
+                      onChange={(e) => setRes((p) => ({ ...p, percentAmount: e.target.value }))}
+                      placeholder="e.g. 20"
+                      className={INPUT_CLS}
+                      style={inputStyle}
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-medium pointer-events-none" style={{ color: tk.dimmed }}>%</span>
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.div key="fix" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="mt-3 mb-2">
+                  <label className="block text-[11px] font-semibold mb-1.5" style={{ color: tk.muted }}>Reserve Amount</label>
+                  <div
+                    className="flex items-stretch rounded-xl overflow-hidden max-w-[220px]"
+                    style={{ border: `1px solid ${tk.inputBd}`, background: tk.inputBg }}
+                  >
+                    <div className="flex items-center px-4 shrink-0" style={{ borderRight: `1px solid ${tk.inputBd}`, background: tk.trackBg }}>
+                      <span className="text-[13px] font-bold" style={{ color: tk.text }}>₹</span>
+                    </div>
+                    <input
+                      type="number"
+                      min="0"
+                      value={res.fixedAmount}
+                      onChange={(e) => setRes((p) => ({ ...p, fixedAmount: e.target.value }))}
+                      placeholder="e.g. 5000"
+                      className="flex-1 px-4 py-3 text-[14px] font-medium bg-transparent outline-none"
+                      style={{ color: tk.text }}
+                    />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Refundable Reserve */}
+          <SettingRow
+            label="Refundable Reserve"
+            description="Reserve amount can be returned if cancelled"
+            icon={RotateCcw}
+            right={<Toggle checked={res.refundable} onChange={(v) => setRes((p) => ({ ...p, refundable: v }))} />}
+            tk={tk}
+          />
+
+          {/* Deduct from Final Payment */}
+          <SettingRow
+            label="Deduct from Final Payment"
+            description="Reserve amount deducted from total booking cost"
+            icon={Wallet}
+            right={<Toggle checked={res.deductFromFinal} onChange={(v) => setRes((p) => ({ ...p, deductFromFinal: v }))} />}
+            tk={tk}
+          />
+
+        </SettingCard>
       </div>
     ),
     pax: (
       <div className="space-y-4">
-        <SettingCard title="Guest Limits" description="Set the minimum and maximum guest count for bookings." tk={tk}>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-[12px] font-semibold mb-2" style={{ color: tk.muted }}>
-                Min Guests
-              </label>
+        <SettingCard title="Min Pax to Book" description="The fewest guests a booking must include for this listing." tk={tk}>
+          <div>
+            <label className="block text-[11px] font-semibold mb-1.5" style={{ color: tk.muted }}>
+              Min Guests
+            </label>
+            <div className="relative max-w-[220px]">
               <input
                 type="number"
-                value={pax.min}
-                onChange={(e) => setPax((p) => ({ ...p, min: e.target.value }))}
+                min="1"
+                value={pax.minGuests}
+                onChange={(e) => setPax((p) => ({ ...p, minGuests: e.target.value }))}
                 placeholder="e.g. 10"
                 className={INPUT_CLS}
                 style={inputStyle}
               />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-medium pointer-events-none" style={{ color: tk.dimmed }}>pax</span>
             </div>
-            <div>
-              <label className="block text-[12px] font-semibold mb-2" style={{ color: tk.muted }}>
-                Max Guests
-              </label>
+            <p className="text-[11px] mt-1.5" style={{ color: tk.muted }}>
+              Guests need at least this many people to book. Use Extra Venue Charges below to price additional guests beyond that.
+            </p>
+          </div>
+
+          {/* Below-minimum charge — instead of hard-blocking a smaller
+              group from booking at all, they can still book by paying
+              this shortfall amount. */}
+          <div className="pt-5 mt-5" style={{ borderTop: `1px solid ${tk.border}` }}>
+            <p className="text-[12px] font-bold mb-3" style={{ color: tk.text }}>Below-Min Charge</p>
+            <label className="block text-[11px] font-semibold mb-1.5" style={{ color: tk.muted }}>
+              Shortfall Amount
+            </label>
+            <div
+              className="flex items-stretch rounded-xl overflow-hidden max-w-[220px]"
+              style={{ border: `1px solid ${tk.inputBd}`, background: tk.inputBg }}
+            >
+              <div className="flex items-center px-4 shrink-0" style={{ borderRight: `1px solid ${tk.inputBd}`, background: tk.trackBg }}>
+                <span className="text-[13px] font-bold" style={{ color: tk.text }}>₹</span>
+              </div>
               <input
                 type="number"
-                value={pax.max}
-                onChange={(e) => setPax((p) => ({ ...p, max: e.target.value }))}
-                placeholder="e.g. 500"
-                className={INPUT_CLS}
-                style={inputStyle}
-              />
-            </div> 
-            <div>
-              <label className="block text-[12px] font-semibold mb-2" style={{ color: tk.muted }}>
-                Min Package Amount
-              </label>
-              <input
-                type="number"
-                value={pax.pack_amt}
-                onChange={(e) => setPax((p) => ({ ...p, pack_amt: e.target.value }))}
-                placeholder="e.g. 500"
-                className={INPUT_CLS}
-                style={inputStyle}
+                min="0"
+                value={pax.belowMinCharge}
+                onChange={(e) => setPax((p) => ({ ...p, belowMinCharge: e.target.value }))}
+                placeholder="e.g. 2000"
+                className="flex-1 min-w-0 px-4 py-3 text-[14px] font-medium bg-transparent outline-none"
+                style={{ color: tk.text }}
               />
             </div>
+            <p className="text-[11px] mt-1.5" style={{ color: tk.muted }}>
+              Charged instead of blocking the booking when a guest's group is smaller than the minimum above.
+            </p>
           </div>
         </SettingCard>
-        <SettingCard title="Guest Options" tk={tk}>
-          {[
-            ["children", "Children Allowed", "Accept bookings that include children"],
-            ["pets", "Pets Allowed", "Guests may bring pets to the venue"],
-            ["catering", "Outside Catering Allowed", "Guests may arrange their own caterer"],
-          ].map(([k, label, desc]) => (
-            <SettingRow
-              key={k}
-              label={label}
-              description={desc}
-              right={<Toggle checked={pax[k]} onChange={(v) => setPax((p) => ({ ...p, [k]: v }))} />}
-              tk={tk}
-            />
-          ))}
+
+        <SettingCard title="Extra Venue Charges" tk={tk}>
+          <SettingRow
+            label="Enable Extra Venue Charges"
+            description="Add fees for guests above base count"
+            icon={Users}
+            right={<Toggle checked={pax.extraChargesEnabled} onChange={(v) => setPax((p) => ({ ...p, extraChargesEnabled: v }))} />}
+            tk={tk}
+            noBorder
+          />
+
+          <AnimatePresence>
+            {pax.extraChargesEnabled && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <div className="pt-5 mt-5" style={{ borderTop: `1px solid ${tk.border}` }}>
+                  <p className="text-[12px] font-bold mb-3" style={{ color: tk.text }}>Extra Charge Type</p>
+                  <OptionCards
+                    options={[
+                      { value: "fixed",      label: "Fixed Amount", icon: IndianRupee, desc: "Set a specific fixed rupee amount" },
+                      { value: "percentage", label: "Percentage",   icon: Percent,     desc: "Percentage of total booking amount" },
+                    ]}
+                    value={pax.extraChargeType}
+                    onChange={(v) => setPax((p) => ({ ...p, extraChargeType: v }))}
+                    tk={tk}
+                    isDark={isDark}
+                    cols="sm:grid-cols-2"
+                  />
+
+                  <AnimatePresence mode="wait">
+                    {pax.extraChargeType === "percentage" ? (
+                      <motion.div key="pct" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="mt-3 mb-2">
+                        <label className="block text-[11px] font-semibold mb-1.5" style={{ color: tk.muted }}>Extra Charge Percentage</label>
+                        <div className="relative max-w-[200px]">
+                          <input
+                            type="number"
+                            min="1"
+                            max="100"
+                            value={pax.extraPercentCharge}
+                            onChange={(e) => setPax((p) => ({ ...p, extraPercentCharge: e.target.value }))}
+                            placeholder="e.g. 10"
+                            className={INPUT_CLS}
+                            style={inputStyle}
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-medium pointer-events-none" style={{ color: tk.dimmed }}>%</span>
+                        </div>
+                      </motion.div>
+                    ) : (
+                      <motion.div key="fix" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="mt-3 mb-2">
+                        <label className="block text-[11px] font-semibold mb-1.5" style={{ color: tk.muted }}>Fixed Charge per Extra Guest</label>
+                        <div
+                          className="flex items-stretch rounded-xl overflow-hidden max-w-[220px]"
+                          style={{ border: `1px solid ${tk.inputBd}`, background: tk.inputBg }}
+                        >
+                          <div className="flex items-center px-4 shrink-0" style={{ borderRight: `1px solid ${tk.inputBd}`, background: tk.trackBg }}>
+                            <span className="text-[13px] font-bold" style={{ color: tk.text }}>₹</span>
+                          </div>
+                          <input
+                            type="number"
+                            min="0"
+                            value={pax.extraFixedCharge}
+                            onChange={(e) => setPax((p) => ({ ...p, extraFixedCharge: e.target.value }))}
+                            placeholder="e.g. 200"
+                            className="flex-1 min-w-0 px-4 py-3 text-[14px] font-medium bg-transparent outline-none"
+                            style={{ color: tk.text }}
+                          />
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </SettingCard>
       </div>
     ),
     deposits: (
       <div className="space-y-4">
-        <SettingCard title="Security Deposit" tk={tk}>
+        <SettingCard tk={tk}>
           <SettingRow
-            label="Require security deposit"
-            description="Collected before or at time of booking, refundable"
+            label="Require Security Deposit"
+            description="Request a refundable deposit from guests before booking"
+            icon={Shield}
             right={<Toggle checked={dep.security} onChange={(v) => setDep((p) => ({ ...p, security: v }))} />}
             tk={tk}
+            noBorder
           />
-          {dep.security && (
-            <div className="pt-4" style={{ borderTop: `1px solid ${tk.border}` }}>
-              <label className="block text-[12px] font-semibold mb-2" style={{ color: tk.muted }}>
-                Deposit Amount (₹)
-              </label>
-              <input
-                type="number"
-                value={dep.secAmt}
-                onChange={(e) => setDep((p) => ({ ...p, secAmt: e.target.value }))}
-                placeholder="e.g. 5000"
-                className={INPUT_CLS}
-                style={inputStyle}
-              />
-            </div>
-          )}
-        </SettingCard>
-        <SettingCard title="Damage Waiver" tk={tk}>
-          <SettingRow
-            label="Include damage waiver fee"
-            description="Non-refundable fee covering minor accidental damage"
-            right={<Toggle checked={dep.waiver} onChange={(v) => setDep((p) => ({ ...p, waiver: v }))} />}
-            tk={tk}
-          />
-          {dep.waiver && (
-            <div className="pt-4" style={{ borderTop: `1px solid ${tk.border}` }}>
-              <label className="block text-[12px] font-semibold mb-2" style={{ color: tk.muted }}>
-                Waiver Amount (₹)
-              </label>
-              <input
-                type="number"
-                value={dep.wavAmt}
-                onChange={(e) => setDep((p) => ({ ...p, wavAmt: e.target.value }))}
-                placeholder="e.g. 2000"
-                className={INPUT_CLS}
-                style={inputStyle}
-              />
-            </div>
-          )}
+
+          <AnimatePresence>
+            {dep.security && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                {/* Deposit Amount */}
+                <div className="pt-5 mt-5" style={{ borderTop: `1px solid ${tk.border}` }}>
+                  <p className="text-[12px] font-bold mb-3" style={{ color: tk.text }}>Deposit Amount</p>
+                  <label className="block text-[11px] font-semibold mb-1.5" style={{ color: tk.muted }}>
+                    Fixed Deposit Amount
+                  </label>
+                  <div
+                    className="flex items-stretch rounded-xl overflow-hidden max-w-[220px]"
+                    style={{ border: `1px solid ${tk.inputBd}`, background: tk.inputBg }}
+                  >
+                    <div className="flex items-center px-4 shrink-0" style={{ borderRight: `1px solid ${tk.inputBd}`, background: tk.trackBg }}>
+                      <span className="text-[13px] font-bold" style={{ color: tk.text }}>₹</span>
+                    </div>
+                    <input
+                      type="number"
+                      min="0"
+                      value={dep.secAmt}
+                      onChange={(e) => setDep((p) => ({ ...p, secAmt: e.target.value }))}
+                      placeholder="e.g. 5000"
+                      className="flex-1 min-w-0 px-4 py-3 text-[14px] font-medium bg-transparent outline-none"
+                      style={{ color: tk.text }}
+                    />
+                  </div>
+                  <p className="text-[11px] mt-1.5" style={{ color: tk.muted }}>Fixed amount collected from all bookings</p>
+                </div>
+
+                {/* Refund Policy */}
+                <div className="pt-5 mt-5" style={{ borderTop: `1px solid ${tk.border}` }}>
+                  <p className="text-[12px] font-bold mb-3" style={{ color: tk.text }}>Refund Policy</p>
+                  <OptionCards
+                    options={[
+                      { value: "full",    label: "Full Refund",     icon: Check,   desc: "Return 100% if no damage" },
+                      { value: "partial", label: "Partial Refund",  icon: Percent, desc: "Return a specified percentage" },
+                      { value: "none",    label: "Non-Refundable",  icon: Ban,     desc: "Deposit is non-refundable" },
+                    ]}
+                    value={dep.refundPolicy || "full"}
+                    onChange={(v) => setDep((p) => ({ ...p, refundPolicy: v }))}
+                    tk={tk}
+                    isDark={isDark}
+                    cols="sm:grid-cols-2 lg:grid-cols-3"
+                  />
+
+                  <AnimatePresence>
+                    {dep.refundPolicy === "partial" && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="mt-3">
+                          <label className="block text-[11px] font-semibold mb-1.5" style={{ color: tk.muted }}>
+                            Refund Percentage
+                          </label>
+                          <div className="relative max-w-[200px]">
+                            <input
+                              type="number"
+                              min="1"
+                              max="99"
+                              value={dep.refundPercent ?? 50}
+                              onChange={(e) => setDep((p) => ({ ...p, refundPercent: e.target.value }))}
+                              className={INPUT_CLS}
+                              style={inputStyle}
+                            />
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-medium pointer-events-none" style={{ color: tk.dimmed }}>%</span>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {/* Refund Timeline */}
+                <div className="pt-5 mt-5" style={{ borderTop: `1px solid ${tk.border}` }}>
+                  <p className="text-[12px] font-bold mb-3" style={{ color: tk.text }}>Refund Timeline</p>
+                  <div className="relative max-w-[200px]">
+                    <input
+                      type="number"
+                      min="1"
+                      value={dep.refundTimelineDays ?? 7}
+                      onChange={(e) => setDep((p) => ({ ...p, refundTimelineDays: e.target.value }))}
+                      className={INPUT_CLS}
+                      style={inputStyle}
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-medium pointer-events-none" style={{ color: tk.dimmed }}>days</span>
+                  </div>
+                  <p className="text-[11px] mt-1.5" style={{ color: tk.muted }}>Days after the event to process the refund</p>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </SettingCard>
       </div>
     ),
@@ -776,19 +1149,6 @@ function SettingsContent({ section, isDark, brand = DEFAULT_BRAND, form, setForm
     ),
     pricing: (
       <div className="space-y-4">
-        <SettingCard title="Pricing Model" description="How guests are charged for this listing." tk={tk}>
-          <Segmented
-            options={[
-              { value: "hour", label: "Per Hour" },
-              { value: "day", label: "Per Day" },
-              { value: "event", label: "Per Event" },
-            ]}
-            value={price.model}
-            onChange={(v) => setPrice((p) => ({ ...p, model: v }))}
-            tk={tk}
-            brand={brand}
-          />
-        </SettingCard>
         <SettingCard title="Price Adjustments" tk={tk}>
           {[
             ["weekends", "Weekend Pricing", "Higher rate for Friday, Saturday, Sunday bookings"],
@@ -809,28 +1169,16 @@ function SettingsContent({ section, isDark, brand = DEFAULT_BRAND, form, setForm
   };
 
   const secMeta = SETTINGS_SECTIONS.find((s) => s.key === section);
-  const Icon = secMeta?.Icon ?? Settings2;
 
   return (
     <div className="px-6 md:px-8 py-7">
-      <div className="flex items-center gap-3 mb-7">
-        <div
-          className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-          style={{
-            background: "rgba(164,75,243,0.12)",
-            border: "1px solid rgba(164,75,243,0.22)",
-          }}
-        >
-          <Icon size={18} style={{ color: "#a44bf3" }} />
-        </div>
-        <div>
-          <h2 className="text-[20px] font-bold leading-tight" style={{ color: "#ffffff" }}>
-            {secMeta?.label ?? section}
-          </h2>
-          <p className="text-[12px] mt-0.5" style={{ color: "#94a3b8" }}>
-            Configure {secMeta?.label?.toLowerCase() ?? section} settings for this listing
-          </p>
-        </div>
+      <div className="mb-7">
+        <h2 className="text-[22px] font-bold leading-tight" style={{ color: tk.text }}>
+          {secMeta?.label ?? section}
+        </h2>
+        <p className="text-[13px] mt-1" style={{ color: tk.muted }}>
+          {secMeta?.desc ?? `Configure ${secMeta?.label?.toLowerCase() ?? section} settings for this listing`}
+        </p>
       </div>
       {panels[section] ?? (
         <div className="flex items-center justify-center h-40">
@@ -876,8 +1224,8 @@ function PreviewModal({ form, listingId, isDark, onClose, catCfg, category, loca
   const coverPhoto = (() => {
     const p = form?.photos?.[0];
     if (!p) return null;
-    if (typeof p === "string") return p;
-    return p.src || p.url || p.path || null;
+    if (typeof p === "string") return resolveImageUrl(p);
+    return resolveImageUrl(p.attachment || p.src || p.url || p.path || null);
   })();
 
   if (!mounted) return null;
@@ -1066,7 +1414,7 @@ function PreviewModal({ form, listingId, isDark, onClose, catCfg, category, loca
                 <div className="flex items-center gap-2">
                   <div className="flex -space-x-2" style={{ direction: "ltr" }}>
                     {form.photos.slice(0, 4).map((p, i) => {
-                      const src = typeof p === "string" ? p : p?.src || p?.url || p?.path || "";
+                      const src = resolveImageUrl(typeof p === "string" ? p : p?.attachment || p?.src || p?.url || p?.path || "") || "";
                       return src ? (
                         <img
                           key={i}
@@ -1306,18 +1654,23 @@ const buildStepPayload = async (step, form) => {
         description: form.description,
         category: form.category,
         propety_category: form.propety_category,
+        highlights: form.highlights || [],
+        nearbyAttractions: form.nearbyAttractions || [],
       };
 
     case "capacity":
       return {
         minCapacity: form.minCapacity,
         maxCapacity: form.maxCapacity,
+        floatingCapacity: form.floatingCapacity,
+        seatingStyles: form.seatingStyles,
         totalDesks: form.totalDesks,
         meetingRooms: form.meetingRooms,
         bedrooms: form.bedrooms,
         bathrooms: form.bathrooms,
         totalRooms: form.totalRooms,
         bedsPerRoom: form.bedsPerRoom,
+        parking: form.parking,
       };
  ////totalDesks  meetingRooms bedrooms bathrooms totalRooms bedsPerRoom
     case "amenities":
@@ -1349,7 +1702,9 @@ const buildStepPayload = async (step, form) => {
       return {
         termsAccepted: form.termsAccepted,
         cancellationPolicy: form.cancellationPolicy,
+        customCancellationTiers: form.customCancellationTiers,
         houseRules: form.houseRules,
+        policies: form.policies,
       };
 
     default:
@@ -1395,6 +1750,19 @@ export default function ListingEditor() {
     return () => obs.disconnect();
   }, []);
 
+  /* On the mobile list (no split content pane alongside it), a bordered
+     "active" row makes no sense — nothing is actually open next to it, so
+     it just reads as an arbitrary highlighted box. Only draw that active
+     border once we're on the real desktop split-pane layout (md: 768px). */
+  const [isDesktop, setIsDesktop] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 768px)");
+    const check = () => setIsDesktop(mq.matches);
+    check();
+    mq.addEventListener("change", check);
+    return () => mq.removeEventListener("change", check);
+  }, []);
+
   /* ── Category ────────────────────────────────────────────────────────────── */
   const { activeCategory } = useVendorCategory();
 
@@ -1431,8 +1799,13 @@ export default function ListingEditor() {
     title: "",
     description: "",
     category: "",
+    highlights: [],
+    nearbyAttractions: [],
     minCapacity: 0,
     maxCapacity: 0,
+    floatingCapacity: 0,
+    seatingStyles: {},
+    parking: {},
 
     totalDesks: 0,
     meetingRooms: 0,
@@ -1450,7 +1823,9 @@ export default function ListingEditor() {
     pricing: {},
     termsAccepted: false,
     cancellationPolicy: "",
+    customCancellationTiers: [],
     houseRules: "",
+    policies: {},
     photos: [],
     photoSections: [],
     amenities: [],
@@ -1505,6 +1880,29 @@ const onUpdateCoverImage = async (data,listingId) => {
   const completedRequired = requiredSteps.filter((s) => isStepCompleted(s.key, form)).length;
   const completedCount = categorySteps.filter((s) => isStepCompleted(s.key, form)).length;
   const allCompleted = completedRequired === requiredSteps.length;
+
+  /* Reserve settings only matter once "Reserve Booking" is actually turned
+     on in Publication — hide the nav entry otherwise so vendors aren't
+     configuring a section that has no effect. */
+  const reserveEnabled = !!form?.settings?.publication?.reserve;
+  /* Pax settings (per-person pricing/limits) only matter when the
+     Pricing Model actually charges per guest — "Venue" is a single flat
+     price with no pax component, so the section is noise there. */
+  const paxEnabled = (form?.settings?.publication?.pricingModel ?? "venue") !== "venue";
+  const visibleSettingsSections = SETTINGS_SECTIONS.filter(
+    (s) => (s.key !== "reserve" || reserveEnabled) && (s.key !== "pax" || paxEnabled)
+  );
+
+  /* If Reserve gets toggled off while its section is open, fall back to
+     Publication instead of leaving the nav on a hidden entry. */
+  useEffect(() => {
+    if (settingsSection === "reserve" && !reserveEnabled) {
+      setSettingsSection("publication");
+    }
+    if (settingsSection === "pax" && !paxEnabled) {
+      setSettingsSection("publication");
+    }
+  }, [settingsSection, reserveEnabled, paxEnabled]);
 
   /* ── Active step derived ──────────────────────────────────────────────────── */
   const activeStepObj = categorySteps.find((s) => s.key === activeStep);
@@ -1609,8 +2007,10 @@ const onUpdateCoverImage = async (data,listingId) => {
         await saveSetting(listingId, payload);
        
 
-        const currentIndex = SETTINGS_SECTIONS.findIndex((s) => s.key === settingsSection);
-        const nextSection = SETTINGS_SECTIONS[currentIndex + 1];
+        // Advance through the same filtered list the sidebar shows, so
+        // "Save & Continue" never lands on a hidden Reserve section.
+        const currentIndex = visibleSettingsSections.findIndex((s) => s.key === settingsSection);
+        const nextSection = visibleSettingsSections[currentIndex + 1];
         if (nextSection) {
           setSettingsSection(nextSection.key);
           return;
@@ -1729,7 +2129,14 @@ const onUpdateCoverImage = async (data,listingId) => {
 
       <div
         className={[
-          "-mx-4 sm:-mx-6 md:-mx-8 lg:-mx-10 -mb-24",
+          // Must exactly mirror PageMainWrapper's px-4 sm:px-5 md:px-6 lg:px-8
+          // (see vendor/layout.jsx) — this negative margin cancels that
+          // padding out so the editor goes full-bleed. It previously used
+          // -mx-6/-mx-8/-mx-10 at sm/md/lg, over-pulling by 4-8px past the
+          // parent's actual padding at each of those breakpoints and
+          // pushing the whole page a few pixels wider than the viewport,
+          // which is what caused the page-wide horizontal scrollbar.
+          "-mx-4 sm:-mx-5 md:-mx-6 lg:-mx-8 -mb-24",
           "h-[100dvh]",
           "flex flex-col overflow-hidden",
         ].join(" ")}
@@ -1790,23 +2197,33 @@ const onUpdateCoverImage = async (data,listingId) => {
             {mobileShowContent && (
               <button
                 onClick={() => setMobileShowContent(false)}
-                className="md:hidden flex items-center gap-1.5 h-10 pl-2 pr-3 rounded-full text-[13px] font-medium cursor-pointer transition-colors shrink-0"
+                aria-label="Back to steps"
+                title="Back to steps"
+                className="md:hidden flex items-center justify-center w-10 h-10 rounded-full transition-colors cursor-pointer shrink-0"
                 style={{ color: tk.muted }}
               >
-                <ArrowLeft size={18} /> Steps
+                <ArrowLeft size={19} />
               </button>
             )}
 
-            <div className="w-px h-6 shrink-0" style={{ background: tk.border }} />
+            {/* Divider + title are dropped on the mobile content view — the
+                content pane below renders its own heading for the step/
+                section you're looking at, so repeating it here (plus
+                "Listing Editor") was just the same text shown twice. */}
+            {!(mobileShowContent && !isDesktop) && (
+              <>
+                <div className="w-px h-6 shrink-0" style={{ background: tk.border }} />
 
-            <div className="min-w-0">
-              <h1 className="text-[23px] font-bold truncate tracking-tight" style={{ color: tk.text }}>
-                Listing Editor
-              </h1>
-              <p className="text-[11px] mt-0.5" style={{ color: tk.dimmed }}>
-                {completedCount} of {categorySteps.length} sections complete
-              </p>
-            </div>
+                <div className="min-w-0">
+                  <h1 className="text-[23px] font-bold truncate tracking-tight" style={{ color: tk.text }}>
+                    Listing Editor
+                  </h1>
+                  <p className="text-[11px] mt-0.5" style={{ color: tk.dimmed }}>
+                    {completedCount} of {categorySteps.length} sections complete
+                  </p>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Preview — kept neutral (no accent tint) rather than reading
@@ -1852,7 +2269,7 @@ const onUpdateCoverImage = async (data,listingId) => {
             }}
           >
             <div
-              className="sticky top-0 z-20 pb-1"
+              className="sticky top-0 z-20 pb-3"
               style={{
                 background: tk.panel,
                 boxShadow: isDark
@@ -1860,96 +2277,88 @@ const onUpdateCoverImage = async (data,listingId) => {
                   : "0 4px 12px rgba(0,0,0,0.06)",
               }}
             >
-              {/* Listing name card */}
+              {/* Listing name card — solid gradient icon tile + a real
+                  shadow instead of a flat 1px border, so the card actually
+                  lifts off the sticky header instead of blending into it
+                  (tk.card and tk.panel are both plain white in light mode,
+                  so the border alone barely registered). */}
               <div className="px-4 pt-4 pb-3">
                 <div
-                  className="flex items-center gap-3 px-3 py-3 rounded-2xl"
-                  style={{ background: tk.card, border: `1px solid ${tk.border}` }}
+                  className="flex items-center gap-3 px-3.5 py-3.5 rounded-2xl"
+                  style={{ background: tk.card, border: `1px solid ${tk.border}`, boxShadow: tk.shadow }}
                 >
                   <div
-                    className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                    className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
                     style={{
-                      background: `${catTheme.ring}0.12)`,
-                      border: `1px solid ${catTheme.ring}0.22)`,
+                      background: catTheme.gradient,
+                      boxShadow: `0 2px 10px ${catTheme.ring}0.38)`,
                     }}
                   >
-                    <catCfg.Icon size={16} style={{ color: catTheme.accent }} />
+                    <catCfg.Icon size={17} className="text-white" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-[13px] font-bold truncate leading-tight" style={{ color: tk.text }}>
                       {form?.title || "Untitled Listing"}
                     </p>
+                    {/* Percentage now lives inline here instead of a
+                        separate ring element on the right — one line
+                        instead of two competing places to look. */}
                     <p className="text-[11px] mt-0.5" style={{ color: tk.muted }}>
-                      {allCompleted ? "Ready to publish" : "In progress"}
+                      {allCompleted ? "Ready to publish" : `In progress · ${progress}%`}
                     </p>
-                  </div>
-                  {/* Progress ring is the single place the percentage
-                      shows (the text above used to repeat it as "67%
-                      complete" — redundant). Complete state swaps the
-                      number for a checkmark instead of a "100", which
-                      read as oddly cartoonish at this size. */}
-                  <div className="relative w-10 h-10 shrink-0">
-                    <svg className="w-full h-full -rotate-90" viewBox="0 0 40 40">
-                      <circle cx="20" cy="20" r="16" fill="none" strokeWidth="3.5" stroke={tk.trackBg} />
-                      <circle
-                        cx="20" cy="20" r="16" fill="none" strokeWidth="3.5"
-                        stroke={allCompleted ? "#10b981" : catTheme.accent}
-                        strokeDasharray={2 * Math.PI * 16}
-                        strokeDashoffset={2 * Math.PI * 16 - (progress / 100) * 2 * Math.PI * 16}
-                        strokeLinecap="round"
-                        className="transition-all duration-700"
-                      />
-                    </svg>
-                    <span
-                      className="absolute inset-0 flex items-center justify-center"
-                      style={{ color: allCompleted ? "#10b981" : catTheme.accent }}
-                    >
-                      {allCompleted ? (
-                        <Check size={14} strokeWidth={2.75} />
-                      ) : (
-                        <span className="text-[10px] font-semibold tabular-nums">{progress}</span>
-                      )}
-                    </span>
                   </div>
                 </div>
               </div>
 
-              {/* Tab Toggle */}
+              {/* Tab Toggle — a shared layoutId pill slides smoothly between
+                  tabs on click instead of the background instantly
+                  snapping, and each tab now carries its own icon. */}
               <div className="px-4">
                 <div className="flex rounded-xl p-1 gap-1" style={{ background: tk.trackBg }}>
                   {[
-                    { key: "workspace", label: "Your Space" },
-                    { key: "settings", label: "Settings" },
-                  ].map((tab) => (
-                    <button
-                      key={tab.key}
-                      onClick={() => {
-                        setSidebarTab(tab.key);
-                        if (tab.key === "settings") setMobileShowContent(true);
-                      }}
-                      className="flex-1 py-2 rounded-lg text-[12px] font-semibold transition-all duration-150 cursor-pointer"
-                      style={
-                        sidebarTab === tab.key
-                          ? { background: DEFAULT_BRAND, color: "#fff" }
-                          : { color: tk.muted }
-                      }
-                    >
-                      {tab.label}
-                    </button>
-                  ))}
+                    { key: "workspace", label: "Your Space", Icon: LayoutGrid },
+                    { key: "settings", label: "Settings", Icon: Settings2 },
+                  ].map((tab) => {
+                    const isActive = sidebarTab === tab.key;
+                    return (
+                      <button
+                        key={tab.key}
+                        onClick={() => setSidebarTab(tab.key)}
+                        className="relative flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[12px] font-semibold cursor-pointer"
+                      >
+                        {isActive && (
+                          <motion.div
+                            layoutId="sidebarTabPill"
+                            className="absolute inset-0 rounded-lg"
+                            style={{ background: DEFAULT_BRAND }}
+                            transition={{ type: "spring", stiffness: 500, damping: 34 }}
+                          />
+                        )}
+                        <span className="relative z-10 flex items-center gap-1.5" style={{ color: isActive ? "#fff" : tk.muted }}>
+                          <tab.Icon size={13} />
+                          {tab.label}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
               {!allCompleted && (
                 <div
-                  className="mx-4 mt-3 mb-3 px-3 py-2.5 rounded-xl flex items-center gap-2 text-[11px] font-medium"
+                  className="mx-4 mt-3 mb-3 px-3 py-2.5 rounded-xl flex items-center gap-2.5 text-[11px] font-medium"
                   style={{
-                    background: "rgba(245,158,11,0.07)",
-                    border: "1px solid rgba(245,158,11,0.18)",
-                    color: "#fcd34d",
+                    background: "rgba(245,158,11,0.10)",
+                    border: "1px solid rgba(245,158,11,0.24)",
+                    color: tk.text,
                   }}
                 >
-                  <AlertCircle size={13} className="shrink-0" />
+                  <div
+                    className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0"
+                    style={{ background: "rgba(245,158,11,0.20)" }}
+                  >
+                    <AlertCircle size={13} style={{ color: "#f59e0b" }} />
+                  </div>
                   Complete all steps below to publish
                 </div>
               )}
@@ -1964,19 +2373,22 @@ const onUpdateCoverImage = async (data,listingId) => {
                       freely, so a linear "journey map" was misleading as
                       well as visually heavy; a small status badge per
                       row is enough. */}
-                  <div className="space-y-1.5">
+                  <div className="space-y-2.5">
                     {categorySteps.map((step, idx) => {
                       const done = isStepCompleted(step.key, form);
-                      const isAct = sidebarTab === "workspace" && activeStep === step.key;
+                      const isAct = isDesktop && sidebarTab === "workspace" && activeStep === step.key;
+                      const StepIcon = STEP_ICONS[step.key] || FileText;
 
                       return (
                         <div key={step.key} className="flex items-center gap-2.5">
                           <button
                             onClick={() => selectStep(step.key)}
-                            className="flex-1 flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-left transition-all duration-150 cursor-pointer min-w-0"
+                            className="flex-1 flex items-center justify-between gap-3 px-4 py-4 rounded-xl text-left transition-all duration-150 cursor-pointer min-w-0"
                             style={{
-                              background: isAct ? `${catTheme.ring}0.10)` : "transparent",
-                              border: isAct ? `1px solid ${catTheme.ring}0.22)` : `1px solid ${tk.border}`,
+                              background: "transparent",
+                              border: isAct
+                                ? `1.5px solid ${isDark ? "#ffffff" : "#0f172a"}`
+                                : `1px solid ${tk.border}`,
                             }}
                             onMouseEnter={(e) => {
                               if (!isAct) e.currentTarget.style.background = tk.hoverBg;
@@ -1985,33 +2397,52 @@ const onUpdateCoverImage = async (data,listingId) => {
                               if (!isAct) e.currentTarget.style.background = "transparent";
                             }}
                           >
-                            <div className="min-w-0">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div
+                                className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                                style={{ background: tk.trackBg }}
+                              >
+                                <StepIcon size={15} strokeWidth={1.9} style={{ color: tk.text }} />
+                              </div>
+
+                              <div className="min-w-0">
                               <p
                                 className="text-[13px] font-semibold truncate leading-snug"
                                 style={{
-                                  color: isAct ? catTheme.accent : tk.text,
+                                  color: tk.text,
                                 }}
                               >
                                 {step.title}
                               </p>
-                              <p
-                                className="text-[11px] mt-0.5"
-                                style={{
-                                  color: tk.muted,
-                                }}
-                              >
-                                {done ? "Complete" : isAct ? "In progress" : "Pending"}
-                              </p>
+                              {/* Only surface a status line when there's something
+                                  to flag (pending / in progress) — a completed
+                                  step's name alone is enough, "Complete" on every
+                                  finished row was just repeated noise. */}
+                              {!done && (
+                                <p
+                                  className="text-[11px] mt-0.5"
+                                  style={{
+                                    color: tk.muted,
+                                  }}
+                                >
+                                  {isAct ? "In progress" : "Pending"}
+                                </p>
+                              )}
+                              </div>
                             </div>
                             {!done && (
                               <span
-                                className="text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0"
+                                className="text-[10.5px] font-black px-2.5 py-1 rounded-full shrink-0"
                                 style={
                                   step.required
                                     ? {
-                                        background: "rgba(239,68,68,0.10)",
-                                        color: "#fca5a5",
-                                        border: "1px solid rgba(239,68,68,0.16)",
+                                        // Solid, high-contrast red text instead of
+                                        // the previous pale "#fca5a5" — that color
+                                        // barely registered against the light pink
+                                        // background and read as washed out.
+                                        background: "rgba(239,68,68,0.12)",
+                                        color: "#ef4444",
+                                        border: "1px solid rgba(239,68,68,0.32)",
                                       }
                                     : {
                                         background: tk.trackBg,
@@ -2020,7 +2451,7 @@ const onUpdateCoverImage = async (data,listingId) => {
                                       }
                                 }
                               >
-                                {step.required ? "Req" : "Opt"}
+                                {step.required ? "Required" : "Optional"}
                               </span>
                             )}
                           </button>
@@ -2033,18 +2464,16 @@ const onUpdateCoverImage = async (data,listingId) => {
               </>
             )}
 
-            {/* SETTINGS tab */}
+            {/* SETTINGS tab — same layout rhythm as the "Your Space" list
+                above (p-4 wrapper, space-y-2.5 rows, px-4 py-4 buttons,
+                8x8 icon tiles) so the two tabs don't read as two different
+                components. "Configuration" label dropped — the tab toggle
+                right above already says "Settings", so it was redundant. */}
             {sidebarTab === "settings" && (
-              <div className="px-3 pb-4 flex-1" style={{ paddingTop: "4px" }}>
-                <p
-                  className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-widest"
-                  style={{ color: tk.dimmed }}
-                >
-                  Configuration
-                </p>
-                <div className="space-y-0.5">
-                  {SETTINGS_SECTIONS.map(({ key, label, Icon }) => {
-                    const isActive = settingsSection === key;
+              <div className="p-4 flex-1">
+                <div className="space-y-2.5">
+                  {visibleSettingsSections.map(({ key, label, Icon }) => {
+                    const isActive = isDesktop && settingsSection === key;
                     return (
                       <button
                         key={key}
@@ -2053,12 +2482,12 @@ const onUpdateCoverImage = async (data,listingId) => {
                           setSidebarTab("settings");
                           setMobileShowContent(true);
                         }}
-                        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left transition-all duration-150 cursor-pointer"
+                        className="w-full flex items-center gap-3 px-4 py-4 rounded-xl text-left transition-all duration-150 cursor-pointer"
                         style={{
-                          background: isActive ? `${catTheme.ring}0.14)` : "transparent",
+                          background: "transparent",
                           border: isActive
-                            ? `1px solid ${catTheme.ring}0.28)`
-                            : "1px solid transparent",
+                            ? `1.5px solid ${isDark ? "#ffffff" : "#0f172a"}`
+                            : `1px solid ${tk.border}`,
                         }}
                         onMouseEnter={(e) => {
                           if (!isActive) e.currentTarget.style.background = tk.hoverBg;
@@ -2068,23 +2497,17 @@ const onUpdateCoverImage = async (data,listingId) => {
                         }}
                       >
                         <div
-                          className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                          style={{ background: isActive ? `${catTheme.ring}0.18)` : tk.trackBg }}
+                          className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                          style={{ background: tk.trackBg }}
                         >
-                          <Icon size={12} style={{ color: isActive ? catTheme.accent : tk.muted }} />
+                          <Icon size={15} strokeWidth={1.9} style={{ color: tk.text }} />
                         </div>
                         <span
-                          className="flex-1 text-[12px] font-medium"
-                          style={{ color: isActive ? catTheme.accent : tk.text }}
+                          className="flex-1 text-[13px] font-semibold leading-snug"
+                          style={{ color: tk.text }}
                         >
                           {label}
                         </span>
-                        {isActive && (
-                          <span
-                            className="w-1.5 h-1.5 rounded-full shrink-0"
-                            style={{ background: catTheme.accent }}
-                          />
-                        )}
                       </button>
                     );
                   })}
@@ -2127,6 +2550,7 @@ const onUpdateCoverImage = async (data,listingId) => {
                       brand={BRAND}
                       form={form}
                       setForm={setForm}
+                      allCompleted={allCompleted}
                     />
                   </motion.div>
                 ) : activeStep ? (
@@ -2177,82 +2601,84 @@ const onUpdateCoverImage = async (data,listingId) => {
                   </motion.div>
                 ) : null}
               </AnimatePresence>
-            </div>                                                                                        
+            </div>
+
+            {/* Mobile preview entry point removed — a device-toggle preview
+                of a public page doesn't make sense when you're already on a
+                small screen. Preview is desktop-only now (header button is
+                md:-gated); see PreviewModal. */}
+
+            {/* ════════════════════════════════════════════════════
+                BOTTOM ACTION BAR — scoped to the main content column
+                only (not the full width under the sidebar too), since
+                it's a per-step action, not a page-wide one.
+            ════════════════════════════════════════════════════ */}
+            <footer
+              className={[
+                "shrink-0 flex items-center gap-3 px-4 md:px-6",
+                !mobileShowContent ? "hidden md:flex" : "flex",
+              ].join(" ")}
+              style={{
+                background: isDark ? "rgba(11,17,32,0.96)" : "rgba(255,255,255,0.96)",
+                backdropFilter: "blur(24px)",
+                WebkitBackdropFilter: "blur(24px)",
+                borderTop: `1px solid ${tk.border}`,
+                minHeight: "65px",
+              }}
+            >
+              <div className="flex items-center gap-2 ml-auto">
+                {/* Skip — optional steps only */}
+                {sidebarTab === "workspace" && activeStep && isOptional && !stepDone && (
+                  <button
+                    onClick={goSkip}
+                    disabled={isSaving}
+                    className="flex items-center gap-1.5 px-4 py-3 rounded-xl text-[12px] font-medium transition-all cursor-pointer"
+                    style={{ color: tk.muted, opacity: isSaving ? 0.5 : 1 }}
+                    onMouseEnter={(e) => { if (!isSaving) e.currentTarget.style.color = tk.text; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = tk.muted; }}
+                  >
+                    Skip <SkipForward size={13} />
+                  </button>
+                )}
+
+                {/* Primary CTA */}
+                <button
+                  onClick={handleCTA}
+                  disabled={ctaDisabled}
+                  className="flex items-center gap-2 px-5 py-3 rounded-xl text-[13px] font-semibold transition-all duration-200 active:scale-[0.98]"
+                  style={
+                    ctaDisabled
+                      ? {
+                          background: tk.trackBg,
+                          color: tk.muted,
+                          cursor: "not-allowed",
+                          opacity: 0.6,
+                        }
+                      : {
+                          background: DEFAULT_BRAND,
+                          color: "#fff",
+                          cursor: "pointer",
+                        }
+                  }
+                  onMouseEnter={(e) => { if (!ctaDisabled) e.currentTarget.style.opacity = "0.88"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
+                >
+                  {isSaving ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    <Save size={14} />
+                  )}
+                  {ctaLabel}
+                  {!isSaving &&
+                    sidebarTab !== "settings" &&
+                    (stepDone || isOptional || !activeStep) && (
+                      <ChevronRight size={14} />
+                    )}
+                </button>
+              </div>
+            </footer>
           </main>
         </div>
-
-        {/* Mobile preview entry point removed — a device-toggle preview
-            of a public page doesn't make sense when you're already on a
-            small screen. Preview is desktop-only now (header button is
-            md:-gated); see PreviewModal. */}
-
-        {/* ════════════════════════════════════════════════════
-            BOTTOM ACTION BAR
-        ════════════════════════════════════════════════════ */}
-        <footer
-          className={[
-            "shrink-0 flex items-center gap-3 px-4 md:px-6",
-            !mobileShowContent ? "hidden md:flex" : "flex",
-          ].join(" ")}
-          style={{
-            background: isDark ? "rgba(11,17,32,0.96)" : "rgba(255,255,255,0.96)",
-            backdropFilter: "blur(24px)",
-            WebkitBackdropFilter: "blur(24px)",
-            borderTop: `1px solid ${tk.border}`,
-            minHeight: "58px",
-          }}
-        >
-          <div className="flex items-center gap-2 ml-auto">
-            {/* Skip — optional steps only */}
-            {sidebarTab === "workspace" && activeStep && isOptional && !stepDone && (
-              <button
-                onClick={goSkip}
-                disabled={isSaving}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12px] font-medium transition-all cursor-pointer"
-                style={{ color: tk.muted, opacity: isSaving ? 0.5 : 1 }}
-                onMouseEnter={(e) => { if (!isSaving) e.currentTarget.style.color = tk.text; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = tk.muted; }}
-              >
-                Skip <SkipForward size={13} />
-              </button>
-            )}
-
-            {/* Primary CTA */}
-            <button
-              onClick={handleCTA}
-              disabled={ctaDisabled}
-              className="flex items-center gap-2 px-5 py-2 rounded-xl text-[13px] font-semibold transition-all duration-200 active:scale-[0.98]"
-              style={
-                ctaDisabled
-                  ? {
-                      background: tk.trackBg,
-                      color: tk.muted,
-                      cursor: "not-allowed",
-                      opacity: 0.6,
-                    }
-                  : {
-                      background: DEFAULT_BRAND,
-                      color: "#fff",
-                      cursor: "pointer",
-                    }
-              }
-              onMouseEnter={(e) => { if (!ctaDisabled) e.currentTarget.style.opacity = "0.88"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
-            >
-              {isSaving ? (
-                <Loader2 size={14} className="animate-spin" />
-              ) : (
-                <Save size={14} />
-              )}
-              {ctaLabel}
-              {!isSaving &&
-                sidebarTab !== "settings" &&
-                (stepDone || isOptional || !activeStep) && (
-                  <ChevronRight size={14} />
-                )}
-            </button>
-          </div>
-        </footer>
       </div>
     </>
   );

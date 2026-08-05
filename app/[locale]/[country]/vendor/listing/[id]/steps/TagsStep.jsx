@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Check, Lightbulb } from "lucide-react";
+import { Lightbulb } from "lucide-react";
 import { getCategoryTheme } from "./categoryTheme";
 import { getEventTypeIcon } from "./categoryIcons";
 
@@ -12,12 +12,12 @@ import { getEventTypeIcon } from "./categoryIcons";
    `property` / `event` props (real backend data), not a hardcoded list.
 ───────────────────────────────────────────────────────────────────────────── */
 const TAG_CONFIG = {
-  venues:      { heading: "Tags & Discovery", subtitle: "Add tags to help guests find your venue for the right occasions." },
-  farmstays:   { heading: "Tags & Discovery", subtitle: "Help travellers find your farmstay with the right tags." },
-  studios:     { heading: "Tags & Discovery", subtitle: "Help creators and crew find your studio with relevant tags." },
-  workspaces:  { heading: "Tags & Discovery", subtitle: "Help professionals find your workspace with accurate tags." },
-  rentals:     { heading: "Tags & Discovery", subtitle: "Add tags to attract the right guests to your property." },
-  experiences: { heading: "Tags & Discovery", subtitle: "Help guests find your experience by tagging it accurately." },
+  venues:      { heading: "Tags & Event Types", subtitle: "Add tags to help guests find your venue for the right occasions." },
+  farmstays:   { heading: "Tags & Event Types", subtitle: "Help travellers find your farmstay with the right tags." },
+  studios:     { heading: "Tags & Event Types", subtitle: "Help creators and crew find your studio with relevant tags." },
+  workspaces:  { heading: "Tags & Event Types", subtitle: "Help professionals find your workspace with accurate tags." },
+  rentals:     { heading: "Tags & Event Types", subtitle: "Add tags to attract the right guests to your property." },
+  experiences: { heading: "Tags & Event Types", subtitle: "Help guests find your experience by tagging it accurately." },
 };
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -60,7 +60,6 @@ export default function TagsStep({ form, setForm, category = "venues" , property
   const eventSelected = new Set(form.event_tags || []);
 
   const venueAtMax = venueSelected.size >= 2;
-  const eventAtMax = eventSelected.size >= 10;
 
   const toggleVenue = (tag) => {
     const next = new Set(venueSelected);
@@ -69,10 +68,10 @@ export default function TagsStep({ form, setForm, category = "venues" , property
     setForm({ ...form, venue_tags: Array.from(next) });
   };
 
+  // No cap on event tags — any number can be selected.
   const toggleEvent = (tag) => {
     const next = new Set(eventSelected);
-    if (next.has(tag.id)) next.delete(tag.id);
-    else if (!eventAtMax) next.add(tag.id);
+    next.has(tag.id) ? next.delete(tag.id) : next.add(tag.id);
     setForm({ ...form, event_tags: Array.from(next) });
   };
 
@@ -96,7 +95,7 @@ export default function TagsStep({ form, setForm, category = "venues" , property
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <p className="text-[11px] font-bold uppercase tracking-[0.2em]" style={{ color: tk.text }}>
-            Venue Type
+            Venue Type Tags
           </p>
           <span
             className="text-[10px] font-bold px-1.5 py-0.5 rounded-full tabular-nums"
@@ -109,9 +108,9 @@ export default function TagsStep({ form, setForm, category = "venues" , property
           </span>
         </div>
 
-        {/* Uniform grid cards instead of variable-width wrapped pills —
-            keeps rows aligned regardless of how long each tag's name is. */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
+        {/* Same grid rhythm as the Amenities step — uniform cards instead
+            of variable-width wrapped pills, so rows stay aligned. */}
+        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5">
           {property.map((tag) => {
             const isOn = venueSelected.has(tag.id);
             const disabled = !isOn && venueAtMax;
@@ -131,23 +130,15 @@ export default function TagsStep({ form, setForm, category = "venues" , property
                 }}
               >
                 <div
-                  className="relative w-6 h-6 rounded-md flex items-center justify-center shrink-0 overflow-visible"
+                  className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
                   style={{ background: isOn ? `${theme.ring}0.18)` : tk.trackBg }}
                 >
                   {tag.icon && (
                     <img
                       src={`${process.env.NEXT_PUBLIC_AWS_BUCKET_URL}/${tag.icon}`}
                       alt=""
-                      className="w-4 h-4 object-contain"
+                      className="w-6 h-6 object-contain"
                     />
-                  )}
-                  {isOn && (
-                    <span
-                      className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full flex items-center justify-center"
-                      style={{ background: theme.accent }}
-                    >
-                      <Check size={8} strokeWidth={3.5} color="#fff" />
-                    </span>
                   )}
                 </div>
                 <span className="truncate capitalize">{tag.name}</span>
@@ -157,56 +148,43 @@ export default function TagsStep({ form, setForm, category = "venues" , property
         </div>
       </div>
 
-      {/* Event Category */}
+      {/* Event Type */}
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <p className="text-[11px] font-bold uppercase tracking-[0.2em]" style={{ color: tk.text }}>
-            Event Category
+            Event Type
           </p>
           <span
             className="text-[10px] font-bold px-1.5 py-0.5 rounded-full tabular-nums"
-            style={{
-              background: eventAtMax ? "rgba(239,68,68,0.12)" : `${theme.ring}0.12)`,
-              color:      eventAtMax ? "#ef4444" : theme.accent,
-            }}
+            style={{ background: `${theme.ring}0.12)`, color: theme.accent }}
           >
-            {eventSelected.size}/10
+            {eventSelected.size} selected
           </span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5">
+        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5">
           {event.map((tag) => {
             const isOn = eventSelected.has(tag.id);
-            const disabled = !isOn && eventAtMax;
             const TagIcon = getEventTypeIcon(tag.event_name);
 
             return (
               <motion.button
                 key={tag.id}
                 type="button"
-                whileTap={!disabled ? { scale: 0.96 } : {}}
-                onClick={() => !disabled && toggleEvent(tag)}
+                whileTap={{ scale: 0.96 }}
+                onClick={() => toggleEvent(tag)}
                 className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-[13px] font-semibold text-left transition-all duration-200"
                 style={{
                   background: isOn ? `${theme.ring}0.10)` : tk.cardAlt,
                   border: `1px solid ${isOn ? `${theme.accent}66` : tk.border}`,
                   color: isOn ? theme.accent : tk.text,
-                  opacity: disabled ? 0.45 : 1,
                 }}
               >
                 <div
-                  className="relative w-6 h-6 rounded-md flex items-center justify-center shrink-0 overflow-visible"
+                  className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
                   style={{ background: isOn ? `${theme.ring}0.18)` : tk.trackBg }}
                 >
-                  <TagIcon size={12} strokeWidth={1.9} style={{ color: isOn ? theme.accent : tk.muted }} />
-                  {isOn && (
-                    <span
-                      className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full flex items-center justify-center"
-                      style={{ background: theme.accent }}
-                    >
-                      <Check size={8} strokeWidth={3.5} color="#fff" />
-                    </span>
-                  )}
+                  <TagIcon size={15} strokeWidth={1.9} style={{ color: isOn ? theme.accent : tk.muted }} />
                 </div>
                 <span className="truncate capitalize">{tag.event_name}</span>
               </motion.button>

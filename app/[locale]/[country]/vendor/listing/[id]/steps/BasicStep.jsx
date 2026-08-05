@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Check, X, MapPin, Camera, Star } from "lucide-react";
 import { getCategoryTheme } from "./categoryTheme";
+import { HIGHLIGHTS, MAX_HIGHLIGHTS } from "../../../../components/highlightsConfig";
+import { NEARBY_TYPES, MAX_NEARBY } from "../../../../components/nearbyConfig";
 
 /* ─────────────────────────────────────────────────────────────────────────────
    CATEGORY-AWARE COPY
@@ -92,8 +94,6 @@ function tokens(isDark) {
    MAIN COMPONENT
 ───────────────────────────────────────────────────────────────────────────── */
 export default function BasicStep({ form, setForm, category = "venues" , property}) {
-  console.log(property)
-  
   const [isDark, setIsDark] = useState(() => typeof window !== "undefined" && document.documentElement.classList.contains("dark"));
   useEffect(() => {
     const check = () => setIsDark(document.documentElement.classList.contains("dark"));
@@ -111,20 +111,68 @@ export default function BasicStep({ form, setForm, category = "venues" , propert
   const isTitleValid    = (form?.title?.length ?? 0) > 3;
   const isDescValid     = (form?.description?.length ?? 0) > 10;
   const isCategoryValid = !!form?.category;
+  const descWordCount   = (form?.description || "").trim().split(/\s+/).filter(Boolean).length;
 
   const touch = (field) => setTouched((p) => ({ ...p, [field]: true }));
 
+  /* "Why Guests Love This Place" — up to MAX_HIGHLIGHTS selling points the
+     vendor picks to feature on their public listing page. */
+  const highlightOptions = HIGHLIGHTS[category] ?? HIGHLIGHTS.venues;
+  const selectedHighlights = form?.highlights || [];
+  const highlightsAtMax = selectedHighlights.length >= MAX_HIGHLIGHTS;
+
+  const toggleHighlight = (title) => {
+    const isSelected = selectedHighlights.includes(title);
+    if (!isSelected && highlightsAtMax) return;
+    const next = isSelected
+      ? selectedHighlights.filter((t) => t !== title)
+      : [...selectedHighlights, title];
+    setForm({ ...form, highlights: next });
+  };
+
+  /* "Nearby Attractions" — up to MAX_NEARBY real, location-specific places
+     the vendor picks a preset TYPE for (Hotel, Airport, Temple, …) and then
+     fills in the actual name/distance/travel time themselves. */
+  const nearbyOptions  = NEARBY_TYPES[category] ?? NEARBY_TYPES.venues;
+  const nearbyPlaces   = form?.nearbyAttractions || [];
+  const nearbyAtMax    = nearbyPlaces.length >= MAX_NEARBY;
+
+  const toggleNearbyType = (type) => {
+    const isSelected = nearbyPlaces.some((p) => p.type === type);
+    if (!isSelected && nearbyAtMax) return;
+    const next = isSelected
+      ? nearbyPlaces.filter((p) => p.type !== type)
+      : [...nearbyPlaces, { type, name: type, distance: "", travel: "", rating: "", image: "" }];
+    setForm({ ...form, nearbyAttractions: next });
+  };
+
+  const updateNearbyField = (type, field, value) => {
+    const next = nearbyPlaces.map((p) => (p.type === type ? { ...p, [field]: value } : p));
+    setForm({ ...form, nearbyAttractions: next });
+  };
+
+  // Vendor swaps in their own photo of the place instead of the generic
+  // type stock image. Client-side preview via object URL now; the raw File
+  // travels with the place entry so the save step can upload it.
+  const updateNearbyImage = (type, file) => {
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    const next = nearbyPlaces.map((p) => (p.type === type ? { ...p, image: url, imageFile: file } : p));
+    setForm({ ...form, nearbyAttractions: next });
+  };
+
   const INPUT_BASE = `
     w-full px-4 py-3 rounded-xl text-[14px] font-medium outline-none transition-all duration-200
-    focus:ring-2 focus:ring-violet-500/20
+    focus:ring-2 ${isDark ? "focus:ring-white/10" : "focus:ring-black/10"}
   `;
 
-  /* Only the error state gets a highlighted border/glow now — a green
-     "success" ring on every filled field (regardless of whether the
-     vendor is even done editing it) was firing on nearly the whole
-     form at once and reading as noise rather than useful feedback. */
+  // A background just for these two primary fields — distinct from tk.card/
+  // tk.cardAlt (already reused everywhere else in this step) so Name/About
+  // read as their own thing instead of blending into plain white.
+  const FIELD_BG = isDark ? "#0c1424" : "#f3f4f8";
+
   const inputStyle = (hasErr) => ({
-    background: tk.inputBg,
+    background: FIELD_BG,
     border:     `1px solid ${hasErr ? "#f87171" : tk.inputBd}`,
     color:      tk.text,
     boxShadow:  hasErr ? "0 0 0 3px rgba(248,113,113,0.12)" : "none",
@@ -167,16 +215,33 @@ export default function BasicStep({ form, setForm, category = "venues" , propert
       <FieldGroup
         label={copy.aboutLabel}
         required
-        hint={`${form?.description?.length ?? 0} / 500`}
+        hint={`${descWordCount} / 500 words`}
         error={touched.description && !isDescValid ? "Minimum 10 characters required" : null}
         tk={tk}
         theme={theme}
       >
         <textarea
           value={form?.description || ""}
-          onChange={(e) => setForm({ ...form, description: e.target.value })}
+          onChange={(e) => {
+            const val = e.target.value;
+            const words = val.trim().split(/\s+/).filter(Boolean);
+            if (words.length > 500) {
+              // Covers paste (dropping hundreds of words in at once) as well
+              // as fast typing that jumps straight past the cap — always
+              // truncate to exactly the first 500 words, never further.
+              setForm({ ...form, description: words.slice(0, 500).join(" ") });
+            } else if (val.length > 6000) {
+              // Word count alone can't catch someone growing a single
+              // "word" with no spaces into an unbounded blob (word count
+              // never moves past whatever it already was) — this hard
+              // character ceiling is just a backstop against that, set
+              // well above anything 500 real words would ever reach.
+              return;
+            } else {
+              setForm({ ...form, description: val });
+            }
+          }}
           onBlur={() => touch("description")}
-          maxLength={500}
           rows={5}
           placeholder={copy.aboutPlaceholder}
           className={`${INPUT_BASE} resize-none`}
@@ -236,6 +301,242 @@ export default function BasicStep({ form, setForm, category = "venues" , propert
           })}
         </div>
       </FieldGroup>
+
+      {/* ── Property Highlights ── */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <label className="text-[13px] font-semibold" style={{ color: tk.text }}>
+            Why Guests Love This Place
+          </label>
+          <span className="text-[11px] tabular-nums" style={{ color: highlightsAtMax ? theme.accent : tk.dimmed }}>
+            {selectedHighlights.length} / {MAX_HIGHLIGHTS}
+          </span>
+        </div>
+        <p className="text-[12px] -mt-1" style={{ color: tk.muted }}>
+          Pick up to {MAX_HIGHLIGHTS} standout features to show first on your public listing page.
+        </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 mt-2">
+          {highlightOptions.map((h) => {
+            const isActive = selectedHighlights.includes(h.title);
+            const disabled = !isActive && highlightsAtMax;
+            const HIcon = h.Icon;
+
+            return (
+              <button
+                key={h.title}
+                type="button"
+                onClick={() => toggleHighlight(h.title)}
+                disabled={disabled}
+                className="relative flex flex-col items-start gap-2 text-left p-3 rounded-2xl transition-all duration-150"
+                style={{
+                  background: isActive ? tk.trackBg : tk.cardAlt,
+                  border: isActive ? `1.5px solid ${isDark ? "#ffffff" : "#0f172a"}` : `1px solid ${tk.border}`,
+                  opacity: disabled ? 0.45 : 1,
+                  cursor: disabled ? "not-allowed" : "pointer",
+                }}
+              >
+                {isActive && (
+                  <span
+                    className="absolute top-2 right-2 w-4 h-4 rounded-full flex items-center justify-center"
+                    style={{ background: isDark ? "#ffffff" : "#0f172a" }}
+                  >
+                    <Check size={9} strokeWidth={3} style={{ color: isDark ? "#0f172a" : "#ffffff" }} />
+                  </span>
+                )}
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: tk.card }}>
+                  <HIcon size={15} style={{ color: tk.text }} />
+                </div>
+                <div>
+                  <p className="text-[12px] font-semibold leading-snug" style={{ color: tk.text }}>
+                    {h.title}
+                  </p>
+                  <p className="text-[10.5px] mt-0.5 leading-snug" style={{ color: tk.muted }}>
+                    {h.desc}
+                  </p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Nearby Attractions — plain section, no card wrapper, same
+          treatment as "Why Guests Love This Place" above it ── */}
+      <div className="space-y-2">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: tk.cardAlt, border: `1px solid ${tk.border}` }}>
+              <MapPin size={16} style={{ color: tk.text }} />
+            </div>
+            <div>
+              <p className="text-[13.5px] font-bold" style={{ color: tk.text }}>Nearby Attractions</p>
+              <p className="text-[12px] mt-0.5" style={{ color: tk.muted }}>
+                Pick up to {MAX_NEARBY} nearby places, then add the real name, distance, and drive time for each.
+              </p>
+            </div>
+          </div>
+          <span className="text-[11px] tabular-nums shrink-0 mt-1" style={{ color: nearbyAtMax ? theme.accent : tk.dimmed }}>
+            {nearbyPlaces.length} / {MAX_NEARBY}
+          </span>
+        </div>
+
+        {/* Unified cards — before selecting, the card previews all the
+            fields (name, rating, distance, drive time) as read-only so
+            vendors see what the public card will look like; after
+            selecting, those same fields become editable inputs. */}
+        {/* items-start: without it, CSS Grid stretches every card in a row
+            to match the tallest one — so a selected card (extra input rows)
+            was forcing its unselected row-mates to stretch too, distorting
+            their photo/panel proportions. Each card now sizes to its own
+            content and stays flush at the top. */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 mt-2 items-start">
+          {nearbyOptions.map((opt) => {
+            const place = nearbyPlaces.find((p) => p.type === opt.type);
+            const isActive = !!place;
+            const disabled = !isActive && nearbyAtMax;
+            const TIcon = opt.Icon;
+
+            if (!isActive) {
+              return (
+                <button
+                  key={opt.type}
+                  type="button"
+                  onClick={() => toggleNearbyType(opt.type)}
+                  disabled={disabled}
+                  className="rounded-2xl overflow-hidden text-left transition-all duration-200"
+                  style={{
+                    boxShadow: `0 0 0 1px ${tk.border}`,
+                    opacity: disabled ? 0.45 : 1,
+                    cursor: disabled ? "not-allowed" : "pointer",
+                  }}
+                >
+                  {/* Photo preview */}
+                  <div className="group relative h-24 sm:h-28 overflow-hidden">
+                    <img
+                      src={opt.defaultImage}
+                      alt=""
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.05]"
+                    />
+                    {/* Just enough dark gradient to keep the type badge
+                        legible over the photo — it does NOT reach or match
+                        the panel color below, so photo and panel stay two
+                        visually distinct sections instead of blending. */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/45 to-transparent" />
+                    <span className="absolute bottom-2 left-2 flex items-center gap-1 text-white text-[10px] font-medium bg-black/35 backdrop-blur-sm px-2.5 py-1 rounded-full border border-white/20">
+                      <TIcon size={9} />
+                      {opt.type}
+                    </span>
+                  </div>
+
+                  {/* Read-only preview of what shows once selected — a clearly
+                      separate block below the photo, its own flat background
+                      plus a hard divider line, no fade/blend into the image. */}
+                  <div className="p-2.5 space-y-1" style={{ background: tk.cardAlt, borderTop: `1px solid ${tk.border}` }}>
+                    <p className="text-[11.5px] font-semibold truncate" style={{ color: tk.text }}>
+                      {opt.type}
+                    </p>
+                    <div className="flex items-center gap-2 text-[10px]" style={{ color: tk.muted }}>
+                      <span>— km</span>
+                      <span>·</span>
+                      <span>— min</span>
+                      <span>·</span>
+                      <span className="flex items-center gap-0.5"><Star size={9} /> —</span>
+                    </div>
+                  </div>
+                </button>
+              );
+            }
+
+            return (
+              <div
+                key={opt.type}
+                className="rounded-2xl overflow-hidden"
+                style={{ boxShadow: `0 0 0 1.5px ${isDark ? "#ffffff" : "#0f172a"}` }}
+              >
+                {/* Photo — swap via camera button, remove via X */}
+                <div className="relative h-24 sm:h-28">
+                  <img src={place.image || opt.defaultImage} alt="" className="w-full h-full object-cover" />
+                  {/* Same subtle legibility-only gradient as the unselected
+                      card — not blended into the panel below. */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/45 to-transparent" />
+
+                  <button
+                    type="button"
+                    onClick={() => toggleNearbyType(opt.type)}
+                    className="absolute top-2 left-2 w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-sm outline-none focus:outline-none focus-visible:outline-none"
+                    style={{ background: "rgba(0,0,0,0.45)" }}
+                  >
+                    <X size={16} style={{ color: "#fff" }} />
+                  </button>
+
+                  <label
+                    className="absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-sm cursor-pointer"
+                    style={{ background: "rgba(0,0,0,0.45)" }}
+                    title="Change photo"
+                  >
+                    <Camera size={16} style={{ color: "#fff" }} />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => updateNearbyImage(opt.type, e.target.files?.[0])}
+                    />
+                  </label>
+
+                  <span className="absolute bottom-2 left-2 flex items-center gap-1 text-white text-[10px] font-medium bg-black/35 backdrop-blur-sm px-2 py-0.5 rounded-full border border-white/20">
+                    <TIcon size={9} />
+                    {opt.type}
+                  </span>
+                </div>
+
+                {/* Name + rating are fixed display, same as the unselected
+                    preview — only Distance, Travel and the photo (via the
+                    camera button above) are actually editable. Colors come
+                    from the theme tokens, and a hard border (not a gradient
+                    fade) keeps this panel visually separate from the photo. */}
+                <div className="p-2.5 space-y-1.5" style={{ background: tk.cardAlt, borderTop: `1px solid ${tk.border}` }}>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[11.5px] font-semibold truncate" style={{ color: tk.text }}>
+                      {place.name || opt.type}
+                    </p>
+                    <span className="flex items-center gap-0.5 text-[10px] shrink-0" style={{ color: tk.muted }}>
+                      <Star size={9} /> {place.rating || "—"}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        value={place.distance}
+                        onChange={(e) => updateNearbyField(opt.type, "distance", e.target.value)}
+                        placeholder="2.1"
+                        className="w-full pl-2 pr-6 py-1.5 rounded-md text-[11px] outline-none transition-colors"
+                        style={{ background: tk.inputBg, border: `1px solid ${tk.inputBd}`, color: tk.text }}
+                      />
+                      <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] pointer-events-none" style={{ color: tk.muted }}>km</span>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min="0"
+                        value={place.travel}
+                        onChange={(e) => updateNearbyField(opt.type, "travel", e.target.value)}
+                        placeholder="7"
+                        className="w-full pl-2 pr-7 py-1.5 rounded-md text-[11px] outline-none transition-colors"
+                        style={{ background: tk.inputBg, border: `1px solid ${tk.inputBd}`, color: tk.text }}
+                      />
+                      <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] pointer-events-none" style={{ color: tk.muted }}>min</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
 
     </div>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Upload,
@@ -14,6 +15,9 @@ import {
   ChevronUp,
   LayoutGrid,
   Lightbulb,
+  AlertTriangle,
+  Check,
+  CheckSquare,
 } from "lucide-react";
 import { getCategoryTheme } from "./categoryTheme";
 
@@ -66,20 +70,36 @@ const TIPS = [
 /* ─────────────────────────────────────────────────────────────────────────────
    HELPERS
 ───────────────────────────────────────────────────────────────────────────── */
+// Server-stored photos come back as a relative S3 key (not a full URL), so it
+// needs the bucket domain prefixed on — NEXT_PUBLIC_AWS_BUCKET_URL, confirmed
+// as the right env var (NOT NEXT_PUBLIC_API_URL, that's the backend API host).
+// A freshly-added-but-not-yet-uploaded photo is a local blob: URL and must be
+// left untouched, and an already-absolute URL (http/https) is left as-is too.
+function resolveImageUrl(raw) {
+  if (!raw) return null;
+  if (/^(https?:|blob:|data:)/i.test(raw)) return raw;
+  const base = process.env.NEXT_PUBLIC_AWS_BUCKET_URL || "";
+  return `${base}/${raw}`.replace(/([^:])\/{2,}/g, "$1/");
+}
+
 function getPhotoUrl(photo) {
   if (!photo) return null;
 
-  if (typeof photo === "string") return photo;
+  if (typeof photo === "string") return resolveImageUrl(photo);
 
-  return photo.url || photo.image || photo.images || photo.path || null;
+  return resolveImageUrl(
+    photo.attachment || photo.url || photo.image || photo.images || photo.path || null,
+  );
 }
 
 function getSectionImageUrl(img) {
   if (!img) return null;
 
-  if (typeof img === "string") return img;
+  if (typeof img === "string") return resolveImageUrl(img);
 
-  return img.url || img.image || img.images || img.path || null;
+  return resolveImageUrl(
+    img.attachment || img.url || img.image || img.images || img.path || null,
+  );
 }
 
 // Stable identity for a photo — prefers server id, falls back to URL.
@@ -135,6 +155,23 @@ export default function PhotoStep({
   const [dragIdx, setDragIdx] = useState(null);
   const [overIdx, setOverIdx] = useState(null);
   const [tipsOpen, setTipsOpen] = useState(false);
+
+  // Multi-select delete for the main photo grid.
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIdxs, setSelectedIdxs] = useState(() => new Set());
+
+  const toggleSelectMode = () => {
+    setSelectMode((v) => !v);
+    setSelectedIdxs(new Set());
+  };
+
+  const toggleSelectIdx = (idx) => {
+    setSelectedIdxs((prev) => {
+      const next = new Set(prev);
+      next.has(idx) ? next.delete(idx) : next.add(idx);
+      return next;
+    });
+  };
 
   const photos = form?.photos || [];
   const sections = form?.photoSections || [];
@@ -402,10 +439,11 @@ export default function PhotoStep({
     handleAddFiles(e.dataTransfer.files);
   };
 
-  const openConfirm = ({ type, idx, sectionId, imgIdx, title, message }) => {
+  const openConfirm = ({ type, idx, idxs, sectionId, imgIdx, title, message }) => {
     setConfirmData({
       type,
       idx,
+      idxs,
       sectionId,
       imgIdx,
       title,
@@ -418,7 +456,7 @@ export default function PhotoStep({
   const handleConfirmDelete = async () => {
     if (!confirmData) return;
 
-    const { type, idx, sectionId, imgIdx } = confirmData;
+    const { type, idx, idxs, sectionId, imgIdx } = confirmData;
 
     /* MAIN PHOTO */
     if (type === "main-photo") {
@@ -452,6 +490,42 @@ export default function PhotoStep({
       if (idx === 0 && normalized.length) {
         await onUpdateCoverImage(normalized[0], listingId);
       }
+    }
+
+    /* MAIN PHOTOS — BULK DELETE */
+    if (type === "main-photo-bulk") {
+      const idxSet = new Set(idxs || []);
+      const imagesToDelete = photos.filter((_, i) => idxSet.has(i));
+      const updated = photos.filter((_, i) => !idxSet.has(i));
+
+      const normalized = updated.map((item, index) => {
+        if (typeof item === "string") {
+          return item;
+        }
+
+        return {
+          ...item,
+          category_key: index === 0 ? 2 : 3,
+          isCover: index === 0,
+        };
+      });
+
+      setForm((p) => ({
+        ...p,
+        photos: normalized,
+      }));
+      photosRef.current = normalized;
+
+      /* PARENT API CALLS — one per removed photo */
+      await Promise.all(imagesToDelete.map((img) => deleteImageFromServer(img)));
+
+      // Cover photo was among the deleted ones — sync the new index-0.
+      if (idxSet.has(0) && normalized.length) {
+        await onUpdateCoverImage(normalized[0], listingId);
+      }
+
+      setSelectMode(false);
+      setSelectedIdxs(new Set());
     }
 
     /* SECTION IMAGE */
@@ -523,24 +597,71 @@ export default function PhotoStep({
         </p>
 
         <div className="flex items-center gap-3">
-          {photos.length > 1 && (
-            <p className="text-[11px]" style={{ color: tk.dimmed }}>
-              Drag to reorder
-            </p>
-          )}
+          {selectMode ? (
+            <>
+              <p className="text-[11px] font-semibold" style={{ color: tk.muted }}>
+                {selectedIdxs.size} selected
+              </p>
 
-          {photos.length < MAX_PHOTOS && (
-            <button
-              onClick={() => addRef.current?.click()}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[12px] font-semibold transition-all cursor-pointer"
-              style={{
-                background: theme.gradient,
-                color: "#fff",
-              }}
-            >
-              <Plus size={13} />
-              Add photos
-            </button>
+              {selectedIdxs.size > 0 && (
+                <button
+                  onClick={() =>
+                    openConfirm({
+                      type: "main-photo-bulk",
+                      idxs: Array.from(selectedIdxs),
+                      title: `Delete ${selectedIdxs.size} photo${selectedIdxs.size === 1 ? "" : "s"}`,
+                      message: `Are you sure you want to delete ${selectedIdxs.size === 1 ? "this photo" : "these photos"}? This can't be undone.`,
+                    })
+                  }
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[12px] font-semibold transition-all cursor-pointer text-white"
+                  style={{ background: "linear-gradient(135deg,#ef4444,#dc2626)" }}
+                >
+                  <Trash2 size={13} />
+                  Delete ({selectedIdxs.size})
+                </button>
+              )}
+
+              <button
+                onClick={toggleSelectMode}
+                className="px-3.5 py-2 rounded-xl text-[12px] font-semibold transition-all cursor-pointer"
+                style={{ background: tk.trackBg, color: tk.muted }}
+              >
+                Cancel
+              </button>
+            </>
+          ) : (
+            <>
+              {photos.length > 1 && (
+                <>
+                  <p className="text-[11px]" style={{ color: tk.dimmed }}>
+                    Drag to reorder
+                  </p>
+
+                  <button
+                    onClick={toggleSelectMode}
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[12px] font-semibold transition-all cursor-pointer"
+                    style={{ background: tk.trackBg, color: tk.text, border: `1px solid ${tk.border}` }}
+                  >
+                    <CheckSquare size={13} />
+                    Select
+                  </button>
+                </>
+              )}
+
+              {photos.length < MAX_PHOTOS && (
+                <button
+                  onClick={() => addRef.current?.click()}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[12px] font-semibold transition-all cursor-pointer"
+                  style={{
+                    background: theme.gradient,
+                    color: "#fff",
+                  }}
+                >
+                  <Plus size={13} />
+                  Add photos
+                </button>
+              )}
+            </>
           )}
 
           <input
@@ -570,12 +691,14 @@ export default function PhotoStep({
 
             const isTarget = overIdx === idx && dragIdx !== idx;
 
+            const isSelected = selectedIdxs.has(idx);
+
             return (
               <div
                 key={
                   photo?.id || photo?.url || photo?.image || photo?.path || idx
                 }
-                draggable
+                draggable={!selectMode}
                 onDragStart={(e) => handleDragStart(e, idx)}
                 onDragOver={(e) => {
                   e.preventDefault();
@@ -586,11 +709,18 @@ export default function PhotoStep({
                   handleDrop(e, idx);
                 }}
                 onDragEnd={handleDragEnd}
-                className="relative group cursor-grab active:cursor-grabbing rounded-2xl overflow-hidden"
+                onClick={() => selectMode && toggleSelectIdx(idx)}
+                className={`relative group rounded-2xl overflow-hidden ${
+                  selectMode ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"
+                }`}
                 style={{
                   aspectRatio: "16/9",
                   background: tk.trackBg,
-                  outline: isTarget ? `2px solid ${theme.accent}` : "none",
+                  outline: isTarget
+                    ? `2px solid ${theme.accent}`
+                    : isSelected
+                    ? `2.5px solid ${theme.accent}`
+                    : "none",
                   opacity: isDragging ? 0.45 : 1,
                   transition: "opacity 0.15s, outline 0.1s",
                   boxShadow: isCover
@@ -601,30 +731,52 @@ export default function PhotoStep({
                 <img src={src} alt="" className="w-full h-full object-cover" />
 
                 <div
-                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute inset-0 transition-opacity"
                   style={{
-                    background: "rgba(0,0,0,0.38)",
+                    background: isSelected ? "rgba(0,0,0,0.30)" : "rgba(0,0,0,0.38)",
+                    opacity: selectMode ? (isSelected ? 1 : 0) : 0,
                   }}
                 />
+                {!selectMode && (
+                  <div
+                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                    style={{ background: "rgba(0,0,0,0.38)" }}
+                  />
+                )}
 
-                {/* REMOVE */}
-                <button
-                  onClick={() =>
-                    openConfirm({
-                      type: "main-photo",
-                      idx,
-                      title: "Delete Photo",
-                      message: "Are you sure you want to delete this photo?",
-                    })
-                  }
-                  className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer z-10"
-                  style={{
-                    background: "rgba(0,0,0,0.65)",
-                    backdropFilter: "blur(4px)",
-                  }}
-                >
-                  <X size={10} style={{ color: "#fff" }} />
-                </button>
+                {/* SELECT CHECKBOX */}
+                {selectMode ? (
+                  <div
+                    className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center z-10 transition-all"
+                    style={{
+                      background: isSelected ? theme.accent : "rgba(0,0,0,0.45)",
+                      border: isSelected ? "none" : "1.5px solid rgba(255,255,255,0.85)",
+                      backdropFilter: "blur(4px)",
+                    }}
+                  >
+                    {isSelected && <Check size={12} strokeWidth={3} style={{ color: "#fff" }} />}
+                  </div>
+                ) : (
+                  /* REMOVE */
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openConfirm({
+                        type: "main-photo",
+                        idx,
+                        title: "Delete Photo",
+                        message: "Are you sure you want to delete this photo?",
+                      });
+                    }}
+                    className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer z-10"
+                    style={{
+                      background: "rgba(0,0,0,0.65)",
+                      backdropFilter: "blur(4px)",
+                    }}
+                  >
+                    <X size={10} style={{ color: "#fff" }} />
+                  </button>
+                )}
 
                 {/* COVER */}
                 {isCover && (
@@ -650,14 +802,16 @@ export default function PhotoStep({
                   </div>
                 )}
 
-                <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                  <GripVertical
-                    size={14}
-                    style={{
-                      color: "rgba(255,255,255,0.80)",
-                    }}
-                  />
-                </div>
+                {!selectMode && (
+                  <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                    <GripVertical
+                      size={14}
+                      style={{
+                        color: "rgba(255,255,255,0.80)",
+                      }}
+                    />
+                  </div>
+                )}
               </div>
             );
           })}
@@ -793,79 +947,83 @@ export default function PhotoStep({
         />
       </div>
 
-      <AnimatePresence>
-        {confirmOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[999] flex items-center justify-center p-4"
-            style={{
-              background: "rgba(0,0,0,0.55)",
-              backdropFilter: "blur(4px)",
-            }}
-          >
-            <motion.div
-              initial={{
-                opacity: 0,
-                scale: 0.95,
-                y: 10,
-              }}
-              animate={{
-                opacity: 1,
-                scale: 1,
-                y: 0,
-              }}
-              exit={{
-                opacity: 0,
-                scale: 0.95,
-                y: 10,
-              }}
-              transition={{ duration: 0.18 }}
-              className="w-full max-w-sm rounded-3xl p-5"
-              style={{
-                background: tk.card,
-                border: `1px solid ${tk.border}`,
-                boxShadow: tk.shadow,
-              }}
-            >
-              <h3 className="text-[16px] font-bold" style={{ color: tk.text }}>
-                {confirmData?.title}
-              </h3>
-
-              <p className="text-[13px] mt-2" style={{ color: tk.muted }}>
-                {confirmData?.message}
-              </p>
-
-              <div className="flex justify-end gap-2 mt-5">
-                <button
-                  onClick={() => {
-                    setConfirmOpen(false);
-                    setConfirmData(null);
-                  }}
-                  className="px-4 py-2 rounded-xl text-[13px] font-medium"
+      {typeof document !== "undefined" &&
+        createPortal(
+          <AnimatePresence>
+            {confirmOpen && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[999] flex items-center justify-center p-4"
+                style={{
+                  background: isDark ? "rgba(5,6,14,0.66)" : "rgba(15,18,30,0.42)",
+                  backdropFilter: "blur(20px) saturate(150%) brightness(0.94)",
+                }}
+                onClick={() => {
+                  setConfirmOpen(false);
+                  setConfirmData(null);
+                }}
+              >
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                  transition={{ duration: 0.18 }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-full max-w-sm rounded-3xl p-5"
                   style={{
-                    background: tk.trackBg,
-                    color: tk.muted,
+                    background: tk.card,
+                    border: `1px solid ${tk.border}`,
+                    boxShadow: tk.shadow,
                   }}
                 >
-                  Cancel
-                </button>
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center mb-3"
+                    style={{ background: "rgba(239,68,68,0.12)" }}
+                  >
+                    <AlertTriangle size={18} strokeWidth={2} style={{ color: "#ef4444" }} />
+                  </div>
 
-                <button
-                  onClick={handleConfirmDelete}
-                  className="px-4 py-2 rounded-xl text-[13px] font-semibold text-white"
-                  style={{
-                    background: "linear-gradient(135deg,#ef4444,#dc2626)",
-                  }}
-                >
-                  Delete
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
+                  <h3 className="text-[16px] font-bold" style={{ color: tk.text }}>
+                    {confirmData?.title}
+                  </h3>
+
+                  <p className="text-[13px] mt-1.5" style={{ color: tk.muted }}>
+                    {confirmData?.message}
+                  </p>
+
+                  <div className="flex justify-end gap-2 mt-5">
+                    <button
+                      onClick={() => {
+                        setConfirmOpen(false);
+                        setConfirmData(null);
+                      }}
+                      className="px-4 py-2 rounded-xl text-[13px] font-medium"
+                      style={{
+                        background: tk.trackBg,
+                        color: tk.muted,
+                      }}
+                    >
+                      Cancel
+                    </button>
+
+                    <button
+                      onClick={handleConfirmDelete}
+                      className="px-4 py-2 rounded-xl text-[13px] font-semibold text-white"
+                      style={{
+                        background: "linear-gradient(135deg,#ef4444,#dc2626)",
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body,
         )}
-      </AnimatePresence>
     </div>
   );
 }
