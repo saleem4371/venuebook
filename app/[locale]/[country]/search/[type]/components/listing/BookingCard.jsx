@@ -204,7 +204,8 @@ function EventTypeDropdown({
   const filtered =
     showSearch && search.trim()
       ? venueEvents.filter((o) =>
-          o.event_name.toLowerCase().includes(search.toLowerCase()),
+          // o.event_name.toLowerCase().includes(search.toLowerCase()),
+          o.event_name.includes(search),
         )
       : venueEvents;
 
