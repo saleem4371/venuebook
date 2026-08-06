@@ -201,13 +201,12 @@ function EventTypeDropdown({
   const [search, setSearch] = useState("");
   const showSearch = venueEvents.length > 5;
 
-  const filtered =
-    showSearch && search.trim()
-      ? venueEvents.filter((o) =>
-          // o.event_name.toLowerCase().includes(search.toLowerCase()),
-          o.event_name.includes(search),
-        )
-      : venueEvents;
+ const filtered =
+  showSearch && search.trim()
+    ? venueEvents.filter((o) =>
+        (o.event_name ?? "").toLowerCase().includes((search ?? "").toLowerCase())
+      )
+    : venueEvents;
 
   // Reset search whenever dropdown closes
   useEffect(() => {
