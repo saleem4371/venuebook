@@ -8,7 +8,7 @@ import {
 
 // Map shift label keywords → Lucide icon
 function getShiftIcon(label = "") {
-  const l = label.toLowerCase();
+  const l = label;
   if (l.includes("morning"))   return Sunrise;
   if (l.includes("afternoon")) return Sun;
   if (l.includes("evening"))   return Sunset;
