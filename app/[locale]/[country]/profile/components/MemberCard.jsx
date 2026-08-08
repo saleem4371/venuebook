@@ -1,39 +1,11 @@
 "use client";
 
-/**
- * /app/[locale]/[country]/profile/components/MemberCard.jsx
- *
- * Large premium membership card. Prefers the REAL rewards payload
- * (rewards.rewads — current tier record: mem_id, name, color,
- * available_points, total_points, min_booking/max_booking/book_amount)
- * when present, since that's the actual account state. Falls back to the
- * app-wide mock loyalty system in config/checkoutConfig.js
- * (MEMBERSHIP_TIERS, getMembershipTier, POINTS_PER_INR) only when real
- * data hasn't arrived yet — same source UserDropdown's MembershipWidget
- * and the checkout flow use, so there's still just one mock system, not
- * a second competing one.
- *
- * Progress-to-next-tier: the real API doesn't (yet) send an explicit
- * "points needed for next tier" threshold per tier, only min_booking /
- * max_booking / book_amount, which aren't directly comparable to a
- * points balance. Until the backend adds that field, the progress bar's
- * percentage still comes from the mock MEMBERSHIP_TIERS point thresholds
- * (matched by tier id) — only the current tier's NAME/COLOR and the
- * points figures themselves are pulled from the real record. That keeps
- * the progress bar meaningful instead of guessing a conversion between
- * money and points.
- *
- * walletPoints is passed down from page.jsx as the mock fallback so this
- * card, QuickStats, and FarmRewards all still agree on the same number
- * when real data isn't available.
- */
-
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
-import { Crown, ShieldCheck, Zap, Gift as GiftIcon } from "lucide-react";
+import { Crown, ShieldCheck, Zap, Gift as GiftIcon, Sparkles } from "lucide-react";
 
-import { MEMBERSHIP_TIERS, getMembershipTier } from "@/config/checkoutConfig";
+import { MEMBERSHIP_TIERS } from "@/config/checkoutConfig";
 import { ProgressBar } from "./shared/ui";
 
 const BENEFIT_ICONS = {
@@ -44,71 +16,88 @@ const BENEFIT_ICONS = {
 
 const COUNT_UP_DURATION_MS = 900;
 
-/* Animates a number counting up from 0 to `target` — used for the points
-   figure so it reads as "live" data settling in rather than static text. */
 function useCountUp(target, durationMs = COUNT_UP_DURATION_MS) {
   const [value, setValue] = useState(0);
-
   useEffect(() => {
     let raf;
     const start = performance.now();
     const safeTarget = Number.isFinite(target) ? target : 0;
-
     const tick = (now) => {
       const progress = Math.min(1, (now - start) / durationMs);
-      const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+      const eased = 1 - Math.pow(1 - progress, 3);
       setValue(Math.round(safeTarget * eased));
       if (progress < 1) raf = requestAnimationFrame(tick);
     };
-
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [target, durationMs]);
-
   return value;
 }
 
-export default function MemberCard({ walletPoints = 0, memberSinceYear, rewards }) {
+export default function MemberCard({ memberSinceYear, rewards, isLoading = false }) {
   const t = useTranslations("profile.member");
   const tm = useTranslations("membership");
 
-  // Real current-tier record from the API, when present.
   const rewad = rewards?.rewads;
-  const hasRealData = Boolean(rewad);
+  const hasRealData = Boolean(rewad && typeof rewad.total_points === "number");
 
-  // Progress math still comes from the mock config's point thresholds —
-  // see file header for why. Matched against the real points balance
-  // when available so the bar itself is still accurate to the account.
-  const pointsForProgress = hasRealData ? rewad.total_points ?? walletPoints : walletPoints;
-  const configTier = getMembershipTier(pointsForProgress);
-  const configTierIndex = MEMBERSHIP_TIERS.findIndex((tr) => tr.id === configTier.id);
-  const nextConfigTier = MEMBERSHIP_TIERS[configTierIndex + 1];
-
-  const progressPercent = nextConfigTier
-    ? Math.min(
-        100,
-        Math.max(
-          0,
-          Math.round(
-            ((pointsForProgress - configTier.minPoints) / (nextConfigTier.minPoints - configTier.minPoints)) * 100,
-          ),
-        ),
-      )
-    : 100;
-
-  // Display values: real name/color straight from the API (already
-  // human-readable, no i18n lookup needed); fall back to the translated
-  // mock tier label when real data isn't there yet.
-  const displayColor = hasRealData ? rewad.color : configTier.color;
-  const displayTierLabel = hasRealData
-    ? tm("member_label", { tier: rewad.name })
-    : tm("member_label", { tier: tm(`tier_${configTier.id}`) });
-  const displayPoints = hasRealData ? rewad.available_points ?? walletPoints : walletPoints;
-  const nextTierLabel = nextConfigTier ? tm(`tier_${nextConfigTier.id}`) : null;
-
+  // Compute this unconditionally, before any early return, so useCountUp's
+  // internal useState/useEffect always run in the same order every render.
+  const displayPoints = hasRealData ? (rewad.available_points ?? 0) : 0;
   const animatedPoints = useCountUp(displayPoints);
 
-  const benefitKeys = ["benefit_priority_support", "benefit_faster_refunds", "benefit_exclusive_offers"];
+  // ── Still loading: skeleton, not a guess ────────────────────────────
+  if (isLoading) {
+    return (
+      <div className="rounded-3xl p-4 sm:p-5 bg-gray-100 dark:bg-gray-800 animate-pulse h-[190px]" />
+    );
+  }
+
+  // ── No real membership data yet: honest empty state ─────────────────
+  if (!hasRealData) {
+    const firstTier = MEMBERSHIP_TIERS[0];
+    return (
+      <motion.section
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+        className="relative overflow-hidden rounded-3xl p-4 sm:p-5 border border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900"
+      >
+        <div className="flex items-center gap-2">
+          <span className="flex items-center justify-center w-8 h-8 rounded-xl bg-gray-200 dark:bg-gray-800">
+            <Sparkles size={16} className="text-gray-500" />
+          </span>
+          <div>
+            <p className="text-gray-400 text-[10px] font-medium uppercase tracking-wide">{t("title")}</p>
+            <h3 className="text-gray-900 dark:text-gray-100 text-[16px] font-bold leading-tight">
+              Welcome to {firstTier?.name || "Bronze"} Membership
+            </h3>
+          </div>
+        </div>
+        <p className="text-gray-500 dark:text-gray-400 text-[12.5px] mt-2.5 leading-relaxed">
+           Your membership journey starts with your first booking. Make bookings to
+  unlock higher tiers and enjoy more rewards and benefits.
+        </p>
+      </motion.section>
+    );
+  }
+
+  // ── Real data path ───────────────────────────────────────────────────
+  const pointsForProgress = rewad.total_points;
+  const configTierIndex = MEMBERSHIP_TIERS.findIndex((tr) => tr.id === rewad.tierId);
+  const configTier = MEMBERSHIP_TIERS[configTierIndex >= 0 ? configTierIndex : 0];
+  const nextConfigTier = MEMBERSHIP_TIERS[(configTierIndex >= 0 ? configTierIndex : 0) + 1];
+
+  const progressPercent = nextConfigTier
+    ? Math.min(100, Math.max(0, Math.round(
+        ((pointsForProgress - configTier.minPoints) / (nextConfigTier.minPoints - configTier.minPoints)) * 100,
+      )))
+    : 100;
+
+  const displayColor = rewad.color || configTier.color;
+  const displayTierLabel = tm("member_label", { tier: rewad.name });
+  const nextTierLabel = nextConfigTier ? tm(`tier_${nextConfigTier.id}`) : null;
+  const benefitKeys = configTier.benefits ?? [];
 
   return (
     <motion.section
@@ -116,9 +105,7 @@ export default function MemberCard({ walletPoints = 0, memberSinceYear, rewards 
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
       className="relative overflow-hidden rounded-3xl p-4 sm:p-5 shadow-[0_8px_28px_rgba(0,0,0,0.10)]"
-      style={{
-        background: `linear-gradient(135deg, ${displayColor} 0%, ${displayColor}CC 55%, #111827 130%)`,
-      }}
+      style={{ background: `linear-gradient(135deg, ${displayColor} 0%, ${displayColor}CC 55%, #111827 130%)` }}
     >
       <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-white/10 blur-2xl" />
       <div className="absolute -bottom-14 -left-8 w-48 h-48 rounded-full bg-black/10 blur-2xl" />
@@ -159,37 +146,28 @@ export default function MemberCard({ walletPoints = 0, memberSinceYear, rewards 
         </div>
       </div>
 
-      {/* BENEFITS — staggered fade/slide in */}
       <motion.div
         className="relative flex flex-wrap gap-2 mt-3.5"
         initial="hidden"
         animate="show"
-        variants={{
-          hidden: {},
-          show: { transition: { staggerChildren: 0.08, delayChildren: 0.25 } },
-        }}
+        variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08, delayChildren: 0.25 } } }}
       >
         {benefitKeys.map((key) => {
           const Icon = BENEFIT_ICONS[key];
           return (
             <motion.span
               key={key}
-              variants={{
-                hidden: { opacity: 0, y: 8 },
-                show: { opacity: 1, y: 0 },
-              }}
+              variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0 } }}
               transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/15 backdrop-blur text-white text-[11px] font-medium"
             >
-              <Icon size={12} />
+              {Icon && <Icon size={12} />}
               {tm(key)}
             </motion.span>
           );
         })}
       </motion.div>
 
-      {/* UPGRADE PROGRESS — bar fills in on mount instead of snapping to
-          its resting width. */}
       <div className="relative mt-3.5">
         {nextConfigTier ? (
           <>
@@ -201,11 +179,7 @@ export default function MemberCard({ walletPoints = 0, memberSinceYear, rewards 
                 })}
               </p>
             </div>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.3, duration: 0.3 }}
-            >
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3, duration: 0.3 }}>
               <ProgressBar percent={progressPercent} colorClass="bg-white" trackClass="bg-white/20" animate />
             </motion.div>
           </>

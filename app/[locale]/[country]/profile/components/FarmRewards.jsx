@@ -1,36 +1,11 @@
 "use client";
 
-/**
- * /app/[locale]/[country]/profile/components/FarmRewards.jsx
- *
- * Only ever rendered by page.jsx when hasFarmstayBooking() is true — this
- * component itself doesn't gate visibility, the caller does, so there's a
- * single obvious place (page.jsx) controlling "loyalty only shows for
- * Farmstay guests" per the brief.
- *
- * Prefers the REAL rewards payload when present:
- *   - rewards.rewads.available_points → current points balance (falls
- *     back to the walletPoints mock prop, same source MemberCard uses,
- *     when real data hasn't arrived yet).
- *   - rewards.history → real transaction ledger (reward = earned,
- *     redeem = spent), replacing MOCK_POINTS_HISTORY once it's there.
- *     Falls back to the mock list only when rewards.history is empty/
- *     missing, so this never renders blank before real data loads *and*
- *     never silently shows fake numbers once real data exists.
- *
- * Recent Activity only ever shows the latest 3 rows inline — "View all"
- * opens the full ledger in a modal (same overlay shell pattern used
- * across the app, e.g. ManageBookingView.jsx's Modal) rather than
- * growing this card's height unbounded as the transaction count climbs.
- */
-
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sprout, Gift, ChevronRight, X, History as HistoryIcon } from "lucide-react";
 
 import { SectionCard, SectionHeading, ProgressBar, PrimaryButton } from "./shared/ui";
-import { MOCK_POINTS_HISTORY } from "../data/mockProfileData";
 
 const REWARD_STEP = 500;
 const COUNT_UP_DURATION_MS = 800;
@@ -38,23 +13,19 @@ const VISIBLE_HISTORY_COUNT = 3;
 
 function useCountUp(target, durationMs = COUNT_UP_DURATION_MS) {
   const [value, setValue] = useState(0);
-
   useEffect(() => {
     let raf;
     const start = performance.now();
     const safeTarget = Number.isFinite(target) ? target : 0;
-
     const tick = (now) => {
       const progress = Math.min(1, (now - start) / durationMs);
       const eased = 1 - Math.pow(1 - progress, 3);
       setValue(Math.round(safeTarget * eased));
       if (progress < 1) raf = requestAnimationFrame(tick);
     };
-
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [target, durationMs]);
-
   return value;
 }
 
@@ -65,16 +36,10 @@ const formatHistoryDate = (isoDate) => {
   return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(d);
 };
 
-/* Single history row — shared by the inline 3-row preview and the full
-   list inside the modal, so the two never visually drift apart. */
 function HistoryRow({ h, index = 0, animated = true }) {
   const Wrapper = animated ? motion.li : "li";
   const motionProps = animated
-    ? {
-        initial: { opacity: 0, y: 6 },
-        animate: { opacity: 1, y: 0 },
-        transition: { duration: 0.25, delay: 0.05 * index },
-      }
+    ? { initial: { opacity: 0, y: 6 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.25, delay: 0.05 * index } }
     : {};
 
   return (
@@ -91,8 +56,6 @@ function HistoryRow({ h, index = 0, animated = true }) {
   );
 }
 
-/* Full-history modal — same overlay shell pattern used elsewhere in the
-   app (backdrop blur, spring-in card, sheet-on-mobile). */
 function HistoryModal({ t, rows, onClose }) {
   return (
     <motion.div
@@ -143,12 +106,16 @@ function HistoryModal({ t, rows, onClose }) {
   );
 }
 
-export default function FarmRewards({ walletPoints = 0, flat = false, rewards }) {
+export default function FarmRewards({ flat = false, rewards, isLoading = false }) {
   const t = useTranslations("profile.farmRewards");
   const [showAllHistory, setShowAllHistory] = useState(false);
 
   const rewad = rewards?.rewads;
-  const availablePoints = rewad?.available_points ?? walletPoints;
+  // Only trust this as a real, active member with real points — no
+  // walletPoints mock fallback anymore. Missing/partial data is treated
+  // as a genuine zero-state, not silently swapped for a demo number.
+  const hasRealData = Boolean(rewad && typeof rewad.available_points === "number");
+  const availablePoints = hasRealData ? rewad.available_points : 0;
 
   const nextThreshold = (Math.floor(availablePoints / REWARD_STEP) + 1) * REWARD_STEP;
   const progressPercent = Math.round(((availablePoints % REWARD_STEP) / REWARD_STEP) * 100);
@@ -156,14 +123,13 @@ export default function FarmRewards({ walletPoints = 0, flat = false, rewards })
 
   const animatedPoints = useCountUp(availablePoints);
 
-  // Real transaction ledger → same shape MOCK_POINTS_HISTORY already used
-  // (id, label, date, delta), so downstream rendering doesn't need two
-  // paths. reward = earned (+points), redeem = spent (-points). Newest
-  // first; entries with no created_at (seen in the sample payload) sort
-  // to the end rather than crashing the sort.
+  // Real transaction ledger only — no MOCK_POINTS_HISTORY fallback.
+  // No real history (or no real member yet) means an honestly empty
+  // list, which the "No reward activity yet" message below already
+  // handles.
   const historyRows = useMemo(() => {
     const real = rewards?.history;
-    if (!Array.isArray(real) || real.length === 0) return MOCK_POINTS_HISTORY;
+    if (!Array.isArray(real) || real.length === 0) return [];
 
     return real
       .slice()
@@ -179,6 +145,14 @@ export default function FarmRewards({ walletPoints = 0, flat = false, rewards })
   const visibleRows = historyRows.slice(0, VISIBLE_HISTORY_COUNT);
   const hasMore = historyRows.length > VISIBLE_HISTORY_COUNT;
 
+  if (isLoading) {
+    return (
+      <SectionCard flat={flat}>
+        <div className="h-40 rounded-2xl bg-gray-100 dark:bg-gray-800 animate-pulse" />
+      </SectionCard>
+    );
+  }
+
   return (
     <SectionCard flat={flat}>
       <SectionHeading
@@ -191,64 +165,77 @@ export default function FarmRewards({ walletPoints = 0, flat = false, rewards })
         }
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <p className="text-[11px] text-gray-500 dark:text-gray-400">{t("currentPoints")}</p>
-          <motion.p
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35 }}
-            className="text-[24px] font-bold text-gray-900 dark:text-gray-50 leading-tight mt-0.5"
-          >
-            {animatedPoints.toLocaleString()}
-          </motion.p>
+      {!hasRealData ? (
+        // Honest empty state — no member record yet, no fake balance,
+        // no fake progress bar, no fake history.
+        <div className="py-2">
+          <p className="text-[13px] text-gray-500 dark:text-gray-400 leading-relaxed">
+  Your membership journey starts with your first booking. Make bookings to
+  unlock higher tiers and enjoy more rewards and benefits.
+</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400">{t("currentPoints")}</p>
+            <motion.p
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35 }}
+              className="text-[24px] font-bold text-gray-900 dark:text-gray-50 leading-tight mt-0.5"
+            >
+              {animatedPoints.toLocaleString()}
+            </motion.p>
 
-          <div className="mt-3">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2, duration: 0.3 }}>
-              <ProgressBar percent={progressPercent} colorClass="bg-green-600" animate />
-            </motion.div>
-            <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1.5">
-              {t("nextReward", { points: nextThreshold.toLocaleString() })}
-            </p>
+            <div className="mt-3">
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2, duration: 0.3 }}>
+                <ProgressBar percent={progressPercent} colorClass="bg-green-600" animate />
+              </motion.div>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1.5">
+                {t("nextReward", { points: nextThreshold.toLocaleString() })}
+              </p>
+            </div>
+
+            <PrimaryButton
+              disabled={!canRedeem}
+              className={`mt-3 !bg-green-600 hover:!bg-green-700 ${!canRedeem ? "opacity-40 cursor-not-allowed" : ""}`}
+            >
+              <Gift size={13} />
+              {t("redeem")}
+            </PrimaryButton>
           </div>
 
-          <PrimaryButton
-            disabled={!canRedeem}
-            className={`mt-3 !bg-green-600 hover:!bg-green-700 ${!canRedeem ? "opacity-40 cursor-not-allowed" : ""}`}
-          >
-            <Gift size={13} />
-            {t("redeem")}
-          </PrimaryButton>
-        </div>
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                {t("history")}
+              </p>
+              {hasMore && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllHistory(true)}
+                  className="flex items-center gap-0.5 text-[11px] font-semibold text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 transition-colors"
+                >
+                  View all
+                  <ChevronRight size={12} />
+                </button>
+              )}
+            </div>
 
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-              {t("history")}
-            </p>
-            {hasMore && (
-              <button
-                type="button"
-                onClick={() => setShowAllHistory(true)}
-                className="flex items-center gap-0.5 text-[11px] font-semibold text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 transition-colors"
-              >
-                View all
-                <ChevronRight size={12} />
-              </button>
+            {visibleRows.length === 0 ? (
+              <p className="text-[12px] text-gray-500 dark:text-gray-400 leading-relaxed">
+                {t("noActivityYet")}
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {visibleRows.map((h, i) => (
+                  <HistoryRow key={h.id} h={h} index={i} />
+                ))}
+              </ul>
             )}
           </div>
-
-          {visibleRows.length === 0 ? (
-            <p className="text-[12px] text-gray-400 dark:text-gray-500">{t("empty")}</p>
-          ) : (
-            <ul className="space-y-2">
-              {visibleRows.map((h, i) => (
-                <HistoryRow key={h.id} h={h} index={i} />
-              ))}
-            </ul>
-          )}
         </div>
-      </div>
+      )}
 
       <AnimatePresence>
         {showAllHistory && (
