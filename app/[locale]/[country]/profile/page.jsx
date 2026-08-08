@@ -2,7 +2,7 @@
 
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import { Folder } from "lucide-react";
@@ -18,7 +18,7 @@ import {
   removeCompareAPI,
 } from "@/services/venues.service";
 
-import { profile_main_page , allbookingData } from '@/services/profile.service';
+import { profile_main_page , allbookingData , getUnreadMessageCount } from '@/services/profile.service';
 
 import { recent_views, Api_recommeded } from "@/services/home.service";
 import { usePreferredLocation } from "@/hooks/usePreferredLocation";
@@ -50,6 +50,7 @@ import ReelsForYouSection from "./components/widgets/ReelsForYouSection";
 import SuggestionsSection from "./components/widgets/SuggestionsSection";
 
 import { computeMockWalletPoints } from "./data/mockProfileData";
+import { useRealtime } from "@/context/RealtimeContext";
 
 function unwrapList(res) {
   const d = res?.data;
@@ -86,6 +87,7 @@ export default function ProfilePage() {
   const { setLoginOpen } = useUI();
   const { locale, country } = useParams();
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
 
   // Deep-link support for the navbar dropdown's Bookings/Notifications
@@ -118,6 +120,8 @@ export default function ProfilePage() {
   const [recommended, setRecommended] = useState([]);
   const [recommendedLoading, setRecommendedLoading] = useState(true);
 
+    const [notifications, SetNotifications] = useState(0);
+
   // Center-column toggle — GreetingBar's "Bookings" pill (always visible,
   // both modes) swaps the CENTER column between the feed (Reels +
   // Suggestions + Offers) and a single Bookings panel filling the column —
@@ -128,12 +132,39 @@ export default function ProfilePage() {
   // toggled open — replacing the old data-driven hasBookings↔Offers swap.
   const [showFullBookings, setShowFullBookings] = useState(false);
 
-  // ?section=bookings (from the navbar dropdown) opens straight into the
-  // full Bookings view instead of the feed — same state either link on
-  // this page already drives, just pre-set on arrival.
+   const { refreshKey, realtime } = useRealtime();
+   
+
+  // ?section=bookings (from the navbar dropdown, or the GreetingBar pill
+  // below) opens straight into the full Bookings view — showFullBookings is
+  // derived FROM the URL in both directions here (not just read once on
+  // load) so it always matches the address bar, including when it changes
+  // because of the real browser/mouse back button rather than one of our
+  // own clicks.
   useEffect(() => {
-    if (sectionParam === "bookings") setShowFullBookings(true);
+    setShowFullBookings(sectionParam === "bookings");
   }, [sectionParam]);
+
+  // openBookings PUSHES a new history entry so the back button steps out of
+  // Bookings one level at a time instead of jumping straight past it to
+  // wherever the user was before this page. closeBookings then just calls
+  // router.back() to pop that same entry — the state update above happens
+  // via the effect once the URL actually changes, not optimistically here,
+  // so there's no race between local state and the async navigation.
+  const openBookings = useCallback(() => {
+    const params = new URLSearchParams(searchParams);
+    params.set("section", "bookings");
+    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [pathname, router, searchParams]);
+
+  const closeBookings = useCallback(() => {
+    router.back();
+  }, [router]);
+
+  const toggleBookings = useCallback(() => {
+    if (showFullBookings) closeBookings();
+    else openBookings();
+  }, [showFullBookings, openBookings, closeBookings]);
 
   // ?section=notifications does the same for NotificationsSection's own
   // "View All" panel (see its `defaultOpen` prop below) — computed once
@@ -156,68 +187,76 @@ export default function ProfilePage() {
     };
   }, [isDesktop, showFullBookings]);
 
-  const load = useCallback(async () => {
-    if (!user) {
-      setDataLoading(false);
-      return;
-    }
-    setDataLoading(true);
-    try {
-      const [likedRes, wlRes, catRes, cmpRes, rvRes, resProfile, allBooks ] = await Promise.allSettled([
-        likedProperty(),
-        UserWishlist(),
-        UserWishlistCategory(),
-        UserCompare(),
-        recent_views(),
-        profile_main_page(),
-        allbookingData(),
-      ]);
-      setLiked(likedRes.status === "fulfilled" ? unwrapList(likedRes.value) : []);
-      setWishlist(wlRes.status === "fulfilled" ? unwrapList(wlRes.value) : []);
-      setCollections(catRes.status === "fulfilled" ? unwrapList(catRes.value) : []);
-      setCompares(cmpRes.status === "fulfilled" ? unwrapList(cmpRes.value) : []);
-      setRecentViews(rvRes.status === "fulfilled" ? unwrapList(rvRes.value) : []);
-     // setBookingProfile(resProfile.status === "fulfilled" ? unwrapList(resProfile.value) : []);
-
-   setBookingProfile(
-  resProfile.status === "fulfilled"
-    ? resProfile.value?.data?.notification ?? []
-    : []
-);
-
-   setBookingCurrent(
-  resProfile.status === "fulfilled"
-    ? resProfile.value?.data?.currentBooking ?? {}
-    : {}
-);  
-setBookingUpcoming(
-  resProfile.status === "fulfilled"
-    ? resProfile.value?.data?.upcomingBookings ?? []
-    : {}
-);
-
-setreservationHold(
-  resProfile.status === "fulfilled"
-    ? resProfile.value?.data?.reservationHold ?? []
-    : {}
-);
-
-
-SetAllBookings(
-  allBooks.status === "fulfilled"
-    ? allBooks.value?.data.ALLBOOKINGS ?? []
-    : {}
-);
-
-    } finally {
-      setDataLoading(false);
-    }
-  }, [user]);
-
-
-  useEffect(() => {
-    load();
-  }, [load]);
+   const load = useCallback(async () => {
+     if (!user) {
+       setDataLoading(false);
+       return;
+     }
+     setDataLoading(true);
+     try {
+       const [likedRes, wlRes, catRes, cmpRes, rvRes, resProfile, allBooks,countNotify ] = await Promise.allSettled([
+         likedProperty(),
+         UserWishlist(),
+         UserWishlistCategory(),
+         UserCompare(),
+         recent_views(),
+         profile_main_page(),
+         allbookingData(),
+         getUnreadMessageCount(),
+       ]);
+       setLiked(likedRes.status === "fulfilled" ? unwrapList(likedRes.value) : []);
+       setWishlist(wlRes.status === "fulfilled" ? unwrapList(wlRes.value) : []);
+       setCollections(catRes.status === "fulfilled" ? unwrapList(catRes.value) : []);
+       setCompares(cmpRes.status === "fulfilled" ? unwrapList(cmpRes.value) : []);
+       setRecentViews(rvRes.status === "fulfilled" ? unwrapList(rvRes.value) : []);
+      // setBookingProfile(resProfile.status === "fulfilled" ? unwrapList(resProfile.value) : []);
+ 
+    setBookingProfile(
+   resProfile.status === "fulfilled"
+     ? resProfile.value?.data?.notification ?? []
+     : []
+ );
+ 
+    setBookingCurrent(
+   resProfile.status === "fulfilled"
+     ? resProfile.value?.data?.currentBooking ?? {}
+     : {}
+ );  
+ setBookingUpcoming(
+   resProfile.status === "fulfilled"
+     ? resProfile.value?.data?.upcomingBookings ?? []
+     : {}
+ );
+ 
+ setreservationHold(
+   resProfile.status === "fulfilled"
+     ? resProfile.value?.data?.reservationHold ?? []
+     : {}
+ );
+ 
+ 
+ SetAllBookings(
+   allBooks.status === "fulfilled"
+     ? allBooks.value?.data.ALLBOOKINGS ?? []
+     : {}
+ );
+ 
+ SetNotifications(
+   countNotify.status === "fulfilled"
+     ? countNotify.value?.data.unreadCount ?? 0
+     : {}
+ );
+ 
+     } finally {
+       setDataLoading(false);
+     }
+   }, [user,realtime]);
+ 
+ 
+   useEffect(() => {
+     load();
+   }, [load,realtime]);
+ 
 
 
   // Same real preferred-location source home/page.jsx's own
@@ -279,7 +318,7 @@ SetAllBookings(
         load();
       }
     },
-    [user, load, setLoginOpen],
+    [user, load, setLoginOpen,realtime],
   );
 
   const walletPoints = useMemo(() => computeMockWalletPoints(POINTS_PER_INR), []);
@@ -390,7 +429,8 @@ SetAllBookings(
                 locale={locale}
                 country={country}
                 bookingsActive={showFullBookings}
-                onToggleBookings={() => setShowFullBookings((v) => !v)}
+                onToggleBookings={toggleBookings}
+                 notifications={notifications}
               />
 
               {/* mode="wait" would delay this element's mount until
@@ -476,7 +516,8 @@ SetAllBookings(
               locale={locale}
               country={country}
               bookingsActive={showFullBookings}
-              onToggleBookings={() => setShowFullBookings((v) => !v)}
+              onToggleBookings={toggleBookings}
+               notifications={notifications}
             />
 
             {/* Reminder belt — same "soonest upcoming" + "hold expiring"
@@ -533,7 +574,7 @@ SetAllBookings(
           above. Mounted here rather than inside the mobile branch so it
           isn't clipped by that column's own layout/overflow rules. */}
       {!isDesktop && showFullBookings && (
-        <BookingsPanel fullScreen onBack={() => setShowFullBookings(false)} bookingUpcoming = {bookingUpcoming }  allBookingData={allBookings}/>
+        <BookingsPanel fullScreen onBack={closeBookings} bookingUpcoming = {bookingUpcoming }  allBookingData={allBookings}/>
       )}
 
       {/* Account Settings and Membership & Rewards both navigate to the
