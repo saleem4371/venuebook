@@ -7,15 +7,13 @@
  * conversation plus the composer.
  *
  * Features:
- *   • Combined sticky header: avatar/name/status row flows directly into
- *     a venue/booking context strip below it — ONE seamless block (single
- *     bottom border), not two stacked cards.
+ *   • Sticky header with back button (mobile), avatar, status, actions
  *   • Messages grouped by date with dividers
  *   • Outgoing bubbles (violet) / incoming bubbles (gray)
  *   • Avatar shown for first message in each incoming group
  *   • Sender name shown for group-style conversations
  *   • Animated typing indicator (3-dot bounce)
- *   • Real send via SendMessageApi, with optimistic UI + retry on failure
+ *   • Simulated reply after send for demo purposes
  *   • File attachment preview + send
  *   • Send on Enter (Shift+Enter for newline)
  *   • Scroll-to-bottom on new messages
@@ -23,25 +21,9 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import {
-  ChevronLeft,
-  Paperclip,
-  Send,
-  MoreHorizontal,
-  Info,
-  X,
-  Building2,
-  Calendar,
-  Hash,
-  CheckCircle2,
-  Clock4,
-  Loader2,
-  AlertCircle,
-} from "lucide-react";
+import { ChevronLeft, Paperclip, Send, MoreHorizontal, Info, X, Building2, Calendar, Hash, CheckCircle2, Clock4 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
-
-const DEFAULT_CONTACT = { initials: "?", color: "from-gray-400 to-gray-500", isOnline: false, name: "" };
 
 /* ── Typing dots animation ─────────────────────────────────────── */
 function TypingIndicator({ contact }) {
@@ -74,8 +56,6 @@ function TypingIndicator({ contact }) {
 /* ── Single message bubble ─────────────────────────────────────── */
 function MessageBubble({ msg, contact, isContinuation, onRetry }) {
   const isMe = msg.role === "me";
-  const isFailed = msg.status === "failed";
-  const isSending = msg.status === "sending";
 
   return (
     <motion.div
@@ -109,8 +89,7 @@ function MessageBubble({ msg, contact, isContinuation, onRetry }) {
         {/* Bubble */}
         <div
           className={[
-            "px-3.5 py-2.5 text-[13px] leading-relaxed break-words transition-opacity",
-            isFailed ? "opacity-60" : isSending ? "opacity-80" : "",
+            "px-3.5 py-2.5 text-[13px] leading-relaxed break-words",
             isMe
               ? "bg-violet-600 dark:bg-violet-500 text-white rounded-2xl rounded-br-[6px] shadow-sm"
               : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-2xl rounded-bl-[6px]",
@@ -127,27 +106,26 @@ function MessageBubble({ msg, contact, isContinuation, onRetry }) {
         </div>
 
         {/* Timestamp + delivery status */}
-        <div className="flex items-center gap-1.5 px-1">
-          {isFailed ? (
-            <button
-              type="button"
-              onClick={() => onRetry?.(msg.id)}
-              className="flex items-center gap-1 text-[10px] font-semibold text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 transition-colors"
-            >
-              <AlertCircle size={10} />
-              Failed · Tap to retry
-            </button>
-          ) : (
-            <span className="text-[10px] text-gray-400 dark:text-gray-500">{msg.time}</span>
-          )}
-
-          {isMe && !isFailed && (
-            <span className={`text-[10px] flex items-center ${msg.status === "seen" ? "text-violet-400 dark:text-violet-400" : "text-gray-400 dark:text-gray-500"}`}>
-              {isSending && <Loader2 size={10} className="animate-spin" />}
+        <div className="flex items-center gap-1 px-1">
+          <span className="text-[10px] text-gray-400 dark:text-gray-500">
+            {msg.time}
+          </span>
+          {isMe && msg.status !== "failed" && (
+            <span className={`text-[10px] ${msg.status === "seen" ? "text-violet-400 dark:text-violet-400" : "text-gray-400 dark:text-gray-500"}`}>
+              {msg.status === "sending"   && "…"}
               {msg.status === "sent"      && "✓"}
               {msg.status === "delivered" && "✓✓"}
               {msg.status === "seen"      && "✓✓"}
             </span>
+          )}
+          {isMe && msg.status === "failed" && (
+            <button
+              type="button"
+              onClick={() => onRetry?.(msg.id)}
+              className="text-[10px] text-red-500 hover:text-red-600 underline underline-offset-2"
+            >
+              Failed · retry
+            </button>
           )}
         </div>
       </div>
@@ -156,28 +134,46 @@ function MessageBubble({ msg, contact, isContinuation, onRetry }) {
 }
 
 /* ── Main component ────────────────────────────────────────────── */
-export default function ChatThread({ conversation: conv, onBack, SendMessageApi }) {
+export default function ChatThread({ conversation: conv, messages: incomingMessages, messagesLoading, onBack, SendMessageApi }) {
   const t = useTranslations("messages");
-
-  // Backend conversation objects don't always ship every mock field —
-  // fall back defensively so a partial payload never crashes the thread.
-  const contact = conv?.contact ?? DEFAULT_CONTACT;
-  const convId = conv?.id ?? conv?._id;
-
-  const [messages,    setMessages]    = useState(conv?.messages ?? []);
+  const [messages,    setMessages]    = useState(incomingMessages ?? []);
   const [input,       setInput]       = useState("");
   const [isTyping,    setIsTyping]    = useState(false);
   const [filePreview, setFilePreview] = useState(null);
   const bottomRef = useRef(null);
   const textareaRef = useRef(null);
+  const convId = conv?.id ?? conv?._id;
 
-  /* Reset state when conversation changes */
+  const nowTime = () => new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+  /* Reset composer state when the user switches conversation. Message
+     syncing is handled separately below, driven by the `messages` prop
+     rather than conv.id alone — the parent never puts messages onto the
+     conversation object, and this thread needs to pick up fresh
+     messages (e.g. from a realtime refetch) even while staying open on
+     the same conversation. */
   useEffect(() => {
-    setMessages(conv?.messages ?? []);
     setInput("");
     setFilePreview(null);
     setIsTyping(false);
-  }, [convId]);
+  }, [conv.id]);
+
+  /* Sync local messages from the `messages` prop whenever it changes —
+     on conversation switch AND whenever the parent refetches (e.g. a
+     realtime event for this conversation). Optimistic messages that
+     haven't been confirmed by the server yet ("sending" / "failed")
+     are preserved across the sync so a refetch racing ahead of a send
+     doesn't make the just-sent bubble disappear. */
+  useEffect(() => {
+    setMessages((prev) => {
+      const incoming = incomingMessages ?? [];
+      const incomingIds = new Set(incoming.map((m) => m.id));
+      const pending = prev.filter(
+        (m) => (m.status === "sending" || m.status === "failed") && !incomingIds.has(m.id),
+      );
+      return [...incoming, ...pending];
+    });
+  }, [incomingMessages, conv.id]);
 
   /* Scroll to bottom whenever messages update */
   useEffect(() => {
@@ -192,9 +188,6 @@ export default function ChatThread({ conversation: conv, onBack, SendMessageApi 
     el.style.height = `${Math.min(el.scrollHeight, 112)}px`;
   }, [input]);
 
-  const nowTime = () => new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-
-  // Shared by handleSend (new message) and retry (existing failed one).
   const deliverMessage = useCallback(
     async (tempId, text, file) => {
       try {
@@ -240,7 +233,6 @@ export default function ChatThread({ conversation: conv, onBack, SendMessageApi 
       status: "sending",
     };
 
-    // Optimistic update
     setMessages((prev) => [...prev, newMsg]);
     setInput("");
     setFilePreview(null);
@@ -268,7 +260,7 @@ export default function ChatThread({ conversation: conv, onBack, SendMessageApi 
   const handleFile = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setFilePreview({ name: file.name, preview: URL.createObjectURL(file), file });
+    setFilePreview({ name: file.name, preview: URL.createObjectURL(file) });
     e.target.value = "";
   };
 
@@ -281,136 +273,148 @@ export default function ChatThread({ conversation: conv, onBack, SendMessageApi 
   }, {});
 
   const canSend = input.trim().length > 0 || !!filePreview;
-  const showContext = !!conv && ["bookings", "enquiries"].includes(conv?.category);
-
-  if (!conv) return null;
+  const showContext = conv.venue && ["bookings", "enquiries"].includes(conv.category);
 
   return (
     <div className="flex flex-col h-full bg-white dark:bg-gray-950">
 
-      {/* ── Combined header: avatar/name row flows directly into the
-          context strip below with NO border between them — one visual
-          block, single border-b at the very bottom. ─────────────────── */}
-      <div className="shrink-0 border-b border-gray-100 dark:border-gray-800 bg-white/98 dark:bg-gray-950/98 backdrop-blur-sm">
+      {/* ── Header ──────────────────────────────────────────────── */}
+      <div className="shrink-0 flex items-center gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-800 bg-white/98 dark:bg-gray-950/98 backdrop-blur-sm">
 
-        {/* Avatar / name / status row */}
-        <div className="flex items-center gap-3 px-4 py-3">
+        {/* Back button — mobile only */}
+        <button
+          onClick={onBack}
+          aria-label="Back to conversations"
+          className="md:hidden flex items-center justify-center w-8 h-8 -ms-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors shrink-0"
+        >
+          <ChevronLeft size={18} className="text-gray-600 dark:text-gray-400 rtl:rotate-180" />
+        </button>
 
-          {/* Back button — mobile only */}
-          <button
-            onClick={onBack}
-            aria-label="Back to conversations"
-            className="md:hidden flex items-center justify-center w-8 h-8 -ms-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors shrink-0"
+        {/* Avatar + online dot */}
+        <div className="relative shrink-0">
+          {/* <div
+            className={`w-9 h-9 rounded-full bg-gradient-to-br ${conv.contact.color} flex items-center justify-center text-[11px] font-bold text-white shadow-sm`}
           >
-            <ChevronLeft size={18} className="text-gray-600 dark:text-gray-400 rtl:rotate-180" />
-          </button>
-
-          {/* Avatar + online dot */}
-          <div className="relative shrink-0">
-            <div
-              className={`w-9 h-9 rounded-full bg-gradient-to-br ${contact.color} flex items-center justify-center text-[11px] font-bold text-white shadow-sm`}
-            >
-              {contact.initials}
-            </div>
-            <span
-              aria-hidden="true"
-              className={[
-                "absolute bottom-0 end-0 w-2.5 h-2.5 rounded-full ring-2 ring-white dark:ring-gray-950",
-                contact.isOnline ? "bg-emerald-500" : "bg-gray-300 dark:bg-gray-600",
-              ].join(" ")}
-            />
-          </div>
-
-          {/* Name + status — category is shown in the context strip below
-              instead of repeated here. */}
-          <div className="flex-1 min-w-0">
-            <p className="text-[14px] font-semibold text-gray-900 dark:text-gray-100 leading-tight truncate">
-              {conv.venue}
-            </p>
-            <p className="text-[11px] text-gray-400 dark:text-gray-500 truncate leading-tight mt-0.5">
-              {contact.isOnline ? t("online") : (conv.subject)}
-            </p>
-          </div>
-
-          {/* Action buttons */}
-          <div className="flex items-center gap-1 shrink-0">
-            <button
-              aria-label="Conversation info"
-              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-            >
-              <Info size={15} className="text-gray-400 dark:text-gray-500" />
-            </button>
-            <button
-              aria-label="More options"
-              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-            >
-              <MoreHorizontal size={15} className="text-gray-400 dark:text-gray-500" />
-            </button>
-          </div>
+            {conv.contact.initials}
+          </div> */}
+           <div
+    className={`w-10 h-10 md:w-11 md:h-11 rounded-full bg-gradient-to-br ${conv.contact.color} flex items-center justify-center text-[11px] md:text-[12px] font-bold text-white shadow-sm overflow-hidden`}
+  >
+    {conv.attachment ? (
+      <img
+        src={conv.attachment}
+        alt={conv.contact.name || "Contact"}
+        className="w-full h-full object-cover"
+      />
+    ) : (
+      conv.contact.initials
+    )}
+  </div>
+          <span
+            aria-hidden="true"
+            className={[
+              "absolute bottom-0 end-0 w-2.5 h-2.5 rounded-full ring-2 ring-white dark:ring-gray-950",
+              conv.contact.isOnline ? "bg-emerald-500" : "bg-gray-300 dark:bg-gray-600",
+            ].join(" ")}
+          />
         </div>
 
-        {/* Venue / booking context strip — no top border/gap, sits flush
-            under the row above so the whole header reads as one block. */}
-        {showContext && (
-          <div className="px-4 py-2.5 bg-violet-50/70 dark:bg-violet-950/20">
-            <div className="flex items-start gap-3">
-
-              {/* Left: venue + event info */}
-              <div className="flex-1 min-w-0 space-y-[3px]">
-                {/* Venue */}
-                <div className="flex items-center gap-1.5">
-                  <Building2 size={11} className="text-violet-400 dark:text-violet-500 shrink-0" />
-                  <span className="text-[11.5px] font-semibold text-violet-700 dark:text-violet-300 truncate">
-                    {conv.venue}
-                  </span>
-                </div>
-                {/* Subject / event */}
-                <div className="flex items-center gap-1.5">
-                  <Calendar size={11} className="text-violet-300 dark:text-violet-600 shrink-0" />
-                  <span className="text-[11px] text-gray-500 dark:text-gray-400 truncate">
-                    {conv.subject}
-                  </span>
-                </div>
-                {/* Booking ref — derived from subject if it contains # */}
-                {conv.subject?.includes("#") && (
-                  <div className="flex items-center gap-1.5">
-                    <Hash size={11} className="text-violet-300 dark:text-violet-600 shrink-0" />
-                    <span className="text-[11px] font-mono text-gray-400 dark:text-gray-500 truncate">
-                      {conv.subject.match(/#[\w-]+/)?.[0] ?? ""}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* Right: status badge */}
-              <div className="shrink-0 mt-0.5">
-                {conv.booking_type === "booked" && (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/40">
-                    <CheckCircle2 size={9} strokeWidth={2.5} />
-                    {t("categories.bookings")}
-                  </span>
-                )}
-                {conv.booking_type === "enquiry" && (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200/60 dark:border-amber-800/40">
-                    <Clock4 size={9} strokeWidth={2.5} />
-                    {t("categories.enquiries")}
-                  </span>
-                )} 
-                {conv.booking_type === "reserve" && (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200/60 dark:border-amber-800/40">
-                    <Clock4 size={9} strokeWidth={2.5} />
-                    Reserve
-                  </span>
-                )}
-              </div>
-
-            </div>
+        {/* Name + venue/subject — category is already shown on the inbox
+            row and, where relevant, in the context card below, so it
+            isn't repeated here. */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-[14px] font-semibold text-gray-900 dark:text-gray-100 leading-tight truncate">
+              {conv.contact.name}
+            </p>
           </div>
-        )}
+          <p className="text-[11px] text-gray-400 dark:text-gray-500 truncate leading-tight mt-0.5">
+            {conv.contact.isOnline ? t("online") : (conv.venue ?? conv.subject)}
+          </p>
+        </div>
+
+        {/* Action buttons */}
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            aria-label="Conversation info"
+            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          >
+            <Info size={15} className="text-gray-400 dark:text-gray-500" />
+          </button>
+          <button
+            aria-label="More options"
+            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          >
+            <MoreHorizontal size={15} className="text-gray-400 dark:text-gray-500" />
+          </button>
+        </div>
       </div>
+
+      {/* ── Booking / Lead context card ────────────────────────── */}
+      {/*
+        Shown only for guest / lead / booking conversations that have
+        a venue attached. Team, Support and System threads skip this.
+        Gives the vendor instant context: venue, event, ref, status.
+      */}
+      {showContext && (
+        <div className="shrink-0 px-4 py-2.5 bg-violet-50/70 dark:bg-violet-950/20 border-b border-violet-100 dark:border-violet-900/40">
+          <div className="flex items-start gap-3">
+
+            {/* Left: venue + event info */}
+            <div className="flex-1 min-w-0 space-y-[3px]">
+              {/* Venue */}
+              <div className="flex items-center gap-1.5">
+                <Building2 size={11} className="text-violet-400 dark:text-violet-500 shrink-0" />
+                <span className="text-[11.5px] font-semibold text-violet-700 dark:text-violet-300 truncate">
+                  {conv.venue}
+                </span>
+              </div>
+              {/* Subject / event */}
+              <div className="flex items-center gap-1.5">
+                <Calendar size={11} className="text-violet-300 dark:text-violet-600 shrink-0" />
+                <span className="text-[11px] text-gray-500 dark:text-gray-400 truncate">
+                  {conv.subject}
+                </span>
+              </div>
+              {/* Booking ref — derived from subject if it contains # */}
+              {conv.subject?.includes("#") && (
+                <div className="flex items-center gap-1.5">
+                  <Hash size={11} className="text-violet-300 dark:text-violet-600 shrink-0" />
+                  <span className="text-[11px] font-mono text-gray-400 dark:text-gray-500 truncate">
+                    {conv.subject.match(/#[\w-]+/)?.[0] ?? ""}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Right: status badge */}
+            <div className="shrink-0 mt-0.5">
+              {conv.category === "bookings" && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/40">
+                  <CheckCircle2 size={9} strokeWidth={2.5} />
+                  {t("categories.bookings")}
+                </span>
+              )}
+              {conv.category === "enquiries" && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200/60 dark:border-amber-800/40">
+                  <Clock4 size={9} strokeWidth={2.5} />
+                  {t("categories.enquiries")}
+                </span>
+              )}
+            </div>
+
+          </div>
+        </div>
+      )}
 
       {/* ── Messages area ───────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto px-4 py-4 [scrollbar-width:thin] [scrollbar-color:theme(colors.gray.200)_transparent] dark:[scrollbar-color:theme(colors.gray.800)_transparent]">
+
+        {messagesLoading && messages.length === 0 && (
+          <div className="flex items-center justify-center h-full text-[12px] text-gray-400 dark:text-gray-500">
+            {t("loadingMessages") ?? "Loading…"}
+          </div>
+        )}
 
         {Object.entries(grouped).map(([date, msgs]) => (
           <div key={date}>
@@ -431,7 +435,7 @@ export default function ChatThread({ conversation: conv, onBack, SendMessageApi 
                 <MessageBubble
                   key={msg.id}
                   msg={msg}
-                  contact={contact}
+                  contact={conv.contact}
                   isContinuation={isContinuation}
                   onRetry={handleRetry}
                 />
@@ -443,7 +447,7 @@ export default function ChatThread({ conversation: conv, onBack, SendMessageApi 
         {/* Typing indicator */}
         <AnimatePresence>
           {isTyping && (
-            <TypingIndicator key="typing" contact={contact} />
+            <TypingIndicator key="typing" contact={conv.contact} />
           )}
         </AnimatePresence>
 

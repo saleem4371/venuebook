@@ -13,16 +13,7 @@ import { Search, Pin, ChevronLeft, ChevronRight, ArrowLeft } from "lucide-react"
 import { useTranslations } from "next-intl";
 import { MESSAGE_CATEGORIES, CATEGORY_STYLES } from "../_data";
 
-// Backend records may key on `_id` (Mongo-style) instead of `id` — resolve
-// once, consistently, everywhere an id is needed (React key, active-state
-// match, onSelect). Using `conv.id` directly in some places and a
-// normalized id in others is what caused rows to go stale on refetch:
-// with `_id`-only payloads every `key={conv.id}` was `undefined`, so React
-// couldn't tell conversations apart and reused stale DOM nodes instead of
-// updating them.
-function getConvId(conv) {
-  return String(conv.id ?? conv._id ?? "");
-}
+import dayjs from "dayjs";
 
 /* ── Category pill ─────────────────────────────────────────────── */
 function CategoryPill({ category }) {
@@ -37,6 +28,8 @@ function CategoryPill({ category }) {
 
 /* ── Conversation card ─────────────────────────────────────────── */
 function ConversationCard({ conv, isActive, onClick }) {
+  const nowTime = dayjs(conv.time).format("hh:mm A");
+
   return (
     <button
       onClick={onClick}
@@ -49,17 +42,36 @@ function ConversationCard({ conv, isActive, onClick }) {
       ].join(" ")}
     >
       {/* Avatar + online dot */}
-      <div className="relative shrink-0 mt-0.5">
-        <div
-          className={`w-10 h-10 md:w-11 md:h-11 rounded-full bg-gradient-to-br ${conv.contact.color} flex items-center justify-center text-[11px] md:text-[12px] font-bold text-white shadow-sm`}
+      <div className="relative w-10 h-10 md:w-11 md:h-11 rounded-full">
+
+        
+        {/* <div
+          className={`w-full h-full rounded-full bg-gradient-to-br ${conv.contact.color} flex items-center justify-center text-[11px] md:text-[12px] font-bold text-white shadow-sm`}
         >
           {conv.contact.initials}
-        </div>
+        </div> */}
+
+          <div
+    className={`w-10 h-10 md:w-11 md:h-11 rounded-full bg-gradient-to-br ${conv.contact.color} flex items-center justify-center text-[11px] md:text-[12px] font-bold text-white shadow-sm overflow-hidden`}
+  >
+    {conv.attachment ? (
+      <img
+        src={conv.attachment}
+        alt={conv.contact.name || "Contact"}
+        className="w-full h-full object-cover"
+      />
+    ) : (
+      conv.contact.initials
+    )}
+  </div>
+
         <span
           aria-hidden="true"
           className={[
             "absolute bottom-0 end-0 w-2.5 h-2.5 md:w-3 md:h-3 rounded-full ring-2 ring-white dark:ring-gray-950",
-            conv.contact.isOnline ? "bg-emerald-500" : "bg-gray-300 dark:bg-gray-600",
+            conv.contact.isOnline
+              ? "bg-emerald-500"
+              : "bg-gray-300 dark:bg-gray-600",
           ].join(" ")}
         />
       </div>
@@ -75,17 +87,18 @@ function ConversationCard({ conv, isActive, onClick }) {
                 : "text-gray-700 dark:text-gray-300"
             }`}
           >
-            {conv.venue} 
+            {conv.contact.name}
           </span>
+
           <span className="text-[11px] md:text-[12px] text-gray-400 dark:text-gray-500 shrink-0 leading-none">
-            {conv.time}
+            {nowTime}
           </span>
         </div>
 
         {/* Row 2: venue / subject */}
-        {(conv.venue || conv.booking_code) && (
+        {(conv.venue || conv.subject) && (
           <p className="text-[11px] md:text-[12px] text-gray-400 dark:text-gray-500 truncate mb-1 leading-snug">
-           { conv.booking_code}
+            {conv.venue ?? conv.subject}
           </p>
         )}
 
@@ -100,6 +113,7 @@ function ConversationCard({ conv, isActive, onClick }) {
           >
             {conv.lastMessage}
           </p>
+
           {conv.unread > 0 && (
             <span className="shrink-0 flex h-5 min-w-[20px] md:h-[22px] md:min-w-[22px] items-center justify-center rounded-full bg-violet-600 dark:bg-violet-500 px-1.5 text-[9px] md:text-[10px] font-bold text-white leading-none">
               {conv.unread}
@@ -110,8 +124,12 @@ function ConversationCard({ conv, isActive, onClick }) {
         {/* Row 4: category chip + pin */}
         <div className="flex items-center gap-1.5 mt-1.5">
           <CategoryPill category={conv.category} />
+
           {conv.pinned && (
-            <Pin size={9} className="text-gray-300 dark:text-gray-600 fill-current" />
+            <Pin
+              size={9}
+              className="text-gray-300 dark:text-gray-600 fill-current"
+            />
           )}
         </div>
       </div>
@@ -120,7 +138,7 @@ function ConversationCard({ conv, isActive, onClick }) {
 }
 
 /* ── Main component ────────────────────────────────────────────── */
-export default function ConversationList({ conversations, activeId, onSelect, onBack, loading }) {
+export default function ConversationList({ conversations, activeId, onSelect, onBack }) {
   const t = useTranslations("messages");
   const [search,   setSearch]   = useState("");
   const [category, setCategory] = useState("all");
@@ -211,7 +229,7 @@ export default function ConversationList({ conversations, activeId, onSelect, on
               </button>
             )}
             <h2 className="text-[15px] md:text-[17px] font-semibold text-gray-900 dark:text-gray-100 truncate">
-              {t("title")} 
+              {t("title")}
             </h2>
           </div>
           {totalUnread > 0 && (
@@ -336,13 +354,7 @@ export default function ConversationList({ conversations, activeId, onSelect, on
 
       {/* ── Conversation list ────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto md:pb-0 pb-[76px] [scrollbar-width:thin] [scrollbar-color:theme(colors.gray.200)_transparent] dark:[scrollbar-color:theme(colors.gray.800)_transparent]">
-        {loading ? (
-          <div className="flex flex-col items-center justify-center h-40 gap-2 px-6 text-center">
-            <p className="text-[13px] text-gray-400 dark:text-gray-500">
-              {t("loading", { defaultValue: "Loading…" })}
-            </p>
-          </div>
-        ) : filtered.length === 0 ? (
+        {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-40 gap-2 px-6 text-center">
             <Search size={20} className="text-gray-300 dark:text-gray-700" />
             <p className="text-[13px] text-gray-400 dark:text-gray-500">
@@ -350,17 +362,14 @@ export default function ConversationList({ conversations, activeId, onSelect, on
             </p>
           </div>
         ) : (
-          filtered.map((conv) => {
-            const id = getConvId(conv);
-            return (
-              <ConversationCard
-                key={id}
-                conv={conv}
-                isActive={id === activeId}
-                onClick={() => onSelect(id)}
-              />
-            );
-          })
+          filtered.map((conv) => (
+            <ConversationCard
+              key={conv.id}
+              conv={conv}
+              isActive={conv.id === activeId}
+              onClick={() => onSelect(conv.id)}
+            />
+          ))
         )}
       </div>
     </div>
