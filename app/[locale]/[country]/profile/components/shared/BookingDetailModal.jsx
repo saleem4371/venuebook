@@ -34,7 +34,7 @@ import { X, MessageCircle, Settings2, FileText } from "lucide-react";
 import { StatusBadge, GhostButton } from "./ui";
 import { InvoiceDocument } from "./InvoiceDocument";
 
-export const STATUS_TONE = { upcoming: "violet", completed: "green", cancelled: "red", enquiry: "amber", draft: "gray" };
+export const STATUS_TONE = { upcoming: "violet", completed: "green", cancelled: "red", enquiry: "amber", draft: "gray", pax: "violet" };
 export const PAYMENT_TONE = { paid: "green", partial: "amber", pending: "amber", refunded: "gray" };
 
 export function BookingDetailModal({ booking: b, mode, t, tCat, format, locale, country, onClose }) {

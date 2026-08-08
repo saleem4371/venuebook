@@ -133,6 +133,7 @@ export function ManageBookingView({ booking: b, t, tCat, format, locale, country
         country={country}
         categoryColor={categoryColor}
         onBack={onBack}
+        onBookingPatch={onBookingPatch}
       />
     );
   }
@@ -468,23 +469,39 @@ const handleContinue = async () => {
         src="https://checkout.razorpay.com/v1/checkout.js"
         strategy="lazyOnload"
       />
-      {/* Tabs */}
-      <div className="flex gap-1 p-1 rounded-xl bg-gray-100 dark:bg-gray-800/60">
-        {TAB_KEYS.map((key) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => setActiveTab(key)}
-            style={activeTab === key ? { backgroundColor: categoryColor } : undefined}
-            className={`flex-1 px-2 py-2 rounded-lg text-[11px] font-semibold transition-all duration-150 whitespace-nowrap ${
-              activeTab === key
-                ? "text-white shadow-sm"
-                : "text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-100 hover:bg-white/70 dark:hover:bg-gray-900/40"
-            }`}
-          >
-            {t(`manageView.tabs.${key}`)}
-          </button>
-        ))}
+      {/* Tabs — sticky so the bar stays pinned at the top of the scrolling
+          booking detail instead of scrolling out of view with the content.
+
+          The scroll container this renders inside (BookingsPanel.jsx) has
+          its own px-4 pt-3 padding sitting ABOVE this element in the DOM —
+          sticky's `top` offset is measured from the scroll ancestor's
+          padding edge, so that padding strip stayed permanently visible
+          above a plainly-sticky bar, showing scrolled content bleeding
+          through it. The outer wrapper cancels that padding (-mx-4 -mt-3)
+          and reapplies the same px-4 pt-3 inside itself with an opaque
+          bg-white/dark:bg-gray-900 backdrop (matching SectionCard's own
+          panel background), so the wrapper — not just the pill — is what's
+          actually stuck, fully covering that strip. pb-2 keeps the same
+          breathing room before the tab content that space-y-4 previously
+          gave it. PaxBookingView.jsx's tab bar mirrors this exactly. */}
+      <div className="sticky top-0 z-10 -mx-4 -mt-3 px-4 pt-3 pb-2 bg-white dark:bg-gray-900">
+        <div className="flex gap-1 p-1 rounded-xl bg-gray-100 dark:bg-gray-800/60">
+          {TAB_KEYS.map((key) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setActiveTab(key)}
+              style={activeTab === key ? { backgroundColor: categoryColor } : undefined}
+              className={`flex-1 px-2 py-2 rounded-lg text-[11px] font-semibold transition-all duration-150 whitespace-nowrap ${
+                activeTab === key
+                  ? "text-white shadow-sm"
+                  : "text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-100 hover:bg-white/70 dark:hover:bg-gray-900/40"
+              }`}
+            >
+              {t(`manageView.tabs.${key}`)}
+            </button>
+          ))}
+        </div>
       </div>
 
       {activeTab === "overview" && (

@@ -125,7 +125,7 @@ export function BookingCard({ booking, t, tCat, format, locale, country, onOpen 
   label={t(`status.${b.bookingStatus}`)}
   tone={STATUS_TONE[b.bookingStatus]}
 />
-
+{ b.bookingType ==='booked' && (
 <StatusBadge
   label={
     b.paymentStatus === "-"
@@ -134,6 +134,7 @@ export function BookingCard({ booking, t, tCat, format, locale, country, onOpen 
   }
   tone={PAYMENT_TONE[b.paymentStatus]}
 />
+)}
              </>)}
          
             </div>
@@ -147,10 +148,12 @@ export function BookingCard({ booking, t, tCat, format, locale, country, onOpen 
 
   <span className="inline-flex items-center gap-1.5">
     <Users size={12} />
-    {b.guests} Guests
+    {b.guests} Guests 
   </span>
 
-  <span className="font-semibold text-gray-800 dark:text-gray-200">
+{ b.bookingType ==='booked' && (
+<>
+<span className="font-semibold text-gray-800 dark:text-gray-200">
     Booking Amount: {format(b.total_amount)}
   </span>
 
@@ -162,7 +165,19 @@ export function BookingCard({ booking, t, tCat, format, locale, country, onOpen 
     <span className="font-semibold text-red-600">
       Pending: {format(b.total_amount - b.amount)}
     </span>
-  )}
+  )}</>
+)}
+{ b.bookingType ==='reserve' && (
+<>
+<span className="font-semibold text-gray-800 dark:text-gray-200">
+   Reserve Paid:{" "}
+{Number(b.estimated_total || 0) > 0
+  ? format(b.estimated_total)
+  : "Free"}
+  </span>
+</>
+)}
+  
 </div>
 
           <div className="flex flex-wrap gap-1.5 mt-2.5">
