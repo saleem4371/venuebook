@@ -41,6 +41,7 @@ export default function GreetingBar({
   flat = false,
   bookingsActive = false,
   onToggleBookings,
+  notifications
 }) {
   const t = useTranslations("profile.greeting");
 
@@ -54,10 +55,11 @@ export default function GreetingBar({
   // worth a ticking re-render for.
   const key = useMemo(() => greetingKey(new Date().getHours()), []);
 
-  const unreadCount = useMemo(
-    () => MOCK_CONVERSATIONS.reduce((sum, c) => sum + (c.unread || 0), 0),
-    [],
-  );
+  const unreadCount = notifications;
+  // useMemo(
+  //   () => MOCK_CONVERSATIONS.reduce((sum, c) => sum + (c.unread || 0), 0),
+  //   [],
+  // );
 
   // Each action is either a real route (`href`, rendered as a Link) or a
   // local toggle (`onClick`, rendered as a button) — Bookings is the

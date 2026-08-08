@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { AnimatePresence, motion } from "framer-motion";
 import { CalendarRange, PackageSearch, ArrowLeft } from "lucide-react";
@@ -11,6 +11,7 @@ import { SectionCard, SectionHeading, EmptyState, StatusBadge } from "../shared/
 import { BookingDetailModal, STATUS_TONE } from "../shared/BookingDetailModal";
 import { BookingCard } from "../shared/BookingCard";
 import { ManageBookingView } from "../shared/ManageBookingView";
+import { PAX_DEFAULT_STATUS, PAX_STATUS_TONE, paxStatusKey } from "../shared/PaxBookingView";
 import BookingTabs, { filterBookingsByTab } from "../shared/BookingTabs";
 import { CATEGORY_COLORS } from "../../data/mockProfileData";
 import { useToast } from "@/components/ToastProvider";
@@ -59,42 +60,6 @@ function DaysLeftBadge({ daysLeft, label, className = "" }) {
     </span>
   );
 }
-
-// Maps a raw API booking row (allBookingData items) onto the shape
-// BookingCard/BookingDetailModal/ManageBookingView already expect (the
-// old MOCK_BOOKINGS shape) — keeps every downstream component's design
-// and props completely unchanged.
-// function mapApiBookingToCard(b) {
-//   return {
-//     id: b.id,
-//     bookingId: b.bookingId,
-//     eventDateId: b.eventDateId,
-//     propertyName: b.propertyName || b.venue_name_snapshot,
-//     image: b.image ? `${IMAGE_BASE_URL}/${b.image}` : "/images/placeholder.jpg",
-//     date: b.eventDate,
-//     guests: b.guests ?? 0,
-//     bookingStatus: b.bookingStatus || b.status || "confirmed",
-//     paymentStatus: b.bookingStatus!=='cancelled' ? b.total_amount <=b.totalPaid ? "paid" :'pending' :'-',
-//     category: b.name || "venues",
-//     amount: b.totalPaid ?? 0,
-//     venueCity: b.venue_city,
-//     venueState: b.venue_state,
-//     shiftName: b.shift_name,
-//     startTime: b.start_time,
-//     endTime: b.end_time,
-//     daysLeft: b.daysLeft,
-//     coverImage: b.coverImage,
-//     event_date: b.eventDate,
-//     child_venue_name: b.child_venue_name,
-//     venue_name_snapshot: b.venue_name_snapshot,
-//     total_amount: b.total_amount,
-//     address: b.address,
-//     paymentHistory: b.paymentHistory,
-//     // Keep the raw row around too, in case a deeper view (ManageBookingView,
-//     // BookingDetailModal) needs a field not covered by the mapping above.
-//     _raw: b,
-//   };
-// }
 function mapApiBookingToCard(b) {
   const totalAmount = Number(b.total_amount || 0);
   const totalPaid = Number(b.totalPaid || 0);
@@ -104,6 +69,9 @@ function mapApiBookingToCard(b) {
     bookingId: b.bookingId,
     eventDateId: b.eventDateId,
     childVenueId: b.childVenueId,
+    bookingType: b.bookingType,
+    estimated_total: b.estimated_total,
+    paxPackages: b.paxPackages,
 
     propertyName: b.propertyName || b.venue_name_snapshot,
 
@@ -177,7 +145,18 @@ function dedupeByKey(list) {
   return out;
 }
 
-export default function BookingsPanel({
+// useSearchParams (used below to keep the Manage/Invoice view in the URL)
+// requires a Suspense boundary at the point of use — wrapping it here means
+// every existing caller of BookingsPanel gets that for free.
+export default function BookingsPanel(props) {
+  return (
+    <Suspense fallback={null}>
+      <BookingsPanelInner {...props} />
+    </Suspense>
+  );
+}
+
+function BookingsPanelInner({
   compact = false,
   flat = false,
   embedded = false,
@@ -185,11 +164,15 @@ export default function BookingsPanel({
   onBack,
   bookingUpcoming = [],
   allBookingData = [],
+
 }) {
   const t = useTranslations("profile.bookings");
   const tCat = useTranslations("card.badge");
   const { locale, country } = useParams();
   const { format } = useCurrency();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
    const toast = useToast();
 
@@ -208,6 +191,65 @@ export default function BookingsPanel({
   );
   const bookings = useMemo(() => filterBookingsByTab(allBookings, activeTab), [allBookings, activeTab]);
 
+
+  function openManage(b) {
+    const params = new URLSearchParams(searchParams);
+    params.set("view", "manage");
+    params.set("booking", uniqueKey(b));
+    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+  }
+
+  function openDetailModal(b, mode) {
+    const params = new URLSearchParams(searchParams);
+    params.set("view", mode);
+    params.set("booking", uniqueKey(b));
+    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+  }
+
+  function closeManage() {
+    router.back();
+  }
+
+  const handleBookingPatch = useCallback((patch) => {
+    setManageBooking((prev) => (prev ? { ...prev, ...patch } : prev));
+  }, []);
+
+  function closeDetailModal() {
+    router.back();
+  }
+
+  useEffect(() => {
+    const view = searchParams.get("view");
+    const key = searchParams.get("booking");
+
+    if (!view || !key) {
+      setManageBooking(null);
+      setModal(null);
+      return;
+    }
+
+    if (allBookings.length === 0) return; // not loaded yet — effect reruns once it is
+
+    const found = allBookings.find((b) => uniqueKey(b) === key);
+    if (!found) return;
+
+    if (view === "manage") {
+      setManageBooking((prev) =>
+        prev && uniqueKey(prev) === key
+          ? prev
+          : found.bookingStatus === "pax"
+            ? { ...found, paxStatus: PAX_DEFAULT_STATUS }
+            : found,
+      );
+      setModal(null);
+    } else {
+      setModal((prev) =>
+        prev && prev.mode === view && uniqueKey(prev.booking) === key ? prev : { booking: found, mode: view },
+      );
+      setManageBooking(null);
+    }
+  }, [searchParams, allBookings]);
+
   // Real upcoming bookings from the API, deduped, closest first.
   const upcoming = useMemo(
     () =>
@@ -217,12 +259,9 @@ export default function BookingsPanel({
     [bookingUpcoming],
   );
 
-   const [editMessage, setEditMessage] = useState("");
-  
-    const [editLoading, setEditLoading] = useState(false);
-  
+  const [editMessage, setEditMessage] = useState("");
+  const [editLoading, setEditLoading] = useState(false);
   const onBookingRequest = async (playload) => {
-    
     try {
       //setEditLoading(true);
   
@@ -317,7 +356,7 @@ export default function BookingsPanel({
         <div className="p-4 pb-0 flex items-center gap-3">
           <button
             type="button"
-            onClick={() => setManageBooking(null)}
+            onClick={closeManage}
             className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors shrink-0"
           >
             <ArrowLeft size={16} />
@@ -334,11 +373,22 @@ export default function BookingsPanel({
             </h3>
             <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{manageBooking.bookingId}</p>
           </div>
-          <StatusBadge
-            label={t(`status.${manageBooking.bookingStatus}`)}
-            tone={STATUS_TONE[manageBooking.bookingStatus]}
-            className="shrink-0"
-          />
+          <div className="flex items-center gap-1.5 shrink-0">
+            <StatusBadge
+              label={t(`status.${manageBooking.bookingStatus}`)}
+              tone={STATUS_TONE[manageBooking.bookingStatus]}
+            />
+            {/* Finer-grained negotiation status for pax/group enquiries —
+                bubbled up from PaxBookingView via onBookingPatch below so it
+                sits on the same line as the outer status badge instead of
+                floating inside that view's own content. */}
+            {manageBooking.bookingStatus === "pax" && manageBooking.paxStatus && (
+              <StatusBadge
+                label={t(`paxManagement.statusLabel.${paxStatusKey(manageBooking.paxStatus)}`)}
+                tone={PAX_STATUS_TONE[manageBooking.paxStatus]}
+              />
+            )}
+          </div>
         </div>
       ) : (
         <div className="p-4 pb-0">
@@ -378,9 +428,9 @@ export default function BookingsPanel({
             format={format}
             locale={locale}
             country={country}
-            onInvoice={() => setModal({ booking: manageBooking, mode: "invoice" })}
-            onBack={() => setManageBooking(null)}
-            onBookingPatch={(patch) => setManageBooking((prev) => (prev ? { ...prev, ...patch } : prev))}
+            onInvoice={() => openDetailModal(manageBooking, "invoice")}
+            onBack={closeManage}
+            onBookingPatch={handleBookingPatch}
             editBookingRequest = {onBookingRequest}
           />
         </div>
@@ -406,7 +456,7 @@ export default function BookingsPanel({
               format={format}
               locale={locale}
               country={country}
-              onOpen={(mode) => (mode === "manage" ? setManageBooking(b) : setModal({ booking: b, mode }))}
+              onOpen={(mode) => (mode === "manage" ? openManage(b) : openDetailModal(b, mode))}
                editBookingRequest = {onBookingRequest}
             />
           ))}
@@ -423,7 +473,7 @@ export default function BookingsPanel({
             format={format}
             locale={locale}
             country={country}
-            onClose={() => setModal(null)}
+            onClose={closeDetailModal}
           />
         )}
       </AnimatePresence>
