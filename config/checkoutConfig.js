@@ -344,10 +344,22 @@ export const MAX_WALLET_REDEMPTION_PERCENT = 0.2;
 
 /** Membership tiers with points thresholds */
 export const MEMBERSHIP_TIERS = [
-  { id: "bronze",  label: "Bronze",  minPoints: 0,      color: "#cd7f32", nextAt: 5000  },
-  { id: "silver",  label: "Silver",  minPoints: 5000,   color: "#9ca3af", nextAt: 15000 },
-  { id: "gold",    label: "Gold",    minPoints: 15000,  color: "#f59e0b", nextAt: 30000 },
-  { id: "diamond", label: "Diamond", minPoints: 30000,  color: "#818cf8", nextAt: null  },
+  {
+    id: "bronze", label: "Bronze", minPoints: 0, color: "#cd7f32", nextAt: 5000,
+    benefits: ["benefit_priority_support"],
+  },
+  {
+    id: "silver", label: "Silver", minPoints: 5000, color: "#9ca3af", nextAt: 15000,
+    benefits: ["benefit_priority_support", "benefit_faster_refunds"],
+  },
+  {
+    id: "gold", label: "Gold", minPoints: 15000, color: "#f59e0b", nextAt: 30000,
+    benefits: ["benefit_priority_support", "benefit_faster_refunds", "benefit_exclusive_offers"],
+  },
+  {
+    id: "diamond", label: "Diamond", minPoints: 30000, color: "#818cf8", nextAt: null,
+    benefits: ["benefit_priority_support", "benefit_faster_refunds", "benefit_exclusive_offers", "benefit_concierge"],
+  },
 ];
 
 /**
