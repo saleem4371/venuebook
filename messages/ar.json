@@ -66,7 +66,8 @@
     "location": "الموقع",
     "location_placeholder": "مدينتك أو منطقتك",
     "location_detected": "تم الكشف تلقائيًا من عنوان IP",
-    "confirm": "تأكيد"
+    "confirm": "تأكيد",
+    "region_switch_hint": "حدد الموقع واضغط على تأكيد للتبديل بين المناطق."
   },
   "auth": {
     "welcomeBack": "مرحباً بعودتك",
@@ -646,6 +647,371 @@
         "support": "الدعم",
         "system": "النظام"
       }
+    },
+    "account": {
+      "pageTitle": "Vendor Account",
+      "pageSubtitle": "Manage your business identity, compliance, subscriptions, settlements and team from one secure workspace.",
+      "actions": {
+        "support": "Support",
+        "notifications": "Notifications",
+        "activityLog": "Activity Log",
+        "supportBlurb": "Need help with your venuebook.in vendor workspace? Reach the team directly.",
+        "supportEmailLabel": "support@venuebook.in"
+      },
+      "nav": {
+        "profile": "Profile",
+        "kyc": "KYC & Compliance Hub",
+        "team": "Team Management",
+        "contracts": "Contracts & Agreements",
+        "subscription": "Subscription",
+        "finance": "Finance & Settlements"
+      },
+      "activityLogPanel": {
+        "title": "Activity Log",
+        "empty": "No recent workspace activity yet.",
+        "close": "Close"
+      },
+      "comingSoon": {
+        "title": "Building this next",
+        "subtitle": "This section is being built in the next pass — nothing to configure here yet.",
+        "cta": "Notify me when ready",
+        "notified": "We'll let you know."
+      },
+      "errorState": {
+        "title": "Something went wrong",
+        "subtitle": "This section couldn't load. Please try again.",
+        "retry": "Retry"
+      },
+      "permissionState": {
+        "title": "You don't have access to this section",
+        "subtitle": "Ask an account Owner or Admin to grant you access."
+      },
+      "profile": {
+        "hero": {
+          "vendorId": "Vendor ID",
+          "accountCreated": "Account Created",
+          "profileCompletion": "Profile Completion",
+          "editProfile": "Edit Profile",
+          "unverified": "Unverified",
+          "verified": "Verified",
+          "pending": "KYC Pending",
+          "inReview": "Under Review",
+          "actionRequired": "Action Required"
+        },
+        "credentials": {
+          "title": "Account Credentials",
+          "subtitle": "Your sign-in details and password.",
+          "username": "Username",
+          "email": "Communication Email",
+          "phone": "Phone Number",
+          "password": "Password",
+          "lastUpdated": "Last updated",
+          "never": "Not set",
+          "edit": "Edit",
+          "locked": "Recently updated. You can modify this field again in {hours}h.",
+          "contactSupport": "Contact Support",
+          "otpTitle": "Verify to continue",
+          "otpSubtitle": "This confirms it's really you before we update a sign-in detail.",
+          "otpNote": "OTP delivery will go live once the verification service is connected — for now this simulates the flow.",
+          "currentPassword": "Current password",
+          "newPassword": "New password",
+          "confirmPassword": "Confirm new password",
+          "strengthWeak": "Weak",
+          "strengthFair": "Fair",
+          "strengthStrong": "Strong",
+          "securityTipsTitle": "Security tips",
+          "tip1": "Use at least 12 characters with a mix of letters, numbers and symbols.",
+          "tip2": "Never reuse a password from another account.",
+          "tip3": "Change your password immediately if you notice unfamiliar activity.",
+          "save": "Save",
+          "cancel": "Cancel",
+          "updateSimulated": "This will update once the account API is connected — your change is saved locally for now."
+        },
+        "activity": {
+          "title": "Recent Account Activity",
+          "subtitle": "A quick look at your account's recent security signals.",
+          "currentSessionTitle": "Current session",
+          "device": "Device",
+          "browser": "Browser",
+          "activeNow": "Active now",
+          "lastPasswordChange": "Last password change",
+          "historyEmptyTitle": "No session history yet",
+          "historyEmptySubtitle": "Once session tracking is connected, past logins, devices and IP addresses will appear here."
+        }
+      },
+      "kyc": {
+        "kpis": {
+          "entityType": "Entity Type",
+          "verificationStatus": "Verification Status",
+          "complianceScore": "Compliance Score",
+          "documentsUploaded": "Documents Uploaded"
+        },
+        "timeline": {
+          "title": "Verification Timeline",
+          "stages": {
+            "businessRegistered": "Business Registered",
+            "documentsUploaded": "Documents Uploaded",
+            "underReview": "Verification Under Review",
+            "verified": "Verified",
+            "contractAccepted": "Contract Accepted",
+            "digitalSignature": "Digital Signature Completed"
+          },
+          "stageDesc": {
+            "businessRegistered": "Your vendor account was registered on venuebook.in.",
+            "documentsUploaded": "Identity and business documents submitted for review.",
+            "underReview": "Our team is reviewing your submitted documents.",
+            "verified": "Your business identity has been verified.",
+            "contractAccepted": "The commercial partnership agreement has been accepted.",
+            "digitalSignature": "The agreement has been digitally signed and locked."
+          },
+          "completed": "Completed",
+          "current": "In progress",
+          "pending": "Pending",
+          "noDate": "—"
+        },
+        "documents": {
+          "title": "Documents",
+          "subtitle": "Supported documents for your region — upload, replace, or resubmit as needed.",
+          "document": "Document",
+          "documentNumber": "Document Number",
+          "uploadedDate": "Uploaded Date",
+          "expiry": "Expiry",
+          "status": "Status",
+          "action": "Action",
+          "notAvailable": "Not available yet",
+          "secureStored": "Stored securely",
+          "view": "View",
+          "replace": "Replace",
+          "resubmit": "Resubmit",
+          "download": "Download",
+          "statusVerified": "Verified",
+          "statusPending": "Pending",
+          "statusRejected": "Rejected",
+          "statusExpired": "Expired",
+          "statusActionRequired": "Action Required",
+          "statusNotAvailable": "Not Available"
+        },
+        "drawer": {
+          "preview": "Preview",
+          "metadata": "Metadata",
+          "history": "History",
+          "verificationLogs": "Verification Logs",
+          "rejectionReason": "Rejection reason",
+          "noRejectionReason": "No rejection reason on file.",
+          "close": "Close",
+          "notAvailableBody": "This document type isn't available for upload yet on venuebook.in — it will appear here once the verification service is connected."
+        },
+        "signature": {
+          "title": "Digital Signature",
+          "subtitle": "Sign the commercial agreement to complete your verification.",
+          "lockedTitle": "Locked until your agreement is accepted",
+          "lockedSubtitle": "Review and accept the commercial agreement in Contracts & Agreements to unlock digital signing.",
+          "lockedCta": "Go to Contracts & Agreements",
+          "workflowReview": "Review agreement",
+          "workflowAccept": "Accept commercial terms",
+          "workflowPad": "Sign digitally",
+          "workflowGenerate": "Generate signed timestamp",
+          "workflowLock": "Lock agreement",
+          "padTitle": "Sign below",
+          "clear": "Clear",
+          "submit": "Submit signature",
+          "signedByLabel": "Signed By",
+          "ipLabel": "IP Address",
+          "timestampLabel": "Timestamp",
+          "versionLabel": "Version",
+          "download": "Download Signed Agreement",
+          "certificateTitle": "Signed certificate",
+          "signedSuccess": "Agreement signed and locked."
+        }
+      },
+      "contracts": {
+        "banner": {
+          "newAgreement": "A new agreement version is available and requires your acceptance.",
+          "reviewCta": "Review & Accept"
+        },
+        "hero": {
+          "title": "Active Agreement",
+          "commercialModel": "Commercial Model",
+          "effectiveDate": "Effective Date",
+          "renewalDate": "Renewal Date",
+          "status": "Status",
+          "statusPendingAcceptance": "Pending Acceptance",
+          "statusAccepted": "Accepted",
+          "accept": "Accept Agreement",
+          "accepted": "Accepted",
+          "acceptedOn": "Accepted on"
+        },
+        "table": {
+          "title": "Documents",
+          "name": "Document Name",
+          "version": "Version",
+          "status": "Status",
+          "signedOn": "Signed On",
+          "expiry": "Expiry",
+          "actions": "Actions",
+          "view": "View",
+          "download": "Download",
+          "pendingAcceptance": "Pending Acceptance",
+          "accepted": "Accepted"
+        },
+        "timeline": {
+          "title": "Agreement History",
+          "renewed": "Renewed",
+          "revision": "Commercial revision",
+          "initial": "Initial agreement signed"
+        },
+        "acceptModal": {
+          "title": "Accept Commercial Agreement",
+          "body": "By accepting, you agree to the terms of the venuebook.in Commercial Partnership Agreement (version {version}). This unlocks digital signature in your KYC & Compliance Hub.",
+          "confirm": "I Accept",
+          "cancel": "Cancel"
+        }
+      },
+      "subscription": {
+        "kpis": {
+          "activePlan": "Active Subscription Plan",
+          "currentTier": "Current Tier",
+          "planStatus": "Plan Status",
+          "billing": "Billing"
+        },
+        "billing": {
+          "lastBillingDate": "Last Billing Date",
+          "nextBillingDate": "Next Billing Date",
+          "paymentDue": "Payment Due",
+          "payNow": "Pay Now",
+          "active": "Active",
+          "inactive": "Inactive"
+        },
+        "migration": {
+          "title": "Plan Migration",
+          "subtitle": "Compare plans available on venuebook.in — commission and subscription fee are confirmed with Support for your account.",
+          "currentPlanBadge": "Current Plan",
+          "upgrade": "Upgrade",
+          "downgrade": "Downgrade",
+          "contactForPricing": "Contact Support for exact commission & fees",
+          "cancellationTitle": "Cancellation",
+          "cancellationNote": "Plans can't be cancelled directly from this page — contact Support and we'll help you with the right next step.",
+          "contactSupport": "Contact Support",
+          "featureColumn": "Feature",
+          "commissionRow": "Commission & fees"
+        },
+        "ledger": {
+          "title": "Subscription Invoice Ledger",
+          "mockNote": "Sample layout — live invoice history will appear here once billing history is connected.",
+          "invoiceId": "Invoice ID",
+          "billingDate": "Billing Date",
+          "amount": "Amount",
+          "tax": "Tax",
+          "status": "Status",
+          "actions": "Actions",
+          "download": "Download PDF",
+          "view": "View Invoice",
+          "search": "Search invoices…",
+          "statusPaid": "Paid",
+          "statusFailed": "Failed",
+          "statusPending": "Pending",
+          "prev": "Previous",
+          "next": "Next",
+          "page": "Page {page} of {total}"
+        }
+      },
+      "finance": {
+        "banner": "Figures below are illustrative sample data — live balances will appear once venuebook.in's settlement backend is connected.",
+        "kpis": {
+          "availablePayout": "Available Payout",
+          "availablePayoutDesc": "Funds fully cleared after reconciliation.",
+          "estDays": "Est. {days} days",
+          "triggerPayout": "Trigger Payout to Bank",
+          "securityDeposit": "Security Deposit Held",
+          "securityDepositDesc": "Funds securely held against active bookings.",
+          "pendingSettlements": "Pending Settlements",
+          "pendingSettlementsDesc": "Bookings awaiting reconciliation.",
+          "loyaltyReimbursement": "Loyalty Points Reimbursement",
+          "loyaltyReimbursementDesc": "Amount venuebook.in owes vendor — 60/40 vendor/platform split.",
+          "deductions": "Regulatory & Platform Deductions",
+          "deductionsExpand": "Show breakdown",
+          "deductionsCollapse": "Hide breakdown",
+          "platformCommission": "Platform Commission",
+          "gst": "GST",
+          "vat": "VAT",
+          "tds194O": "Section 194-O",
+          "other": "Other Taxes"
+        },
+        "chart": {
+          "title": "Revenue vs Deductions Breakdown",
+          "subtitle": "Gross revenue, platform deductions and net settlement by month.",
+          "gross": "Gross Revenue",
+          "deductions": "Platform Deductions",
+          "net": "Net Settlement",
+          "downloadPng": "Download PNG",
+          "fullscreen": "Fullscreen"
+        },
+        "pipeline": {
+          "title": "Settlement Progress Pipeline",
+          "subtitle": "Click a booking to see its full settlement timeline.",
+          "amount": "Amount",
+          "close": "Close"
+        },
+        "reports": {
+          "title": "Reports",
+          "dateRange": "Date Range",
+          "bookingFilter": "Booking",
+          "propertyFilter": "Property",
+          "search": "Search…",
+          "exportCsv": "Export CSV",
+          "exportPdf": "Export PDF",
+          "master": {
+            "title": "Master Settlement Statement",
+            "bookingId": "Booking ID",
+            "checkoutDate": "Checkout Date",
+            "gross": "Gross Booking Amount",
+            "commission": "venuebook.in Commission",
+            "loyaltyRedeemed": "Loyalty Redeemed",
+            "vendorShare": "Vendor Share 60%",
+            "platformShare": "venuebook.in Share 40%",
+            "tds194O": "Section 194-O TDS",
+            "net": "Net Settlement",
+            "expandCalc": "Settlement calculation",
+            "expandTimeline": "Timeline",
+            "expandInvoice": "Invoice"
+          },
+          "escrow": {
+            "title": "Escrow & Security Deposit Reconciliation",
+            "bookingId": "Booking ID",
+            "guestName": "Guest Name",
+            "depositHeld": "Deposit Held",
+            "status": "Status",
+            "claimAmount": "Claim Amount",
+            "damageEvidence": "Damage Evidence",
+            "releaseDate": "Release Date",
+            "upload": "Upload evidence",
+            "statusHeld": "Held",
+            "statusClaimReview": "Claim Under Review",
+            "statusReleased": "Released"
+          },
+          "tax": {
+            "title": "Consolidated Tax & Compliance Statement",
+            "monthlyGst": "Monthly GST",
+            "annualGst": "Annual GST",
+            "tds194OSummary": "Section 194-O Summary",
+            "vatSummary": "VAT Summary",
+            "complianceStatus": "Compliance Status",
+            "statusUpToDate": "Up to date",
+            "statusActionRequired": "Action Required",
+            "month": "Month",
+            "invoiceCount": "Invoice Count",
+            "taxAmount": "Tax Amount",
+            "gst": "GST",
+            "vat": "VAT",
+            "tds": "TDS",
+            "certificates": "Certificates",
+            "download": "Download",
+            "annualExport": "Annual Export",
+            "generatePackage": "Generate Tax Package",
+            "form16A": "Download Form 16A References"
+          }
+        }
+      }
     }
   },
   "onboarding": {
@@ -995,7 +1361,66 @@
     "suit_family": "Family Friendly",
     "suit_couple": "Couple Friendly",
     "suit_kids": "Kids Friendly",
-    "suit_group": "Group Friendly"
+    "suit_group": "Group Friendly",
+    "occasion": "المناسبة",
+    "occasion_weekend_escape": "هروب نهاية الأسبوع",
+    "occasion_family_vacation": "إجازة عائلية",
+    "occasion_workcation": "عمل وإجازة",
+    "occasion_special_occasion": "مناسبة خاصة",
+    "occasion_wellness_retreat": "استجمام صحي",
+    "occasion_group_gathering": "تجمع جماعي",
+    "vibe": "الأجواء",
+    "vibe_rustic_natural": "ريفي وطبيعي",
+    "vibe_heritage_traditional": "تراثي وتقليدي",
+    "vibe_luxurious_modern": "فاخر وعصري",
+    "vibe_cozy_peaceful": "دافئ وهادئ"
+  },
+  "searchBar": {
+    "location": "الموقع",
+    "city_or_area": "المدينة أو المنطقة",
+    "event_date": "تاريخ الفعالية",
+    "guests": "الضيوف",
+    "team_size": "حجم الفريق",
+    "destination": "الوجهة",
+    "where_to": "إلى أين؟",
+    "check_in": "تسجيل الوصول",
+    "check_out": "تسجيل المغادرة",
+    "check_in_out": "تسجيل الوصول والمغادرة",
+    "start_date": "تاريخ البدء",
+    "end_date": "تاريخ الانتهاء",
+    "start": "البداية",
+    "end": "النهاية",
+    "start_time": "وقت البدء",
+    "date": "التاريخ",
+    "dates": "التواريخ",
+    "city_or_studio": "المدينة أو الاستوديو",
+    "city_or_space": "المدينة أو اسم المساحة",
+    "venue_location_placeholder": "المدينة أو المنطقة أو اسم القاعة",
+    "where_to_question": "إلى أين تريد الذهاب؟",
+    "occasion": "المناسبة",
+    "occasion_placeholder": "أي مناسبة",
+    "vibe": "الأجواء",
+    "vibe_placeholder": "أي أجواء",
+    "select_date": "اختر التاريخ",
+    "select_date_time": "اختر التاريخ والوقت",
+    "how_many_guests": "كم عدد الضيوف؟",
+    "search": "بحث",
+    "searching": "جارٍ البحث…",
+    "clear_all": "مسح الكل",
+    "tap_to_edit": "اضغط لتعديل بحثك",
+    "mobile_trigger_placeholder": "ابحث عن الموقع، التاريخ، الضيوف…",
+    "find_a_venue": "ابحث عن قاعة",
+    "find_a_farmstay": "ابحث عن مزرعة إقامة",
+    "book_a_studio": "احجز استوديو",
+    "rent_a_space": "استأجر مساحة",
+    "find_a_workspace": "ابحث عن مساحة عمل",
+    "explore_title": "استكشف",
+    "short_where": "أين",
+    "short_why": "لماذا",
+    "short_feel": "الشعور",
+    "short_dates": "التواريخ",
+    "short_who": "من",
+    "add_dates": "أضف التواريخ"
   },
   "checkout": {
     "title": "أكمل حجزك",
@@ -2037,7 +2462,8 @@
         "confirmed": "مؤكد",
         "pending": "قيد الانتظار",
         "enquiry": "تم إرسال الاستفسار",
-        "draft": "مسودة"
+        "draft": "مسودة",
+        "pax": "استفسار باكس"
       },
       "payment": {
         "paid": "مدفوع",
@@ -2089,7 +2515,8 @@
         "cancelled": "ملغاة",
         "reservation": "حجز",
         "enquiry": "استفسار",
-        "drafted": "مسودة"
+        "drafted": "مسودة",
+        "pax": "استفسار باكس"
       },
       "nights": "الليالي",
       "paymentLabel": "الدفع",
@@ -2286,6 +2713,116 @@
         "unavailable": "ستكون الفاتورة متاحة بعد اكتمال الدفع.",
         "generating": "جارٍ الإنشاء…",
         "downloadError": "تعذّر إنشاء ملف PDF. اضغط لإعادة المحاولة."
+      },
+      "paxManagement": {
+        "backButton": "العودة إلى حجوزاتي",
+        "title": "إدارة حجزك",
+        "refNo": "رقم مرجع الاستفسار",
+        "steps": {
+          "submitted": "تم الإرسال",
+          "review": "المراجعة",
+          "negotiating": "التفاوض",
+          "approval": "موافقتك",
+          "contract": "توقيع العقد",
+          "confirmed": "مؤكد",
+          "payment": "الدفع"
+        },
+        "statusLabel": {
+          "new": "جديد",
+          "underReview": "قيد المراجعة",
+          "negotiating": "قيد التفاوض",
+          "actionRequired": "يتطلب إجراء",
+          "confirmed": "مؤكد",
+          "cancelled": "ملغى",
+          "rejected": "مرفوض"
+        },
+        "proposal": {
+          "title": "عرض من المورد بانتظار الرد",
+          "text": "أرسل لك المورد عرضًا. راجع التغييرات ثم اقبله أو ناقشه أكثر.",
+          "accept": "قبول العرض",
+          "requestChanges": "طلب تغييرات",
+          "reject": "رفض"
+        },
+        "contractAlert": {
+          "title": "مراجعة العقد وتوقيعه",
+          "action": "مراجعة العقد وتوقيعه"
+        },
+        "paymentAlert": {
+          "title": "بانتظار الدفع",
+          "payNow": "ادفع الآن"
+        },
+        "cancelSection": {
+          "text": "إذا كنت ترغب في إلغاء حجزك، يرجى النقر على الزر أدناه. لاحظ أن الإلغاءات قد تخضع لسياسة الإلغاء الخاصة بنا.",
+          "button": "إلغاء الحجز",
+          "title": "سياسة الإلغاء",
+          "description": "راجع التفاصيل قبل إلغاء استفسارك",
+          "policyNote": "بما أن هذا الحجز لا يزال قيد التفاوض، فلا تُطبَّق أي رسوم حتى يتم توقيع العقد. إذا تم الدفع مسبقًا، فقد يخضع الإلغاء لسياسة استرداد الأموال الخاصة بالمكان.",
+          "reasonLabel": "سبب الإلغاء",
+          "reasonPlaceholder": "يرجى إخبارنا بسبب الإلغاء (20 حرفًا على الأقل)",
+          "charCount": "مطلوب 20 حرفًا على الأقل — {count}",
+          "warningTitle": "إشعار هام",
+          "warningText": "الإلغاءات نهائية ولا يمكن التراجع عنها. سيتم إخطار المورد فورًا."
+        },
+        "eventDetails": {
+          "title": "تفاصيل الفعالية",
+          "venue": "المكان",
+          "eventType": "نوع الفعالية",
+          "eventDate": "تاريخ الفعالية",
+          "guestCount": "عدد الضيوف",
+          "guestsUnit": "{count} ضيف"
+        },
+        "menu": {
+          "title": "القائمة والأسعار المختارة",
+          "presetPackage": "باقة جاهزة",
+          "customMenu": "قائمة مخصصة",
+          "perPersonCost": "التكلفة للفرد",
+          "guestCount": "عدد الضيوف",
+          "total": "الإجمالي",
+          "addonTotal": "إجمالي الإضافات",
+          "totalAmount": "المبلغ الإجمالي"
+        },
+        "chatCta": "الدردشة مع المورد",
+        "modals": {
+          "requestChanges": {
+            "title": "طلب تغييرات على العرض",
+            "description": "صف التغييرات التي تريدها على عرض المورد.",
+            "placeholder": "مثال: هل يمكن استبدال البرياني بالبانير تكة؟",
+            "cancel": "إلغاء",
+            "send": "إرسال الطلب"
+          },
+          "reject": {
+            "title": "هل تريد رفض عرض المورد؟",
+            "description": "يرجى ذكر السبب حتى يفهم المورد ملاحظاتك.",
+            "placeholder": "يرجى توضيح سبب الرفض...",
+            "cancel": "إلغاء",
+            "confirm": "رفض العرض"
+          },
+          "cancelBooking": {
+            "title": "تأكيد الإلغاء",
+            "description": "هل أنت متأكد من رغبتك في إلغاء استفسار الحجز هذا؟ لا يمكن التراجع عن هذا الإجراء.",
+            "placeholder": "يرجى التوضيح...",
+            "keep": "الاحتفاظ بالحجز",
+            "confirm": "تأكيد الإلغاء"
+          },
+          "payment": {
+            "title": "تأكيد الدفع",
+            "confirmText": "راجع التفاصيل قبل المتابعة إلى الدفع.",
+            "venueRental": "إيجار المكان",
+            "addonTotal": "إجمالي الإضافات",
+            "serviceCharges": "رسوم الخدمة",
+            "taxes": "الضرائب والرسوم",
+            "securityDeposit": "التأمين",
+            "totalAmount": "المبلغ الإجمالي",
+            "close": "إغلاق",
+            "pay": "ادفع الآن"
+          }
+        },
+        "previewNotice": "هذا الإجراء معاينة فقط — لم يتم ربطه بعد بخادم فعلي.",
+        "tabs": {
+          "overview": "نظرة عامة",
+          "menu": "القائمة والأسعار",
+          "cancel": "الإلغاء"
+        }
       }
     },
     "collections": {
