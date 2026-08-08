@@ -9,8 +9,8 @@
  * balance → redeemed → remaining → ₹ discount.
  *
  * TIER DATA: `rewards` is the live payload from the API, shaped as
- * { loyaltyTier: {...}, rewardBalance: [{...}] }.
- * - `rewardBalance[0].available_points` is the guest's actual point
+ * { loyaltyTier: {...}, rewardBalance: {...} }.
+ * - `rewardBalance.available_points` is the guest's actual point
  *   BALANCE they can burn.
  * - `loyaltyTier.burn_coin` is the tier's PER-BOOKING redeem CAP in
  *   points (e.g. "you may redeem at most 2000 points on one booking"),
@@ -18,25 +18,31 @@
  * - `loyaltyTier.point_value` is the conversion rate: how many points
  *   equal ₹1 (e.g. point_value = 10 → 10 points = ₹1).
  *
+ * FIX (this pass): the live API sends `rewardBalance` as a single balance
+ * OBJECT, not an array — the code used to always read `rewardBalance?.[0]`,
+ * which is `undefined` on a plain object. That silently discarded real
+ * data (including legitimate `available_points: 0`) and fell through to
+ * the `pointsTotal`/`currentTier` mock props instead, which is why a
+ * brand-new Bronze member with 0 points was showing a stale mock balance
+ * and a stale mock tier. `reward` now accepts either shape, and
+ * "do we have real data" is its own explicit check (`hasRealData`,
+ * driven by `loyaltyTier` actually being present) instead of relying on
+ * the truthiness of a nested field that a real API response can
+ * legitimately zero out.
+ *
  * REDEMPTION MATH:
  * The amount a guest can actually redeem is never just the tier cap —
  * it's whichever is SMALLER: the tier cap, or what's left in their
  * balance. Every preset/custom/summary value is built off that
  * effective cap, not the raw tier cap alone.
  *
- * LIVE HEADER (fix in this pass): the header "Reward Points" badge and
- * the "Wallet Value" stat used to always show the guest's full,
- * unchanged balance — clicking 50%/Max only updated the summary panel
- * further down, which read as broken. Both now show BALANCE MINUS
- * WHATEVER IS CURRENTLY SELECTED, live, the instant a preset/custom
- * value is picked — the same number the summary panel calls
- * "remaining", just surfaced at the top too.
+ * LIVE HEADER: the header "Reward Points" badge and the "Wallet Value"
+ * stat show BALANCE MINUS WHATEVER IS CURRENTLY SELECTED, live, the
+ * instant a preset/custom value is picked — the same number the summary
+ * panel calls "remaining", just surfaced at the top too.
  *
- * DESIGN PASS (this pass): ONLY the None / 50% / Max / Custom picker's
- * visual style changed — clearer, standard-looking buttons with an
- * unmistakable "selected" highlight (solid filled background + check
- * icon) instead of the old faint tinted-border look. No selection
- * logic, math, or click handlers were touched.
+ * DESIGN: the None / 50% / Max / Custom picker uses a solid filled
+ * background + check style for the active selection.
  */
 
 import { useState, useEffect, useRef } from "react";
@@ -139,6 +145,7 @@ const FALLBACKS = {
   redeem_half: "50%",
   redeem_max: "Max",
   redeem_custom: "Custom",
+  redeem_custom_button: "Redeem custom amount",
   points_suffix: "pts",
   custom_max_hint: "Up to {amount}",
   summary_title: "Redemption Summary",
@@ -149,6 +156,8 @@ const FALLBACKS = {
   summary_rate_hint: "{rate} points = ₹1",
   applied: "Reward applied",
   saved: "you saved",
+  no_rewards_title: "No rewards yet",
+  no_rewards_body: "Book your first stay to start earning reward points.",
 };
 
 function useSafeTranslations(namespace) {
@@ -191,13 +200,31 @@ export default function WalletSection({
   const t = useSafeTranslations("checkout.wallet");
 
   // ── LIVE TIER ROW ──────────────────────────────────────────────────────
-  const reward = rewards?.rewardBalance?.[0];
+  // The live API sends `rewardBalance` as a single object
+  // ({ available_points, total_points, ... }), not an array — but some
+  // paths/mocks may still wrap it as [ {...} ]. Support both shapes
+  // instead of assuming `[0]`, which silently returned `undefined` (and
+  // therefore fell through to mock props) for the real, object-shaped
+  // response.
+  const rewardBalanceRaw = rewards?.rewardBalance;
+  const reward = Array.isArray(rewardBalanceRaw) ? rewardBalanceRaw[0] : rewardBalanceRaw;
   const loyaltyTier = rewards?.loyaltyTier;
+
+  // Whether we actually have a real membership record from the API at
+  // all — distinct from "the balance happens to be 0". `loyaltyTier`
+  // presence is the signal: a real account always has a tier, even a
+  // brand-new one with zero points.
+  const hasRealData = Boolean(loyaltyTier);
 
   // Points shown in the header badge / used as the redeemable balance:
   // `available_points` is what's actually left to spend (total_points
   // includes already-redeemed/expired points, which isn't spendable).
-  const resolvedPointsTotal = reward?.available_points ?? pointsTotal ?? 0;
+  // Real 0 is respected (?? only falls through on null/undefined, never
+  // on a real zero) — only falls back to the mock `pointsTotal` prop when
+  // there's genuinely no real record yet.
+  const resolvedPointsTotal = hasRealData
+    ? (reward?.available_points ?? 0)
+    : (pointsTotal ?? 0);
 
   // Conversion rate: how many points equal ₹1. Defaults to 1:1 only if
   // the tier genuinely doesn't specify one, so we never divide by zero.
@@ -206,7 +233,9 @@ export default function WalletSection({
 
   // Tier's raw per-booking redeem cap, in points — NOT yet checked
   // against the guest's actual balance.
-  const tierCapPoints = maxRedeemableINRs ?? loyaltyTier?.burn_coin ?? 0;
+  const tierCapPoints = hasRealData
+    ? (loyaltyTier?.burn_coin ?? 0)
+    : (maxRedeemableINRs ?? 0);
 
   // The real ceiling on what a guest can redeem is whichever is smaller —
   // the tier's cap, or their available balance.
@@ -223,39 +252,35 @@ export default function WalletSection({
 
   const walletApplied = selectedRedeemPoints > 0;
 
-  // Tier identity: prefer the live row's own name/color/icon over the
-  // static `currentTier` prop.
-  const resolvedTier = reward
+  // Tier identity: prefer the live tier record's own name/color/icon over
+  // the static `currentTier` mock prop — driven by `hasRealData`, not by
+  // truthiness of `reward` (a real account can have a real tier with a
+  // reward balance of 0, which is still real data).
+  const resolvedTier = hasRealData
     ? {
-        id: (reward.name || "bronze").toLowerCase(),
-        label: reward.name,
-        color: reward.color,
-        icon: reward.icon,
+        id: (loyaltyTier?.tier_name || reward?.name || "bronze")
+          .toString()
+          .toLowerCase()
+          .replace(/[^a-z]/g, ""),
+        label: loyaltyTier?.tier_name || reward?.name,
+        color: loyaltyTier?.color || reward?.color,
+        icon: loyaltyTier?.icon || reward?.icon,
       }
     : currentTier;
 
   const [customOpen, setCustomOpen] = useState(false);
   const halfValue = Math.round(effectiveMaxRedeemable * 0.5);
 
- const REDEEM_PRESETS = [
-  {
-    key: "none",
-    name: "None",
-  },
-  {
-    key: "half",
-    name: "50%",
-  },
-  {
-    key: "max",
-    name: "Max",
-  },
-];
+  const REDEEM_PRESETS = [
+    { key: "none", name: t("redeem_none") },
+    { key: "half", name: t("redeem_half") },
+    { key: "max", name: t("redeem_max") },
+  ];
 
   const tierColors = {
-    bronze:  { bg: "bg-amber-100 dark:bg-amber-900/30",  text: "text-amber-700 dark:text-amber-400",  dot: "#cd7f32" },
-    silver:  { bg: "bg-gray-100 dark:bg-gray-800/50",   text: "text-gray-600 dark:text-gray-300",   dot: "#9ca3af" },
-    gold:    { bg: "bg-yellow-100 dark:bg-yellow-900/30", text: "text-yellow-700 dark:text-yellow-400", dot: "#f59e0b" },
+    bronze: { bg: "bg-amber-100 dark:bg-amber-900/30", text: "text-amber-700 dark:text-amber-400", dot: "#cd7f32" },
+    silver: { bg: "bg-gray-100 dark:bg-gray-800/50", text: "text-gray-600 dark:text-gray-300", dot: "#9ca3af" },
+    gold: { bg: "bg-yellow-100 dark:bg-yellow-900/30", text: "text-yellow-700 dark:text-yellow-400", dot: "#f59e0b" },
     diamond: { bg: "bg-violet-100 dark:bg-violet-900/30", text: "text-violet-700 dark:text-violet-400", dot: "#818cf8" },
   };
 
@@ -289,53 +314,41 @@ export default function WalletSection({
   // selecting a preset/custom reads as an immediate action, not just a
   // number quietly rolling somewhere else on the card.
   const [pulseKey, setPulseKey] = useState(null);
-const [selectedPreset, setSelectedPreset] = useState("none");
+  const [selectedPreset, setSelectedPreset] = useState("none");
+  const [customAmount, setCustomAmount] = useState("");
 
-const handleSelect = (amount, key) => {
-  const clamped = Math.max(
-    0,
-    Math.min(effectiveMaxRedeemable, Number(amount) || 0)
-  );
+  const handleSelect = (amount, key) => {
+    const clamped = Math.max(0, Math.min(effectiveMaxRedeemable, Number(amount) || 0));
 
-  onSelectRedeemAmount(clamped);
+    onSelectRedeemAmount(clamped);
+    setSelectedPreset(key);
+    setPulseKey(key);
 
-  setSelectedPreset(key);
+    setTimeout(() => {
+      setPulseKey(null);
+    }, 250);
+  };
 
-  setPulseKey(key);
+  const handlePresetClick = (preset) => {
+    setCustomOpen(false);
 
-  setTimeout(() => {
-    setPulseKey(null);
-  }, 250);
-};
+    let amount = 0;
+    switch (preset.key) {
+      case "none":
+        amount = 0;
+        break;
+      case "half":
+        amount = Math.floor(effectiveMaxRedeemable / 2);
+        break;
+      case "max":
+        amount = effectiveMaxRedeemable;
+        break;
+      default:
+        amount = 0;
+    }
 
-const handlePresetClick = (preset) => {
-  setCustomOpen(false);
-
-  let amount = 0;
-
-  switch (preset.key) {
-    case "none":
-      amount = 0;
-      break;
-
-    case "half":
-      amount = Math.floor(effectiveMaxRedeemable / 2);
-      break;
-
-    case "max":
-      amount = effectiveMaxRedeemable;
-      break;
-
-    default:
-      amount = 0;
-  }
-
-  handleSelect(amount, preset.key);
-};
-
-const [customAmount, setCustomAmount] = useState("");
-
-  console.log(pulseKey)
+    handleSelect(amount, preset.key);
+  };
 
   if (loading) {
     return (
@@ -373,6 +386,53 @@ const [customAmount, setCustomAmount] = useState("");
               <div key={n} className="h-10 rounded-xl bg-gray-100 dark:bg-gray-800 animate-pulse" />
             ))}
           </div>
+        </div>
+      </section>
+    );
+  }
+
+  // Real account, but genuinely nothing to redeem yet (zero balance) —
+  // an honest, low-key state instead of hiding the section or showing a
+  // functional-looking picker with nothing behind it.
+  if (hasRealData && resolvedPointsTotal <= 0) {
+    return (
+      <section
+        className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden"
+        aria-label="venuebook.in Rewards Wallet"
+      >
+        <div
+          className="px-4 sm:px-6 py-4 flex items-center gap-3"
+          style={{ background: `linear-gradient(135deg, ${tint.bg}, ${tint.activeBg})`, borderBottom: `1px solid ${tint.border}` }}
+        >
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-lg font-bold shadow-sm shrink-0"
+            style={{ backgroundColor: tint.hex }}
+          >
+            {TierIcon ? <TierIcon size={18} strokeWidth={2.25} /> : "✦"}
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
+              {t("title")}
+            </p>
+            <div
+              className={`mt-0.5 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${
+                tierBadgeStyle ? "" : `${tc.bg} ${tc.text}`
+              }`}
+              style={tierBadgeStyle}
+            >
+              <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: tierDotColor }} />
+              <span className="truncate">{resolvedTier?.label} {t("tier")}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="px-4 sm:px-6 py-5">
+          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+            {t("no_rewards_title")}
+          </p>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            {t("no_rewards_body")}
+          </p>
         </div>
       </section>
     );
@@ -442,9 +502,8 @@ const [customAmount, setCustomAmount] = useState("");
       </div>
 
       {/* Redemption picker — None / Half / Max, not all-or-nothing.
-          DESIGN ONLY: buttons now show a solid, unmistakable highlight
-          (filled background + check icon) when selected. Click handlers
-          and values are exactly the same as before. */}
+          Buttons show a solid, unmistakable highlight (filled background)
+          when selected. */}
       <div className="px-4 sm:px-6 py-4">
         <div className="flex items-center justify-between gap-4 mb-3">
           <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
@@ -452,48 +511,35 @@ const [customAmount, setCustomAmount] = useState("");
           </p>
         </div>
 
-        <div
-          role="radiogroup"
-          aria-label={t("redeem_label")}
-          className="grid grid-cols-3 gap-2"
-        >
-          <div className="grid grid-cols-3 gap-3">
-  {REDEEM_PRESETS.map((preset) => {
-    const active =
-      !customOpen && selectedPreset === preset.key;
+        <div role="radiogroup" aria-label={t("redeem_label")} className="grid grid-cols-3 gap-3">
+          {REDEEM_PRESETS.map((preset) => {
+            const active = !customOpen && selectedPreset === preset.key;
+            const pressed = pulseKey === preset.key;
 
-    const pressed = pulseKey === preset.key;
-
-    return (
-      <button
-        key={preset.key}
-        type="button"
-        role="radio"
-        aria-checked={active}
-        onClick={() => handlePresetClick(preset)}
-        className={`relative rounded-xl border-2 px-3 py-2.5 text-sm font-semibold transition-all duration-150
-          ${
-            pressed ? "scale-95" : "scale-100"
-          }
-          ${
-            active
-              ? "text-white shadow-md"
-              : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600"
-          }`}
-        style={
-          active
-            ? {
-                backgroundColor: tint.hex,
-                borderColor: tint.hex,
-              }
-            : undefined
-        }
-      >
-        {preset.name}
-      </button>
-    );
-  })}
-</div>
+            return (
+              <button
+                key={preset.key}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                onClick={() => handlePresetClick(preset)}
+                className={`relative rounded-xl border-2 px-3 py-2.5 text-sm font-semibold transition-all duration-150
+                  ${pressed ? "scale-95" : "scale-100"}
+                  ${
+                    active
+                      ? "text-white shadow-md"
+                      : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600"
+                  }`}
+                style={
+                  active
+                    ? { backgroundColor: tint.hex, borderColor: tint.hex }
+                    : undefined
+                }
+              >
+                {preset.name}
+              </button>
+            );
+          })}
         </div>
 
         <button
@@ -514,36 +560,32 @@ const [customAmount, setCustomAmount] = useState("");
               : undefined
           }
         >
-          redeem custom
+          {t("redeem_custom_button")}
         </button>
 
         {customOpen && (
           <div className="mt-3">
             <div className="flex items-center gap-2 rounded-xl border-2 px-3 py-2" style={{ borderColor: tint.hex }}>
               <input
-  type="number"
-  inputMode="numeric"
-  min={0}
-  max={effectiveMaxRedeemable}
-  placeholder="0"
-  value={customAmount}
-  onFocus={() => {
-    setSelectedPreset("custom");
-    setCustomOpen(true);
-  }}
-  onChange={(e) => {
-    const value = e.target.value;
-    setCustomAmount(value);
+                type="number"
+                inputMode="numeric"
+                min={0}
+                max={effectiveMaxRedeemable}
+                placeholder="0"
+                value={customAmount}
+                onFocus={() => {
+                  setSelectedPreset("custom");
+                  setCustomOpen(true);
+                }}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setCustomAmount(value);
 
-    const amount = Math.max(
-      0,
-      Math.min(effectiveMaxRedeemable, Number(value) || 0)
-    );
-
-    onSelectRedeemAmount(amount);
-  }}
-  className="w-full bg-transparent text-sm font-semibold text-gray-900 dark:text-gray-100 focus:outline-none"
-/>
+                  const amount = Math.max(0, Math.min(effectiveMaxRedeemable, Number(value) || 0));
+                  onSelectRedeemAmount(amount);
+                }}
+                className="w-full bg-transparent text-sm font-semibold text-gray-900 dark:text-gray-100 focus:outline-none"
+              />
               <span className="text-sm font-medium text-gray-500 dark:text-gray-400 shrink-0">{t("points_suffix")}</span>
             </div>
             <p className="mt-1.5 text-xs text-gray-400 dark:text-gray-500">
@@ -556,22 +598,35 @@ const [customAmount, setCustomAmount] = useState("");
       {/* ── Redemption summary ── */}
       <div className="mx-4 sm:mx-6 mb-4 rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/30 px-4 py-3">
         <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-2.5">
-         Summary Title
+          {t("summary_title")}
         </p>
 
         <div className="space-y-1.5 text-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-gray-600 dark:text-gray-300 font-medium">{t("summary_balance")}</span>
+            <span className="font-semibold text-gray-900 dark:text-gray-100 tabular-nums">
+              {Math.round(animatedBalance).toLocaleString()} {t("points_suffix")}
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <span className="text-gray-600 dark:text-gray-300 font-medium">{t("summary_redeeming")}</span>
+            <span className="font-semibold text-gray-900 dark:text-gray-100 tabular-nums">
+              {Math.round(animatedSelectedPoints).toLocaleString()} {t("points_suffix")}
+            </span>
+          </div>
 
           <div className="h-px bg-gray-200 dark:bg-gray-700 my-2" />
 
           <div className="flex items-center justify-between">
-            <span className="text-gray-600 dark:text-gray-300 font-medium">summary remaining</span>
+            <span className="text-gray-600 dark:text-gray-300 font-medium">{t("summary_remaining")}</span>
             <span className="font-semibold text-gray-900 dark:text-gray-100 tabular-nums">
               {Math.round(animatedHeaderPoints).toLocaleString()} {t("points_suffix")}
             </span>
           </div>
 
           <div className="flex items-center justify-between">
-            <span className="text-gray-600 dark:text-gray-300 font-medium">summary discount</span>
+            <span className="text-gray-600 dark:text-gray-300 font-medium">{t("summary_discount")}</span>
             <span className="font-bold tabular-nums" style={{ color: tint.hex }}>
               {format(animatedDiscount)}
             </span>
@@ -580,7 +635,7 @@ const [customAmount, setCustomAmount] = useState("");
 
         {pointRate !== 1 && (
           <p className="mt-2.5 text-[11px] text-gray-400 dark:text-gray-500">
-            summary rate hint , $1 : { pointRate } point 
+            {t("summary_rate_hint", { rate: pointRate })}
           </p>
         )}
       </div>
@@ -595,7 +650,7 @@ const [customAmount, setCustomAmount] = useState("");
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
           </svg>
           <span className="tabular-nums">
-            applied — saved {format(animatedDiscount)}
+            {t("applied")} — {t("saved")} {format(animatedDiscount)}
           </span>
         </div>
       )}
