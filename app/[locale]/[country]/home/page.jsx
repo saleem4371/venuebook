@@ -27,7 +27,11 @@ import { CATEGORIES, CATEGORY_TINTS } from "@/config/categoryConfig";
 import { useAuth } from "@/context/AuthContext";
 
 import { findPropertyname } from "@/services/global.service";
-import { recent_views , Api_recommeded , topDestination } from "@/services/home.service";
+import {
+  recent_views,
+  Api_recommeded,
+  topDestination,
+} from "@/services/home.service";
 
 /* ── Category page content ──────────────────────────────────── */
 const CATEGORY_CONTENT = {
@@ -760,11 +764,11 @@ export default function Home() {
   const [openSearch, setOpenSearch] = useState(false);
   const { activeCategory } = useCategory();
 
-  const [loadData, setLoadData]  = useState([]);
-  const [recent, setRecent]  = useState([]);
-    const [tier, setTier]  = useState([]);
-  const [recommeded, setRecommeded]  = useState([]);
-  const [destination, setDestination]  = useState([]);
+  const [loadData, setLoadData] = useState([]);
+  const [recent, setRecent] = useState([]);
+  const [tier, setTier] = useState([]);
+  const [recommeded, setRecommeded] = useState([]);
+  const [destination, setDestination] = useState([]);
   // The two real API-backed fetches on this page: Recommended/Recently
   // Viewed venues, and the category chip row (findPropertyname). Popular/
   // Sponsored/Banner/TopDestinations are static config and technically
@@ -808,63 +812,62 @@ export default function Home() {
     };
   }, [activeCategory]);
 
+  const getRecommendedVenues = async () => {
+    const regions = localStorage.getItem("vb_preferred_location");
+    const res = await Api_recommeded(regions);
+    setRecommeded(res?.data ?? []);
 
-   const getRecommendedVenues = async () => {
-  const regions =  localStorage.getItem("vb_preferred_location");
-  const res = await Api_recommeded(regions);
-  setRecommeded(res?.data ?? []);
-  
-  const resp = await topDestination(regions);
-  setDestination(resp?.data ?? []);
+    const resp = await topDestination(regions);
+    setDestination(resp?.data ?? []);
+  };
 
-
-};
-
-const getRecentViews = async () => {
-  if (!user) {
-    setRecent([]);
-    setTier([]);
-    return;
-  }
-
-  const res = await recent_views();
-  setRecent(res?.data ?? []); 
-  
-};
-
-useEffect(() => {
-  let cancelled = false;
-  const loadData = async () => {
-    setLoadingVenues(true);
-    try {
-      await Promise.all([
-        getRecommendedVenues(),
-        getRecentViews(),
-      ]);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      // Guards against setting state after the effect's own cleanup ran
-      // (e.g. `user` flips again before the first fetch settles).
-      if (!cancelled) setLoadingVenues(false);
+  const getRecentViews = async () => {
+    if (!user) {
+      setRecent([]);
+      setTier([]);
+      return;
     }
+
+    const res = await recent_views();
+    setRecent(res?.data ?? []);
   };
 
-  loadData();
-  return () => {
-    cancelled = true;
-  };
-}, [user]);
+  useEffect(() => {
+    let cancelled = false;
+    const loadData = async () => {
+      setLoadingVenues(true);
+      try {
+        await Promise.all([getRecommendedVenues(), getRecentViews()]);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        // Guards against setting state after the effect's own cleanup ran
+        // (e.g. `user` flips again before the first fetch settles).
+        if (!cancelled) setLoadingVenues(false);
+      }
+    };
+
+    loadData();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   return (
     <>
-      <HeroSection setOpenSearch={setOpenSearch}   itemDest={destination}/>
-      <MobileSearchSheet open={openSearch} setOpen={setOpenSearch} itemDest={destination} />
+      <HeroSection setOpenSearch={setOpenSearch} itemDest={destination} />
+      <MobileSearchSheet
+        open={openSearch}
+        setOpen={setOpenSearch}
+        itemDest={destination}
+      />
 
       <AnimatePresence mode="wait">
         <motion.div key={activeCategory} {...FADE}>
           {/* Sub-category chips */}
-          {!isComingSoon && <CategorySection loadData={loadData} loading={loadingCategories} />}
+          {!isComingSoon && (
+            <CategorySection loadData={loadData} loading={loadingCategories} />
+          )}
 
           {!isComingSoon && content.sections.length > 0 && (
             // pt-16: guarantees the gap from the category strip to whichever
@@ -877,7 +880,7 @@ useEffect(() => {
                 <VenueSection
                   title={content.sections[1].title}
                   subtitle={content.sections[1].subtitle}
-                   venues={recent}
+                  venues={recent}
                   dataSource="api"
                   tint={tint}
                   variant="medium"
@@ -892,7 +895,7 @@ useEffect(() => {
                   subtitle={content.sections[0].subtitle}
                   venues={recommeded}
                   tint={tint}
-                    dataSource="api"
+                  dataSource="api"
                   variant="editorial"
                   loading={loadingVenues}
                 />
@@ -903,13 +906,16 @@ useEffect(() => {
                   gated on the same loadingVenues flag as Recommended/Recently
                   Viewed so the whole homepage arrives as one coherent frame
                   instead of some sections popping in before others. */}
-              {content.premiumBanner && (
-                loadingVenues ? <SkeletonBanner /> : <PremiumBanner tint={tint} {...content.premiumBanner} />
-              )}
+              {content.premiumBanner &&
+                (loadingVenues ? (
+                  <SkeletonBanner />
+                ) : (
+                  <PremiumBanner tint={tint} {...content.premiumBanner} />
+                ))}
 
               {/* Popular {category} — landscape PropertyCard variant, above sponsored */}
-              {content.popularItems?.length > 0 && (
-                loadingVenues ? (
+              {content.popularItems?.length > 0 &&
+                (loadingVenues ? (
                   <SkeletonRail
                     title={`Popular ${content.categoryLabel ?? "Venues"}`}
                     subtitle={`Trending picks in ${(content.categoryLabel ?? "Venues").toLowerCase()}`}
@@ -923,12 +929,11 @@ useEffect(() => {
                     categoryLabel={content.categoryLabel ?? "Venues"}
                     items={content.popularItems}
                   />
-                )
-              )}
+                ))}
 
               {/* Sponsored {category} — scrollable carousel with arrows */}
-              {content.sponsoredItems?.length > 0 && (
-                loadingVenues ? (
+              {content.sponsoredItems?.length > 0 &&
+                (loadingVenues ? (
                   <SkeletonRail
                     title={`Sponsored ${content.categoryLabel ?? "Venues"}`}
                     subtitle="Featured partner listings"
@@ -942,30 +947,28 @@ useEffect(() => {
                     categoryLabel={content.categoryLabel ?? "Venues"}
                     items={content.sponsoredItems}
                   />
-                )
-              )}
+                ))}
 
               {/* Ad carousel — replaces the old Featured Host card */}
               {loadingVenues ? <SkeletonAdCarousel /> : <AdCarousel />}
 
               {/* Top Destinations */}
-              {content.luxuryItems?.length > 0 && (
-  loadingVenues ? (
-    <SkeletonTopDestinations />
-  ) : destination?.length > 0 ? (
-    <TopDestinations
-      tint={tint}
-      title="Top Destinations"
-      items={content.luxuryItems}
-      itemDest={destination}
-    />
-  ) : (
-    <div className="py-8 text-center text-gray-500">
-       <SkeletonTopDestinations />
-      {/* No destinations found. */}
-    </div>
-  )
-)}
+              {content.luxuryItems?.length > 0 &&
+                (loadingVenues ? (
+                  <SkeletonTopDestinations />
+                ) : destination?.length > 0 ? (
+                  <TopDestinations
+                    tint={tint}
+                    title="Top Destinations"
+                    items={content.luxuryItems}
+                    itemDest={destination}
+                  />
+                ) : (
+                  <div className="py-8 text-center text-gray-500">
+                    <SkeletonTopDestinations />
+                    {/* No destinations found. */}
+                  </div>
+                ))}
             </div>
           )}
 

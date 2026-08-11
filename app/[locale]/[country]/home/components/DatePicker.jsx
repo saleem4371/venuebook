@@ -1,27 +1,30 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useLayoutEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, Clock } from "lucide-react";
 
-const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-const DAYS   = ["Su","Mo","Tu","We","Th","Fr","Sa"];
+/* MONTHS/DAYS and the pure date-math helpers below are exported (additive —
+   nothing about their own behavior changed) so MobileDateCalendar.jsx can
+   reuse the exact same date logic instead of a second, drift-prone copy. */
+export const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+export const DAYS   = ["Su","Mo","Tu","We","Th","Fr","Sa"];
 
-function isSameDay(a, b) {
+export function isSameDay(a, b) {
   return a && b && a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
-function isBetween(d, start, end) {
+export function isBetween(d, start, end) {
   if (!start || !end) return false;
   const t = d.getTime(), s = start.getTime(), e = end.getTime();
   return t > s && t < e;
 }
-function toDisplay(d, withTime) {
+export function toDisplay(d, withTime) {
   if (!d) return "";
   const base = `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
   if (!withTime) return base;
   return `${base} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
 }
-function addDays(d, n) {
+export function addDays(d, n) {
   const copy = new Date(d);
   copy.setDate(copy.getDate() + n);
   return copy;
@@ -48,16 +51,16 @@ const HOLIDAYS_AE = [
   { month: 11, day: 2,  name: "National Day" },
   { month: 11, day: 3,  name: "National Day Holiday" },
 ];
-function getHolidays(countryCode) {
+export function getHolidays(countryCode) {
   return countryCode === "ae" ? HOLIDAYS_AE : HOLIDAYS_IN;
 }
-function isHoliday(date, holidays) {
+export function isHoliday(date, holidays) {
   return holidays.some((h) => h.month === date.getMonth() && h.day === date.getDate());
 }
 /* A "long weekend" cell is a holiday that lands on/adjacent to a Sat/Sun,
    OR a Sat/Sun that's adjacent to one — the whole connected span gets the
    softer long-weekend tint instead of just the single holiday date. */
-function isLongWeekendSpan(date, holidays) {
+export function isLongWeekendSpan(date, holidays) {
   const dow = date.getDay(); // 0 Sun .. 6 Sat
   if (dow === 0 || dow === 6) {
     return isHoliday(addDays(date, -1), holidays) || isHoliday(addDays(date, 1), holidays) ||
@@ -70,8 +73,14 @@ function isLongWeekendSpan(date, holidays) {
   return false;
 }
 
-/* ── Calendar month grid ─────────────────────────────────────── */
-function CalendarMonth({ year, month, start, end, hovered, onSelect, onHover, tint, range, minDate, light = false, holidays = [] }) {
+/* ── Calendar month grid ─────────────────────────────────────────────
+   `size` is additive ("sm", the default, is byte-for-byte the original
+   32px/text-[12px] cells every existing caller still gets). "lg" is used
+   only by the new MobileDateCalendar — bigger cells/type to clear the
+   44px touch-target minimum on mobile. Exported so MobileDateCalendar.jsx
+   can reuse this exact grid instead of a second, drift-prone copy of the
+   same isPast/isStart/isEnd/isInRange/holiday logic. */
+export function CalendarMonth({ year, month, start, end, hovered, onSelect, onHover, tint, range, minDate, light = false, holidays = [], size = "sm", getPrice, highlightWeekends = false, showWeekdays = true }) {
   const firstDay  = new Date(year, month, 1).getDay();
   const daysCount = new Date(year, month + 1, 0).getDate();
   const cells     = [];
@@ -80,15 +89,33 @@ function CalendarMonth({ year, month, start, end, hovered, onSelect, onHover, ti
 
   const dayHeaderCls = light ? "text-gray-400 dark:text-white/30" : "text-white/30";
   const today = new Date(); today.setHours(0,0,0,0);
+  const isLg = size === "lg";
+  // `getPrice` is an optional (date) => number|string|null slot — no
+  // pricing-per-date data source exists anywhere in this codebase today,
+  // so no caller passes it yet. Reserving a taller cell only when it's
+  // actually supplied means the plain "lg" calendar (used right now)
+  // keeps its clean single-number look; wiring in real per-date pricing
+  // later is then just passing the prop, no layout changes needed.
+  const hasPrice    = isLg && typeof getPrice === "function";
+  const gridGapCls  = isLg ? "gap-1" : "gap-0.5";
+  const cellSizeCls = isLg ? (hasPrice ? "h-14 text-[14px] font-medium" : "h-12 text-[14px] font-medium") : "h-8 text-[12px]";
+  const headerSizeCls = isLg ? "text-[11px] py-1.5" : "text-[10px] py-1";
 
   return (
     <div>
-      <div className="grid grid-cols-7 gap-0.5 mb-1">
-        {DAYS.map((d) => (
-          <p key={d} className={`text-center text-[10px] font-medium py-1 ${dayHeaderCls}`}>{d}</p>
-        ))}
-      </div>
-      <div className="grid grid-cols-7 gap-0.5">
+      {/* Additive, opt-in-off: MobileDateCalendar already renders its own
+          single fixed weekday row above the swiping month cards, so each
+          card repeating "Su Mo Tu We..." underneath it was a visible
+          duplicate. Every other caller (desktop popup, old stacked-month
+          view) has no header of its own and keeps this on by default. */}
+      {showWeekdays && (
+        <div className={`grid grid-cols-7 ${gridGapCls} mb-1`}>
+          {DAYS.map((d) => (
+            <p key={d} className={`text-center font-medium ${headerSizeCls} ${dayHeaderCls}`}>{d}</p>
+          ))}
+        </div>
+      )}
+      <div className={`grid grid-cols-7 ${gridGapCls}`}>
         {cells.map((day, i) => {
           if (!day) return <div key={`empty-${i}`} />;
           const isPast      = minDate && day < minDate;
@@ -99,6 +126,12 @@ function CalendarMonth({ year, month, start, end, hovered, onSelect, onHover, ti
           const isToday     = isSameDay(day, today);
           const holidayHere = isHoliday(day, holidays);
           const longWeekend = holidays.length > 0 && isLongWeekendSpan(day, holidays);
+          // Additive, opt-in (default off — every existing caller is
+          // unaffected): a faint Sat/Sun tint, one step subtler than the
+          // holiday/long-weekend amber so the two never compete for
+          // attention. Mobile's premium calendar turns this on; the
+          // desktop popup and the old stacked-month view don't pass it.
+          const isPlainWeekend = highlightWeekends && !longWeekend && (day.getDay() === 0 || day.getDay() === 6);
 
           const normalCls = light
             ? "text-gray-700 dark:text-white/75 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white"
@@ -107,6 +140,7 @@ function CalendarMonth({ year, month, start, end, hovered, onSelect, onHover, ti
           const rangeCls  = light ? "text-gray-700 dark:text-white/90" : "text-white/90";
           const hovCls    = light ? "bg-gray-100 dark:bg-white/10 text-gray-800 dark:text-white" : "bg-white/10 text-white";
           const longWeekendCls = light ? "bg-amber-50 dark:bg-amber-500/10" : "bg-amber-400/10";
+          const weekendCls = light ? "bg-gray-50 dark:bg-white/[0.04]" : "bg-white/[0.04]";
 
           return (
             <button
@@ -125,7 +159,7 @@ function CalendarMonth({ year, month, start, end, hovered, onSelect, onHover, ti
                   : {}
               }
               className={[
-                "relative flex items-center justify-center text-[12px] h-8 rounded-lg transition-all",
+                `relative flex items-center justify-center rounded-lg transition-all ${cellSizeCls}`,
                 isPast
                   ? `cursor-not-allowed ${pastCls}`
                   : isStart || isEnd
@@ -136,13 +170,29 @@ function CalendarMonth({ year, month, start, end, hovered, onSelect, onHover, ti
                   ? hovCls
                   : longWeekend
                   ? `font-medium ${longWeekendCls} ${normalCls}`
+                  : isPlainWeekend
+                  ? `${weekendCls} ${normalCls}`
                   : normalCls,
                 // Today gets a ring instead of a fill so it stays legible
                 // even when it also happens to be selected/in-range.
                 isToday && !isStart && !isEnd ? "ring-1 ring-inset " + (light ? "ring-gray-300 dark:ring-white/30" : "ring-white/30") : "",
               ].join(" ")}
             >
-              {day.getDate()}
+              {hasPrice ? (
+                <span className="flex flex-col items-center justify-center leading-none gap-0.5">
+                  <span>{day.getDate()}</span>
+                  {(() => {
+                    const price = getPrice(day);
+                    return price != null ? (
+                      <span className={`text-[9px] font-semibold ${isStart || isEnd ? "text-white/85" : light ? "text-gray-400 dark:text-white/40" : "text-white/40"}`}>
+                        {price}
+                      </span>
+                    ) : null;
+                  })()}
+                </span>
+              ) : (
+                day.getDate()
+              )}
               {holidayHere && !isStart && !isEnd && (
                 <span
                   className="absolute bottom-0.5 w-1 h-1 rounded-full"
@@ -158,7 +208,7 @@ function CalendarMonth({ year, month, start, end, hovered, onSelect, onHover, ti
 }
 
 /* ── Time selector ───────────────────────────────────────────── */
-function TimePicker({ value, onChange, label, light = false }) {
+export function TimePicker({ value, onChange, label, light = false }) {
   const hours   = Array.from({ length: 24 }, (_, i) => i);
   const minutes = [0, 15, 30, 45];
 
@@ -207,7 +257,7 @@ function TimePicker({ value, onChange, label, light = false }) {
    Each preset computes { start, end, label } from "today". Weekend presets
    always resolve to an actual Saturday→Sunday span regardless of mode —
    for single/datetime modes only `start` is used (set to the Saturday). */
-function nextWeekday(from, targetDow, offsetWeeks = 0) {
+export function nextWeekday(from, targetDow, offsetWeeks = 0) {
   const d = new Date(from);
   const diff = (targetDow - d.getDay() + 7) % 7;
   d.setDate(d.getDate() + diff + offsetWeeks * 7);
@@ -250,6 +300,7 @@ const DURATION_CHIPS = {
     { id: "2-nights", label: "2 Nights", kind: "range", nights: 2 },
     { id: "weekend",  label: "Weekend",  kind: "weekend" },
     { id: "1-week",   label: "1 Week",   kind: "range", nights: 7 },
+    { id: "1-month",  label: "1 Month",  kind: "range", nights: 30 },
   ],
   studios: [
     { id: "hourly",   label: "Hourly",   kind: "tag" },
@@ -257,22 +308,24 @@ const DURATION_CHIPS = {
     { id: "full-day", label: "Full Day", kind: "tag" },
   ],
   workspaces: [
-    { id: "hourly",  label: "Hourly",  kind: "tag" },
-    { id: "daily",   label: "Daily",   kind: "range", nights: 1 },
-    { id: "weekly",  label: "Weekly",  kind: "range", nights: 7 },
-    { id: "monthly", label: "Monthly", kind: "range", nights: 30 },
+    { id: "hourly",   label: "Hourly",   kind: "tag" },
+    { id: "daily",    label: "Daily",    kind: "range", nights: 1 },
+    { id: "weekly",   label: "Weekly",   kind: "range", nights: 7 },
+    { id: "monthly",  label: "Monthly",  kind: "range", nights: 30 },
+    { id: "quarterly",label: "3 Months", kind: "range", nights: 90 },
   ],
   rentals: [
     { id: "1-night",  label: "1 Night",  kind: "range", nights: 1 },
     { id: "weekend",  label: "Weekend",  kind: "weekend" },
     { id: "1-week",   label: "1 Week",   kind: "range", nights: 7 },
+    { id: "1-month",  label: "1 Month",  kind: "range", nights: 30 },
   ],
   experiences: [
     { id: "half-day", label: "Half Day", kind: "tag" },
     { id: "full-day", label: "Full Day", kind: "tag" },
   ],
 };
-function getDurationChips(category) {
+export function getDurationChips(category) {
   return DURATION_CHIPS[(category || "").toLowerCase()] ?? DURATION_CHIPS.venues;
 }
 
@@ -303,6 +356,11 @@ export default function DatePicker({
    *  single calendar — one shared range selection instead of two
    *  independent single-date pickers that could produce an inverted range. */
   splitLabels,
+  /** Fires once, only on a real open→close transition (not on mount, not
+   *  on opening, and not in alwaysOpen/inline mode) — lets the search-bar
+   *  field wrapper collapse itself back to its display pill the moment
+   *  this popup closes, however it closes. */
+  onOpenChange,
 }) {
   const [open,     setOpen]     = useState(false);
   const [viewDate, setViewDate] = useState(new Date());
@@ -311,16 +369,70 @@ export default function DatePicker({
   const [activeDuration, setActiveDuration] = useState(null);
   const ref                     = useRef(null);
 
+  const wasOpenRef = useRef(open);
+  useEffect(() => {
+    if (alwaysOpen) return;
+    if (wasOpenRef.current && !open) onOpenChange?.(false);
+    wasOpenRef.current = open;
+  }, [open, alwaysOpen, onOpenChange]);
+
   const today      = new Date(); today.setHours(0,0,0,0);
   const isRange    = mode === "range" || rangeOverride;
   const isDatetime = mode === "datetime";
 
-  /* Outside click (only in popup mode) */
+  /* Outside click (only in popup mode) — "click", not "mousedown". See the
+     matching comment in SearchSelectField.jsx: closing on mousedown could
+     reflow the whole search bar (active-grows ↔ equal-width) before the
+     browser dispatched "click", so a click aimed at another field's pill
+     could miss it once the layout shifted underneath the cursor. "click"
+     fires after the target pill's own onClick in the same bubble pass, so
+     the intended field activates first, in one gesture. */
   useEffect(() => {
     if (alwaysOpen || !open) return;
     const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
-    document.addEventListener("mousedown", h);
-    return () => document.removeEventListener("mousedown", h);
+    document.addEventListener("click", h);
+    return () => document.removeEventListener("click", h);
+  }, [open, alwaysOpen]);
+
+  /* Keep the popup on-screen — it always renders anchored to its FIELD's
+     start edge (insetInlineStart: 0, see popupDropdown below), with no
+     awareness of where that field actually sits in the viewport. That's
+     fine when the field is near the left edge, but the range calendar is
+     560-620px wide (showTwoMonths), and once the Dates field sits further
+     right in the bar — which it does at medium widths, ~768-900px, where
+     the bar is narrow enough to push fields rightward but still wide
+     enough to render the desktop bar at all — the popup ran straight off
+     the right edge of the screen.
+     This measures the popup after it renders and nudges it back on-screen
+     with a horizontal shift (applied as Framer's `x`, composed together
+     with the existing y/scale animation rather than fighting it via a
+     separate transform). Works the same in RTL, since it's reading real
+     screen coordinates (getBoundingClientRect), not logical start/end. */
+  const popupRef = useRef(null);
+  const [shiftX, setShiftX] = useState(0);
+  useLayoutEffect(() => {
+    if (alwaysOpen || !open) { setShiftX(0); return; }
+    const margin = 16;
+    const measure = () => {
+      const el = popupRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const overflowRight = rect.right - (window.innerWidth - margin);
+      const overflowLeft = margin - rect.left;
+      if (overflowRight > 0) setShiftX((prev) => prev - overflowRight);
+      else if (overflowLeft > 0) setShiftX((prev) => prev + overflowLeft);
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [open, alwaysOpen]);
+
+  /* Escape closes the popup, same as clicking outside */
+  useEffect(() => {
+    if (alwaysOpen || !open) return;
+    const h = (e) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("keydown", h);
+    return () => document.removeEventListener("keydown", h);
   }, [open, alwaysOpen]);
 
   const handleSelect = (day) => {
@@ -607,9 +719,10 @@ export default function DatePicker({
     <AnimatePresence>
       {open && (
         <motion.div
-          initial={{ opacity: 0, y: 10, scale: 0.97 }}
-          animate={{ opacity: 1, y: 0,  scale: 1    }}
-          exit={{   opacity: 0, y: 8,   scale: 0.97 }}
+          ref={popupRef}
+          initial={{ opacity: 0, y: 10, scale: 0.97, x: shiftX }}
+          animate={{ opacity: 1, y: 0,  scale: 1,    x: shiftX }}
+          exit={{   opacity: 0, y: 8,   scale: 0.97, x: shiftX }}
           transition={{ duration: 0.18, ease: "easeOut" }}
           style={lightMode ? { insetInlineStart: 0 } : {
             background:       "rgba(12,12,18,0.95)",
@@ -684,12 +797,20 @@ export default function DatePicker({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="w-full text-start bg-transparent text-sm outline-none"
+        className="w-full min-w-0 text-start bg-transparent text-sm outline-none"
       >
-        <span className={startDate
+        {/* `block truncate` — this is the "12 Aug 2026 → 15 Aug 2026" style
+           merged trigger (single-line range display, used wherever a
+           daterange field no longer splits into two Check In/Check Out
+           cells). A plain <span> has no width of its own to truncate
+           against and wraps across lines whenever the trigger's available
+           width is tight — not just mid-animation, in the settled state
+           too, on any narrower field/container. `block` gives it a real
+           box to constrain, `truncate` ellipsizes instead of wrapping. */}
+        <span className={`block truncate ${startDate
           ? (textClass ?? "text-white")
           : (placeholderClass ?? "text-white/40")
-        }>
+        }`}>
           {displayText}
         </span>
       </button>

@@ -539,7 +539,21 @@ export default function LocationAutoComplete({
    *  parent's field header swap from "LOCATION" to "VENUE" etc, not just
    *  the input's placeholder. */
   onModeChange,
-  itemDest
+  itemDest,
+  /** Fires once, only on a real open→close transition (not on mount, not
+   *  on opening, and not in inline mode) — lets the search-bar field
+   *  wrapper collapse itself back to its display pill the moment the
+   *  suggestions panel closes, however it closes (pick a value, click
+   *  outside, Escape). Same pattern as DatePicker/GuestPicker/
+   *  SearchSelectField's onOpenChange. */
+  onOpenChange,
+  /** When true, focuses the input (and opens the keyboard on mobile) once
+   *  on mount. Used by MobileSearchSheet's Destination section, which is
+   *  the first thing open when the full-screen sheet appears — the sheet
+   *  unmounts this component entirely on close (see MobileSearchSheet's
+   *  AnimatePresence + FieldSection's conditional children), so a plain
+   *  mount-time focus fires fresh every time the sheet reopens. */
+  autoFocus = false,
 }) {
   const router = useRouter();
   const params = useParams();
@@ -550,6 +564,19 @@ export default function LocationAutoComplete({
 
   const inputRef  = useRef(null);
   const wrapRef   = useRef(null);
+
+  // rAF, not a plain `autoFocus` attribute — this mounts inside a Framer
+  // Motion enter animation (the sheet sliding/fading in), and focusing an
+  // input before the browser has painted/settled that transition is where
+  // iOS Safari most often silently no-ops the keyboard. Matches the same
+  // rAF-based fix already used for the desktop search bar's auto-open
+  // (see ListingsSearchBar.jsx / HeroSection.jsx SearchField).
+  useEffect(() => {
+    if (!autoFocus) return;
+    const raf = requestAnimationFrame(() => inputRef.current?.focus());
+    return () => cancelAnimationFrame(raf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [show,    setShow]    = useState(false);
   const [mode,    setMode]    = useState("location"); // "location" | "property"
   const [query,   setQuery]   = useState(defaultValue || "");
@@ -617,13 +644,41 @@ export default function LocationAutoComplete({
     );
   }, [mode, query, countryCode]);
 
+  // Reports real open→close transitions of `show` so the search-bar field
+  // wrapper can collapse itself back to its display pill — same fix as
+  // DatePicker/GuestPicker/SearchSelectField's onOpenChange, which this
+  // field was missing. Without it, closing the suggestions panel (click
+  // outside, Escape, or picking a value) left the field LOOKING active —
+  // full "LOCATION" label + input box — even though nothing was open.
+  const wasShowRef = useRef(show);
+  useEffect(() => {
+    if (inline) return;
+    if (wasShowRef.current && !show) onOpenChange?.(false);
+    wasShowRef.current = show;
+  }, [show, inline, onOpenChange]);
+
+  // "click", not "mousedown" — see the matching comment in
+  // SearchSelectField.jsx: closing on mousedown could reflow the whole
+  // search bar (active-grows ↔ equal-width) before the browser dispatched
+  // "click", so a click aimed at another field's pill could miss it once
+  // layout shifted underneath the cursor. "click" fires after the target
+  // pill's own onClick in the same bubble pass, so the intended field
+  // activates first, in one gesture.
   useEffect(() => {
     if (inline || !show) return;
     const handler = (e) => {
       if (wrapRef.current && !wrapRef.current.contains(e.target)) setShow(false);
     };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    document.addEventListener("click", handler);
+    return () => document.removeEventListener("click", handler);
+  }, [show, inline]);
+
+  /* Escape closes the suggestions panel, same as clicking outside */
+  useEffect(() => {
+    if (inline || !show) return;
+    const handler = (e) => { if (e.key === "Escape") setShow(false); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
   }, [show, inline]);
 
   const placesServiceRef = useRef(null);
@@ -1068,33 +1123,33 @@ export default function LocationAutoComplete({
           flat = flat.concat(items);
         }
 
-        console.log('Log Details');
-        console.log(itemDest)
-
-        // Popular Destinations — photo cards only on the mobile sheet
-        // (inline mode). Every *popup* variant — including the search
-        // page's ListingsSearchBar, which sets lightDropdown={true} for
-        // its white bg but is NOT inline — keeps the original plain text
-        // rows (same shape as every other row group here: icon + primary
-        // + secondary). `inline`, not `lightDropdown`, is what actually
-        // means "the mobile embedded sheet".
-       const popularItems = inline
-  ? popular.map((loc) => ({
-      key: `popular-${loc.id}`,
-      img: `${process.env.NEXT_PUBLIC_AWS_BUCKET_URL}/${loc.image}`,
-      city: loc.district,
-      cardSubtitle: loc.name,
-      onSelect: () => handleSelect(loc.district),
-    }))
-  : popular.map((loc) => ({
-      key: `popular-${loc.id}`,
-      icon: MapPin,
-      primary: loc.district,
-      secondary: loc.name,
-      onSelect: () => handleSelect(loc.district),
-    }));
-        groups.push({ header: "Popular Destinations", kind: inline ? "cards" : "rows", items: popularItems });
-        flat = flat.concat(popularItems);
+        // Popular Destinations — horizontal-scroll photo cards on mobile
+        // (inline), plain text rows on desktop. Real photo (`img`) when
+        // the backend data has one, deterministic per-city gradient
+        // fallback otherwise — see DestinationCard/destinationGradient.
+        if (inline) {
+          const popularCardItems = popular.map((loc) => ({
+            key: `popular-${loc.id}`,
+            img: loc.image ? `${process.env.NEXT_PUBLIC_AWS_BUCKET_URL}/${loc.image}` : undefined,
+            city: loc.district,
+            cardSubtitle: loc.name,
+            onSelect: () => handleSelect(loc.district),
+          }));
+          if (popularCardItems.length > 0) {
+            groups.push({ header: "Popular Destinations", kind: "cards", items: popularCardItems });
+            flat = flat.concat(popularCardItems);
+          }
+        } else {
+          const popularItems = popular.map((loc) => ({
+            key: `popular-${loc.id}`,
+            icon: MapPin,
+            primary: loc.district,
+            secondary: loc.name,
+            onSelect: () => handleSelect(loc.district),
+          }));
+          groups.push({ header: "Popular Destinations", kind: "rows", items: popularItems });
+          flat = flat.concat(popularItems);
+        }
 
         // Nearby
         let nearbyItems = [];
@@ -1340,9 +1395,22 @@ export default function LocationAutoComplete({
         // kind === "rows" (default)
         return (
           <div key={g.header} className={`px-2 pb-2 ${gi < groups.length - 1 ? `border-b ${divCls}` : ""}`}>
-            <p className={`sticky top-0 z-10 text-[9px] font-bold uppercase tracking-widest ${headCls} ${stickyBg} px-2 pb-2 pt-3.5`}>
-              {g.header}
-            </p>
+            <div className={`sticky top-0 z-10 flex items-center justify-between ${stickyBg} px-2 pb-2 pt-3.5`}>
+              <p className={`text-[9px] font-bold uppercase tracking-widest ${headCls}`}>
+                {g.header}
+              </p>
+              {/* "Show Clear History only if history exists" — only the
+                  merged inline Recent Searches group ever sets this. */}
+              {g.onClearAll && (
+                <button
+                  type="button"
+                  onClick={g.onClearAll}
+                  className={`text-[9px] font-bold uppercase tracking-widest ${headCls} hover:opacity-70 transition`}
+                >
+                  {g.clearLabel}
+                </button>
+              )}
+            </div>
             <AnimatePresence initial={false}>
               {g.items.map((item) => {
                 const myIndex = runningIndex++;
@@ -1390,8 +1458,21 @@ export default function LocationAutoComplete({
   // (pin / building-type) already lives on every suggestion row instead.
   const LeadingIcon = Search;
 
+  // Inline (mobile tab panel) needs its own visible input-box chrome — a
+  // border/background/padding — since it no longer sits nested inside a
+  // parent field's own pill styling the way the desktop popup's bare icon
+  // + input row does (that one still relies on HeroSection/
+  // ListingsSearchBar's own wrapper for its box look, untouched here).
+  const inputWrapCls = inline
+    ? `flex items-center gap-2 px-4 py-3.5 rounded-2xl border ${
+        lightDropdown
+          ? "border-gray-200 dark:border-white/15 bg-white dark:bg-white/[0.05]"
+          : "border-white/15 bg-white/[0.06]"
+      }`
+    : "flex items-center gap-2";
+
   const inputEl = (
-    <div className="flex items-center gap-2">
+    <div className={inputWrapCls}>
       <LeadingIcon className={`w-4 h-4 shrink-0 ${lightDropdown ? "text-gray-400 dark:text-white/40" : "text-white/40"}`} />
       <input
         ref={inputRef}

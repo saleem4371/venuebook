@@ -77,7 +77,8 @@ const category_click = (e, id) => {
   if (!loading && !loadData.loadData.length) return null;
 
   return (
-    <section className="relative py-7 bg-white dark:bg-gray-950/80">
+    // Hidden on mobile — desktop keeps this section exactly as before.
+    <section className="hidden md:block relative py-7 bg-white dark:bg-gray-950/80">
       {/* Per-category tint overlay — works in both light & dark */}
       <div
         className="absolute inset-0 pointer-events-none"

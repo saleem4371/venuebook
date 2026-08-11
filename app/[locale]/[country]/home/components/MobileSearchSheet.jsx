@@ -4,109 +4,45 @@ import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslations } from "next-intl";
 import {
-  X,
   Search,
   MapPin,
   Calendar,
   Users,
-  ChevronDown,
+  ChevronLeft,
+  Compass,
+  Sparkles,
 } from "lucide-react";
 import LocationAutoComplete   from "./LocationAutoComplete";
-import DatePicker             from "./DatePicker";
+import MobileDateCalendar     from "./MobileDateCalendar";
 import GuestPicker, { summarizeFields, getCategoryFields, GUEST_CONFIGS } from "./GuestPicker";
+import SearchSelectField      from "./SearchSelectField";
 
 import { useCategory }    from "@/context/CategoryContext";
 import { CATEGORY_TINTS } from "@/config/categoryConfig";
 import { LoadProperty }   from "@/services/venues.service";
 import { DEFAULT_FILTERS } from "@/app/[locale]/[country]/search/[type]/components/FilterDrawer";
+/* Per-category config now lives in one shared file — see
+   searchFieldsConfig.js. Previously duplicated here, in HeroSection.jsx
+   and in ListingsSearchBar.jsx. */
+import { SHEET_CONFIG, SHEET_EXTRA_FIELDS } from "./searchFieldsConfig";
 
-/* ── Per-category config ────────────────────────────────────── */
-const SHEET_CONFIG = {
-  venues:      { title: "Find a Venue",     guestType: "guests",          dateMode: "single",   dateLabel: "Event Date",   locationLabel: "Location",    locationPlaceholder: "City, area or venue name"  },
-  farmstays:   { title: "Find a Farmstay",  guestType: "guests_detailed", dateMode: "range",    dateLabel: "Check In/Out", locationLabel: "Destination", locationPlaceholder: "Where do you want to go?"  },
-  studios:     { title: "Book a Studio",    guestType: "attendees",       dateMode: "datetime", dateLabel: "Start Time",   locationLabel: "Location",    locationPlaceholder: "City or studio name"        },
-  rentals:     { title: "Rent a Space",     guestType: "guests_detailed", dateMode: "range",    dateLabel: "Dates",        locationLabel: "Location",    locationPlaceholder: "City or space name"         },
-  workspaces:  { title: "Find a Workspace", guestType: "attendees",       dateMode: "range",    dateLabel: "Dates",        locationLabel: "Location",    locationPlaceholder: "City or area"               },
-  experiences: { title: "Explore",          guestType: "guests",          dateMode: "single",   dateLabel: "Date",         locationLabel: "Location",    locationPlaceholder: "City or area"               },
+/* ── Tab strip → tab meta for category-specific extra facets (e.g.
+   farmstay Occasion/Vibe) — icon + short label matching the same
+   short_why/short_feel pills already used on the desktop bar, so mobile
+   and desktop read as the same field order: Where → Why → Feel →
+   Dates → Who. Only farmstays have entries in SHEET_EXTRA_FIELDS today;
+   any id without a meta entry here falls back to a generic icon. */
+const EXTRA_FIELD_TAB_META = {
+  occasion: { labelKey: "short_why", icon: Compass },
+  vibe: { labelKey: "short_feel", icon: Sparkles },
 };
-
-/* ── Collapsible field section ──────────────────────────────── */
-function FieldSection({ icon: Icon, label, value, isOpen, onToggle, tint, children }) {
-  const tintHex = tint?.hex ?? "#7c3aed";
-  return (
-    /*
-     * The open field now fills the rest of the sheet's available height
-     * (flex-1) and scrolls WITHIN itself (overflow-y-auto), instead of
-     * growing to its full natural content height and pushing the whole
-     * page tall — that was fine for a handful of rows but blew out the
-     * screen once the calendar started stacking 6 months. `min-h-0` on
-     * both the flexed wrapper and the scroll region is required — flex
-     * items default to a content-based min-height that silently defeats
-     * `overflow-y-auto` otherwise. Closed fields stay their natural
-     * (shrink-0) row height, same as before.
-     *
-     * The open field gets a neutral border + shadow instead of the same
-     * flat gray border every field had regardless of state, giving the
-     * card stack actual depth instead of sitting flush against the
-     * sheet's own white background.
-     */
-    <div
-      className={`rounded-2xl border transition-all duration-200 flex flex-col ${
-        isOpen
-          ? "flex-1 min-h-0 border-gray-300 dark:border-white/20 shadow-md"
-          : "shrink-0 border-gray-200 dark:border-white/[0.1] shadow-sm"
-      }`}
-    >
-      <button
-        type="button"
-        onClick={onToggle}
-        className="w-full shrink-0 flex items-center gap-3 px-4 py-3.5 bg-white dark:bg-gray-800/60 hover:bg-gray-50 dark:hover:bg-gray-800 transition text-start rounded-2xl"
-      >
-        <div
-          className="shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-colors duration-200"
-          style={isOpen
-            ? { background: tint?.light ?? "rgba(124,58,237,0.12)" }
-            : { background: "rgba(0,0,0,0.045)" }
-          }
-        >
-          <Icon
-            className="w-4 h-4"
-            style={isOpen ? { color: tintHex } : {}}
-          />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 leading-none mb-1">
-            {label}
-          </p>
-          <p className={`text-sm font-medium truncate ${value ? "text-gray-800 dark:text-gray-100" : "text-gray-400 dark:text-gray-500"}`}>
-            {value || `Add ${label.toLowerCase()}`}
-          </p>
-        </div>
-        <ChevronDown
-          className={`w-4 h-4 shrink-0 text-gray-400 dark:text-gray-500 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
-        />
-      </button>
-
-      {isOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.18 }}
-          className="flex-1 min-h-0 overflow-y-auto rounded-b-2xl"
-          style={{ overscrollBehavior: "contain" }}
-        >
-          <div className="px-3 pb-3.5 pt-2.5 bg-gray-50/60 dark:bg-gray-900/50 border-t border-gray-100 dark:border-white/[0.06]">
-            {children}
-          </div>
-        </motion.div>
-      )}
-    </div>
-  );
-}
 
 /* ── Main sheet ─────────────────────────────────────────────── */
 export default function MobileSearchSheet({ open, setOpen, onSummaryChange , itemDest}) {
+  const t   = useTranslations("searchBar");
+  const tf  = useTranslations("filter");
   const { activeCategory } = useCategory();
   const params              = useParams();
   const router              = useRouter();
@@ -114,8 +50,13 @@ export default function MobileSearchSheet({ open, setOpen, onSummaryChange , ite
   const countryCode         = String(params?.country || "in").toLowerCase();
   const tint                = CATEGORY_TINTS[activeCategory] ?? CATEGORY_TINTS.venues;
   const config               = SHEET_CONFIG[activeCategory]   ?? SHEET_CONFIG.venues;
+  const extraFields          = SHEET_EXTRA_FIELDS[activeCategory] ?? [];
 
   const [openSection, setOpenSection] = useState("location");
+  // Values for category-specific extra fields (e.g. farmstay Occasion/Vibe),
+  // keyed by field id. Reset on category switch below.
+  const [extraValues, setExtraValues] = useState({});
+  useEffect(() => { setExtraValues({}); }, [activeCategory]);
   const [location,    setLocation]    = useState("");
   // Raw payload from LocationAutoComplete's onSelect — kept alongside the
   // display string above. `location` is just text for the UI (collapsed
@@ -134,8 +75,8 @@ export default function MobileSearchSheet({ open, setOpen, onSummaryChange , ite
   // SHEET_CONFIG) even after switching to Property mode inside the field —
   // only the placeholder changed. LocationAutoComplete reports its live
   // label via onModeChange; this mirrors it into the section header.
-  const [locationLabel, setLocationLabel] = useState(config.locationLabel);
-  useEffect(() => { setLocationLabel(config.locationLabel); }, [config.locationLabel]);
+  const [locationLabel, setLocationLabel] = useState(t(config.locationLabelKey));
+  useEffect(() => { setLocationLabel(t(config.locationLabelKey)); }, [config.locationLabelKey, t]);
 
   const isRange    = config.dateMode === "range";
   const isDatetime = config.dateMode === "datetime";
@@ -169,16 +110,35 @@ export default function MobileSearchSheet({ open, setOpen, onSummaryChange , ite
     onSummaryChange?.({ location, dateSummary, guestSummary: guestSummaryDisplay });
   }, [location, dateSummary, guestSummaryDisplay, onSummaryChange]);
 
-  const toggle = (section) =>
-    setOpenSection((prev) => (prev === section ? null : section));
+  // Persistent tab strip — Where / (Why / Feel, category-dependent) /
+  // Dates / Who, always visible and tappable in any order (not a gated
+  // one-at-a-time accordion any more). Order matches the desktop bar's
+  // Where → Why → Feel → Dates → Who.
+  const tabs = [
+    { id: "location", label: t("short_where"), icon: MapPin },
+    ...extraFields.map((f) => ({
+      id: f.id,
+      label: t(EXTRA_FIELD_TAB_META[f.id]?.labelKey ?? f.labelKey),
+      icon: EXTRA_FIELD_TAB_META[f.id]?.icon ?? Sparkles,
+    })),
+    { id: "date", label: t("short_dates"), icon: Calendar },
+    { id: "guests", label: t("short_who"), icon: Users },
+  ];
 
   const handleClear = () => {
     setLocation(""); setLocationValue(null); setStartDate(null); setEndDate(null); setGuests({});
-    setDuration(null); setEventType(null);
+    setDuration(null); setEventType(null); setExtraValues({});
     setOpenSection("location");
   };
 
   const isReady = !!location;
+  // Header's "Clear All" per spec only shows once there's actually
+  // something to clear — same fields handleClear() resets.
+  const hasAnyValue = !!(
+    location || startDate ||
+    Object.values(guests).some((n) => n > 0) ||
+    Object.values(extraValues).some(Boolean)
+  );
   const [matchCount,   setMatchCount]   = useState(null);
   const [matchLoading, setMatchLoading] = useState(false);
   useEffect(() => {
@@ -201,7 +161,7 @@ export default function MobileSearchSheet({ open, setOpen, onSummaryChange , ite
     return () => { cancelled = true; clearTimeout(timer); };
   }, [activeCategory, location]);
 
-  const ctaLabel = `Search ${activeCategory.charAt(0).toUpperCase()}${activeCategory.slice(1)}`;
+  const ctaLabel = `${t("search")} ${activeCategory.charAt(0).toUpperCase()}${activeCategory.slice(1)}`;
 
   // Builds the query string from everything currently selected in the sheet
   // and pushes to the category's search results route. Mirrors the
@@ -222,6 +182,9 @@ export default function MobileSearchSheet({ open, setOpen, onSummaryChange , ite
       guests,
       ...(duration ? { duration } : {}),
       ...(eventType ? { eventType } : {}),
+      // Category-specific extras (e.g. farmstay occasion/vibe) — only
+      // included when actually selected, same as duration/eventType above.
+      ...extraValues,
     };
 
     Object.entries(searchData).forEach(([key, value]) => {
@@ -295,6 +258,19 @@ export default function MobileSearchSheet({ open, setOpen, onSummaryChange , ite
   // (e.g. sticky z-30 SearchBar wrapper that would otherwise cap the sheet's z-index)
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
+
+  // Prevent the page underneath from scrolling while the full-screen sheet
+  // is open — otherwise a touch-drag that starts on the backdrop (outside
+  // any of the sheet's own overflow-y-auto regions) can scroll the page
+  // behind it. Restores whatever the page's own overflow was on close/
+  // unmount, rather than assuming it was always "".
+  useEffect(() => {
+    if (!open) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prevOverflow; };
+  }, [open]);
+
   if (!mounted) return null;
 
   return createPortal(
@@ -302,170 +278,271 @@ export default function MobileSearchSheet({ open, setOpen, onSummaryChange , ite
       {open && (
         <div className="fixed inset-0 z-[9998] md:hidden">
 
-          {/* Backdrop */}
+          {/* Backdrop — a touch of real blur (not just a dim) reads as the
+              sheet growing forward out of the page behind it. */}
           <motion.div
             initial={{ opacity: 0 }}
-            animate={{ opacity: 0.55 }}
+            animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black"
+            className="absolute inset-0 bg-black/55 backdrop-blur-[2px]"
             onClick={() => setOpen(false)}
           />
 
           {/* Sheet — full screen rather than a partial-height bottom sheet,
-              so it slides up and covers the whole viewport. */}
+              so it slides up and covers the whole viewport. The small
+              scale pairs with the slide so it reads as expanding open
+              rather than just sliding up, without the fragility of a true
+              shared-element transition from the search bar (that trigger
+              lives in two separate call sites — HeroSection.jsx and
+              ListingsSearchBar.jsx — a mismatched/missing layoutId on
+              either one would silently break the animation instead of
+              just looking slightly less fancy). */}
           <motion.div
-            initial={{ y: "100%" }}
-            animate={{ y: 0 }}
-            exit={{ y: "100%" }}
+            initial={{ y: "100%", scale: 0.98 }}
+            animate={{ y: 0, scale: 1 }}
+            exit={{ y: "100%", scale: 0.98 }}
             transition={{ type: "spring", damping: 30, stiffness: 300 }}
             className="absolute inset-0 w-full bg-white dark:bg-gray-900 flex flex-col"
             style={{ height: "100dvh" }}
           >
-            {/* Header — a tint-colored icon badge gives the title an anchor
-                point instead of sitting as bare text, and the border-b
-                separates it from the scrollable content once that content
-                scrolls underneath it. */}
+            {/* Header — Back and Clear All only, nothing else, ~56px tall
+                (excluding the safe-area inset, which is extra device
+                chrome space on top of that). No title: the first card
+                below ("Where are you going?") already tells you what
+                screen you're on. */}
             <div
-              className="px-5 pb-3.5 flex items-center justify-between gap-3 shrink-0 border-b border-gray-100 dark:border-white/[0.06]"
-              style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 14px)" }}
+              className="flex items-center justify-between px-2 pb-2 shrink-0 border-b border-gray-100 dark:border-white/[0.06]"
+              style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 8px)" }}
             >
-              <div className="flex items-center gap-3 min-w-0">
-                <div
-                  className="shrink-0 w-10 h-10 rounded-xl flex items-center justify-center"
-                  style={{ background: tint?.light ?? "rgba(124,58,237,0.12)" }}
-                >
-                  <Search className="w-[18px] h-[18px]" style={{ color: tint?.hex ?? "#7c3aed" }} />
-                </div>
-                <div className="min-w-0">
-                  <h2 className="font-bold text-gray-800 dark:text-gray-100 text-base leading-snug truncate">
-                    {config.title}
-                  </h2>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-                    Fill in your search details
-                  </p>
-                </div>
-              </div>
-              <button
+              <motion.button
+                type="button"
+                whileTap={{ scale: 0.9 }}
                 onClick={() => setOpen(false)}
-                className="p-2 -me-1 rounded-xl hover:bg-gray-100 dark:hover:bg-white/10 transition shrink-0"
+                aria-label={t("back")}
+                className="w-11 h-11 rounded-full flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10 transition shrink-0"
               >
-                <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-              </button>
+                <ChevronLeft className="w-5 h-5 rtl:rotate-180" />
+              </motion.button>
+
+              <AnimatePresence>
+                {hasAnyValue && (
+                  <motion.button
+                    type="button"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={handleClear}
+                    className="text-sm font-semibold px-3 min-h-[44px] -me-1 rounded-xl hover:bg-gray-100 dark:hover:bg-white/10 transition whitespace-nowrap"
+                    style={{ color: tint?.hex ?? "#7c3aed" }}
+                  >
+                    {t("clear_all")}
+                  </motion.button>
+                )}
+              </AnimatePresence>
             </div>
 
-            {/* Content — no overflow/scroll of its own anymore. The open
-                FieldSection fills this flex column (flex-1) and scrolls
-                internally instead, so the collapsed sibling rows and the
-                header/footer around them stay put instead of scrolling
-                away too — the open field effectively takes over the rest
-                of the screen, closer to how Airbnb's search sheet behaves. */}
-            <div className="flex-1 min-h-0 flex flex-col px-5 pt-4 pb-3 gap-3">
+            {/* Persistent tab strip — Where / Why / Feel / Dates / Who,
+                always visible, any tab reachable in any order (replaces
+                the previous one-at-a-time accordion + special-cased
+                full-screen Where). Active tab gets a colored icon/label
+                and a colored underline; the panel below swaps to match. */}
+            <div
+              className="flex items-stretch shrink-0 border-b border-gray-100 dark:border-white/[0.06] px-1"
+              role="tablist"
+              aria-label={ctaLabel}
+            >
+              {tabs.map((tabItem) => {
+                const Icon = tabItem.icon;
+                const isActive = openSection === tabItem.id;
+                return (
+                  <button
+                    key={tabItem.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    onClick={() => setOpenSection(tabItem.id)}
+                    className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-1 py-2.5 min-h-[56px] border-b-2 transition-colors ${
+                      isActive ? "" : "border-transparent"
+                    }`}
+                    style={isActive ? { borderColor: tint?.hex ?? "#7c3aed" } : undefined}
+                  >
+                    <Icon
+                      className="w-4 h-4"
+                      style={{ color: isActive ? (tint?.hex ?? "#7c3aed") : undefined }}
+                    />
+                    <span
+                      className={`text-[11px] font-semibold truncate max-w-full ${isActive ? "" : "text-gray-400 dark:text-white/35"}`}
+                      style={isActive ? { color: tint?.hex ?? "#7c3aed" } : undefined}
+                    >
+                      {tabItem.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
 
-              {/* ── Location ── */}
-              <FieldSection
-                icon={MapPin}
-                label={locationLabel}
-                value={location}
-                isOpen={openSection === "location"}
-                onToggle={() => toggle("location")}
-                tint={tint}
-              >
-                {/*
-                  inline=true: suggestions render in document flow (no absolute positioning).
-                  onSelect: updates parent location state so the search button activates.
-                */}
-                <LocationAutoComplete
-                  category={activeCategory}
-                  tint={tint}
-                  countryCode={countryCode}
-                  placeholder={config.locationPlaceholder}
-                  textClass="text-gray-800 dark:text-white"
-                  placeholderClass="placeholder-gray-400 dark:placeholder-white/35"
-                  clearClass="text-gray-400 hover:text-gray-600 dark:text-white/40 dark:hover:text-white/80"
-                  inline
-                  lightDropdown={true}
-                  onSelect={(value) => {
-                    // Property-mode picks/queries arrive as objects
-                    // ({ mode: "property", propertyName | propertyQuery }),
-                    // not the plain city string Location mode sends —
-                    // normalize both into the summary string this sheet
-                    // displays in the collapsed header. The raw `value`
-                    // itself is kept in locationValue for handleSearch.
-                    const summary =
-                      typeof value === "string"
-                        ? value
-                        : value?.propertyName || value?.propertyQuery || value?.city || "";
-                    setLocation(summary);
-                    setLocationValue(value);
-                    if (summary) setOpenSection("date");
-                  }}
-                  onModeChange={setLocationLabel}
-                  itemDest={itemDest}
-                />
-              </FieldSection>
+            {/* Content — a single panel for whichever tab is active. Each
+                panel fills the rest of the sheet (flex-1) and scrolls
+                within itself, so the tab strip and header/footer around
+                it stay put. */}
+            <div className="flex-1 min-h-0 flex flex-col px-4 pt-3 pb-3">
+              {openSection === "location" && (
+                <div className="flex-1 min-h-0 flex flex-col">
+                  {/* Empty-state prompt — spec's exact copy, shown only until a destination is picked */}
+                  {!location && (
+                    <p className="text-[15px] font-bold text-gray-800 dark:text-white mb-3 px-0.5 shrink-0">
+                      {t("where_going")}
+                    </p>
+                  )}
+                  <div className="flex-1 min-h-0 overflow-y-auto" style={{ overscrollBehavior: "contain" }}>
+                    {/*
+                      inline=true: suggestions render in document flow (no absolute positioning).
+                      onSelect: updates parent location state so the search button activates.
+                    */}
+                    <LocationAutoComplete
+                      category={activeCategory}
+                      tint={tint}
+                      countryCode={countryCode}
+                      textClass="text-gray-800 dark:text-white"
+                      placeholderClass="placeholder-gray-400 dark:placeholder-white/35"
+                      clearClass="text-gray-400 hover:text-gray-600 dark:text-white/40 dark:hover:text-white/80"
+                      inline
+                      lightDropdown={true}
+                      autoFocus
+                      // Where unmounts/remounts every time the tab strip
+                      // switches away and back (it's a plain conditional
+                      // render, not a hidden/kept-alive panel) — without
+                      // this, LocationAutoComplete's own defaultValue sync
+                      // effect ran with `undefined` on every fresh mount
+                      // and force-cleared its internal query state to "",
+                      // so the input box went blank even though `location`
+                      // (and the footer summary) still correctly held the
+                      // previous pick.
+                      defaultValue={location}
+                      onSelect={(value) => {
+                        // Property-mode picks/queries arrive as objects
+                        // ({ mode: "property", propertyName | propertyQuery }),
+                        // not the plain city string Location mode sends —
+                        // normalize both into the summary string this sheet
+                        // displays in the collapsed header/summary bar. The
+                        // raw `value` itself is kept in locationValue for
+                        // handleSearch.
+                        const summary =
+                          typeof value === "string"
+                            ? value
+                            : value?.propertyName || value?.propertyQuery || value?.city || "";
+                        setLocation(summary);
+                        setLocationValue(value);
+                        // Advance to the next tab in field order — the
+                        // first extra facet (Why/Feel) if this category has
+                        // one, otherwise straight to Dates. Purely a
+                        // convenience default; every tab stays reachable
+                        // regardless, so this never traps anyone.
+                        if (summary) setOpenSection(extraFields[0]?.id ?? "date");
+                      }}
+                      onModeChange={setLocationLabel}
+                      itemDest={itemDest}
+                    />
+                  </div>
+                </div>
+              )}
 
-              {/* ── Date ── */}
-              <FieldSection
-                icon={Calendar}
-                label={config.dateLabel}
-                value={dateSummary}
-                isOpen={openSection === "date"}
-                onToggle={() => toggle("date")}
-                tint={tint}
-              >
-                {/*
-                  alwaysOpen=true: calendar renders inline (no popup trigger).
-                  Dark glassmorphism calendar fits within the light sheet via
-                  the dark bg baked into alwaysOpen mode.
-                */}
-                <DatePicker
-                  mode={config.dateMode}
-                  tint={tint}
-                  category={activeCategory}
-                  countryCode={countryCode}
-                  startDate={startDate}
-                  endDate={endDate}
-                  lightMode={true}
-                  onChangeStart={(d) => {
-                    setStartDate(d);
-                    // `d` arrives null from the new "Clear date" button —
-                    // only auto-advance to Guests on an actual pick, not
-                    // on a clear (which should just leave the date empty).
-                    if (d && !isRange && !isDatetime) setOpenSection("guests");
-                  }}
-                  onChangeEnd={(d) => {
-                    setEndDate(d);
-                    if (isRange && d) setOpenSection("guests");
-                  }}
-                  onDurationChange={setDuration}
-                  alwaysOpen
-                />
-              </FieldSection>
+              {/* ── Category-specific extra facets (e.g. farmstay Occasion/Vibe) ──
+                  Config-driven via SHEET_EXTRA_FIELDS, one full tab each
+                  (matching the desktop bar's Where → Why → Feel → Dates → Who
+                  order). Picking a value auto-advances to the next tab in
+                  that order — the next extra facet if there is one,
+                  otherwise Dates — same "no extra tap" behaviour Where→Date
+                  and Date→Who already have. Every tab still stays reachable
+                  by hand regardless, so this is a convenience, not a gate. */}
+              {extraFields.map((field, fieldIndex) =>
+                openSection === field.id ? (
+                  <div key={field.id} className="flex-1 min-h-0 flex flex-col">
+                    <p className="text-[15px] font-bold text-gray-800 dark:text-white mb-3 px-0.5 shrink-0">
+                      {t(field.labelKey)}
+                    </p>
+                    <div className="flex-1 min-h-0 overflow-y-auto" style={{ overscrollBehavior: "contain" }}>
+                      <SearchSelectField
+                        inline
+                        options={field.options.map((o) => ({ id: o.id, label: tf(`${field.optionKeyPrefix}${o.id}`), icon: o.icon, image: o.image }))}
+                        value={extraValues[field.id] ?? ""}
+                        onChange={(v) => {
+                          setExtraValues((p) => ({ ...p, [field.id]: v }));
+                          if (v) setOpenSection(extraFields[fieldIndex + 1]?.id ?? "date");
+                        }}
+                        tint={tint}
+                      />
+                    </div>
+                  </div>
+                ) : null
+              )}
 
-              {/* ── Guests / Team size ── */}
-              <FieldSection
-                icon={Users}
-                label={config.guestType === "attendees" ? "Team Size" : "Guests"}
-                value={guestSummaryDisplay}
-                isOpen={openSection === "guests"}
-                onToggle={() => toggle("guests")}
-                tint={tint}
-              >
-                {/*
-                  inline=true: steppers render directly (no trigger/popup inside the sheet).
-                  category drives the richer per-category field set (Adults/VIP/Staff for
-                  venues, People/Meeting Rooms/Cabins for workspaces, etc) — see GuestPicker.
-                */}
-                <GuestPicker
-                  type={config.guestType}
-                  category={activeCategory}
-                  tint={tint}
-                  onChange={setGuests}
-                  onEventTypeChange={setEventType}
-                  inline
-                />
-              </FieldSection>
+              {/* ── Dates ── */}
+              {openSection === "date" && (
+                <div className="flex-1 min-h-0 overflow-y-auto" style={{ overscrollBehavior: "contain" }}>
+                  {/*
+                    Premium swipeable calendar (large month cards, sticky
+                    month header) — see MobileDateCalendar.jsx. Per the
+                    "auto progression, no extra tap" spec: single-date
+                    categories advance to Guests the instant a date is
+                    tapped, range categories advance once the full range is
+                    picked. Datetime (studios) is the one exception — a date
+                    alone isn't "done" there (a time still needs setting),
+                    so it doesn't auto-advance — the user taps the "Who"
+                    tab themselves once ready, same as jumping to any other
+                    tab. `d &&` guards against firing on the calendar's own
+                    Clear action, which reports null.
+                  */}
+                  <MobileDateCalendar
+                    mode={config.dateMode}
+                    tint={tint}
+                    category={activeCategory}
+                    countryCode={countryCode}
+                    startDate={startDate}
+                    endDate={endDate}
+                    onChangeStart={(d) => {
+                      setStartDate(d);
+                      if (d && !isRange && !isDatetime) setOpenSection("guests");
+                    }}
+                    onChangeEnd={(d) => {
+                      setEndDate(d);
+                      if (isRange && d) setOpenSection("guests");
+                    }}
+                    onDurationChange={setDuration}
+                  />
+                </div>
+              )}
 
+              {/* ── Who ── */}
+              {openSection === "guests" && (
+                <div className="flex-1 min-h-0 flex flex-col">
+                  {/* Empty-state prompt — spec's exact copy, shown only until a count is set */}
+                  {Object.keys(guests).length === 0 && (
+                    <p className="text-[15px] font-bold text-gray-800 dark:text-white mb-3 px-0.5 shrink-0">
+                      {t("add_guests_prompt")}
+                    </p>
+                  )}
+                  <div className="flex-1 min-h-0 overflow-y-auto" style={{ overscrollBehavior: "contain" }}>
+                    {/*
+                      inline=true: steppers render directly (no trigger/popup inside the sheet).
+                      category drives the richer per-category field set (Adults/VIP/Staff for
+                      venues, People/Meeting Rooms/Cabins for workspaces, etc) — see GuestPicker.
+                      cardMode: elevated card-per-field styling per the redesign spec, purely
+                      visual — same values/onChange contract either way.
+                    */}
+                    <GuestPicker
+                      type={config.guestType}
+                      category={activeCategory}
+                      tint={tint}
+                      onChange={setGuests}
+                      onEventTypeChange={setEventType}
+                      inline
+                      cardMode
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* ── Live Search Summary — sticky bar replacing the old plain
@@ -486,13 +563,28 @@ export default function MobileSearchSheet({ open, setOpen, onSummaryChange , ite
                     transition={{ duration: 0.22 }}
                     className="overflow-hidden"
                   >
-                    <div className="px-5 pt-3 flex items-center gap-x-3 gap-y-1 flex-wrap text-xs text-gray-500 dark:text-gray-400">
-                      {location && <span className="font-semibold text-gray-800 dark:text-gray-100">{location}</span>}
-                      {dateSummary && <span>{dateSummary}</span>}
-                      {guestSummaryDisplay && <span>{guestSummaryDisplay}</span>}
+                    <div className="px-4 pt-3 flex items-center gap-x-4 gap-y-1.5 flex-wrap text-xs text-gray-500 dark:text-gray-400">
                       {location && (
-                        <span className="ms-auto font-medium" style={{ color: tint?.hex ?? "#7c3aed" }}>
-                          {matchLoading ? "Checking…" : matchCount != null ? `${matchCount} matching ${activeCategory}` : ""}
+                        <span className="flex items-center gap-1.5 font-semibold text-gray-800 dark:text-gray-100">
+                          <MapPin className="w-3.5 h-3.5 shrink-0" style={{ color: tint?.hex ?? "#7c3aed" }} />
+                          <span className="truncate max-w-[40vw]">{location}</span>
+                        </span>
+                      )}
+                      {dateSummary && (
+                        <span className="flex items-center gap-1.5">
+                          <Calendar className="w-3.5 h-3.5 shrink-0" style={{ color: tint?.hex ?? "#7c3aed" }} />
+                          {dateSummary}
+                        </span>
+                      )}
+                      {guestSummaryDisplay && (
+                        <span className="flex items-center gap-1.5">
+                          <Users className="w-3.5 h-3.5 shrink-0" style={{ color: tint?.hex ?? "#7c3aed" }} />
+                          {guestSummaryDisplay}
+                        </span>
+                      )}
+                      {location && (
+                        <span className="ms-auto font-medium shrink-0" style={{ color: tint?.hex ?? "#7c3aed" }}>
+                          {matchLoading ? t("searching") : matchCount != null ? `${matchCount} matching ${activeCategory}` : ""}
                         </span>
                       )}
                     </div>
@@ -501,29 +593,23 @@ export default function MobileSearchSheet({ open, setOpen, onSummaryChange , ite
               </AnimatePresence>
 
               <div
-                className="px-5 pt-3.5 flex items-center justify-between gap-3"
+                className="px-4 pt-3.5"
                 style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 14px)" }}
               >
-                <button
-                  onClick={handleClear}
-                  className="text-sm font-semibold text-gray-500 dark:text-gray-400 px-3 py-2.5 -ms-3 rounded-xl hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-700 dark:hover:text-gray-200 transition whitespace-nowrap"
-                >
-                  Clear all
-                </button>
-
-                <button
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
                   onClick={() => {
                     if (!isReady) return;
                     handleSearch();
                     setOpen(false);
                   }}
                   disabled={!isReady}
-                  className="flex items-center gap-2 px-6 py-3.5 rounded-2xl text-white text-sm font-bold transition-all active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 flex-1 justify-center"
+                  className="w-full flex items-center gap-2 px-6 py-3.5 rounded-2xl text-white text-sm font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 justify-center"
                   style={{ background: tint.hex, boxShadow: "0 6px 18px rgba(0,0,0,0.22)" }}
                 >
                   <Search className="w-4 h-4" />
                   {ctaLabel}
-                </button>
+                </motion.button>
               </div>
             </div>
           </motion.div>

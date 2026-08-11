@@ -18,7 +18,6 @@ import { MobileReelsProvider, useMobileReels } from "@/context/MobileReelsContex
 
 import { country_of_category } from "@/services/global.service";
 import { connectSocket }        from "@/lib/socket";
-
 /**
  * GlobalMobileReels — renders the MobileReels overlay driven by MobileReelsContext.
  * Mounted once at the app level so any page can open the reels viewer via

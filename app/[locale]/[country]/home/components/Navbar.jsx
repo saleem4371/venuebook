@@ -171,6 +171,27 @@ export default function Navbar() {
     segments.length === 4 &&
     segments[2] === "search" &&
     !["venues", "farmstay"].includes(segments[3]);
+  const isHomePage = segments[2] === "home";
+
+  /* ---------- Transparent-over-hero → glassmorphism on scroll ----------
+     Mobile + home page only (see the md: overrides below, which force the
+     header back to its original always-solid look on desktop and on every
+     other route — this is purely additive there, nothing changes). At the
+     very top of the home page the header is fully transparent so the hero
+     image reads edge-to-edge under it; past a few px of scroll it becomes
+     a frosted glass bar instead of snapping straight to solid white. */
+  const { scrolled } = useScrollHeader(false);
+  const heroOverlay = isHomePage && !scrolled;
+  const heroGlass   = isHomePage && scrolled;
+
+  // Icon buttons (theme toggle, globe) default to gray-on-white, which
+  // would be invisible against the hero photo — white on the transparent
+  // state only, purely mobile via the md: override (heroOverlay can also
+  // be true on desktop at the top of the home page, where it must stay
+  // the original gray).
+  const navIconCls = heroOverlay
+    ? "text-white hover:bg-white/15 md:text-gray-600 md:dark:text-gray-400 md:hover:bg-gray-100 md:dark:hover:bg-gray-800/70"
+    : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800/70";
 
   /* ---------- Sync tab from URL ---------- */
   useEffect(() => {
@@ -286,15 +307,27 @@ const check_tier = async () => {
     <>
       {/* ── Header ───────────────────────────────────────────────── */}
       <header
-        className="fixed inset-x-0 top-0 z-50 w-full bg-white dark:bg-gray-950 border-b border-gray-100 dark:border-gray-800"
+        className={[
+          "fixed inset-x-0 top-0 z-50 w-full border-b transition-all duration-300",
+          heroOverlay
+            ? "bg-transparent border-transparent"
+            : heroGlass
+            ? "bg-white/30 dark:bg-gray-950/30 backdrop-blur-2xl backdrop-saturate-150 border-white/20 dark:border-white/10 shadow-[0_1px_12px_rgba(0,0,0,0.05)]"
+            : "bg-white dark:bg-gray-950 border-gray-100 dark:border-gray-800",
+          // Desktop stays exactly as it always was, regardless of route/scroll.
+          "md:bg-white md:dark:bg-gray-950 md:border-gray-100 md:dark:border-gray-800 md:shadow-none",
+        ].join(" ")}
         role="banner"
       >
         <nav
           aria-label="Primary navigation"
           className="flex h-[64px] md:h-[72px] w-full items-center justify-between px-5 sm:px-8 lg:px-10"
         >
-          {/* Logo — always visible on all pages and screen sizes */}
-          <Brand href={`/${locale}/${country}/home`} isDark={isDark} />
+          {/* Logo — always visible on all pages and screen sizes. Swaps to
+              the light-on-dark wordmark while transparent over the hero
+              image on mobile (isMobile gates it — heroOverlay alone would
+              also fire on desktop at the top of the home page). */}
+          <Brand href={`/${locale}/${country}/home`} isDark={isDark || (heroOverlay && isMobile)} />
 
               {/* Center: search-type tabs (desktop search pages) */}
               {/* {showCenterToggle && (
@@ -394,10 +427,9 @@ const check_tier = async () => {
                   onClick={toggleTheme}
                   aria-label={isDark ? t("theme_to_light") : t("theme_to_dark")}
                   className={[
-                    "inline-flex h-10 w-10 items-center justify-center rounded-full",
-                    "text-gray-600 dark:text-gray-400",
-                    "transition hover:bg-gray-100 dark:hover:bg-gray-800/70",
+                    "inline-flex h-10 w-10 items-center justify-center rounded-full transition",
                     "focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2",
+                    navIconCls,
                   ].join(" ")}
                 >
                   {/* light mode → moon (click to go dark) | dark mode → sun (click to go light) */}
@@ -413,14 +445,13 @@ const check_tier = async () => {
                   onClick={() => setRegionModalOpen(true)}
                   aria-label={t("region_aria")}
                   className={[
-                    "inline-flex h-10 w-10 items-center justify-center rounded-full cursor-pointer",
-                    "text-gray-600 dark:text-gray-400",
-                    "transition hover:bg-gray-100 dark:hover:bg-gray-800",
+                    "inline-flex h-10 w-10 items-center justify-center rounded-full cursor-pointer transition",
                     "focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2",
+                    navIconCls,
                   ].join(" ")}
                 >
-                  <GlobeNavIcon className="h-[18px] w-[18px]" /> 
-                </button> 
+                  <GlobeNavIcon className="h-[18px] w-[18px]" />
+                </button>
 
                 {/* Profile / User dropdown */}
                 <UserDropdown onOpenRegionModal={() => setRegionModalOpen(true)}  token = { token }   tier = {tier?.tier} />
