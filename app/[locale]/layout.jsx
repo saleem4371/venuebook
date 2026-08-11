@@ -24,6 +24,7 @@ import { GoogleOAuthProvider } from "@react-oauth/google";
 import { GlobalProvider } from "@/context/GlobalProvider";
 import { RealtimeProvider } from "@/context/RealtimeContext";
 import { AuthProvider } from "@/context/AuthContext";
+import DiamondWelcomeGate from "@/components/shared/DiamondWelcomeGate";
 // import { GeoProvider } from "@/context/GeoContext";
 export default async function LocaleLayout({ children, params }) {
 
@@ -69,6 +70,12 @@ export default async function LocaleLayout({ children, params }) {
 {/* </GeoProvider> */}
            </RealtimeProvider>
            </GlobalProvider>
+          {/* Diamond Tier welcome moment — zero-UI unless a logged-in
+              account is detected as Diamond and hasn't seen it yet.
+              Lives inside AuthProvider (needs useAuth) but outside
+              GlobalProvider/RealtimeProvider so it never re-mounts or
+              depends on their data. */}
+          <DiamondWelcomeGate />
         </AuthProvider>
       </GoogleOAuthProvider>
     </NextIntlClientProvider>
