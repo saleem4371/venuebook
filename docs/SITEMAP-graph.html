@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>venuebook.in — full site map</title>
+<style>
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    background: #0f1115;
+    color: #e8e8e6;
+    margin: 0;
+    padding: 32px 24px 64px;
+  }
+  h1 {
+    font-size: 22px;
+    font-weight: 600;
+    margin: 0 0 4px;
+  }
+  .sub {
+    color: #9a9a96;
+    font-size: 14px;
+    margin: 0 0 24px;
+  }
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    margin-bottom: 28px;
+    padding: 14px 18px;
+    background: #171a21;
+    border: 1px solid #2a2e37;
+    border-radius: 10px;
+    font-size: 13px;
+  }
+  .legend span.dot {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+  .legend-item { display: flex; align-items: center; }
+  #diagram-wrap {
+    background: #171a21;
+    border: 1px solid #2a2e37;
+    border-radius: 12px;
+    padding: 24px;
+    overflow-x: auto;
+  }
+  .mermaid { min-width: 1400px; }
+  .note {
+    margin-top: 20px;
+    font-size: 13px;
+    color: #9a9a96;
+    line-height: 1.6;
+  }
+  .note code {
+    background: #1f232c;
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #cfd0cc;
+  }
+</style>
+</head>
+<body>
+
+<h1>venuebook.in — full site map</h1>
+<p class="sub">Every page route, grouped by section, with real navigation edges traced from the codebase (nav bars, sidebars, router.push calls, redirects). Generated 2026-08-10.</p>
+
+<div class="legend">
+  <div class="legend-item"><span class="dot" style="background:#B4B2A9"></span>System / entry / neutral</div>
+  <div class="legend-item"><span class="dot" style="background:#AFA9EC"></span>Consumer-facing page</div>
+  <div class="legend-item"><span class="dot" style="background:#F0997B"></span>Vendor-facing page</div>
+  <div class="legend-item"><span class="dot" style="background:#B4B2A9;border:1px dashed #888"></span>Modal, not a real route</div>
+  <div class="legend-item"><span class="dot" style="background:#F09595;border:1px dashed #A32D2D"></span>No confirmed nav link in (orphan / legacy)</div>
+</div>
+
+<div id="diagram-wrap">
+  <pre class="mermaid">
+flowchart TD
+
+  ROOT["/ root<br/>auto-redirect"]
+  HOME["Home<br/>/home"]
+  LOGIN["Login / Register<br/>modal, no page"]
+  UNAUTH["/unauthorized<br/>no-token fallback"]
+
+  ROOT --> HOME
+  HOME -.-> LOGIN
+  HOME --> SEARCH
+  HOME --> PROFILE
+  HOME --> BECOME
+  HOME --> VDASH
+
+  subgraph DISCOVER["Discover &amp; book"]
+    SEARCH["Search results<br/>/search/[type]"]
+    VENUE["Venue detail<br/>/search/[type]/[id]"]
+    ESTATE["Estate detail<br/>/venue/[parentId]"]
+    CHECKOUT["Checkout<br/>/checkout/[category]/[propertyId]"]
+    SUCCESS["Booking confirmed<br/>/checkout/.../success"]
+    PAX["Pax enquiry<br/>/search/.../[id]/pax-enquiry"]
+  end
+  SEARCH --> VENUE
+  SEARCH --> ESTATE
+  VENUE --> CHECKOUT
+  VENUE --> PAX
+  CHECKOUT --> SUCCESS
+  SUCCESS --> PROFILE
+  SUCCESS --> HOME
+  PAX -.->|"on submit"| HOME
+  CHECKOUT -.->|"no token"| UNAUTH
+
+  subgraph ACCOUNT["My account"]
+    PROFILE["Profile<br/>/profile"]
+    PAXMGMT["Pax management<br/>/profile/pax-management/[id]"]
+    COLLECT["Collections<br/>/collections"]
+    COMPARE["Compare<br/>/compare"]
+    MSG["Messages<br/>/messages"]
+    SETTINGS["Account settings<br/>/account/settings"]
+  end
+  PROFILE --> COLLECT
+  PROFILE --> COMPARE
+  PROFILE --> MSG
+  PROFILE --> SETTINGS
+  PROFILE -.-> PAXMGMT
+
+  subgraph BECOME["Become a vendor (public wizard)"]
+    CAT["Choose category"]
+    PTYPE["Property type"]
+    PARENT["Parent setup"]
+    STEP["Property details<br/>[step]"]
+    PAY["Payment"]
+    PLAN["Plan confirmed"]
+  end
+  CAT --> PTYPE --> PARENT --> STEP --> PAY --> PLAN
+  PLAN --> VDASH
+
+  subgraph VENDOR["Vendor dashboard (protected)"]
+    VDASH["Vendor dashboard"]
+    VLIST["Listing<br/>/vendor/listing"]
+    VLISTID["Listing editor<br/>[id]"]
+    VVENSET["Venue setting"]
+    VPARENTD["Parent details"]
+    VCAL["Calendar"]
+    VRES["Reservations"]
+    VINV["Invoice [id]"]
+    VFINV["Final invoice [id]"]
+    VMANRES["Manage reserve [id]"]
+    VMSG["Messages"]
+    VCHAT["Chat [id]"]
+    VADD["Addons"]
+    VPKG["Packages"]
+    VSET["Settings"]
+    VREP["Reports"]
+    VREV["Revenue report"]
+    VAGE["Aging report"]
+    VACC["Account<br/>Finance / Subscription"]
+    VTEAMS["Teams"]
+    VNOTIF["Notifications"]
+    VPAXMGMT["Pax management<br/>/vendor/pax-management/[id]"]
+  end
+  VDASH --> VLIST
+  VDASH --> VCAL
+  VDASH --> VRES
+  VDASH --> VMSG
+  VDASH --> VADD
+  VDASH --> VPKG
+  VDASH --> VSET
+  VDASH --> VREP
+  VDASH -.-> VACC
+  VDASH -.-> VTEAMS
+  VDASH -.-> VNOTIF
+  VLIST --> VLISTID
+  VLISTID --> VVENSET
+  VLIST -.-> VPARENTD
+  VRES --> VINV
+  VRES --> VFINV
+  VRES --> VMANRES
+  VMSG --> VCHAT
+  VREP --> VREV
+  VREP --> VAGE
+  VDASH -.-> UNAUTH
+
+  subgraph LEGACY["Legacy pages — files exist, folded out of primary nav"]
+    VLEADS["Leads<br/>/vendor/leads"]
+    VBOOK["Bookings<br/>/vendor/bookings + sub-pages"]
+  end
+  VRES -.-> VLEADS
+  VRES -.-> VBOOK
+
+  classDef system fill:#2a2e37,stroke:#9a9a96,color:#e8e8e6;
+  classDef consumer fill:#3c3489,stroke:#7f77dd,color:#eeedfe;
+  classDef vendor fill:#712b13,stroke:#d85a30,color:#faece7;
+  classDef orphan fill:#791f1f,stroke:#e24b4a,color:#fcebeb,stroke-dasharray: 4 3;
+
+  class ROOT,HOME,UNAUTH,LOGIN system
+  class SEARCH,VENUE,ESTATE,CHECKOUT,SUCCESS,PAX,PROFILE,COLLECT,COMPARE,MSG,SETTINGS consumer
+  class CAT,PTYPE,PARENT,STEP,PAY,PLAN,VDASH,VLIST,VLISTID,VVENSET,VCAL,VRES,VINV,VFINV,VMANRES,VMSG,VCHAT,VADD,VPKG,VSET,VREP,VREV,VAGE,VACC,VTEAMS,VNOTIF vendor
+  class PAXMGMT,VPAXMGMT,VLEADS,VBOOK,VPARENTD orphan
+  </pre>
+</div>
+
+<p class="note">
+  Dashed edges mean: no confirmed nav link found in code (best-effort/likely, not verified), a protected-route fallback, or a modal rather than a page.
+  Red dashed boxes are pages that exist as files but weren't found wired into any primary navigation component —
+  worth confirming they're reachable on purpose (e.g. <code>vendor/pax-management/[id]</code>, <code>profile/pax-management/[id]</code>, and the legacy <code>vendor/leads</code> / <code>vendor/bookings</code> pages superseded by <code>vendor/reservations</code>).
+  Route-to-file detail lives in <code>docs/ROUTES.md</code>; API/service wiring lives in <code>docs/DATAFLOW.md</code>.
+</p>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+  mermaid.initialize({ startOnLoad: true, theme: "dark", securityLevel: "loose",
+    flowchart: { curve: "basis", useMaxWidth: false } });
+</script>
+
+</body>
+</html>

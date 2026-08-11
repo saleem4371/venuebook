@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>venuebook.in — Site Map & Navigation Architecture</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
+<style>
+  :root{
+    --page:#eef1f6; --card:#ffffff; --line:#c7ccd6; --ink:#1b2430; --sub:#5b6474;
+    --navy:#0e2a4a; --navy2:#12345c;
+    --blue-bg:#e7f1fd; --blue-bd:#4a90e2; --blue-tx:#1a4d8f;
+    --purple-bg:#f1e9fb; --purple-bd:#9b6bd4; --purple-tx:#5a3691;
+    --amber-bg:#fdf1e0; --amber-bd:#e2a13a; --amber-tx:#8a5a10;
+    --green-bg:#e7f6ea; --green-bd:#4caf6e; --green-tx:#1f6b3a;
+    --red-bg:#fdeaea; --red-bd:#e05a5a; --red-tx:#9b2b2b;
+  }
+  *{box-sizing:border-box;}
+  body{
+    font-family:-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+    background:var(--page); color:var(--ink); margin:0; padding:16px;
+  }
+  .wrap{width:100%;margin:0;}
+  .top-row{margin-bottom:20px;}
+  .title-card{
+    background:var(--card); border:1px solid var(--line); border-radius:12px;
+    padding:20px 24px; box-shadow:0 1px 2px rgba(0,0,0,.04);
+  }
+  .title-card h1{margin:0 0 4px; font-size:21px;}
+  .title-card p{margin:0; color:var(--sub); font-size:13.5px;}
+  .title-card .meta{margin-top:8px; font-size:12.5px; color:#7a8393;}
+
+  .diagram-card{
+    background:var(--card); border:1px solid var(--line); border-radius:12px;
+    padding:24px; box-shadow:0 1px 2px rgba(0,0,0,.04); margin-bottom:20px; overflow-x:auto;
+  }
+  .legend{display:flex; flex-wrap:wrap; gap:16px; margin-bottom:16px; font-size:12px; color:var(--sub);}
+  .legend .dot{display:inline-block; width:11px; height:11px; border-radius:3px; margin-right:5px; vertical-align:middle; border:1px solid;}
+
+  .bottom-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:20px;}
+  .bottom-card{background:var(--card); border:1px solid var(--line); border-radius:10px; overflow:hidden; box-shadow:0 1px 2px rgba(0,0,0,.04);}
+  .bottom-head{background:var(--navy); color:#fff; font-size:12.5px; font-weight:600; padding:10px 14px;}
+  .bottom-head.warn{background:#7a3b1e;}
+  .bottom-card table{width:100%; border-collapse:collapse; font-size:12px;}
+  .bottom-card table td{padding:8px 14px; border-bottom:1px solid #eef0f3;}
+  .bottom-card table tr:last-child td{border-bottom:none; font-weight:700; background:#f6f8fb;}
+  .bottom-card table td.n{text-align:right; color:var(--sub);}
+  .check-list, .warn-list{list-style:none; margin:0; padding:10px 14px; font-size:12px; line-height:1.7;}
+  .check-list li{display:flex; gap:8px; align-items:flex-start;}
+  .check-list i{color:var(--green-bd); font-size:15px; margin-top:2px;}
+  .warn-list li{display:flex; gap:8px; align-items:flex-start;}
+  .warn-list i{color:var(--amber-bd); font-size:15px; margin-top:2px;}
+
+  .stat-strip{display:flex; background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 10px; box-shadow:0 1px 2px rgba(0,0,0,.04);}
+  .stat{flex:1; display:flex; align-items:center; gap:10px; justify-content:center; border-right:1px solid #eef0f3;}
+  .stat:last-child{border-right:none;}
+  .stat i{font-size:22px; color:var(--navy2);}
+  .stat.warn i{color:var(--amber-bd);}
+  .stat strong{display:block; font-size:16px; line-height:1.1;}
+  .stat span{display:block; font-size:10.5px; color:var(--sub);}
+
+  .note{font-size:11.5px; color:#8891a0; margin-top:14px; line-height:1.6; text-align:center;}
+  .note code{background:#e6e9ef; padding:1px 5px; border-radius:4px; color:#3d4452;}
+
+  @media (max-width:960px){
+    .arch-row{flex-direction:column;}
+    .right-col{width:100%; padding-top:0; flex-direction:row;}
+    .side-arrow{display:none;}
+    .bottom-grid{grid-template-columns:1fr;}
+    .stat-strip{flex-wrap:wrap;}
+    .stat{min-width:33%; border-right:none; margin-bottom:10px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top-row">
+    <div class="title-card">
+      <h1>venuebook.in — site map &amp; navigation architecture</h1>
+      <p>Consumer + vendor web app, region-first (India &amp; UAE), Next.js App Router</p>
+      <div class="meta">53 page routes · 22 backend services · 4 locales · 2 countries</div>
+    </div>
+  </div>
+
+  <div class="diagram-card">
+    <div class="legend">
+      <span><span class="dot" style="background:#eef0f3;border-color:#8891a0"></span>System / entry</span>
+      <span><span class="dot" style="background:#e7f1fd;border-color:#4a90e2"></span>Discover &amp; book</span>
+      <span><span class="dot" style="background:#f1e9fb;border-color:#9b6bd4"></span>My account</span>
+      <span><span class="dot" style="background:#fdf1e0;border-color:#e2a13a"></span>Become a vendor</span>
+      <span><span class="dot" style="background:#e7f6ea;border-color:#4caf6e"></span>Vendor dashboard</span>
+      <span><span class="dot" style="background:#fdeaea;border-color:#e05a5a"></span>No confirmed nav link (orphan / legacy)</span>
+      <span>Dashed line = no confirmed nav link, protected-route fallback, or modal, not a page</span>
+    </div>
+    <pre class="mermaid">
+%%{init: {"flowchart": {"nodeSpacing": 30, "rankSpacing": 55, "curve": "basis", "padding": 10, "useMaxWidth": false}, "themeVariables": {"fontSize": "16px"}}}%%
+flowchart LR
+
+  ROOT["/ root&lt;br/&gt;auto-redirect"]
+  HOME["Home&lt;br/&gt;/home"]
+  LOGIN["Login / Register&lt;br/&gt;modal, no page"]
+  UNAUTH["/unauthorized&lt;br/&gt;no-token fallback"]
+
+  ROOT --> HOME
+  HOME -.-> LOGIN
+  HOME --> SEARCH
+  HOME --> PROFILE
+  HOME --> CAT
+  HOME --> VDASH
+
+  subgraph DISCOVER["Discover &amp; book"]
+    direction TB
+    SEARCH["Search results&lt;br/&gt;/search/[type]"]
+    VENUE["Venue detail&lt;br/&gt;/search/[type]/[id]"]
+    ESTATE["Estate detail&lt;br/&gt;/venue/[parentId]"]
+    CHECKOUT["Checkout&lt;br/&gt;/checkout/[category]/[propertyId]"]
+    SUCCESS["Booking confirmed&lt;br/&gt;/checkout/.../success"]
+    PAX["Pax enquiry&lt;br/&gt;/search/.../[id]/pax-enquiry"]
+  end
+  SEARCH --> VENUE
+  SEARCH --> ESTATE
+  VENUE --> CHECKOUT
+  VENUE --> PAX
+  CHECKOUT --> SUCCESS
+  SUCCESS -.-> PROFILE
+  SUCCESS -.->|or| HOME
+  PAX -.->|on submit| HOME
+  CHECKOUT -.->|no token| UNAUTH
+
+  subgraph ACCOUNT["My account"]
+    direction TB
+    PROFILE["Profile&lt;br/&gt;/profile"]
+    PAXMGMT["Pax management&lt;br/&gt;/profile/pax-management/[id]"]
+    COLLECT["Collections&lt;br/&gt;/collections"]
+    COMPARE["Compare&lt;br/&gt;/compare"]
+    MSG["Messages&lt;br/&gt;/messages"]
+    SETTINGS["Account settings&lt;br/&gt;/account/settings"]
+  end
+  PROFILE --> COLLECT
+  PROFILE --> COMPARE
+  PROFILE --> MSG
+  PROFILE --> SETTINGS
+  PROFILE -.-> PAXMGMT
+
+  subgraph BECOME["Become a vendor - public wizard"]
+    direction TB
+    CAT["Choose category"]
+    PTYPE["Property type"]
+    PARENT["Parent setup"]
+    STEP["Property details&lt;br/&gt;[step]"]
+    PAY["Payment"]
+    PLAN["Plan confirmed"]
+    LIST["/list&lt;br/&gt;already-listed bounce"]
+  end
+  CAT --> PTYPE --> PARENT --> STEP --> PAY --> PLAN
+  CAT -.->|already listed| LIST
+  PLAN --> VDASH
+
+  subgraph VENDOR["Vendor dashboard - protected"]
+    direction TB
+    VDASH["Vendor dashboard"]
+    VLIST["Listing&lt;br/&gt;/vendor/listing"]
+    VLISTID["Listing editor&lt;br/&gt;[id]"]
+    VVENSET["Venue setting"]
+    VPARENTD["Parent details"]
+    VCAL["Calendar"]
+    VRES["Reservations"]
+    VINV["Invoice [id]"]
+    VFINV["Final invoice [id]"]
+    VMANRES["Manage reserve [id]"]
+    VMSG["Messages"]
+    VCHAT["Chat [id]"]
+    VADD["Addons"]
+    VPKG["Packages"]
+    VSET["Settings"]
+    VREP["Reports"]
+    VREV["Revenue report"]
+    VAGE["Aging report"]
+    VACC["Account&lt;br/&gt;Finance / Subscription"]
+    VTEAMS["Teams"]
+    VNOTIF["Notifications"]
+  end
+  VDASH --> VLIST
+  VDASH --> VCAL
+  VDASH --> VRES
+  VDASH --> VMSG
+  VDASH --> VADD
+  VDASH --> VPKG
+  VDASH --> VSET
+  VDASH --> VREP
+  VDASH -.-> VACC
+  VDASH -.-> VTEAMS
+  VDASH -.-> VNOTIF
+  VLIST --> VLISTID
+  VLISTID --> VVENSET
+  VLIST -.-> VPARENTD
+  VRES --> VINV
+  VRES --> VFINV
+  VRES --> VMANRES
+  VMSG --> VCHAT
+  VREP --> VREV
+  VREP --> VAGE
+  VDASH -.-> UNAUTH
+
+  subgraph LEGACY["Legacy / orphan pages - no confirmed nav link"]
+    direction TB
+    VPAXMGMT["Pax management&lt;br/&gt;/vendor/pax-management/[id]"]
+    VLEADS["Leads&lt;br/&gt;/vendor/leads"]
+    VBOOK["Bookings&lt;br/&gt;/vendor/bookings + sub-pages"]
+  end
+  VRES -.-> VLEADS
+  VRES -.-> VBOOK
+  VDASH -.-> VPAXMGMT
+
+  classDef system fill:#eef0f3,stroke:#8891a0,color:#1b2430;
+  classDef discover fill:#e7f1fd,stroke:#4a90e2,color:#1a4d8f;
+  classDef account fill:#f1e9fb,stroke:#9b6bd4,color:#5a3691;
+  classDef become fill:#fdf1e0,stroke:#e2a13a,color:#8a5a10;
+  classDef dash fill:#e7f6ea,stroke:#4caf6e,color:#1f6b3a;
+  classDef orphan fill:#fdeaea,stroke:#e05a5a,color:#9b2b2b,stroke-dasharray: 4 3;
+
+  class ROOT,HOME,UNAUTH,LOGIN system
+  class SEARCH,VENUE,ESTATE,CHECKOUT,SUCCESS,PAX discover
+  class PROFILE,COLLECT,COMPARE,MSG,SETTINGS account
+  class CAT,PTYPE,PARENT,STEP,PAY,PLAN become
+  class VDASH,VLIST,VLISTID,VVENSET,VCAL,VRES,VINV,VFINV,VMANRES,VMSG,VCHAT,VADD,VPKG,VSET,VREP,VREV,VAGE,VACC,VTEAMS,VNOTIF dash
+  class PAXMGMT,VPAXMGMT,VLEADS,VBOOK,VPARENTD,LIST orphan
+
+  style DISCOVER fill:#f7fbff,stroke:#c7ccd6
+  style ACCOUNT fill:#faf7fd,stroke:#c7ccd6
+  style BECOME fill:#fffaf3,stroke:#c7ccd6
+  style VENDOR fill:#f5fbf6,stroke:#c7ccd6
+  style LEGACY fill:#fff6f6,stroke:#e0b8b8
+    </pre>
+  </div>
+
+  <div class="bottom-grid">
+    <div class="bottom-card">
+      <div class="bottom-head">PAGES BY SECTION</div>
+      <table>
+        <tr><td>System / entry</td><td class="n">2</td></tr>
+        <tr><td>Discover &amp; book</td><td class="n">8</td></tr>
+        <tr><td>My account</td><td class="n">6</td></tr>
+        <tr><td>Become a vendor</td><td class="n">6</td></tr>
+        <tr><td>Vendor dashboard</td><td class="n">31</td></tr>
+        <tr><td>TOTAL PAGE ROUTES</td><td class="n">53</td></tr>
+      </table>
+    </div>
+
+    <div class="bottom-card">
+      <div class="bottom-head">WHAT'S WIRED END-TO-END</div>
+      <ul class="check-list">
+        <li><i class="ti ti-circle-check"></i>Region + locale routing (IN/AE, 4 languages, RTL for Arabic)</li>
+        <li><i class="ti ti-circle-check"></i>Full consumer booking loop: search → venue → checkout → confirmed</li>
+        <li><i class="ti ti-circle-check"></i>Vendor onboarding wizard → subscription → dashboard</li>
+        <li><i class="ti ti-circle-check"></i>Protected vendor routes (token-gated by proxy.js)</li>
+        <li><i class="ti ti-circle-check"></i>Realtime chat &amp; notifications via sockets</li>
+        <li><i class="ti ti-circle-check"></i>~175 live endpoints across 22 service files</li>
+      </ul>
+    </div>
+
+    <div class="bottom-card">
+      <div class="bottom-head warn">KNOWN GAPS (11 flagged)</div>
+      <ul class="warn-list">
+        <li><i class="ti ti-alert-triangle"></i>KYC verification is fully mocked (PAN/Aadhaar/bank/GST)</li>
+        <li><i class="ti ti-alert-triangle"></i>Vendor Finance tab has no backend wiring at all</li>
+        <li><i class="ti ti-alert-triangle"></i>Two separate "selected country" stores (likely duplication)</li>
+        <li><i class="ti ti-alert-triangle"></i>Pax-management pages have no confirmed nav link in</li>
+        <li><i class="ti ti-alert-triangle"></i>Legacy leads/bookings pages still exist post-migration</li>
+        <li><i class="ti ti-alert-triangle"></i>/login, /register rules in proxy.js point at pages that don't exist</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="stat-strip">
+    <div class="stat"><i class="ti ti-world"></i><div><strong>4</strong><span>Locales</span></div></div>
+    <div class="stat"><i class="ti ti-flag"></i><div><strong>2</strong><span>Countries</span></div></div>
+    <div class="stat"><i class="ti ti-files"></i><div><strong>53</strong><span>Page routes</span></div></div>
+    <div class="stat"><i class="ti ti-plug-connected"></i><div><strong>~175</strong><span>API endpoints</span></div></div>
+    <div class="stat warn"><i class="ti ti-alert-triangle"></i><div><strong>11</strong><span>Known gaps</span></div></div>
+  </div>
+
+  <p class="note">
+    Generated 2026-08-10 from the source tree — nav bars, sidebars, router.push calls, and proxy.js.
+    Full route-to-file detail: <code>docs/ROUTES.md</code>. Full service/state wiring and gap detail: <code>docs/DATAFLOW.md</code>.
+  </p>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: "base",
+    securityLevel: "loose",
+    themeVariables: { fontFamily: "-apple-system, Segoe UI, Roboto, Arial, sans-serif", fontSize: "16px", lineColor: "#8891a0", primaryTextColor: "#1b2430" },
+    flowchart: { curve: "basis", useMaxWidth: false }
+  });
+</script>
+
+</body>
+</html>
