@@ -3,31 +3,66 @@
 /**
  * hooks/usePreferredLocation.js
  *
- * Persists the user's preferred city/location in localStorage.
- * Shape: { label: string, lat: number | null, lng: number | null }
+ * Persists the user's preferred city/location — SCOPED PER REGION, so
+ * switching between regions (e.g. India ⇄ UAE) never leaks one region's
+ * saved location into another. Each region remembers its own location
+ * independently.
  *
- * Also exposes ipCountryCode (ISO 3166-1 alpha-2, lowercase) so the modal
- * can decide whether to pre-fill location when the user switches regions.
+ * Storage keys:
+ *   vb_preferred_location_<countryCode>          → { label, lat, lng }
+ *   vb_preferred_location_source_<countryCode>   → "ip" | "manual"
+ *   vb_ip_country                                → shared, IP-detected country
  *
- * On first mount (nothing saved):
- *   → calls ipapi.co which returns lat/lng + country_code directly.
+ * On first mount for a region with nothing saved yet:
+ *   → calls ipapi.co; the result only pre-fills THIS region if the
+ *     IP-detected country actually matches it (an Indian city has no
+ *     business appearing as a UAE default).
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useParams } from "next/navigation";
 
-const STORAGE_KEY     = "vb_preferred_location";
-const IP_COUNTRY_KEY  = "vb_ip_country";
+const STORAGE_PREFIX = "vb_preferred_location_";
+const SOURCE_PREFIX = "vb_preferred_location_source_";
+const IP_COUNTRY_KEY = "vb_ip_country";
+
+/* ── Synchronous helpers — safe to call outside React (e.g. from a click
+ * handler) when you need a region's saved location right away, without
+ * waiting on an effect/render cycle. ─────────────────────────────────── */
+
+export function getStoredLocation(countryCode) {
+  if (!countryCode) return null;
+  try {
+    const raw = localStorage.getItem(
+      STORAGE_PREFIX + countryCode.toLowerCase(),
+    );
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function getStoredLocationIsAutoDetected(countryCode) {
+  if (!countryCode) return false;
+  try {
+    return (
+      localStorage.getItem(SOURCE_PREFIX + countryCode.toLowerCase()) === "ip"
+    );
+  } catch {
+    return false;
+  }
+}
 
 async function detectIPLocation() {
   try {
-    const res  = await fetch("https://ipapi.co/json/");
+    const res = await fetch("https://ipapi.co/json/");
     const data = await res.json();
     if (data.city && data.latitude && data.longitude) {
       return {
-        label       : data.city,
-        lat         : data.latitude,
-        lng         : data.longitude,
-        countryCode : (data.country_code || "").toLowerCase(),
+        label: data.city,
+        lat: data.latitude,
+        lng: data.longitude,
+        countryCode: (data.country_code || "").toLowerCase(),
       };
     }
     return null;
@@ -36,11 +71,24 @@ async function detectIPLocation() {
   }
 }
 
-export function usePreferredLocation() {
-  const [location,       _setLocation]      = useState(null);
-  const [ipCountryCode,  setIpCountryCode]  = useState(null);
+/**
+ * @param {string} [regionOverride] Country code ("in", "ae", ...) to scope
+ *   this hook instance to. Defaults to the active region from the URL.
+ *   Pass this when previewing a *different* region than the one currently
+ *   active (e.g. a region switcher).
+ */
+export function usePreferredLocation(regionOverride) {
+  const params = useParams();
+  const countryCode = (regionOverride || params?.country || "in").toLowerCase();
 
-  /* ── Mount: read localStorage, fall back to IP detection ──── */
+  const [location, _setLocation] = useState(null);
+  const [ipCountryCode, setIpCountryCode] = useState(null);
+  /* True only when `location` came from IP auto-detection and hasn't been
+   * overridden by the user since — lets the UI show an "Auto-detected from
+   * your IP" hint only when that's actually true. */
+  const [isAutoDetected, setIsAutoDetected] = useState(false);
+
+  /* ── Reload whenever the scoped region changes ─────────────── */
   useEffect(() => {
     /* Restore cached IP country */
     try {
@@ -48,34 +96,63 @@ export function usePreferredLocation() {
       if (cached) setIpCountryCode(cached);
     } catch {}
 
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        _setLocation(JSON.parse(saved));
-        return; // location already cached — skip IP fetch
-      }
-    } catch {}
+    const saved = getStoredLocation(countryCode);
+    if (saved) {
+      _setLocation(saved);
+      setIsAutoDetected(getStoredLocationIsAutoDetected(countryCode));
+      return; // already cached for this region — skip IP fetch
+    }
+
+    /* Nothing saved for this region yet — don't inherit another region's
+     * value; start clean. */
+    _setLocation(null);
+    setIsAutoDetected(false);
 
     detectIPLocation().then((loc) => {
       if (!loc) return;
-      const { countryCode, ...locData } = loc;
-      _setLocation(locData);
+      const { countryCode: detectedCode, ...locData } = loc;
       try {
-        localStorage.setItem(STORAGE_KEY,    JSON.stringify(locData));
-        localStorage.setItem(IP_COUNTRY_KEY, countryCode);
+        localStorage.setItem(IP_COUNTRY_KEY, detectedCode);
       } catch {}
-      setIpCountryCode(countryCode);
+      setIpCountryCode(detectedCode);
+
+      /* Only pre-fill THIS region if it's the one the user is actually in. */
+      if (detectedCode !== countryCode) return;
+
+      _setLocation(locData);
+      setIsAutoDetected(true);
+      try {
+        localStorage.setItem(
+          STORAGE_PREFIX + countryCode,
+          JSON.stringify(locData),
+        );
+        localStorage.setItem(SOURCE_PREFIX + countryCode, "ip");
+      } catch {}
     });
-  }, []);
+  }, [countryCode]);
 
-  /* ── Setter: update state + localStorage ─────────────────── */
-  const setLocation = (loc) => {
-    _setLocation(loc);
-    try {
-      if (loc) localStorage.setItem(STORAGE_KEY, JSON.stringify(loc));
-      else      localStorage.removeItem(STORAGE_KEY);
-    } catch {}
-  };
+  /* ── Setter: update state + localStorage for the scoped region ─ */
+  const setLocation = useCallback(
+    (loc) => {
+      _setLocation(loc);
+      /* Any manual save (typed, picked from suggestions, or region-switch
+       * re-entry) is no longer "auto-detected". */
+      setIsAutoDetected(false);
+      try {
+        if (loc) {
+          localStorage.setItem(
+            STORAGE_PREFIX + countryCode,
+            JSON.stringify(loc),
+          );
+          localStorage.setItem(SOURCE_PREFIX + countryCode, "manual");
+        } else {
+          localStorage.removeItem(STORAGE_PREFIX + countryCode);
+          localStorage.removeItem(SOURCE_PREFIX + countryCode);
+        }
+      } catch {}
+    },
+    [countryCode],
+  );
 
-  return { location, setLocation, ipCountryCode };
+  return { location, setLocation, ipCountryCode, isAutoDetected };
 }
