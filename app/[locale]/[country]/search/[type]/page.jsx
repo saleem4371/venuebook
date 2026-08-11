@@ -110,9 +110,15 @@ export default function SearchPage() {
   const [destination, setDestination] = useState([]);
 
   const [searchCenter, setSearchCenter] = useState(() => {
-    const la = Number(searchParams.get("lat"));
-    const ln = Number(searchParams.get("lng"));
-    return Number.isFinite(la) && Number.isFinite(ln) && !(la === 0 && ln === 0)
+    const rawLa = searchParams.get("lat");
+    const rawLn = searchParams.get("lng");
+    const la = Number(rawLa);
+    const ln = Number(rawLn);
+    // Both params must be PRESENT, not just finite: Number(null) === 0, so a
+    // URL carrying ?lat with no ?lng would otherwise yield { lat, lng: 0 } —
+    // a point in the Gulf of Guinea. Harmless while this state was unused;
+    // now that it steers the map it has to be airtight.
+    return rawLa && rawLn && Number.isFinite(la) && Number.isFinite(ln) && !(la === 0 && ln === 0)
       ? { lat: la, lng: ln }
       : null;
   });
@@ -122,6 +128,17 @@ export default function SearchPage() {
   location: searchParams.get("location") || "",
   date: searchParams.get("date") || "",
   guests: searchParams.get("guests") || "",
+  // Farmstay date-range + rental/studio/workspace date-range params.
+  // Previously not read from the URL at all, so a direct link or a page
+  // refresh silently lost the farmstay Check In/Out selection even though
+  // the URL sync effect below now writes them.
+  checkin: searchParams.get("checkin") || "",
+  checkout: searchParams.get("checkout") || "",
+  startdate: searchParams.get("startdate") || "",
+  enddate: searchParams.get("enddate") || "",
+  // New farmstay-only search facets (see searchFieldsConfig.js).
+  occasion: searchParams.get("occasion") || "",
+  vibe: searchParams.get("vibe") || "",
 });
 
   console.log("==============SEARCH===============");
@@ -304,11 +321,39 @@ export default function SearchPage() {
     currentPage * PAGE_SIZE,
   );
 
-  // Stable — was an inline no-op recreated every render; harmless either way,
-  // but useCallback keeps every MapView prop consistent in identity discipline.
-  const handleVenueClick = useCallback((_venue) => {
-    /* MapView handles its own popup */
-  }, []);
+  /* Marker click → highlight + scroll the matching listing card into view.
+     Jumps to whichever page of results that card lives on first (results
+     are paginated), then scrolls once that page has actually rendered. */
+  const [pendingScrollVenueId, setPendingScrollVenueId] = useState(null);
+
+  const handleVenueClick = useCallback(
+    (venue) => {
+      const vid = venue?.childVenueId || venue?.id;
+      if (!vid) return;
+      setMapHighlightedIds([vid]);
+
+      const idx = displayCards.findIndex(
+        (v) => (v.childVenueId || v.id) === vid,
+      );
+      if (idx === -1) return; // not in the current card list — nothing to scroll to
+
+      const page = Math.floor(idx / PAGE_SIZE) + 1;
+      if (page !== currentPage) setCurrentPage(page);
+      setPendingScrollVenueId(vid);
+    },
+    [displayCards, currentPage],
+  );
+
+  useEffect(() => {
+    if (!pendingScrollVenueId) return;
+    const el = document.getElementById(`vb-map-card-${pendingScrollVenueId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      setPendingScrollVenueId(null);
+    }
+    // Retried on the next paginatedCards render too (page change needs a
+    // render before the target card exists in the DOM).
+  }, [pendingScrollVenueId, paginatedCards]);
 
   const BASE_URL = process.env.NEXT_PUBLIC_AWS_BUCKET_URL;
 
@@ -398,6 +443,15 @@ export default function SearchPage() {
   location: searchData.location,
   date: searchData.date,
   guests: searchData.guests,
+  // Previously dropped here even when present in searchData — farmstay
+  // Check In/Out (and rental/studio/workspace date ranges) never reached
+  // the API, so date-range search silently had no effect on results.
+  checkin: searchData.checkin,
+  checkout: searchData.checkout,
+  startdate: searchData.startdate,
+  enddate: searchData.enddate,
+  occasion: searchData.occasion,
+  vibe: searchData.vibe,
 };
         const regions =  localStorage.getItem("vb_preferred_location");
 
@@ -652,6 +706,17 @@ useEffect(() => {
     params.delete("guests");
   }
 
+  // Farmstay Check In/Out, rental/studio/workspace date ranges, and the
+  // new occasion/vibe facets — same set-or-delete pattern as the fields
+  // above, previously missing here so these values never survived a page
+  // refresh or a shared link even after the payload fix above.
+  [["checkin", searchData.checkin], ["checkout", searchData.checkout],
+   ["startdate", searchData.startdate], ["enddate", searchData.enddate],
+   ["occasion", searchData.occasion], ["vibe", searchData.vibe]].forEach(([key, value]) => {
+    if (value) params.set(key, value);
+    else params.delete(key);
+  });
+
   const newUrl = `${window.location.pathname}${
     params.toString() ? `?${params.toString()}` : ""
   }`;
@@ -662,7 +727,7 @@ useEffect(() => {
   if (newUrl !== currentUrl) {
     window.history.replaceState(null, "", newUrl);
   }
-}, [searchData.location, searchData.date, searchData.guests]);
+}, [searchData.location, searchData.date, searchData.guests, searchData.checkin, searchData.checkout, searchData.startdate, searchData.enddate, searchData.occasion, searchData.vibe]);
 const compare = () =>{
 
    router.push(`/${locale}/${country}/compare`);
@@ -710,11 +775,46 @@ const compare = () =>{
           data.location?.city ||
           "";
 
-    // Update search state
+    /* Keep searchCenter in step with the pick. LocationAutoComplete already
+       resolved { lat, lng } here; before this fix nothing read searchCenter
+       so leaving it stale was harmless. Now that it steers the map, a stale
+       value would actively point the map at the PREVIOUS city. */
+    const picked = data.location;
+    const pLa = Number(picked?.lat);
+    const pLn = Number(picked?.lng);
+    setSearchCenter(
+      picked && typeof picked === "object" &&
+      Number.isFinite(pLa) && Number.isFinite(pLn) && !(pLa === 0 && pLn === 0)
+        ? { lat: pLa, lng: pLn }
+        : null
+    );
+
+    // ListingsSearchBar's daterange fields (Check In/Out for farmstays,
+    // Start/End Date for rentals/studios/workspaces) arrive as Date
+    // objects — normalize to YYYY-MM-DD strings, same format the URL
+    // sync effect below and the API payload expect.
+    const fmtDate = (v) => {
+      if (!(v instanceof Date)) return v || "";
+      const y = v.getFullYear();
+      const m = String(v.getMonth() + 1).padStart(2, "0");
+      const d = String(v.getDate()).padStart(2, "0");
+      return `${y}-${m}-${d}`;
+    };
+
+    // Update search state — previously only picked up date/guests, so
+    // farmstay Check In/Out (checkin/checkout) and the new occasion/vibe
+    // facets were silently dropped here even though ListingsSearchBar
+    // was already sending them.
     setSearchData({
       location,
-      date: data.date,
+      date: fmtDate(data.date),
       guests: data.guests,
+      checkin: fmtDate(data.checkin),
+      checkout: fmtDate(data.checkout),
+      startdate: fmtDate(data.startdate),
+      enddate: fmtDate(data.enddate),
+      occasion: data.occasion || "",
+      vibe: data.vibe || "",
     });
 
     setSearchLocLabel(location);
@@ -793,15 +893,16 @@ const compare = () =>{
                 {paginatedCards.map((venue) => {
                   const vid = venue.childVenueId || venue.id;
                   return (
-                    <VenueCard
-                      key={vid}
-                      venue={venue}
-                      likedData={likedData}
-                      likedTotal={likedTotal}
+                    <div key={vid} id={`vb-map-card-${vid}`}>
+                      <VenueCard
+                        venue={venue}
+                        likedData={likedData}
+                        likedTotal={likedTotal}
                         user={user}
-                      {...cardProps}
-                      isMapHighlighted={mapHighlightedIds.includes(vid)}
-                    />
+                        {...cardProps}
+                        isMapHighlighted={mapHighlightedIds.includes(vid)}
+                      />
+                    </div>
                   );
                 })}
               </div>
@@ -971,10 +1072,15 @@ const compare = () =>{
                 resetKey={mapResetKey}
                 preferredLocation={preferredLocation}
                 searchLocationLabel={searchLocLabel}
+                searchCenter={searchCenter}
                 onVenueClick={handleVenueClick}
                 onVisibleVenuesChange={setCardVenues}
                 onMapClusterHover={handleMapClusterHover}
                 onMapMarkerHover={handleMapMarkerHover}
+                locale={locale}
+                urlCountry={country}
+                likedData={likedData}
+                onLikedProperty={onLikedProperty}
               />
             </div>
 
@@ -1189,10 +1295,15 @@ const compare = () =>{
               resetKey={mapResetKey}
               preferredLocation={preferredLocation}
               searchLocationLabel={searchLocLabel}
+              searchCenter={searchCenter}
               onVenueClick={handleVenueClick}
               onVisibleVenuesChange={setCardVenues}
               onMapClusterHover={handleMapClusterHover}
               onMapMarkerHover={handleMapMarkerHover}
+              locale={locale}
+              urlCountry={country}
+              likedData={likedData}
+              onLikedProperty={onLikedProperty}
             />
             <div className="absolute top-5 left-4 z-10 pointer-events-none">
               <span className="inline-flex items-center gap-1.5 bg-white dark:bg-gray-900 rounded-full px-3 py-1.5 shadow-md text-sm font-semibold text-gray-800 dark:text-gray-100 border border-gray-100 dark:border-gray-800">
