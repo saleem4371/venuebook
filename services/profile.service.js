@@ -9,5 +9,7 @@ export const profile_main_page = async () => {
 export const allbookingData = async () => {
   return api.get("/booking/allbookingData");
 };
-
+export const getUnreadMessageCount = async () => {
+  return api.get("/booking/getUnreadMessageCount");
+};
 
