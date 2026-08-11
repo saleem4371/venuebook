@@ -1,45 +1,29 @@
 "use client";
 
-import { useMemo } from "react";
+import "mapbox-gl/dist/mapbox-gl.css";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  useJsApiLoader,
-  GoogleMap,
-  MarkerF,
-  CircleF,
-} from "@react-google-maps/api";
+  loadMapboxGL,
+  isMapboxTokenConfigured,
+  isWebGLSupported,
+  enableCooperativeGestures,
+} from "@/hooks/useMapboxGL";
 
 /* ─────────────────────────────────────────────────────────────────────────────
    CONSTANTS  (module-level — stable references, never re-created on render)
 ───────────────────────────────────────────────────────────────────────────── */
-const API_KEY   = process.env.NEXT_PUBLIC_GOOGLE_MAP_KEY ?? "";
-const LIBRARIES = /** @type {const} */ (["places"]);
-
-const MAP_CONTAINER_STYLE = { width: "100%", height: "100%" };
-
-// Allow zoom + pan + fullscreen so the user can explore the neighbourhood.
-// "cooperative" gestureHandling prevents accidental map zoom while page-scrolling
-// (desktop: ctrl+scroll to zoom; mobile: two-finger zoom). Zoom ± buttons still work.
-const MAP_OPTIONS = {
-  fullscreenControl:    true,
-  streetViewControl:    false,
-  mapTypeControl:       false,
-  keyboardShortcuts:    false,
-  zoomControl:          true,
-  gestureHandling:      "cooperative",
-  clickableIcons:       false,
-};
+const MAP_STYLE = "mapbox://styles/mapbox/streets-v12";
 
 // Emerald circle anchored to real map coordinates.
-// Radius is in metres → scales naturally with zoom level and pans with the map.
-const CIRCLE_OPTIONS = {
-  strokeColor:   "#059669",   // emerald-600
-  strokeOpacity: 0.90,
-  strokeWeight:  2,
-  fillColor:     "#10b981",   // emerald-500
-  fillOpacity:   0.13,
-  clickable:     false,
-  zIndex:        1,
-};
+// Radius is in metres → scales naturally with zoom level and pans with the map
+// (rebuilt as a GeoJSON polygon on every zoom/move so it stays geographically
+// accurate instead of a fixed-pixel circle).
+const CIRCLE_FILL_COLOR = "#10b981"; // emerald-500
+const CIRCLE_FILL_OPACITY = 0.13;
+const CIRCLE_STROKE_COLOR = "#059669"; // emerald-600
+const CIRCLE_STROKE_OPACITY = 0.9;
+const CIRCLE_STROKE_WEIGHT = 2;
+const CIRCLE_RADIUS_M = 500;
 
 /* ─────────────────────────────────────────────────────────────────────────────
    DETERMINISTIC APPROXIMATE COORDS
@@ -67,10 +51,28 @@ function getApproxCoords(rawLat, rawLng, seed = "") {
   return { lat: rawLat + dLat, lng: rawLng + dLng };
 }
 
+/** Builds a GeoJSON circle polygon (metres → degrees) — the Mapbox
+ *  equivalent of Google's google.maps.Circle (which is metre-radius native). */
+function createGeoJSONCircle(center, radiusM, points = 64) {
+  const coords = [];
+  const R = 111320;
+  for (let i = 0; i <= points; i++) {
+    const angle = (i / points) * 2 * Math.PI;
+    const dLat = (radiusM / R) * Math.cos(angle);
+    const dLng = (radiusM / R) / Math.cos((center.lat * Math.PI) / 180) * Math.sin(angle);
+    coords.push([center.lng + dLng, center.lat + dLat]);
+  }
+  return {
+    type: "Feature",
+    geometry: { type: "Polygon", coordinates: [coords] },
+    properties: {},
+  };
+}
+
 /* ─────────────────────────────────────────────────────────────────────────────
    FARMSTAY MARKER — teardrop pin with a tree-pine icon
    Built once at module load (not per component mount).
-   No Google red pin is used anywhere in this component.
+   No default Mapbox pin is used anywhere in this component.
 ───────────────────────────────────────────────────────────────────────────── */
 function buildFarmstayPinUrl() {
   const dark  = "#065f46"; // emerald-900
@@ -119,10 +121,13 @@ export default function ApproximateLocationMap({
   rawLng,
   listingId = "",
 }) {
-  const { isLoaded, loadError } = useJsApiLoader({
-    googleMapsApiKey: API_KEY,
-    libraries:        LIBRARIES,
-  });
+  const containerRef = useRef(null);
+  const mapRef       = useRef(null);
+  const markerRef    = useRef(null);
+  const cleanupGestureRef = useRef(() => {});
+
+  const [status, setStatus] = useState("loading"); // loading | ready | error
+  const [showHint, setShowHint] = useState(false);
 
   // Stable approximate center — same for this listing every time
   const approxCenter = useMemo(
@@ -130,23 +135,109 @@ export default function ApproximateLocationMap({
     [rawLat, rawLng, listingId]
   );
 
-  // Marker icon object — uses window.google, so built only after SDK loads
-  const markerOptions = useMemo(() => {
-    if (!isLoaded) return {};
-    return {
-      icon: {
-        url:        FARMSTAY_PIN_URL,
-        scaledSize: new window.google.maps.Size(44, 58),
-        anchor:     new window.google.maps.Point(22, 56),
-      },
-      clickable: false,
-      draggable: false,
-      zIndex:    2,
+  /* ── Init map once (StrictMode-safe: guarded by mapRef) ── */
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    if (!isMapboxTokenConfigured()) {
+      setStatus("error");
+      return;
+    }
+    if (!isWebGLSupported()) {
+      setStatus("error");
+      return;
+    }
+
+    let cancelled = false;
+
+    loadMapboxGL().then((mapboxgl) => {
+      if (cancelled || !mapboxgl || mapRef.current) return;
+
+      const map = new mapboxgl.Map({
+        container: containerRef.current,
+        style: MAP_STYLE,
+        center: [approxCenter.lng, approxCenter.lat],
+        zoom: 14,
+        dragRotate: false,
+        pitchWithRotate: false,
+        touchPitch: false,
+        attributionControl: true,
+      });
+      mapRef.current = map;
+
+      map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "top-right");
+      map.addControl(new mapboxgl.FullscreenControl(), "top-right");
+
+      cleanupGestureRef.current = enableCooperativeGestures(map, containerRef.current, setShowHint);
+
+      map.on("load", () => {
+        if (cancelled) return;
+
+        map.addSource("approx-circle", {
+          type: "geojson",
+          data: createGeoJSONCircle(approxCenter, CIRCLE_RADIUS_M),
+        });
+        map.addLayer({
+          id: "approx-circle-fill",
+          type: "fill",
+          source: "approx-circle",
+          paint: { "fill-color": CIRCLE_FILL_COLOR, "fill-opacity": CIRCLE_FILL_OPACITY },
+        });
+        map.addLayer({
+          id: "approx-circle-stroke",
+          type: "line",
+          source: "approx-circle",
+          paint: {
+            "line-color": CIRCLE_STROKE_COLOR,
+            "line-opacity": CIRCLE_STROKE_OPACITY,
+            "line-width": CIRCLE_STROKE_WEIGHT,
+          },
+        });
+
+        const el = document.createElement("img");
+        el.src = FARMSTAY_PIN_URL;
+        el.style.width = "44px";
+        el.style.height = "58px";
+        el.style.pointerEvents = "none"; // clickable:false, draggable:false in the original
+
+        markerRef.current = new mapboxgl.Marker({ element: el, anchor: "bottom" })
+          .setLngLat([approxCenter.lng, approxCenter.lat])
+          .addTo(map);
+
+        setStatus("ready");
+      });
+
+      map.on("error", (e) => {
+        console.error("[ApproximateLocationMap] Mapbox error:", e?.error || e);
+        if (!mapRef.current?.loaded?.()) setStatus("error");
+      });
+    });
+
+    return () => {
+      cancelled = true;
+      cleanupGestureRef.current?.();
+      markerRef.current?.remove();
+      markerRef.current = null;
+      mapRef.current?.remove();
+      mapRef.current = null;
     };
-  }, [isLoaded]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /* ── Keep circle + marker + center in sync if inputs change post-mount ── */
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || status !== "ready") return;
+
+    map.setCenter([approxCenter.lng, approxCenter.lat]);
+    markerRef.current?.setLngLat([approxCenter.lng, approxCenter.lat]);
+    const source = map.getSource("approx-circle");
+    if (source) source.setData(createGeoJSONCircle(approxCenter, CIRCLE_RADIUS_M));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [approxCenter.lat, approxCenter.lng]);
 
   /* ── Loading skeleton ── */
-  if (!isLoaded) {
+  if (status === "loading") {
     return (
       <div className="w-full h-full rounded-2xl border border-gray-100 dark:border-gray-800 flex items-center justify-center bg-gray-50 dark:bg-gray-900/50">
         <div className="w-8 h-8 rounded-full border-2 border-t-transparent border-emerald-500 animate-spin" />
@@ -155,7 +246,7 @@ export default function ApproximateLocationMap({
   }
 
   /* ── Error fallback ── */
-  if (loadError) {
+  if (status === "error") {
     return (
       <div className="w-full h-full rounded-2xl border border-gray-100 dark:border-gray-800 flex items-center justify-center bg-gray-50 dark:bg-gray-900/50">
         <p className="text-sm text-gray-400 dark:text-gray-500">Map unavailable</p>
@@ -165,34 +256,15 @@ export default function ApproximateLocationMap({
 
   /* ── Map ── */
   return (
-    <div className="w-full h-full rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-800 shadow-sm">
-      <GoogleMap
-        mapContainerStyle={MAP_CONTAINER_STYLE}
-        center={approxCenter}
-        zoom={14}
-        options={MAP_OPTIONS}
-      >
-        {/*
-          Area circle — a real google.maps.Circle anchored to approxCenter.
-          Radius is in metres, so it scales correctly as the user zooms in/out,
-          and moves with the map when panned. NOT a CSS overlay.
-        */}
-        <CircleF
-          center={approxCenter}
-          radius={500}
-          options={CIRCLE_OPTIONS}
-        />
-
-        {/*
-          Custom tree-pine marker at the approximate center.
-          Uses our SVG data URL — the default Google red pin is suppressed by
-          not using the default MarkerF icon.
-        */}
-        <MarkerF
-          position={approxCenter}
-          options={markerOptions}
-        />
-      </GoogleMap>
+    <div className="relative w-full h-full rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-800 shadow-sm">
+      <div ref={containerRef} className="w-full h-full" />
+      {showHint && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/10 pointer-events-none">
+          <span className="px-3 py-1.5 rounded-full bg-black/70 text-white text-xs font-medium">
+            Use ctrl + scroll to zoom the map
+          </span>
+        </div>
+      )}
     </div>
   );
 }
