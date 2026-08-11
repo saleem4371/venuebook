@@ -17,3 +17,7 @@ export const all_messages = (data) => {
 export const sendMessage = (data) => {
   return api.get(`/chat/sendMessage`,data);
 };
+
+export async function mark_read(conversationId) {
+  return api.post(`/chat/messages/${conversationId}/read`); 
+}
