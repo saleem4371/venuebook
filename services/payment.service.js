@@ -64,5 +64,10 @@ export const editBookingRequest = (payload) => {
   return api.post(`/booking/editBookingRequest`,payload);
 };
 
+export const verify_razorpay_subscription = (payload) => {
+  return api.post(`/booking/verify_razorpay_subscription`,payload);
+};
+
+
 
 
