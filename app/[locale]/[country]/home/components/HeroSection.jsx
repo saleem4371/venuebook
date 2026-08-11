@@ -356,7 +356,7 @@ const handleSearch = () => {
         overflow-hidden is on the inner background wrapper, NOT the section.
         This lets absolutely-positioned dropdowns (z-50) escape without clipping.
       */}
-      <section className="relative flex flex-col min-h-[45svh] md:min-h-[80vh]">
+      <section className="relative flex flex-col min-h-[45svh] md:min-h-[80vh]" style=height:100vh;>
 
         {/* Background — overflow-hidden scoped here so video scale-105 doesn't bleed */}
         <div className="absolute inset-0 overflow-hidden">
@@ -407,7 +407,7 @@ const handleSearch = () => {
 </div>
 
         {/* Content */}
-        <div className="relative z-10 flex flex-col flex-1 justify-center w-full mx-auto lg:max-w-[1400px] px-4 sm:px-6 lg:px-8 pt-32 md:pt-28 pb-8 md:pb-10">
+        <div className="relative z-10 flex flex-col flex-1 justify-around w-full mx-auto lg:max-w-[1400px] px-4 sm:px-6 lg:px-8 pt-32 md:pt-28 pb-8 md:pb-10">
 
           {/* Headline */}
           <motion.div
@@ -415,6 +415,7 @@ const handleSearch = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: "easeOut" }}
           >
+            <div>
             <h1 className="font-bold leading-[1.08] tracking-tight text-white text-[1.7rem] sm:text-4xl md:text-5xl lg:text-[3.25rem]">
               Your Next Great Story
               <br className="hidden sm:block" />{" "}
@@ -446,6 +447,7 @@ const handleSearch = () => {
             >
               Discover, compare, and instantly book venues, farmstays &amp; event spaces — all on one platform.
             </motion.p>
+              </div>
           </motion.div>
 
           {/* Category tabs — scrollable, fade edges + small arrows when overflowing */}
