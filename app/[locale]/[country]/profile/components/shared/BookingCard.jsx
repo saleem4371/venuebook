@@ -37,9 +37,7 @@ import { useRouter } from "next/navigation";
 export function BookingCard({ booking, t, tCat, format, locale, country, onOpen ,editBookingRequest }) {
   const router = useRouter();
   const b = booking;
-  const dateLabel = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(
-    new Date(b.date),
-  );
+  const dateLabel = b.date;
 
   const openBookingChat = async (booking) => {
 

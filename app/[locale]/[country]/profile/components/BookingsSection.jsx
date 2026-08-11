@@ -47,6 +47,7 @@ function mapApiBookingToCard(b) {
     startTime: b.start_time,
     endTime: b.end_time,
     eventDateId: b.eventDateId,
+    paxPackages: b.paxPackages,
     // Keep the raw row around too, in case any deeper view needs a field
     // not covered by the mapping above.
     _raw: b,

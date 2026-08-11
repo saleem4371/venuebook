@@ -1,41 +1,5 @@
 "use client";
 
-/**
- * /app/[locale]/[country]/profile/pax-management/[id]/page.jsx
- *
- * Standalone "Manage Your Booking" detail page for a pax / group-catering
- * enquiry (the customer side of the negotiation lifecycle: submitted →
- * review → negotiating → customer approval → contract → confirmed →
- * payment). Adapted from a reference Vue implementation
- * (CustomerBookingDetail.vue) into this app's own React/Tailwind/next-intl
- * stack, reusing the same card/button primitives as the rest of /profile
- * (see ./shared/ui.jsx) so it reads as part of the same dashboard rather
- * than a bolt-on page.
- *
- * SCOPE DECISIONS:
- *   - The reference page's backend (userService.get_leads_detail,
- *     backendService.acceptProposal/enquire_cancelBooking, a socket.io
- *     connection, and a direct Cashfree payment component) has no
- *     equivalent here yet — `services/booking.service.js` only exposes
- *     `leads_create` (creating a new lead), not fetching/mutating one by
- *     id. So this page renders from local sample data and every
- *     status-changing action (accept/reject/request changes/cancel/pay)
- *     updates local state and shows a "preview only" toast instead of
- *     calling a real endpoint — same honesty pattern ManageBookingView.jsx
- *     already uses for its mocked payment flow. Swap `loadLead()` for a
- *     real API call once a get-lead-by-id endpoint exists.
- *   - Chat is a single CTA linking into the existing /messages route
- *     (same pattern PaxBookingView.jsx already uses) instead of embedding
- *     a second, parallel chat UI — this app already has one chat system
- *     (ConversationList/ChatThread) shared by customer and vendor.
- *   - BookingCard.jsx links its "Manage" button straight here for
- *     bookingStatus === "pax" (bypassing the generic Manage modal), passing
- *     venue/guests/amount/date as query params so the sample lead below
- *     reflects the booking that was actually clicked instead of always
- *     showing the same placeholder venue — a stand-in for a real
- *     get-lead-by-id fetch, not a permanent data-passing mechanism.
- */
-
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
