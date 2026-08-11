@@ -22,50 +22,22 @@
  */
 
 import { useState, useRef , useEffect} from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { MagnifyingGlassIcon } from "@heroicons/react/24/solid";
+import { useTranslations } from "next-intl";
 
 import LocationAutoComplete from "@/app/[locale]/[country]/home/components/LocationAutoComplete";
 import DatePicker           from "@/app/[locale]/[country]/home/components/DatePicker";
 import GuestPicker          from "@/app/[locale]/[country]/home/components/GuestPicker";
 import MobileSearchSheet    from "@/app/[locale]/[country]/home/components/MobileSearchSheet";
+import SearchSelectField    from "@/app/[locale]/[country]/home/components/SearchSelectField";
 
 import { useCategory }    from "@/context/CategoryContext";
 import { CATEGORY_TINTS } from "@/config/categoryConfig";
-
-/* ── Per-category field schema (mirrors HeroSection SEARCH_CONFIG) ── */
-const SEARCH_CONFIG = {
-  venues: [
-    { id: "location",  label: "Location",    type: "location",  placeholder: "City or area"       },
-    { id: "date",      label: "Event Date",  type: "date"                                          },
-    { id: "guests",    label: "Guests",      type: "guests",    guestType: "guests"                },
-  ],
-  farmstays: [
-    { id: "location", label: "Destination", type: "location", placeholder: "Where to?" },
-    { id: "dates",     type: "daterange", startId: "checkin",   endId: "checkout",   startLabel: "Check In",   endLabel: "Check Out" },
-    { id: "guests",    label: "Guests",      type: "guests",    guestType: "guests_detailed"       },
-  ],
-  studios: [
-    { id: "location",  label: "Location",    type: "location",  placeholder: "City or studio"     },
-    { id: "startdate", label: "Start",       type: "datetime"                                      },
-    { id: "enddate",   label: "End",         type: "datetime"                                      },
-    { id: "guests",    label: "Team Size",   type: "guests",    guestType: "attendees"             },
-  ],
-  rentals: [
-    { id: "location", label: "Location",    type: "location", placeholder: "City or area" },
-    { id: "dates",     type: "daterange", startId: "startdate", endId: "enddate", startLabel: "Start Date", endLabel: "End Date" },
-    { id: "guests",    label: "Guests",      type: "guests",    guestType: "guests"                },
-  ],
-  workspaces: [
-    { id: "location", label: "Location",    type: "location", placeholder: "City or area" },
-    { id: "dates",     type: "daterange", startId: "startdate", endId: "enddate", startLabel: "Start Date", endLabel: "End Date" },
-    { id: "guests",    label: "Team Size",   type: "guests",    guestType: "attendees"             },
-  ],
-  experiences: [
-    { id: "location",  label: "Location",    type: "location",  placeholder: "City or area"       },
-    { id: "date",      label: "Date",        type: "date"                                          },
-    { id: "guests",    label: "Guests",      type: "guests",    guestType: "guests"                },
-  ],
-};
+/* Field schema now lives in one shared config, imported by this file,
+   HeroSection.jsx and MobileSearchSheet.jsx — see searchFieldsConfig.js
+   for why (previously copy-pasted 3x and drifted). */
+import { SEARCH_CONFIG, getFieldSummary, TOGGLE_BAR_CATEGORIES } from "@/app/[locale]/[country]/home/components/searchFieldsConfig";
 
 /* ── Light-mode input overrides
    Applied to the INPUT ELEMENT only — dropdowns stay dark (homepage behavior) ──
@@ -100,9 +72,15 @@ function parseDateParam(str) {
 
 export default function ListingsSearchBar({
   onSearch, countryCode = "in", defaultValues = {}, isSearching = false, isLoading = false ,destination}) {
+  const t = useTranslations("searchBar");
+  const tf = useTranslations("filter");
   const { activeCategory } = useCategory();
   const tint   = CATEGORY_TINTS[activeCategory] ?? CATEGORY_TINTS.venues;
   const fields = SEARCH_CONFIG[activeCategory] ?? SEARCH_CONFIG.venues;
+  // Only farmstays gets the collapse/expand toggle bar — see
+  // TOGGLE_BAR_CATEGORIES in searchFieldsConfig.js for why. Every other
+  // category keeps the classic bar where all fields stay visible.
+  const useToggleBar = TOGGLE_BAR_CATEGORIES.includes(activeCategory);
 
   /* The Search-page bar now shows Location, Date and Guests — the same state
      created on the Home page. Location is seeded from the URL via
@@ -121,8 +99,36 @@ export default function ListingsSearchBar({
     enddate:   parseDateParam(defaultValues.enddate),
   }));
 
-  const [searchData,  setSearchData]  = useState({ location: defaultValues.location || "" });
+  const [searchData,  setSearchData]  = useState({
+    location: defaultValues.location || "",
+    // Seeded at mount (not just on resync) so a direct/shared link with
+    // ?occasion=...&vibe=... shows the right chip selected immediately,
+    // same as location above.
+    occasion: defaultValues.occasion || "",
+    vibe:     defaultValues.vibe     || "",
+  });
   const [sheetOpen,   setSheetOpen]   = useState(false);
+
+  /* ── Desktop collapse/expand toggle ─────────────────────────────
+     Only the active field renders its full label + control; the rest
+     collapse to an icon + short label + value-summary pill (see
+     getFieldSummary in searchFieldsConfig.js). Clicking a collapsed
+     pill activates it and collapses whichever was active before —
+     one field expanded "sideways" at a time, in the field order
+     defined by SEARCH_CONFIG (Where → Why → Feel → Dates → Who for
+     farmstays). Starts on the first field, same as the old bar always
+     showing Location first. */
+  const [activeFieldId, setActiveFieldId] = useState(() => visibleFields[0]?.id ?? null);
+  useEffect(() => {
+    // Field set changes when the category tab changes — if the
+    // previously-active field doesn't exist in the new category's
+    // fields, fall back to the first one instead of leaving nothing
+    // expanded.
+    if (!visibleFields.some((f) => f.id === activeFieldId)) {
+      setActiveFieldId(visibleFields[0]?.id ?? null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCategory]);
 
   /* ── Re-sync when a NEW navigation brings fresh defaultValues ──────────
      `dates`/`searchData` above are seeded from `defaultValues` only once,
@@ -148,6 +154,8 @@ export default function ListingsSearchBar({
     defaultValues.startdate,
     defaultValues.enddate,
     defaultValues.guests,
+    defaultValues.occasion,
+    defaultValues.vibe,
   ].join("|");
 
   const appliedSignatureRef = useRef(defaultsSignature);
@@ -168,6 +176,8 @@ export default function ListingsSearchBar({
       ...p,
       location: defaultValues.location || "",
       guests:   defaultValues.guests   || "",
+      occasion: defaultValues.occasion || "",
+      vibe:     defaultValues.vibe     || "",
     }));
     setSyncTick((t) => t + 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -177,6 +187,25 @@ export default function ListingsSearchBar({
   // to?" trigger button above reflects it too, not just the sheet's own
   // sticky summary bar (same pattern as HeroSection.jsx's mobileSummary).
   const [summary,     setSummary]     = useState({ location: "", dateSummary: "", guestSummary: "" });
+
+  // Columns stay unequal (active field grows, the rest pin at 104px)
+  // exactly while a field is being spotlighted — that's what makes "which
+  // field is active" readable while stepping through Where → Why → Feel →
+  // Dates → Who, AND gives a REOPENED field the same comfortable width it
+  // had the first time (reopening sets `activeFieldId` back to that
+  // field, same as the initial walk-through — it doesn't matter that the
+  // other fields still hold values from before).
+  //
+  // `activeFieldId` goes back to null once a field's own dropdown closes
+  // without advancing to the next one (see onDeactivate below) — e.g. the
+  // user closes Dates without picking anything, or clears a value they'd
+  // already set. With nothing active, pinning every field at 104px left
+  // none of them absorbing the leftover width — a dead gap after the
+  // Search button instead of filling the bar. Equal width is the right
+  // fallback there: there's nothing left to spotlight, so every column
+  // gets an equal share instead of one of them staying stuck oversized
+  // (or all of them staying stuck cramped).
+  const equalWidth = activeFieldId == null;
 
   // const handleSearch = () => onSearch?.({ ...searchData, dates });
 
@@ -212,7 +241,7 @@ export default function ListingsSearchBar({
   if (isLoading) {
     return (
       <>
-        <div className="hidden md:flex items-stretch bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm overflow-hidden mx-4 mt-2.5 mb-2">
+        <div className="hidden md:flex items-stretch h-[69px] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm overflow-hidden mx-4 mt-2.5 mb-2">
           {visibleFields.map((field, i) => (
             <div
               key={field.id}
@@ -244,7 +273,15 @@ export default function ListingsSearchBar({
    /* ── DESKTOP bar ───────────────────────────────────────────── */
   return (
     <>
-      <div className="hidden md:flex items-stretch bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm overflow-visible mx-4 mt-2.5 mb-2">
+      {/* Fixed height (69px) — was implicit/content-driven before, so the
+         row's own height would shift by a few px as fields swapped
+         between collapsed/expanded and between field types with
+         slightly different natural content heights (a label+control
+         stack vs. an icon+two-line pill). Every field now stretches to
+         fill this fixed height and centers its own content within it
+         (see SearchField below), so the bar itself never needs to
+         resize vertically during a transition — only width does. */}
+      <div className="hidden md:flex items-stretch h-[69px] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm overflow-visible mx-4 mt-2.5 mb-2">
 
         {visibleFields.map((field, i) => (
           <SearchField
@@ -252,7 +289,9 @@ export default function ListingsSearchBar({
             field={field}
             tint={tint}
             category={activeCategory}
+            isFirst={i === 0}
             isLast={i === visibleFields.length - 1}
+            equalWidth={equalWidth}
             dates={dates}
             onDateChange={(key, v) => setDates((p) => ({ ...p, [key]: v }))}
             setSearchData={setSearchData}
@@ -261,6 +300,17 @@ export default function ListingsSearchBar({
             defaultLocation={field.type === "location" ? (defaultValues.location || "") : ""}
             defaultGuests={field.type === "guests"   ? (defaultValues.guests   || "")  : ""}
             destination={destination}
+            t={t}
+            tf={tf}
+            isActive={!useToggleBar || activeFieldId === field.id}
+            onActivate={() => setActiveFieldId(field.id)}
+            onAdvance={() => setActiveFieldId(visibleFields[i + 1]?.id ?? field.id)}
+            // Fires when this field's own popup closes without advancing
+            // (click outside, Escape, or reselecting) — collapses it back
+            // to the display pill instead of leaving it looking "active"
+            // forever. Guarded so it can't clobber a field that's already
+            // moved on (e.g. via onAdvance firing first on the same close).
+            onDeactivate={() => setActiveFieldId((cur) => (cur === field.id ? null : cur))}
           />
         ))}
 
@@ -283,7 +333,7 @@ export default function ListingsSearchBar({
             ) : (
               <MagnifyingGlassIcon className="w-4 h-4" />
             )}
-            {busy ? "Searching…" : "Search"}
+            {busy ? t("searching") : t("search")}
           </button>
         </div>
       </div>
@@ -300,12 +350,12 @@ export default function ListingsSearchBar({
       >
         <div className="flex flex-col items-start gap-0.5 min-w-0 flex-1 text-start">
           <span className={`text-[10px] font-semibold uppercase tracking-widest truncate w-full ${LABEL_CLS}`}>
-            {summary.location || "Where to?"}
+            {summary.location || t("where_to")}
           </span>
           <span className="text-sm text-gray-500 dark:text-white/70 truncate w-full">
             {summary.location
-              ? [summary.dateSummary, summary.guestSummary].filter(Boolean).join(" · ") || "Tap to edit your search"
-              : "Search location, date, guests…"}
+              ? [summary.dateSummary, summary.guestSummary].filter(Boolean).join(" · ") || t("tap_to_edit")
+              : t("mobile_trigger_placeholder")}
           </span>
         </div>
         <div className="p-2 rounded-lg text-white shrink-0" style={{ background: tint.hex }}>
@@ -326,7 +376,7 @@ export default function ListingsSearchBar({
    Mirrors HeroSection's SearchField exactly.
    Container colors adapted for white page; picker components unchanged.
    ────────────────────────────────────────────────────────────────── */
-function SearchField({ field, tint, category, isLast, dates, onDateChange,searchData, setSearchData, countryCode, defaultLocation = "", defaultGuests = "" ,destination }) {
+function SearchField({ field, tint, category, isFirst, isLast, equalWidth = false, dates, onDateChange,searchData, setSearchData, countryCode, defaultLocation = "", defaultGuests = "" ,destination, t, tf, isActive = true, onActivate, onAdvance, onDeactivate }) {
   // Header label above the location field used to stay permanently
   // "DESTINATION"/"LOCATION" (straight from SEARCH_CONFIG) even after
   // switching to Property mode inside the dropdown — only the placeholder
@@ -334,44 +384,215 @@ function SearchField({ field, tint, category, isLast, dates, onDateChange,search
   // live label ("Location" or the active category's word, e.g. "Farmstay")
   // via onModeChange; this mirrors it so the header swaps too — same fix
   // already applied to HeroSection.jsx's SearchField.
-  const [locationLabel, setLocationLabel] = useState(field.label);
-  useEffect(() => { setLocationLabel(field.label); }, [field.label]);
+  const fieldLabel = field.labelKey ? t(field.labelKey) : field.label;
+  const [locationLabel, setLocationLabel] = useState(fieldLabel);
+  useEffect(() => { setLocationLabel(fieldLabel); }, [fieldLabel]);
+
+  // The box's width (driven by `isActive` via CSS transition below) and
+  // the content swap used to both flip the instant `isActive` changed —
+  // two independently-timed animations racing each other. Collapsing was
+  // fine (the compact pill fits at any width), but EXPANDING showed the
+  // full control — label + "7 Sep 2026 → 25 Sep 2026", GuestPicker, etc —
+  // immediately, while the box was still only 104px wide and hadn't
+  // grown yet, so the content wrapped across multiple lines until the box
+  // caught up. `displayActive` fixes this by only being asymmetric: it
+  // drops to collapsed immediately (safe at any width), but only rises to
+  // expanded once the box has actually finished growing.
+  const [displayActive, setDisplayActive] = useState(isActive);
+  useEffect(() => {
+    if (isActive) {
+      const timer = setTimeout(() => setDisplayActive(true), 300);
+      return () => clearTimeout(timer);
+    }
+    setDisplayActive(false);
+  }, [isActive]);
+
+  // Opens the field's own control the moment its full content actually
+  // renders (displayActive, not isActive — see above), so a single click
+  // on a collapsed pill both expands it AND shows its picker/dropdown,
+  // instead of "click to expand, then click again to actually use it."
+  // DatePicker/GuestPicker/SearchSelectField's trigger is a plain toggle
+  // <button> — .click() fires the same onClick a real second click would
+  // and opens the dropdown. LocationAutoComplete's trigger is a text
+  // <input> whose suggestions open on onFocus, NOT onClick — and .click()
+  // on an <input> does NOT reliably focus it. Browsers assign focus to a
+  // text input on "mousedown", before "click" ever fires; .click() only
+  // synthesizes the click event itself, so it skipped the mousedown step
+  // that actually moves focus. The field visibly expanded (showing the
+  // empty input) but never actually focused it, so onFocus — and the
+  // suggestions it opens — never fired until a real second click. Calling
+  // .focus() directly for inputs sidesteps the missing mousedown entirely.
+  const contentRef = useRef(null);
+  useEffect(() => {
+    if (!displayActive) return;
+    const raf = requestAnimationFrame(() => {
+      const el = contentRef.current?.querySelector("button, input");
+      if (!el) return;
+      if (el.tagName === "INPUT") el.focus();
+      else el.click();
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [displayActive]);
+
+  const Icon = field.icon;
+  const summary = getFieldSummary(field, { searchData, dates, t, tf });
 
   return (
+    // Two width modes, chosen by the parent via `equalWidth`:
+    //
+    //  - Still filling in (equalWidth=false): the active field grows
+    //    (flex-grow:1) while the rest pin at a fixed 104px icon-pill width.
+    //    This is what makes "which field is active" readable while
+    //    stepping through Where → Why → Feel → Dates → Who.
+    //  - Everything filled (equalWidth=true): there's no more "next" field
+    //    to spotlight, so every column becomes a fixed equal split instead
+    //    of leaving one field permanently oversized once the bar is just
+    //    sitting there fully populated.
+    //
+    // Real CSS flex (not Framer's `layout`/transform-scale trick) is what
+    // renders each column either way: that trick stretches whatever's
+    // inside a resizing box unless every nested node is also a tracked
+    // motion element, which showed up as text/icons visibly ballooning
+    // during a width change. AnimatePresence below only crossfades opacity
+    // between collapsed/expanded content, which doesn't touch layout.
     <div
       className={[
-        "relative min-w-0 px-4 py-2.5 overflow-visible",
-        field.type === "daterange" ? "flex-[2]" : "flex-1",
+        "relative min-w-0 overflow-visible",
+        "transition-[flex-grow,min-width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]",
         !isLast ? "border-e border-gray-100 dark:border-white/10" : "",
       ].join(" ")}
+      style={
+        equalWidth
+          ? { flexGrow: 1, flexShrink: 1, flexBasis: "0%", minWidth: "0px" }
+          : {
+              // All active fields get the same flex-grow weight (Dates
+              // used to get 2x for its old two-column layout — now that
+              // it's a single merged trigger, the extra weight only
+              // caused a "large then small" wobble in the rest of the
+              // row, since animating flex-grow re-solves the WHOLE row's
+              // distribution at every frame).
+              flexGrow: isActive ? 1 : 0,
+              flexShrink: isActive ? 1 : 0,
+              flexBasis: "0%",
+              // 104px is just enough for an icon + short label; the value
+              // line beneath it can truncate.
+              minWidth: isActive ? "0px" : "104px",
+            }
+      }
     >
-      {/* Field label — smaller, lighter; value text below should dominate.
-         daterange renders its own two mini-labels (Check In / Check Out)
-         internally, so a shared label here would be redundant. */}
-      {field.type !== "daterange" && (
-        <p className={`text-[9px] font-semibold uppercase tracking-[0.1em] mb-1 whitespace-nowrap ${LABEL_CLS}`}>
-          {field.type === "location" ? locationLabel : field.label}
-        </p>
-      )}
+      {/* mode="wait" (exit-then-enter) used to be load-bearing here, back
+         when content timing was racing the box's width transition. Now
+         that `displayActive` already gates when each branch mounts, that
+         sequencing was just adding ~400ms of dead time after the box had
+         already finished resizing. Default (simultaneous) crossfade is
+         faster and reads as more responsive — safe now because both
+         branches below are `absolute inset-0`, so they overlap in the
+         exact same box during the fade instead of stacking in flow. */}
+      <AnimatePresence initial={false}>
+        {!displayActive ? (
+          /* ── Collapsed pill — icon + short label + current value summary
+             once something's picked, left-aligned like every other field.
+             First-time (nothing picked yet) shows short label with the
+             icon centered underneath instead of a dash — reads as "here's
+             what this field is for" rather than "this is empty". */
+          <motion.button
+            key="collapsed"
+            type="button"
+            onClick={onActivate}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.14 }}
+            className={[
+              "absolute inset-0 flex items-center w-full h-full px-3 py-2.5 hover:bg-gray-50 dark:hover:bg-white/[0.06] transition-colors text-start",
+              // The bar is rounded-xl with overflow-visible (needed so
+              // dropdowns can escape it), so this pill's own hover
+              // background — being absolute inset-0 — must round its own
+              // start corners to match, or the hover rect visibly pokes
+              // past the bar's rounded corner on the first field.
+              isFirst ? "rounded-s-xl" : "",
+            ].join(" ")}
+          >
+            {summary ? (
+              <div className="flex items-center gap-2 w-full min-w-0">
+                {Icon && <Icon className="w-4 h-4 shrink-0" style={{ color: tint?.hex }} aria-hidden="true" />}
+                <div className="min-w-0 leading-tight">
+                  <p className={`text-[9px] font-semibold uppercase tracking-[0.1em] whitespace-nowrap ${LABEL_CLS}`}>
+                    {field.shortLabelKey ? t(field.shortLabelKey) : fieldLabel}
+                  </p>
+                  <p className="text-xs truncate text-gray-700 dark:text-white/80">{summary}</p>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-1 w-full">
+                <p className={`text-[9px] font-semibold uppercase tracking-[0.1em] whitespace-nowrap ${LABEL_CLS}`}>
+                  {field.shortLabelKey ? t(field.shortLabelKey) : fieldLabel}
+                </p>
+                {Icon && <Icon className="w-4 h-4 shrink-0" style={{ color: tint?.hex }} aria-hidden="true" />}
+              </div>
+            )}
+          </motion.button>
+        ) : (
+          <motion.div
+            key="expanded"
+            ref={contentRef}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.16 }}
+            // h-full + justify-center: matches the collapsed pill's own
+            // centering (items-center within its h-full) so both states
+            // sit centered within the bar's fixed 69px height, instead of this
+            // one being top-aligned with a bit of dead space below it.
+            // absolute inset-0: overlaps the collapsed pill in the same spot
+            // during the crossfade instead of stacking below it in flow.
+            className="absolute inset-0 min-w-0 h-full flex flex-col justify-center px-4"
+          >
+            {/* truncate (not just whitespace-nowrap) — an un-clipped long
+               label in a narrow equal-width column would overflow past
+               this field's own border into the next one instead of just
+               getting cut off with an ellipsis. */}
+            <p className={`text-[9px] font-semibold uppercase tracking-[0.1em] mb-1 truncate ${LABEL_CLS}`}>
+              {field.type === "location" ? locationLabel : fieldLabel}
+            </p>
 {/* itemDest */}
       {field.type === "location" && (
         <LocationAutoComplete
           category={category}
           tint={tint}
-          placeholder={field.placeholder}
+          placeholder={field.placeholderKey ? t(field.placeholderKey) : field.placeholder}
           textClass={TEXT_CLS}
           placeholderClass={PLACEHOLDER_CLS}
           clearClass={CLEAR_CLS}
           lightDropdown={true}
           countryCode={countryCode}
-          /* Inherited location from the URL arrives as a STRING
-             (defaultLocation). The previous `searchData.location?.city` read
-             `.city` off that string → undefined → the field showed nothing.
-             Seed from the string so the Home-page location is visible here. */
-          defaultValue={defaultLocation || (typeof searchData.location === "string" ? searchData.location : searchData.location?.city)}
-          onSelect={(value) => setSearchData((p) => ({ ...p, location: value }))}
+          /* This field UNMOUNTS when collapsed (it only renders inside the
+             `displayActive` branch below) and remounts fresh every time
+             it's reopened, so `defaultValue` — read once at mount — has to
+             be the CURRENT selection, not the original URL-seeded one.
+             Live `searchData.location` takes priority; `defaultLocation`
+             (the URL value) is only a fallback for the very first mount,
+             before anything's been picked yet. Getting this order backwards
+             was the bug: `defaultLocation || searchData.location` meant a
+             non-empty URL value would keep winning forever, so reopening
+             the field after picking a NEW location showed the stale old
+             one (or blank, on HeroSection which passed no defaultLocation
+             at all — see that file's matching fix). Inherited location
+             from the URL arrives as a STRING; `searchData.location` becomes
+             an OBJECT ({ city, address, … }) once the picker sets it, so
+             `.city` is read only in that case. */
+          defaultValue={
+            (typeof searchData.location === "string"
+              ? searchData.location
+              : searchData.location?.city) || defaultLocation
+          }
+          onSelect={(value) => {
+            setSearchData((p) => ({ ...p, location: value }));
+            onAdvance?.();
+          }}
           onModeChange={setLocationLabel}
           itemDest={destination}
+          onOpenChange={(isOpen) => { if (!isOpen) onDeactivate?.(); }}
         />
       )}
 
@@ -380,7 +601,7 @@ function SearchField({ field, tint, category, isLast, dates, onDateChange,search
           mode="single"
           tint={tint}
           startDate={dates[field.id] ?? null}
-          placeholder="Select date"
+          placeholder={t("select_date")}
           textClass={TEXT_CLS}
           placeholderClass={SPAN_PLACEHOLDER_CLS}
           lightMode={true}
@@ -388,6 +609,7 @@ function SearchField({ field, tint, category, isLast, dates, onDateChange,search
             onDateChange(field.id, v);
             setSearchData((p) => ({ ...p, [field.id]: v }));
           }}
+          onOpenChange={(isOpen) => { if (!isOpen) onDeactivate?.(); }}
         />
       )}
 
@@ -396,7 +618,7 @@ function SearchField({ field, tint, category, isLast, dates, onDateChange,search
           mode="datetime"
           tint={tint}
           startDate={dates[field.id] ?? null}
-          placeholder="Select date & time"
+          placeholder={t("select_date_time")}
           textClass={TEXT_CLS}
           placeholderClass={SPAN_PLACEHOLDER_CLS}
           lightMode={true}
@@ -404,22 +626,24 @@ function SearchField({ field, tint, category, isLast, dates, onDateChange,search
             onDateChange(field.id, v);
             setSearchData((p) => ({ ...p, [field.id]: v }));
           }}
+          onOpenChange={(isOpen) => { if (!isOpen) onDeactivate?.(); }}
         />
       )}
 
-      {/* Single connected range calendar — replaces two independent
-         single-date Check In / Check Out (or Start/End Date) pickers that
-         let checkout land before check-in with no validation. One
-         DatePicker in mode="range" (same component the mobile sheet
-         already uses for farmstays) enforces start-before-end and
-         highlights the span between them. */}
+      {/* Single merged trigger ("12 Aug → 15 Aug") instead of two separate
+         Check In / Check Out cells — both used to open the exact same
+         shared calendar anyway, so the second cell was pure duplication.
+         Mobile's sheet already does it this way (see MobileSearchSheet.jsx,
+         which never passed splitLabels); this just brings the desktop bar
+         in line with it and buys back width the bar badly needed once
+         Occasion/Vibe joined it. */}
       {field.type === "daterange" && (
         <DatePicker
           mode="range"
           tint={tint}
           startDate={dates[field.startId] ?? null}
           endDate={dates[field.endId] ?? null}
-          splitLabels={{ start: field.startLabel ?? "Start", end: field.endLabel ?? "End" }}
+          placeholder={field.placeholderKey ? t(field.placeholderKey) : t("select_date")}
           textClass={TEXT_CLS}
           placeholderClass={SPAN_PLACEHOLDER_CLS}
           lightMode={true}
@@ -430,7 +654,9 @@ function SearchField({ field, tint, category, isLast, dates, onDateChange,search
           onChangeEnd={(v) => {
             onDateChange(field.endId, v);
             setSearchData((p) => ({ ...p, [field.endId]: v }));
+            if (v) onAdvance?.();
           }}
+          onOpenChange={(isOpen) => { if (!isOpen) onDeactivate?.(); }}
         />
       )}
 
@@ -442,11 +668,37 @@ function SearchField({ field, tint, category, isLast, dates, onDateChange,search
           textClass={TEXT_CLS}
           placeholderClass={SPAN_PLACEHOLDER_CLS}
           chevronClass="text-gray-400 hover:text-gray-600 dark:text-white/50"
-          placeholder="How many guests?"
+          placeholder={t("how_many_guests")}
           defaultValue={defaultGuests}
           onChange={(val) => setSearchData((p) => ({ ...p, guests: val }))}
+          onOpenChange={(isOpen) => { if (!isOpen) onDeactivate?.(); }}
         />
       )}
+
+      {field.type === "select" && (
+        <SearchSelectField
+          options={(field.options ?? []).map((o) => ({ id: o.id, label: tf(`${field.optionKeyPrefix ?? ""}${o.id}`), icon: o.icon, image: o.image }))}
+          value={searchData[field.id] ?? ""}
+          onChange={(val) => {
+            setSearchData((p) => ({ ...p, [field.id]: val }));
+            // Same auto-advance as location/date-range below — was missing
+            // here, so Occasion/Vibe were the only fields that didn't hand
+            // off to the next one after picking a value.
+            if (val) onAdvance?.();
+          }}
+          tint={tint}
+          label={fieldLabel}
+          placeholder={field.placeholderKey ? t(field.placeholderKey) : ""}
+          textClass={TEXT_CLS}
+          placeholderClass={SPAN_PLACEHOLDER_CLS}
+          chevronClass="text-gray-400 hover:text-gray-600 dark:text-white/50"
+          lightMode={true}
+          onOpenChange={(isOpen) => { if (!isOpen) onDeactivate?.(); }}
+        />
+      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

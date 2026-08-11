@@ -104,6 +104,11 @@ const CHIP_ICONS = {
   camping: Tent, photo_walk: Camera, cooking: ChefHat, wellness: Heart, team: Users,
   // Suitability
   couple: Heart, group: Users,
+  // Occasion (farmstay search bar facet)
+  weekend_escape: Compass, family_vacation: Users, workcation: Briefcase,
+  special_occasion: Gem, wellness_retreat: Heart, group_gathering: PartyPopper,
+  // Vibe (farmstay search bar facet)
+  rustic_natural: Trees, heritage_traditional: Home, luxurious_modern: Sparkles, cozy_peaceful: BedDouble,
   // Promotion / rating / reels / pricing type / vendor tier
   popular: Star, sponsored: Zap,
   rating_4_plus: Star, rating_45_plus: Star, most_reviewed: MessageSquare, most_liked: Heart,
@@ -120,6 +125,7 @@ export const DEFAULT_FILTERS = {
   foodCatering: [], loyaltyPerks: [],
   farmType: [], poolExperience: [], petFriendly: [], kidFriendly: [],
   farmExperiences: [], farmFood: [], stayType: [],
+  occasion: [], vibe: [],   // farmstays only — mirrors the search bar's quick Occasion/Vibe pick, refined here as a multi-select
   studioType: [], studioFeatures: [],
   workspaceType: [], workspaceFeatures: [], workspaceBooking: [],
   rentalCategory: [], rentalFeatures: [],
@@ -724,6 +730,15 @@ function FarmstayFilters({ filters, setFilters, format, t, accent, category }) {
     { id: "room", label: t("private_room") }, { id: "shared", label: t("shared_stay") },
     { id: "luxury", label: t("luxury_farmstay") }, { id: "eco", label: t("eco_farmstay") },
   ];
+  const occasionOpts = [
+    { id: "weekend_escape", label: t("occasion_weekend_escape") }, { id: "family_vacation", label: t("occasion_family_vacation") },
+    { id: "workcation", label: t("occasion_workcation") }, { id: "special_occasion", label: t("occasion_special_occasion") },
+    { id: "wellness_retreat", label: t("occasion_wellness_retreat") }, { id: "group_gathering", label: t("occasion_group_gathering") },
+  ];
+  const vibeOpts = [
+    { id: "rustic_natural", label: t("vibe_rustic_natural") }, { id: "heritage_traditional", label: t("vibe_heritage_traditional") },
+    { id: "luxurious_modern", label: t("vibe_luxurious_modern") }, { id: "cozy_peaceful", label: t("vibe_cozy_peaceful") },
+  ];
   const bookings = [
     { id: "instant", label: t("instant_book") }, { id: "reserve", label: t("reserve_slot") },
   ];
@@ -754,6 +769,8 @@ function FarmstayFilters({ filters, setFilters, format, t, accent, category }) {
         <CollapsibleWrap t={t} accent={accent}>{F("farmType", farmTypes)}</CollapsibleWrap>
       </Accordion>
       <Accordion title={t("stay_type")} icon={BedDouble} defaultOpen>{F("stayType", stayOpts)}</Accordion>
+      <Accordion title={t("occasion")} icon={Compass} defaultOpen>{F("occasion", occasionOpts)}</Accordion>
+      <Accordion title={t("vibe")} icon={Sparkles} defaultOpen>{F("vibe", vibeOpts)}</Accordion>
       <Accordion title={t("booking_type")} icon={BookCheck} defaultOpen>{F("booking", bookings)}</Accordion>
       <Accordion title={t("price_range")} icon={Wallet} defaultOpen>
         <PriceRange filters={filters} setFilters={setFilters} format={format} t={t} accent={accent} />
@@ -996,6 +1013,15 @@ function getCategoryOptionSets(category, t) {
           { id: "entire", label: t("entire_farmhouse") }, { id: "cottage", label: t("private_cottage") },
           { id: "room", label: t("private_room") }, { id: "shared", label: t("shared_stay") },
           { id: "luxury", label: t("luxury_farmstay") }, { id: "eco", label: t("eco_farmstay") },
+        ],
+        occasion: [
+          { id: "weekend_escape", label: t("occasion_weekend_escape") }, { id: "family_vacation", label: t("occasion_family_vacation") },
+          { id: "workcation", label: t("occasion_workcation") }, { id: "special_occasion", label: t("occasion_special_occasion") },
+          { id: "wellness_retreat", label: t("occasion_wellness_retreat") }, { id: "group_gathering", label: t("occasion_group_gathering") },
+        ],
+        vibe: [
+          { id: "rustic_natural", label: t("vibe_rustic_natural") }, { id: "heritage_traditional", label: t("vibe_heritage_traditional") },
+          { id: "luxurious_modern", label: t("vibe_luxurious_modern") }, { id: "cozy_peaceful", label: t("vibe_cozy_peaceful") },
         ],
         booking: [
           { id: "instant", label: t("instant_book") }, { id: "reserve", label: t("reserve_slot") },
