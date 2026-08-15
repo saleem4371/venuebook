@@ -840,7 +840,8 @@
           "statusAccepted": "Accepted",
           "accept": "Accept Agreement",
           "accepted": "Accepted",
-          "acceptedOn": "Accepted on"
+          "acceptedOn": "Accepted on",
+          "commissionRate": "نسبة العمولة"
         },
         "table": {
           "title": "Documents",
@@ -866,6 +867,29 @@
           "body": "By accepting, you agree to the terms of the venuebook.in Commercial Partnership Agreement (version {version}). This unlocks digital signature in your KYC & Compliance Hub.",
           "confirm": "I Accept",
           "cancel": "Cancel"
+        },
+        "document": {
+          "viewCta": "عرض الاتفاقية",
+          "modalTitle": "اتفاقية {category}",
+          "close": "إغلاق",
+          "pendingNote": "يتوفر إصدار جديد ({version}) وينتظر موافقتك.",
+          "sections": {
+            "preambleTitle": "الأطراف والنطاق",
+            "preambleBody": "تم إبرام اتفاقية الشراكة التجارية هذه (\"الاتفاقية\") بين venuebook.in (\"المنصة\") والبائع، وتحكم إدراج وإدارة خدمات {category} على المنصة.",
+            "termTitle": "المدة والتجديد",
+            "termBody": "تسري هذه الاتفاقية اعتبارًا من {effectiveDate} وتظل سارية حتى {renewalDate}، وتُجدَّد تلقائيًا بعد ذلك ما لم يقدم أي من الطرفين إشعارًا خطيًا.",
+            "commercialTitle": "الشروط التجارية",
+            "commercialBody": "بموجب نموذج {commercialModel}، تطبق venuebook.in نسبة {commissionRate} على الحجوزات المكتملة عبر المنصة لهذه الفئة.",
+            "obligationsTitle": "التزامات البائع",
+            "obligationsBody": "يوافق البائع على الحفاظ على دقة معلومات الإدراج، وإتمام الحجوزات المؤكدة بحسن نية، والحفاظ على تحديث مستندات KYC والامتثال في جميع الأوقات.",
+            "cancellationTitle": "الإلغاء والاسترداد",
+            "cancellationBody": "تخضع الحجوزات لملحق سياسة الإلغاء والاسترداد الخاص بالمنصة، والذي قد يتم تحديثه من وقت لآخر وإبلاغ البائع به.",
+            "confidentialityTitle": "السرية",
+            "confidentialityBody": "يوافق كلا الطرفين على الحفاظ على سرية المعلومات التجارية الخاصة، وهياكل التسعير، وبيانات الضيوف، إلا في الحالات التي يقتضيها القانون.",
+            "governingLawTitle": "القانون الحاكم",
+            "governingLawBody": "تخضع هذه الاتفاقية لقوانين {region}، وتختص محاكمها دون غيرها بالفصل في أي نزاعات.",
+            "signatureTitle": "الموافقة"
+          }
         }
       },
       "subscription": {
@@ -881,7 +905,9 @@
           "paymentDue": "Payment Due",
           "payNow": "Pay Now",
           "active": "Active",
-          "inactive": "Inactive"
+          "inactive": "Inactive",
+          "paymentCycle": "Payment Cycle",
+          "monthly": "Monthly"
         },
         "migration": {
           "title": "Plan Migration",
@@ -917,101 +943,55 @@
         }
       },
       "finance": {
-        "banner": "Figures below are illustrative sample data — live balances will appear once venuebook.in's settlement backend is connected.",
+        "banner": "الأرقام أدناه بيانات نموذجية توضيحية — ستظهر الأرصدة الفعلية بمجرد ربط نظام التسوية الخاص بـ venuebook.in.",
         "kpis": {
-          "availablePayout": "Available Payout",
-          "availablePayoutDesc": "Funds fully cleared after reconciliation.",
-          "estDays": "Est. {days} days",
-          "triggerPayout": "Trigger Payout to Bank",
-          "securityDeposit": "Security Deposit Held",
-          "securityDepositDesc": "Funds securely held against active bookings.",
-          "pendingSettlements": "Pending Settlements",
-          "pendingSettlementsDesc": "Bookings awaiting reconciliation.",
-          "loyaltyReimbursement": "Loyalty Points Reimbursement",
-          "loyaltyReimbursementDesc": "Amount venuebook.in owes vendor — 60/40 vendor/platform split.",
-          "deductions": "Regulatory & Platform Deductions",
-          "deductionsExpand": "Show breakdown",
-          "deductionsCollapse": "Hide breakdown",
-          "platformCommission": "Platform Commission",
-          "gst": "GST",
-          "vat": "VAT",
-          "tds194O": "Section 194-O",
-          "other": "Other Taxes"
+          "availablePayout": "المبلغ المتاح للسحب",
+          "securityDeposit": "مبلغ التأمين المحتجز",
+          "tcs": "TCS",
+          "tds": "TDS"
         },
-        "chart": {
-          "title": "Revenue vs Deductions Breakdown",
-          "subtitle": "Gross revenue, platform deductions and net settlement by month.",
-          "gross": "Gross Revenue",
-          "deductions": "Platform Deductions",
-          "net": "Net Settlement",
-          "downloadPng": "Download PNG",
-          "fullscreen": "Fullscreen"
-        },
-        "pipeline": {
-          "title": "Settlement Progress Pipeline",
-          "subtitle": "Click a booking to see its full settlement timeline.",
-          "amount": "Amount",
-          "close": "Close"
-        },
-        "reports": {
-          "title": "Reports",
-          "dateRange": "Date Range",
-          "bookingFilter": "Booking",
-          "propertyFilter": "Property",
-          "search": "Search…",
-          "exportCsv": "Export CSV",
-          "exportPdf": "Export PDF",
-          "master": {
-            "title": "Master Settlement Statement",
-            "bookingId": "Booking ID",
-            "checkoutDate": "Checkout Date",
-            "gross": "Gross Booking Amount",
-            "commission": "venuebook.in Commission",
-            "loyaltyRedeemed": "Loyalty Redeemed",
-            "vendorShare": "Vendor Share 60%",
-            "platformShare": "venuebook.in Share 40%",
-            "tds194O": "Section 194-O TDS",
-            "net": "Net Settlement",
-            "expandCalc": "Settlement calculation",
-            "expandTimeline": "Timeline",
-            "expandInvoice": "Invoice"
+        "payoutStatement": {
+          "title": "بيان المبلغ المتاح للسحب",
+          "received": {
+            "title": "المبالغ المستلمة من العميل",
+            "bookingDate": "تاريخ الحجز",
+            "bookingId": "رقم الحجز",
+            "eventDate": "تاريخ الفعالية",
+            "checkInDate": "تاريخ تسجيل الوصول",
+            "checkOutDate": "تاريخ المغادرة",
+            "totalBookingAmount": "إجمالي مبلغ الحجز",
+            "customerPaidAmount": "المبلغ المدفوع من العميل",
+            "customerPaidDate": "تاريخ دفع العميل",
+            "amountRemaining": "المبلغ المتبقي"
           },
-          "escrow": {
-            "title": "Escrow & Security Deposit Reconciliation",
-            "bookingId": "Booking ID",
-            "guestName": "Guest Name",
-            "depositHeld": "Deposit Held",
-            "status": "Status",
-            "claimAmount": "Claim Amount",
-            "damageEvidence": "Damage Evidence",
-            "releaseDate": "Release Date",
-            "upload": "Upload evidence",
-            "statusHeld": "Held",
-            "statusClaimReview": "Claim Under Review",
-            "statusReleased": "Released"
-          },
-          "tax": {
-            "title": "Consolidated Tax & Compliance Statement",
-            "monthlyGst": "Monthly GST",
-            "annualGst": "Annual GST",
-            "tds194OSummary": "Section 194-O Summary",
-            "vatSummary": "VAT Summary",
-            "complianceStatus": "Compliance Status",
-            "statusUpToDate": "Up to date",
-            "statusActionRequired": "Action Required",
-            "month": "Month",
-            "invoiceCount": "Invoice Count",
-            "taxAmount": "Tax Amount",
-            "gst": "GST",
-            "vat": "VAT",
-            "tds": "TDS",
-            "certificates": "Certificates",
-            "download": "Download",
-            "annualExport": "Annual Export",
-            "generatePackage": "Generate Tax Package",
-            "form16A": "Download Form 16A References"
+          "pending": {
+            "title": "المبالغ المستحقة من العميل",
+            "bookingDate": "تاريخ الحجز",
+            "bookingId": "رقم الحجز",
+            "eventDate": "تاريخ الفعالية",
+            "checkInDate": "تاريخ تسجيل الوصول",
+            "checkOutDate": "تاريخ المغادرة",
+            "totalBookingAmount": "إجمالي مبلغ الحجز",
+            "customerPaidAmount": "المبلغ المدفوع من العميل",
+            "amountRemaining": "المبلغ المتبقي",
+            "lastPayDate": "آخر موعد لدفع العميل"
           }
-        }
+        },
+        "settlement": {
+          "title": "بيان التسوية",
+          "bookingId": "رقم الحجز",
+          "eventDate": "تاريخ الفعالية",
+          "customerPaid": "المبلغ المدفوع من العميل",
+          "razorpayCharges": "رسوم Razorpay",
+          "platformFee": "رسوم المنصة",
+          "netSettlement": "صافي التسوية",
+          "invoice": "الفاتورة"
+        },
+        "emptyReceived": "لم يتم تسجيل أي مدفوعات من العملاء بعد.",
+        "emptyPending": "لا توجد مبالغ مستحقة من العملاء.",
+        "emptySettlement": "لا توجد تسويات بعد.",
+        "view": "عرض",
+        "download": "تنزيل"
       }
     }
   },
@@ -1104,6 +1084,9 @@
     "cta_primary": "استكشف الماسي",
     "cta_secondary": "لاحقًا",
     "close_aria": "إغلاق"
+  },
+  "splash": {
+    "loading_label": "جارٍ تحميل venuebook.in"
   },
   "card": {
     "starting_price": "سعر البداية",

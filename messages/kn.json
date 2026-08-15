@@ -672,7 +672,8 @@
           "statusAccepted": "Accepted",
           "accept": "Accept Agreement",
           "accepted": "Accepted",
-          "acceptedOn": "Accepted on"
+          "acceptedOn": "Accepted on",
+          "commissionRate": "ಕಮಿಷನ್ ದರ"
         },
         "table": {
           "title": "Documents",
@@ -698,6 +699,29 @@
           "body": "By accepting, you agree to the terms of the venuebook.in Commercial Partnership Agreement (version {version}). This unlocks digital signature in your KYC & Compliance Hub.",
           "confirm": "I Accept",
           "cancel": "Cancel"
+        },
+        "document": {
+          "viewCta": "ಒಪ್ಪಂದವನ್ನು ವೀಕ್ಷಿಸಿ",
+          "modalTitle": "{category} ಒಪ್ಪಂದ",
+          "close": "ಮುಚ್ಚಿ",
+          "pendingNote": "ಹೊಸ ಆವೃತ್ತಿ ({version}) ಲಭ್ಯವಿದೆ ಮತ್ತು ನಿಮ್ಮ ಅಂಗೀಕಾರಕ್ಕಾಗಿ ಬಾಕಿ ಇದೆ.",
+          "sections": {
+            "preambleTitle": "ಪಕ್ಷಗಳು ಮತ್ತು ವ್ಯಾಪ್ತಿ",
+            "preambleBody": "ಈ ವಾಣಿಜ್ಯ ಪಾಲುದಾರಿಕೆ ಒಪ್ಪಂದ (\"ಒಪ್ಪಂದ\") venuebook.in (\"ಪ್ಲಾಟ್‌ಫಾರ್ಮ್\") ಮತ್ತು ವೆಂಡರ್ ನಡುವೆ ಮಾಡಲಾಗಿದ್ದು, ಇದು ಪ್ಲಾಟ್‌ಫಾರ್ಮ್‌ನಲ್ಲಿ {category} ಸೇವೆಗಳ ಪಟ್ಟಿ ಮತ್ತು ನಿರ್ವಹಣೆಯನ್ನು ನಿಯಂತ್ರಿಸುತ್ತದೆ.",
+            "termTitle": "ಅವಧಿ ಮತ್ತು ನವೀಕರಣ",
+            "termBody": "ಈ ಒಪ್ಪಂದವು {effectiveDate} ರಿಂದ ಜಾರಿಗೆ ಬರುತ್ತದೆ ಮತ್ತು {renewalDate} ವರೆಗೆ ಮಾನ್ಯವಾಗಿರುತ್ತದೆ, ಯಾವುದೇ ಪಕ್ಷ ಲಿಖಿತ ಸೂಚನೆ ನೀಡದ ಹೊರತು ನಂತರ ಸ್ವಯಂಚಾಲಿತವಾಗಿ ನವೀಕರಣಗೊಳ್ಳುತ್ತದೆ.",
+            "commercialTitle": "ವಾಣಿಜ್ಯ ನಿಯಮಗಳು",
+            "commercialBody": "{commercialModel} ಮಾದರಿಯ ಅಡಿಯಲ್ಲಿ, venuebook.in ಈ ವರ್ಗಕ್ಕಾಗಿ ಪ್ಲಾಟ್‌ಫಾರ್ಮ್ ಮೂಲಕ ಪೂರ್ಣಗೊಂಡ ಬುಕಿಂಗ್‌ಗಳ ಮೇಲೆ {commissionRate} ಅನ್ವಯಿಸುತ್ತದೆ.",
+            "obligationsTitle": "ವೆಂಡರ್ ಬಾಧ್ಯತೆಗಳು",
+            "obligationsBody": "ವೆಂಡರ್ ನಿಖರವಾದ ಪಟ್ಟಿ ಮಾಹಿತಿಯನ್ನು ಕಾಪಾಡಿಕೊಳ್ಳಲು, ದೃಢಪಡಿಸಿದ ಬುಕಿಂಗ್‌ಗಳನ್ನು ಸದ್ಭಾವನೆಯಿಂದ ಪೂರೈಸಲು ಮತ್ತು KYC ಹಾಗೂ ಅನುಸರಣೆ ದಾಖಲೆಗಳನ್ನು ಯಾವಾಗಲೂ ನವೀಕೃತವಾಗಿರಿಸಲು ಒಪ್ಪುತ್ತಾರೆ.",
+            "cancellationTitle": "ರದ್ದತಿ ಮತ್ತು ಮರುಪಾವತಿ",
+            "cancellationBody": "ಬುಕಿಂಗ್‌ಗಳು ಪ್ಲಾಟ್‌ಫಾರ್ಮ್‌ನ ರದ್ದತಿ ಮತ್ತು ಮರುಪಾವತಿ ನೀತಿ ಅನುಬಂಧದಿಂದ ನಿಯಂತ್ರಿಸಲ್ಪಡುತ್ತವೆ, ಇದನ್ನು ಕಾಲಕಾಲಕ್ಕೆ ನವೀಕರಿಸಬಹುದು ಮತ್ತು ವೆಂಡರ್‌ಗೆ ತಿಳಿಸಬಹುದು.",
+            "confidentialityTitle": "ಗೌಪ್ಯತೆ",
+            "confidentialityBody": "ಕಾನೂನಿನ ಅಗತ್ಯವಿರುವುದನ್ನು ಹೊರತುಪಡಿಸಿ, ಎರಡೂ ಪಕ್ಷಗಳು ಸ್ವಾಮ್ಯದ ವ್ಯಾಪಾರ ಮಾಹಿತಿ, ಬೆಲೆ ರಚನೆಗಳು ಮತ್ತು ಅತಿಥಿ ಡೇಟಾವನ್ನು ಗೌಪ್ಯವಾಗಿಡಲು ಒಪ್ಪುತ್ತವೆ.",
+            "governingLawTitle": "ಆಡಳಿತ ಕಾನೂನು",
+            "governingLawBody": "ಈ ಒಪ್ಪಂದವು {region} ಕಾನೂನುಗಳಿಂದ ನಿಯಂತ್ರಿಸಲ್ಪಡುತ್ತದೆ, ಮತ್ತು ಯಾವುದೇ ವಿವಾದಗಳು ಅದರ ನ್ಯಾಯಾಲಯಗಳ ವಿಶೇಷ ಅಧಿಕಾರ ವ್ಯಾಪ್ತಿಗೆ ಒಳಪಟ್ಟಿರುತ್ತವೆ.",
+            "signatureTitle": "ಅಂಗೀಕಾರ"
+          }
         }
       },
       "subscription": {
@@ -713,7 +737,9 @@
           "paymentDue": "Payment Due",
           "payNow": "Pay Now",
           "active": "Active",
-          "inactive": "Inactive"
+          "inactive": "Inactive",
+          "paymentCycle": "Payment Cycle",
+          "monthly": "Monthly"
         },
         "migration": {
           "title": "Plan Migration",
@@ -749,101 +775,55 @@
         }
       },
       "finance": {
-        "banner": "Figures below are illustrative sample data — live balances will appear once venuebook.in's settlement backend is connected.",
+        "banner": "ಕೆಳಗಿನ ಅಂಕಿಅಂಶಗಳು ವಿವರಣಾತ್ಮಕ ಮಾದರಿ ಡೇಟಾ — venuebook.in ನ ಸೆಟಲ್ಮೆಂಟ್ ಬ್ಯಾಕೆಂಡ್ ಸಂಪರ್ಕಗೊಂಡ ನಂತರ ನೈಜ ಬಾಕಿ ಕಾಣಿಸುತ್ತದೆ.",
         "kpis": {
-          "availablePayout": "Available Payout",
-          "availablePayoutDesc": "Funds fully cleared after reconciliation.",
-          "estDays": "Est. {days} days",
-          "triggerPayout": "Trigger Payout to Bank",
-          "securityDeposit": "Security Deposit Held",
-          "securityDepositDesc": "Funds securely held against active bookings.",
-          "pendingSettlements": "Pending Settlements",
-          "pendingSettlementsDesc": "Bookings awaiting reconciliation.",
-          "loyaltyReimbursement": "Loyalty Points Reimbursement",
-          "loyaltyReimbursementDesc": "Amount venuebook.in owes vendor — 60/40 vendor/platform split.",
-          "deductions": "Regulatory & Platform Deductions",
-          "deductionsExpand": "Show breakdown",
-          "deductionsCollapse": "Hide breakdown",
-          "platformCommission": "Platform Commission",
-          "gst": "GST",
-          "vat": "VAT",
-          "tds194O": "Section 194-O",
-          "other": "Other Taxes"
+          "availablePayout": "ಲಭ್ಯವಿರುವ ಪಾವತಿ",
+          "securityDeposit": "ಭದ್ರತಾ ಠೇವಣಿ",
+          "tcs": "ಟಿಸಿಎಸ್",
+          "tds": "ಟಿಡಿಎಸ್"
         },
-        "chart": {
-          "title": "Revenue vs Deductions Breakdown",
-          "subtitle": "Gross revenue, platform deductions and net settlement by month.",
-          "gross": "Gross Revenue",
-          "deductions": "Platform Deductions",
-          "net": "Net Settlement",
-          "downloadPng": "Download PNG",
-          "fullscreen": "Fullscreen"
-        },
-        "pipeline": {
-          "title": "Settlement Progress Pipeline",
-          "subtitle": "Click a booking to see its full settlement timeline.",
-          "amount": "Amount",
-          "close": "Close"
-        },
-        "reports": {
-          "title": "Reports",
-          "dateRange": "Date Range",
-          "bookingFilter": "Booking",
-          "propertyFilter": "Property",
-          "search": "Search…",
-          "exportCsv": "Export CSV",
-          "exportPdf": "Export PDF",
-          "master": {
-            "title": "Master Settlement Statement",
-            "bookingId": "Booking ID",
-            "checkoutDate": "Checkout Date",
-            "gross": "Gross Booking Amount",
-            "commission": "venuebook.in Commission",
-            "loyaltyRedeemed": "Loyalty Redeemed",
-            "vendorShare": "Vendor Share 60%",
-            "platformShare": "venuebook.in Share 40%",
-            "tds194O": "Section 194-O TDS",
-            "net": "Net Settlement",
-            "expandCalc": "Settlement calculation",
-            "expandTimeline": "Timeline",
-            "expandInvoice": "Invoice"
+        "payoutStatement": {
+          "title": "ಲಭ್ಯವಿರುವ ಪಾವತಿ ಹೇಳಿಕೆ",
+          "received": {
+            "title": "ಗ್ರಾಹಕರಿಂದ ಸ್ವೀಕರಿಸಿದ ಮೊತ್ತ",
+            "bookingDate": "ಬುಕಿಂಗ್ ದಿನಾಂಕ",
+            "bookingId": "ಬುಕಿಂಗ್ ಐಡಿ",
+            "eventDate": "ಈವೆಂಟ್ ದಿನಾಂಕ",
+            "checkInDate": "ಚೆಕ್-ಇನ್ ದಿನಾಂಕ",
+            "checkOutDate": "ಚೆಕ್-ಔಟ್ ದಿನಾಂಕ",
+            "totalBookingAmount": "ಒಟ್ಟು ಬುಕಿಂಗ್ ಮೊತ್ತ",
+            "customerPaidAmount": "ಗ್ರಾಹಕ ಪಾವತಿಸಿದ ಮೊತ್ತ",
+            "customerPaidDate": "ಗ್ರಾಹಕ ಪಾವತಿ ದಿನಾಂಕ",
+            "amountRemaining": "ಬಾಕಿ ಮೊತ್ತ"
           },
-          "escrow": {
-            "title": "Escrow & Security Deposit Reconciliation",
-            "bookingId": "Booking ID",
-            "guestName": "Guest Name",
-            "depositHeld": "Deposit Held",
-            "status": "Status",
-            "claimAmount": "Claim Amount",
-            "damageEvidence": "Damage Evidence",
-            "releaseDate": "Release Date",
-            "upload": "Upload evidence",
-            "statusHeld": "Held",
-            "statusClaimReview": "Claim Under Review",
-            "statusReleased": "Released"
-          },
-          "tax": {
-            "title": "Consolidated Tax & Compliance Statement",
-            "monthlyGst": "Monthly GST",
-            "annualGst": "Annual GST",
-            "tds194OSummary": "Section 194-O Summary",
-            "vatSummary": "VAT Summary",
-            "complianceStatus": "Compliance Status",
-            "statusUpToDate": "Up to date",
-            "statusActionRequired": "Action Required",
-            "month": "Month",
-            "invoiceCount": "Invoice Count",
-            "taxAmount": "Tax Amount",
-            "gst": "GST",
-            "vat": "VAT",
-            "tds": "TDS",
-            "certificates": "Certificates",
-            "download": "Download",
-            "annualExport": "Annual Export",
-            "generatePackage": "Generate Tax Package",
-            "form16A": "Download Form 16A References"
+          "pending": {
+            "title": "ಗ್ರಾಹಕರಿಂದ ಬಾಕಿ ಮೊತ್ತ",
+            "bookingDate": "ಬುಕಿಂಗ್ ದಿನಾಂಕ",
+            "bookingId": "ಬುಕಿಂಗ್ ಐಡಿ",
+            "eventDate": "ಈವೆಂಟ್ ದಿನಾಂಕ",
+            "checkInDate": "ಚೆಕ್-ಇನ್ ದಿನಾಂಕ",
+            "checkOutDate": "ಚೆಕ್-ಔಟ್ ದಿನಾಂಕ",
+            "totalBookingAmount": "ಒಟ್ಟು ಬುಕಿಂಗ್ ಮೊತ್ತ",
+            "customerPaidAmount": "ಗ್ರಾಹಕ ಪಾವತಿಸಿದ ಮೊತ್ತ",
+            "amountRemaining": "ಬಾಕಿ ಮೊತ್ತ",
+            "lastPayDate": "ಗ್ರಾಹಕ ಪಾವತಿಸಲು ಕೊನೆಯ ದಿನಾಂಕ"
           }
-        }
+        },
+        "settlement": {
+          "title": "ಸೆಟಲ್ಮೆಂಟ್ ಹೇಳಿಕೆ",
+          "bookingId": "ಬುಕಿಂಗ್ ಐಡಿ",
+          "eventDate": "ಈವೆಂಟ್ ದಿನಾಂಕ",
+          "customerPaid": "ಗ್ರಾಹಕ ಪಾವತಿಸಿದ್ದು",
+          "razorpayCharges": "Razorpay ಶುಲ್ಕಗಳು",
+          "platformFee": "ಪ್ಲಾಟ್‌ಫಾರ್ಮ್ ಶುಲ್ಕ",
+          "netSettlement": "ನಿವ್ವಳ ಸೆಟಲ್ಮೆಂಟ್",
+          "invoice": "ಇನ್‌ವಾಯ್ಸ್"
+        },
+        "emptyReceived": "ಇನ್ನೂ ಯಾವುದೇ ಗ್ರಾಹಕ ಪಾವತಿಗಳು ದಾಖಲಾಗಿಲ್ಲ.",
+        "emptyPending": "ಗ್ರಾಹಕರಿಂದ ಯಾವುದೇ ಬಾಕಿ ಮೊತ್ತವಿಲ್ಲ.",
+        "emptySettlement": "ಇನ್ನೂ ಯಾವುದೇ ಸೆಟಲ್ಮೆಂಟ್ ಇಲ್ಲ.",
+        "view": "ವೀಕ್ಷಿಸಿ",
+        "download": "ಡೌನ್‌ಲೋಡ್"
       }
     }
   },
@@ -936,6 +916,9 @@
     "cta_primary": "ಡೈಮಂಡ್ ಅನ್ವೇಷಿಸಿ",
     "cta_secondary": "ನಂತರ",
     "close_aria": "ಮುಚ್ಚಿ"
+  },
+  "splash": {
+    "loading_label": "venuebook.in ಲೋಡ್ ಆಗುತ್ತಿದೆ"
   },
   "card": {
     "starting_price": "ಆರಂಭಿಕ ಬೆಲೆ",

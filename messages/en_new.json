@@ -836,7 +836,8 @@
           "statusAccepted": "Accepted",
           "accept": "Accept Agreement",
           "accepted": "Accepted",
-          "acceptedOn": "Accepted on"
+          "acceptedOn": "Accepted on",
+          "commissionRate": "Commission Rate"
         },
         "table": {
           "title": "Documents",
@@ -862,6 +863,29 @@
           "body": "By accepting, you agree to the terms of the venuebook.in Commercial Partnership Agreement (version {version}). This unlocks digital signature in your KYC & Compliance Hub.",
           "confirm": "I Accept",
           "cancel": "Cancel"
+        },
+        "document": {
+          "viewCta": "View Agreement",
+          "modalTitle": "{category} Agreement",
+          "close": "Close",
+          "pendingNote": "A newer version ({version}) is available and pending your acceptance.",
+          "sections": {
+            "preambleTitle": "Parties & Scope",
+            "preambleBody": "This Commercial Partnership Agreement (\"Agreement\") is entered into between venuebook.in (\"Platform\") and the Vendor, governing the listing and management of {category} services on the Platform.",
+            "termTitle": "Term & Renewal",
+            "termBody": "This Agreement is effective from {effectiveDate} and remains valid through {renewalDate}, renewing automatically thereafter unless either party provides written notice.",
+            "commercialTitle": "Commercial Terms",
+            "commercialBody": "Under the {commercialModel} model, venuebook.in applies {commissionRate} on completed bookings facilitated through the Platform for this category.",
+            "obligationsTitle": "Vendor Obligations",
+            "obligationsBody": "The Vendor agrees to maintain accurate listing information, fulfil confirmed bookings in good faith, and keep KYC and compliance documentation current at all times.",
+            "cancellationTitle": "Cancellation & Refunds",
+            "cancellationBody": "Bookings are governed by the Platform's Cancellation & Refund Policy Annexure, as may be updated from time to time and communicated to the Vendor.",
+            "confidentialityTitle": "Confidentiality",
+            "confidentialityBody": "Both parties agree to keep proprietary business information, pricing structures, and guest data confidential, except as required by law.",
+            "governingLawTitle": "Governing Law",
+            "governingLawBody": "This Agreement is governed by the laws of {region}, and any disputes shall be subject to the exclusive jurisdiction of its courts.",
+            "signatureTitle": "Acceptance"
+          }
         }
       },
       "subscription": {
@@ -877,7 +901,9 @@
           "paymentDue": "Payment Due",
           "payNow": "Pay Now",
           "active": "Active",
-          "inactive": "Inactive"
+          "inactive": "Inactive",
+          "paymentCycle": "Payment Cycle",
+          "monthly": "Monthly"
         },
         "migration": {
           "title": "Plan Migration",
@@ -916,98 +942,52 @@
         "banner": "Figures below are illustrative sample data — live balances will appear once venuebook.in's settlement backend is connected.",
         "kpis": {
           "availablePayout": "Available Payout",
-          "availablePayoutDesc": "Funds fully cleared after reconciliation.",
-          "estDays": "Est. {days} days",
-          "triggerPayout": "Trigger Payout to Bank",
           "securityDeposit": "Security Deposit Held",
-          "securityDepositDesc": "Funds securely held against active bookings.",
-          "pendingSettlements": "Pending Settlements",
-          "pendingSettlementsDesc": "Bookings awaiting reconciliation.",
-          "loyaltyReimbursement": "Loyalty Points Reimbursement",
-          "loyaltyReimbursementDesc": "Amount venuebook.in owes vendor — 60/40 vendor/platform split.",
-          "deductions": "Regulatory & Platform Deductions",
-          "deductionsExpand": "Show breakdown",
-          "deductionsCollapse": "Hide breakdown",
-          "platformCommission": "Platform Commission",
-          "gst": "GST",
-          "vat": "VAT",
-          "tds194O": "Section 194-O",
-          "other": "Other Taxes"
+          "tcs": "TCS",
+          "tds": "TDS"
         },
-        "chart": {
-          "title": "Revenue vs Deductions Breakdown",
-          "subtitle": "Gross revenue, platform deductions and net settlement by month.",
-          "gross": "Gross Revenue",
-          "deductions": "Platform Deductions",
-          "net": "Net Settlement",
-          "downloadPng": "Download PNG",
-          "fullscreen": "Fullscreen"
-        },
-        "pipeline": {
-          "title": "Settlement Progress Pipeline",
-          "subtitle": "Click a booking to see its full settlement timeline.",
-          "amount": "Amount",
-          "close": "Close"
-        },
-        "reports": {
-          "title": "Reports",
-          "dateRange": "Date Range",
-          "bookingFilter": "Booking",
-          "propertyFilter": "Property",
-          "search": "Search…",
-          "exportCsv": "Export CSV",
-          "exportPdf": "Export PDF",
-          "master": {
-            "title": "Master Settlement Statement",
+        "payoutStatement": {
+          "title": "Available Payout Statement",
+          "received": {
+            "title": "Received from Customer",
+            "bookingDate": "Booking Date",
             "bookingId": "Booking ID",
-            "checkoutDate": "Checkout Date",
-            "gross": "Gross Booking Amount",
-            "commission": "venuebook.in Commission",
-            "loyaltyRedeemed": "Loyalty Redeemed",
-            "vendorShare": "Vendor Share 60%",
-            "platformShare": "venuebook.in Share 40%",
-            "tds194O": "Section 194-O TDS",
-            "net": "Net Settlement",
-            "expandCalc": "Settlement calculation",
-            "expandTimeline": "Timeline",
-            "expandInvoice": "Invoice"
+            "eventDate": "Event Date",
+            "checkInDate": "Check-in Date",
+            "checkOutDate": "Check-out Date",
+            "totalBookingAmount": "Total Booking Amount",
+            "customerPaidAmount": "Customer Paid Amount",
+            "customerPaidDate": "Customer Paid Date",
+            "amountRemaining": "Amount Remaining"
           },
-          "escrow": {
-            "title": "Escrow & Security Deposit Reconciliation",
+          "pending": {
+            "title": "Pending Amount from Customer",
+            "bookingDate": "Booking Date",
             "bookingId": "Booking ID",
-            "guestName": "Guest Name",
-            "depositHeld": "Deposit Held",
-            "status": "Status",
-            "claimAmount": "Claim Amount",
-            "damageEvidence": "Damage Evidence",
-            "releaseDate": "Release Date",
-            "upload": "Upload evidence",
-            "statusHeld": "Held",
-            "statusClaimReview": "Claim Under Review",
-            "statusReleased": "Released"
-          },
-          "tax": {
-            "title": "Consolidated Tax & Compliance Statement",
-            "monthlyGst": "Monthly GST",
-            "annualGst": "Annual GST",
-            "tds194OSummary": "Section 194-O Summary",
-            "vatSummary": "VAT Summary",
-            "complianceStatus": "Compliance Status",
-            "statusUpToDate": "Up to date",
-            "statusActionRequired": "Action Required",
-            "month": "Month",
-            "invoiceCount": "Invoice Count",
-            "taxAmount": "Tax Amount",
-            "gst": "GST",
-            "vat": "VAT",
-            "tds": "TDS",
-            "certificates": "Certificates",
-            "download": "Download",
-            "annualExport": "Annual Export",
-            "generatePackage": "Generate Tax Package",
-            "form16A": "Download Form 16A References"
+            "eventDate": "Event Date",
+            "checkInDate": "Check-in Date",
+            "checkOutDate": "Check-out Date",
+            "totalBookingAmount": "Total Booking Amount",
+            "customerPaidAmount": "Customer Paid Amount",
+            "amountRemaining": "Amount Remaining",
+            "lastPayDate": "Last Date for Customer to Pay"
           }
-        }
+        },
+        "settlement": {
+          "title": "Settlement Statement",
+          "bookingId": "Booking ID",
+          "eventDate": "Event Date",
+          "customerPaid": "Customer Paid",
+          "razorpayCharges": "Razorpay Charges",
+          "platformFee": "Platform Fee",
+          "netSettlement": "Net Settlement",
+          "invoice": "Invoice"
+        },
+        "emptyReceived": "No customer payments recorded yet.",
+        "emptyPending": "No pending amounts from customers.",
+        "emptySettlement": "No settlements yet.",
+        "view": "View",
+        "download": "Download"
       }
     }
   },
