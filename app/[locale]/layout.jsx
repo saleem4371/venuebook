@@ -25,6 +25,7 @@ import { GlobalProvider } from "@/context/GlobalProvider";
 import { RealtimeProvider } from "@/context/RealtimeContext";
 import { AuthProvider } from "@/context/AuthContext";
 import DiamondWelcomeGate from "@/components/shared/DiamondWelcomeGate";
+import SplashScreen from "@/components/shared/SplashScreen";
 // import { GeoProvider } from "@/context/GeoContext";
 export default async function LocaleLayout({ children, params }) {
 
@@ -61,6 +62,9 @@ export default async function LocaleLayout({ children, params }) {
         correct without a full page reload.
       */}
       <HtmlDirSync locale={locale} />
+      {/* Overlays on top of the app on first tab load; hydration underneath
+          continues in parallel. See components/shared/SplashScreen.jsx. */}
+      <SplashScreen />
       <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID}>
         <AuthProvider>
           <GlobalProvider>
