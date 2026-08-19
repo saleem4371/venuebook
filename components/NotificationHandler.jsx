@@ -1,8 +1,8 @@
 'use client'
 
-import { useNotifications, useOfflineStatus } from '../lib/pwa/hooks'
-import { showTypedNotification } from '../lib/pwa/notifications'
-import { NOTIFICATION_TYPES } from '../lib/pwa/constants'
+import { useNotifications, useOfflineStatus } from '@/lib/pwa/hooks'
+import { showTypedNotification } from '@/lib/pwa/notifications'
+import { NOTIFICATION_TYPES } from '@/lib/pwa/constants'
 import { useEffect, useState } from 'react'
 import styles from './NotificationHandler.module.css'
 
@@ -19,7 +19,6 @@ export default function NotificationHandler() {
   const { isOnline } = useOfflineStatus()
   const [showUI, setShowUI] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
-  const [showMenu, setShowMenu] = useState(false)
 
   useEffect(() => {
     setShowUI(true)
@@ -31,8 +30,8 @@ export default function NotificationHandler() {
 
   const handleSendTestNotification = async () => {
     await sendNotification({
-      title: '🎉 Test Notification',
-      body: 'This is a test notification from your PWA!',
+      title: 'venuebook.in',
+      body: 'Notifications are working properly.',
       requireInteraction: true,
     })
   }
@@ -87,7 +86,6 @@ export default function NotificationHandler() {
 
   return (
     <div className={styles.container}>
-      {/* Floating Toggle Button */}
       <button
         className={`${styles.toggleBtn} ${isExpanded ? styles.toggleBtnActive : ''}`}
         onClick={() => setIsExpanded(!isExpanded)}
@@ -101,7 +99,6 @@ export default function NotificationHandler() {
         )}
       </button>
 
-      {/* Main Panel */}
       <div className={`${styles.panel} ${isExpanded ? styles.panelExpanded : ''}`}>
         <div className={styles.panelHeader}>
           <div className={styles.headerTitle}>
@@ -117,12 +114,10 @@ export default function NotificationHandler() {
         </div>
 
         <div className={styles.panelContent}>
-          {/* Status Section */}
           <div className={styles.statusSection}>
             <h4 className={styles.sectionTitle}>Status</h4>
             
             <div className={styles.statusItems}>
-              {/* Connection Status */}
               <div className={styles.statusItem}>
                 <div className={styles.statusIndicator}>
                   <span
@@ -147,7 +142,6 @@ export default function NotificationHandler() {
                 </div>
               </div>
 
-              {/* Notification Permission Status */}
               <div className={styles.statusItem}>
                 <div className={styles.statusIndicator}>
                   <span
@@ -177,7 +171,6 @@ export default function NotificationHandler() {
                 </div>
               </div>
 
-              {/* Push Status */}
               {isPushSupported && (
                 <div className={styles.statusItem}>
                   <div className={styles.statusIndicator}>
@@ -208,7 +201,6 @@ export default function NotificationHandler() {
             </div>
           </div>
 
-          {/* Actions Section */}
           <div className={styles.actionsSection}>
             <h4 className={styles.sectionTitle}>Quick Actions</h4>
             
@@ -255,22 +247,19 @@ export default function NotificationHandler() {
             </div>
           </div>
 
-          {/* Info Section */}
           <div className={styles.infoSection}>
             <p className={styles.infoText}>
-              ✨ Push notifications allow us to send you updates even when the app is closed.
+              Push notifications allow updates to be delivered even when the app is in the background.
             </p>
           </div>
         </div>
 
-        {/* Panel Footer */}
         <div className={styles.panelFooter}>
-          <span className={styles.footerText}>PWA Ready</span>
+          <span className={styles.footerText}>venuebook PWA</span>
           <span className={styles.footerBadge}>v1.0</span>
         </div>
       </div>
 
-      {/* Backdrop */}
       {isExpanded && (
         <div
           className={styles.backdrop}

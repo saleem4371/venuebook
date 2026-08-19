@@ -8,7 +8,6 @@ const withPWA = require("next-pwa")({
   disable: process.env.NODE_ENV === "development",
 });
 
-/** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
   images: {
@@ -18,15 +17,12 @@ const nextConfig = {
         hostname: "lh3.googleusercontent.com",
         pathname: "/**",
       },
-       {
+      {
         protocol: "https",
         hostname: "ui-avatars.com",
       },
     ],
   },
-  // "Wishlist" was renamed to "My Collections" — /wishlist moved to
-  // /collections. This catches old bookmarks/links at the routing layer
-  // (before the thin redirect stub left at wishlist/page.jsx even renders).
   async redirects() {
     return [
       {

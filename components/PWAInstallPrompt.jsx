@@ -1,6 +1,6 @@
 'use client'
 
-import { usePWAInstall } from '../lib/pwa/hooks'
+import { usePWAInstall } from '@/lib/pwa/hooks'
 import { useState } from 'react'
 
 export default function PWAInstallPrompt() {
@@ -17,11 +17,11 @@ export default function PWAInstallPrompt() {
         position: 'fixed',
         bottom: '20px',
         right: '20px',
-        backgroundColor: '#000',
-        color: '#fff',
-        padding: '16px 24px',
-        borderRadius: '8px',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+        backgroundColor: '#111827',
+        color: '#ffffff',
+        padding: '16px 20px',
+        borderRadius: '16px',
+        boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.3)',
         display: 'flex',
         alignItems: 'center',
         gap: '12px',
@@ -30,23 +30,24 @@ export default function PWAInstallPrompt() {
       }}
     >
       <div style={{ flex: 1 }}>
-        <p style={{ margin: '0 0 8px 0', fontWeight: 'bold' }}>
+        <p style={{ margin: '0 0 4px 0', fontWeight: '700', fontSize: '15px' }}>
           Install App
         </p>
-        <p style={{ margin: 0, fontSize: '14px', opacity: 0.8 }}>
-          Add our app to your home screen
+        <p style={{ margin: 0, fontSize: '13px', color: '#9CA3AF' }}>
+          Add venuebook to your home screen
         </p>
       </div>
       <button
         onClick={() => install()}
         style={{
-          backgroundColor: '#007AFF',
-          color: '#fff',
+          backgroundColor: '#7C3AED',
+          color: '#ffffff',
           border: 'none',
           padding: '8px 16px',
-          borderRadius: '4px',
+          borderRadius: '10px',
           cursor: 'pointer',
           fontWeight: '600',
+          fontSize: '13px',
           whiteSpace: 'nowrap',
         }}
       >
@@ -57,10 +58,10 @@ export default function PWAInstallPrompt() {
         style={{
           background: 'none',
           border: 'none',
-          color: '#fff',
-          fontSize: '20px',
+          color: '#9CA3AF',
+          fontSize: '18px',
           cursor: 'pointer',
-          padding: '0',
+          padding: '4px',
         }}
       >
         ✕
