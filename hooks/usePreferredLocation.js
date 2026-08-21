@@ -21,10 +21,20 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
+import { safeJsonParse } from "@/utils/safeJson";
 
 const STORAGE_PREFIX = "vb_preferred_location_";
 const SOURCE_PREFIX = "vb_preferred_location_source_";
 const IP_COUNTRY_KEY = "vb_ip_country";
+
+/* Every mounted instance of this hook keeps its own React state, all
+ * reading/writing the same localStorage keys — there is no shared context.
+ * Without this, saving a new location in one place (e.g. the Preferences
+ * modal) never reaches an *already-mounted* consumer elsewhere on the same
+ * page (e.g. the Search Page's map) until that consumer remounts. This
+ * custom event is a same-tab broadcast; the native `storage` event only
+ * fires in *other* tabs/windows, never the one that made the write. */
+const LOCATION_CHANGE_EVENT = "vb:preferred-location-change";
 
 /* ── Synchronous helpers — safe to call outside React (e.g. from a click
  * handler) when you need a region's saved location right away, without
@@ -36,7 +46,7 @@ export function getStoredLocation(countryCode) {
     const raw = localStorage.getItem(
       STORAGE_PREFIX + countryCode.toLowerCase(),
     );
-    return raw ? JSON.parse(raw) : null;
+    return raw ? safeJsonParse(raw) : null;
   } catch {
     return null;
   }
@@ -131,6 +141,32 @@ export function usePreferredLocation(regionOverride) {
     });
   }, [countryCode]);
 
+  /* ── Stay in sync with OTHER instances of this hook (e.g. the Search
+   * Page's map should pick up a location saved via the Preferences modal
+   * immediately, without a remount). Scoped to this instance's own
+   * countryCode — a change saved for a different region is ignored, same
+   * as the mount-time read above. ─────────────────────────────────── */
+  useEffect(() => {
+    const applyExternal = (loc) => {
+      _setLocation(loc);
+      setIsAutoDetected(getStoredLocationIsAutoDetected(countryCode));
+    };
+    const onCustomEvent = (e) => {
+      if (e.detail?.countryCode !== countryCode) return;
+      applyExternal(e.detail.loc ?? null);
+    };
+    const onStorageEvent = (e) => {
+      if (e.key !== STORAGE_PREFIX + countryCode) return;
+      applyExternal(e.newValue ? safeJsonParse(e.newValue) : null);
+    };
+    window.addEventListener(LOCATION_CHANGE_EVENT, onCustomEvent);
+    window.addEventListener("storage", onStorageEvent);
+    return () => {
+      window.removeEventListener(LOCATION_CHANGE_EVENT, onCustomEvent);
+      window.removeEventListener("storage", onStorageEvent);
+    };
+  }, [countryCode]);
+
   /* ── Setter: update state + localStorage for the scoped region ─ */
   const setLocation = useCallback(
     (loc) => {
@@ -149,6 +185,11 @@ export function usePreferredLocation(regionOverride) {
           localStorage.removeItem(STORAGE_PREFIX + countryCode);
           localStorage.removeItem(SOURCE_PREFIX + countryCode);
         }
+        window.dispatchEvent(
+          new CustomEvent(LOCATION_CHANGE_EVENT, {
+            detail: { countryCode, loc: loc ?? null },
+          }),
+        );
       } catch {}
     },
     [countryCode],
