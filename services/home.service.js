@@ -30,16 +30,16 @@ const state =
   });
 };
 
-export const topDestination = (region) => {
-  const data = JSON.parse(region);
+// export const topDestination = (region) => {
+//   const data = JSON.parse(region);
 
-  const parts = data.label.split(",").map(p => p.trim());
+//   const parts = data.label.split(",").map(p => p.trim());
 
-const state =
-  parts.length >= 2 ? parts[parts.length - 2] : parts[0];
-  return api.get("/home/topDestination", {
-    params: {
-      state: state,
-    },
-  });
-};
+// const state =
+//   parts.length >= 2 ? parts[parts.length - 2] : parts[0];
+//   return api.get("/home/topDestination", {
+//     params: {
+//       state: state,
+//     },
+//   });
+// };
