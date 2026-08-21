@@ -104,7 +104,7 @@ export async function verifyPAN(data) {
 
 
 export async function initializeDigilocker() {
-  return  await api.get('/thirdParty/initializeDigilocker');
+  return  await api.post('/thirdParty/initializeDigilocker');
 
 }
 export async function sendAadhaarOTP(aadhaarNumber) {
