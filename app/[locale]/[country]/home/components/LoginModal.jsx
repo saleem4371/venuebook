@@ -169,21 +169,49 @@ router.push(redirectPath);
     }
   };
 
-  const handleSendOtp = async () => {
-    setError("");
+  // const handleSendOtp = async () => {
+  //   setError("");
 
-    if (!validatePhone(phone)) return setError("Invalid phone");
+  //   if (!validatePhone(phone)) return setError("Invalid phone");
 
-    try {
-      setLoading(true);
-      await sendOtpApi(phone);
-      setStep("otp");
-    } catch (err) {
-      setError("Failed to send OTP");
-    } finally {
-      setLoading(false);
-    }
-  };
+  //   try {
+  //     setLoading(true);
+  //     await sendOtpApi(phone);
+  //     setStep("otp");
+  //   } catch (err) {
+  //     setError("Failed to send OTP");
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+const handleSendOtp = async () => {
+  setError("");
+
+  if (!validatePhone(phone)) {
+    setError("Please enter a valid 10-digit mobile number");
+    return;
+  }
+
+  try {
+    setLoading(true);
+
+    const cleanedPhone = String(phone).replace(/\D/g, "");
+    const mobile = cleanedPhone.startsWith("91")
+      ? cleanedPhone.slice(2)
+      : cleanedPhone;
+
+    await sendOtpApi(mobile);
+
+    setStep("otp");
+  } catch (err) {
+    console.error("Send OTP error:", err);
+    setError(
+      err?.response?.data?.message || "Failed to send OTP"
+    );
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleVerifyOtp = async () => {
     setError("");
