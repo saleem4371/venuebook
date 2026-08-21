@@ -1,25 +1,17 @@
 {
-  "name": "Next.js PWA with Notifications",
-  "short_name": "NextPWA",
-  "description": "A Progressive Web App built with Next.js featuring push notifications",
+  "name": "venuebook.in",
+  "short_name": "venuebook",
+  "description": "Discover and book venues, farmstays, studios, workspaces & rentals",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#ffffff",
-  "theme_color": "#000000",
-  "categories": ["productivity"],
-  "screenshots": [
-    {
-      "src": "/icon-192x192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "/icon-512x512.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    }
+  "theme_color": "#7c3aed",
+  "categories": [
+    "travel",
+    "lifestyle",
+    "business"
   ],
   "icons": [
     {
@@ -35,18 +27,36 @@
       "purpose": "any"
     },
     {
-      "src": "/icon-192x192.png",
+      "src": "/icon-maskable-192x192.png",
       "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-maskable-512x512.png",
+      "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
     }
   ],
   "shortcuts": [
     {
-      "name": "Send Notification",
-      "short_name": "Notify",
-      "description": "Send a test notification",
-      "url": "/?action=notify",
+      "name": "Explore Venues",
+      "short_name": "Explore",
+      "description": "Browse venues and listings",
+      "url": "/",
+      "icons": [
+        {
+          "src": "/icon-192x192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "My Collections",
+      "short_name": "Collections",
+      "description": "View saved venues and collections",
+      "url": "/collections",
       "icons": [
         {
           "src": "/icon-192x192.png",

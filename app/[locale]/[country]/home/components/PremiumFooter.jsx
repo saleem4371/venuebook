@@ -151,9 +151,25 @@ export function LocalizationPill({ t, region, currency, onOpenModal }) {
   );
 }
 
-/** Inline copyright + legal link strip */
 export function LegalStrip({ t }) {
   const year = new Date().getFullYear();
+
+  const handleInstall = (e) => {
+    e.preventDefault();
+    const promptEvent = window.__pwaInstallEvent;
+    if (promptEvent) {
+      promptEvent.prompt();
+      promptEvent.userChoice.then((choiceResult) => {
+        if (choiceResult.outcome === "accepted") {
+          window.__pwaInstalled = true;
+        }
+        window.__pwaInstallEvent = null;
+      });
+    } else {
+      window.dispatchEvent(new CustomEvent("pwa-open-install-guide"));
+    }
+  };
+
   return (
     <div
       className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm
@@ -161,7 +177,7 @@ export function LegalStrip({ t }) {
     >
       <span>{t("legal.copyright", { year })}</span>
       <span aria-hidden="true">·</span>
-      {LEGAL_KEYS.map(({ tKey }, i) => (
+      {LEGAL_KEYS.map(({ tKey }) => (
         <span key={tKey} className="inline-flex items-center gap-2">
           <Link
             href="#"
@@ -172,9 +188,19 @@ export function LegalStrip({ t }) {
           >
             {t(tKey)}
           </Link>
-          {i < LEGAL_KEYS.length - 1 && <span aria-hidden="true">·</span>}
+          <span aria-hidden="true">·</span>
         </span>
       ))}
+      <button
+        type="button"
+        onClick={handleInstall}
+        className="cursor-pointer rounded transition-colors duration-200
+                   hover:text-gray-900 dark:hover:text-gray-100
+                   focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500
+                   focus-visible:ring-offset-2"
+      >
+        Install App
+      </button>
     </div>
   );
 }
@@ -419,25 +445,57 @@ function NavGroup({ group, t }) {
         {t(group.headingKey)}
       </h3>
 
-      {/* Links — hidden on mobile unless open; always shown on md+ */}
       <ul
         className={`space-y-3 text-sm pb-4 md:mt-4 md:pb-0
                     ${open ? "block" : "hidden md:block"}`}
       >
-        {group.links.map(({ tKey, href }) => (
-          <li key={tKey}>
-            <Link
-              href={href}
-              className="rounded text-gray-500 dark:text-gray-400
-                         transition-colors duration-200
-                         hover:text-gray-900 dark:hover:text-gray-100
-                         focus:outline-none focus-visible:ring-2
-                         focus-visible:ring-purple-500 focus-visible:ring-offset-2"
-            >
-              {t(tKey)}
-            </Link>
-          </li>
-        ))}
+        {group.links.map(({ tKey, href }) => {
+          if (href === "#install-app") {
+            return (
+              <li key={tKey}>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const promptEvent = window.__pwaInstallEvent;
+                    if (promptEvent) {
+                      promptEvent.prompt();
+                      promptEvent.userChoice.then((choiceResult) => {
+                        if (choiceResult.outcome === "accepted") {
+                          window.__pwaInstalled = true;
+                        }
+                        window.__pwaInstallEvent = null;
+                      });
+                    } else {
+                      window.dispatchEvent(new CustomEvent("pwa-open-install-guide"));
+                    }
+                  }}
+                  className="rounded text-start text-gray-500 dark:text-gray-400
+                             transition-colors duration-200
+                             hover:text-gray-900 dark:hover:text-gray-100
+                             focus:outline-none focus-visible:ring-2
+                             focus-visible:ring-purple-500 focus-visible:ring-offset-2 cursor-pointer"
+                >
+                  Install App
+                </button>
+              </li>
+            );
+          }
+          return (
+            <li key={tKey}>
+              <Link
+                href={href}
+                className="rounded text-gray-500 dark:text-gray-400
+                           transition-colors duration-200
+                           hover:text-gray-900 dark:hover:text-gray-100
+                           focus:outline-none focus-visible:ring-2
+                           focus-visible:ring-purple-500 focus-visible:ring-offset-2"
+              >
+                {t(tKey)}
+              </Link>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

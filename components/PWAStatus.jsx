@@ -1,7 +1,7 @@
 'use client'
 
 import { useServiceWorker, useNotifications, useOfflineStatus } from '@/lib/pwa/hooks'
-import { getDeviceInfo, isPWASupported, isAppStandalone, getStorageInfo } from '@/lib/utils/pwaUtils'
+import { getDeviceInfo, isPWASupported, isAppStandalone, getStorageInfo } from '@/lib/pwa/pwaUtils'
 import { useEffect, useState } from 'react'
 
 export default function PWAStatus() {
@@ -15,7 +15,6 @@ export default function PWAStatus() {
   useEffect(() => {
     setDeviceInfo(getDeviceInfo())
     setIsStandalone(isAppStandalone())
-
     getStorageInfo().then(setStorageInfo)
   }, [])
 
