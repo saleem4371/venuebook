@@ -103,8 +103,8 @@ export async function verifyPAN(data) {
 ═══════════════════════════════════════════════════════════════════ */
 
 
-export async function initializeDigilocker() {
-  return  await api.post('/thirdParty/initializeDigilocker');
+export async function initializeDigilocker(data) {
+  return  await api.post('/thirdParty/initializeDigilocker',data);
 
 }
 export async function sendAadhaarOTP(aadhaarNumber) {
