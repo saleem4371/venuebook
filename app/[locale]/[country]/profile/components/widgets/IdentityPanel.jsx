@@ -18,6 +18,7 @@ import { useTranslations } from "next-intl";
 import { Pencil, Settings } from "lucide-react";
 
 import { getAvatarColor, getInitials } from "@/lib/avatar";
+const BaseUrl = process.env.NEXT_PUBLIC_AWS_BUCKET_URL;
 
 export default function IdentityPanel({
   user,
@@ -59,7 +60,7 @@ export default function IdentityPanel({
           >
             {hasAvatar ? (
               <img
-                src={user.avatar}
+                src={`${BaseUrl}/${user.avatar}`}
                 alt=""
                 className="w-24 h-24 rounded-full object-cover border-[3px] border-white dark:border-gray-800 shadow-md"
               />
