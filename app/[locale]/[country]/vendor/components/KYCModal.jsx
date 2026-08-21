@@ -8,7 +8,7 @@ import {
   X, ShieldCheck, CreditCard, Fingerprint, Landmark,
   Upload, CheckCircle2, Clock, ChevronRight, ChevronLeft,
   AlertCircle, RefreshCw, Phone, BadgeCheck, FileText,
-  XCircle, Shield, CheckCheck, Building2, User,
+  XCircle, Shield, Building2, User,
 } from "lucide-react";
 
 import {
@@ -18,29 +18,44 @@ import {
   verifyGST,
 } from "@/services/kycVerification";
 
-import { currency_icon,formatPrice , getCountry} from '@/lib/currency_format'
+import { currency_icon,formatPrice } from '@/lib/currency_format'
 
 import { SubmitKYC, each_kyc_status } from "@/services/kyc.service";
 
 /* ─── Design tokens ──────────────────────────────────────────────── */
 const GRAD      = "linear-gradient(242deg,#a44bf3,#499ce8)";
 const GRAD_SOFT = "linear-gradient(242deg,rgba(164,75,243,0.08),rgba(73,156,232,0.08))";
-const COUNTRY   = { code: "IN", name: "India", flag: "🇮🇳" };
 
+/* NOTE: keys are unchanged ("personal" / "business") on purpose — they are
+   still the exact strings sent to verifyPAN() and compared throughout the
+   rest of this file. Only the user-facing framing changed: this now maps
+   to "GST registered?" (business = yes, personal = no) instead of an
+   account-type persona choice. */
 const CATEGORY_META = {
-  personal: { label: "Personal Account",  icon: User,      color: "#7C3AED", bg: "#EDE9FE" },
-  business: { label: "Business / Company", icon: Building2, color: "#0369A1", bg: "#E0F2FE" },
+  personal: { label: "Not GST Registered", icon: User,      color: "#7C3AED", bg: "#EDE9FE" },
+  business: { label: "GST Registered",     icon: Building2, color: "#0369A1", bg: "#E0F2FE" },
 };
 
-/* Steps visible in sidebar / stepper */
+/* Step labels — used to compute the header's current-step subtitle.
+   Step 1 and step 2 labels flex per branch (see stepsForCategory()).
+   Documents (id 4) is the last step — there's no id 5, submit happens
+   right there, so none of this list should ever imply a step after it. */
 const STEPS = [
-  { id: 0, label: "Category",     icon: Shield       },
+  { id: 0, label: "GST Status",   icon: Shield       },
   { id: 1, label: "PAN",          icon: CreditCard   },
   { id: 2, label: "Aadhaar / GST", icon: Fingerprint },
   { id: 3, label: "Bank Account", icon: Landmark     },
   { id: 4, label: "Documents",    icon: Upload       },
-  { id: 5, label: "Review",       icon: ShieldCheck  },
 ];
+
+/** Branch-specific step labels — same ids/logic, clearer per-path copy. */
+function stepsForCategory(category) {
+  return STEPS.map(s => {
+    if (s.id === 1) return { ...s, label: category === "business" ? "PAN & GST" : "PAN" };
+    if (s.id === 2) return { ...s, label: category === "business" ? "GST" : category === "personal" ? "Aadhaar" : "Aadhaar / GST" };
+    return s;
+  });
+}
 
 /* ─── Motion presets ─────────────────────────────────────────────── */
 const BACK_A  = { initial:{opacity:0}, animate:{opacity:1}, exit:{opacity:0}, transition:{duration:0.2} };
@@ -98,7 +113,7 @@ function calculateActiveStep(status, category, docUploaded) {
     const gstApproved = isApproved(status?.gst?.status ?? status?.gst?.verification_status) || !!status?.gst?.document_number;
     if (!gstApproved) return 2;
   } else {
-    const aadhaarApproved = isApproved(status?.aadhaar?.status ?? status?.aadhaar?.verification_status);
+    const aadhaarApproved = isApproved(status?.aadhaar?.status ?? status?.aadhaar?.verification_status) || !!status?.aadhaar?.doc_details;
     if (!aadhaarApproved) return 2;
   }
 
@@ -107,7 +122,7 @@ function calculateActiveStep(status, category, docUploaded) {
 
   if (!docUploaded) return 4;
 
-  return 5; // everything done → review / complete
+  return 4; // everything done — Documents is the last step, ready to submit
 }
 
 /* ════════════════════════════════════════════════════════════════════
@@ -130,9 +145,13 @@ export default function KYCModal({ open, setOpen , kycData ,kycStatus}) {
      which step the wizard resumes on. Never persisted client-side. */
   const [liveStatus, setLiveStatus] = useState(null);
 
-  const digilockerPopupRef = useRef(null);
+  /* Set when the DigiLocker tab reports DIGILOCKER_FAILURE, so
+     Step2Aadhaar can show a real error instead of silently sitting on
+     the "awaiting" card forever. Cleared whenever a fresh DigiLocker
+     attempt starts. */
+  const [digilockerError, setDigilockerError] = useState("");
 
-  const countries = getCountry();
+  const digilockerPopupRef = useRef(null);
 
   /* ── Apply a KYC status/data payload coming from the backend ────── */
   const applyKycPayload = useCallback((data, statusMeta) => {
@@ -181,45 +200,28 @@ export default function KYCModal({ open, setOpen , kycData ,kycStatus}) {
       }
 
       // ---------------- Aadhaar ----------------
-      // if (data.aadhaar) {
-      //   const details =
-      //     typeof data.aadhaar.doc_details.digilocker_metadata === "string"
-      //       ? JSON.parse(data.aadhaar.doc_details.digilocker_metadata)
-      //       : data.aadhaar.doc_details.digilocker_metadata;
-
-      //   if (details) {
-      //     setAadhaarData({
-      //       full_name: details.name,
-      //       dob: details.dob,
-      //       gender: details.gender,
-      //       address: details.address,
-      //       aadhaar_number: details.masked_number,
-      //       fromBackend: true,
-      //     });
-      //   }
-      // }
       if (data.aadhaar?.doc_details) {
-  // Parse doc_details if string
-  const doc =
-    typeof data.aadhaar.doc_details === "string"
-      ? JSON.parse(data.aadhaar.doc_details)
-      : data.aadhaar.doc_details;
+        // Parse doc_details if string
+        const doc =
+          typeof data.aadhaar.doc_details === "string"
+            ? JSON.parse(data.aadhaar.doc_details)
+            : data.aadhaar.doc_details;
 
-  const metadata = doc?.data?.digilocker_metadata || {};
-  const aadhaar = doc?.data?.aadhaar_xml_data || {};
+        const metadata = doc?.data?.digilocker_metadata || {};
+        const aadhaar = doc?.data?.aadhaar_xml_data || {};
 
-  setAadhaarData({
-    full_name: aadhaar.full_name || metadata.name || "",
-    dob: aadhaar.dob || metadata.dob || "",
-    gender: aadhaar.gender || metadata.gender || "",
-    address: aadhaar.full_address || "",
-    aadhaar_number: aadhaar.masked_aadhaar || "",
-    mobile: metadata.mobile_number || "",
-    profile_image: aadhaar.profile_image || "",
-    xml_url: doc?.data?.xml_url || "",
-    fromBackend: true,
-  });
-}
+        setAadhaarData({
+          full_name: aadhaar.full_name || metadata.name || "",
+          dob: aadhaar.dob || metadata.dob || "",
+          gender: aadhaar.gender || metadata.gender || "",
+          address: aadhaar.full_address || "",
+          aadhaar_number: aadhaar.masked_aadhaar || "",
+          mobile: metadata.mobile_number || "",
+          profile_image: aadhaar.profile_image || "",
+          xml_url: doc?.data?.xml_url || "",
+          fromBackend: true,
+        });
+      }
 
       // ---------------- Bank ----------------
       if (data.bank) {
@@ -295,23 +297,37 @@ export default function KYCModal({ open, setOpen , kycData ,kycStatus}) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, kycData, kycStatus]);
 
-  /* ── Listen for the DigiLocker popup callback ────────────────────
+  /* ── Listen for the DigiLocker popup/tab callback ─────────────────
      The DigiLocker callback page does:
        window.opener.postMessage({ type: "DIGILOCKER_SUCCESS" }, "*")
      We never open DigiLocker ourselves except from the explicit
-     "Verify Aadhaar" button click (see Step2Aadhaar). */
-  useEffect(() => {
-    function handleMessage(event) {
-      if (event?.data?.type !== "DIGILOCKER_SUCCESS") return;
+     "Verify Aadhaar" button click (see Step2Aadhaar).
 
-      // Close the popup if it's still open
+     This is the ONLY message listener for DIGILOCKER_SUCCESS in the
+     component — a second, dead-code listener used to live at the
+     bottom of this file that only logged the event and never closed
+     the tab or refreshed the Aadhaar data. It has been removed so
+     there's a single source of truth for "what happens on success". */
+  useEffect(() => {
+    async function handleMessage(event) {
+      const type = event?.data?.type;
+      if (type !== "DIGILOCKER_SUCCESS" && type !== "DIGILOCKER_FAILURE") return;
+
+      // Auto-close the DigiLocker tab/popup as soon as we hear back,
+      // success or failure.
       if (digilockerPopupRef.current && !digilockerPopupRef.current.closed) {
         digilockerPopupRef.current.close();
       }
       digilockerPopupRef.current = null;
 
-      // Refresh status from backend and move to whatever step follows
-      fetchKycStatus();
+      if (type === "DIGILOCKER_FAILURE") {
+        setDigilockerError(event?.data?.data?.message || "DigiLocker verification failed. Please try again.");
+        return;
+      }
+
+      setDigilockerError("");
+      // Refresh status from backend so Aadhaar data / step actually updates.
+      await fetchKycStatus();
     }
 
     window.addEventListener("message", handleMessage);
@@ -357,7 +373,7 @@ export default function KYCModal({ open, setOpen , kycData ,kycStatus}) {
       return;
     }
 
-    setStep((s) => Math.min(s + 1, 5));
+    setStep((s) => Math.min(s + 1, 4));
   };
 
   const goBack = () => {
@@ -398,27 +414,6 @@ export default function KYCModal({ open, setOpen , kycData ,kycStatus}) {
     }, 320);
   };
 
-
-
-useEffect(() => {
-  const handleMessage = (event) => {
-      console.log('-------------Reload-----Adhar card --------------------');
-     console.log(event);
-    if (event.data?.type !== "DIGILOCKER_SUCCESS") return;
-
-    console.log(event.data.data);
-
-
-// here refesh function call 
-  };
-
-  window.addEventListener("message", handleMessage);
-
-  return () => {
-    window.removeEventListener("message", handleMessage);
-  };
-}, []);
-
   if (typeof window === "undefined") return null;
 
   return createPortal(
@@ -434,7 +429,7 @@ useEffect(() => {
           <motion.div {...MODAL_A}
             onClick={e => e.stopPropagation()}
             className={[
-              "relative z-10 w-full sm:max-w-[960px]",
+              "relative z-10 w-full sm:max-w-[640px]",
               "bg-white dark:bg-gray-950",
               "rounded-t-3xl sm:rounded-2xl overflow-hidden",
               "border-0 sm:border sm:border-gray-200/70 dark:sm:border-gray-800",
@@ -453,31 +448,17 @@ useEffect(() => {
               submitted={submitted}
               step={step}
               category={category}
+              progress={progress}
               onClose={handleClose}
-              countries={countries}
             />
 
-            {/* Mobile stepper */}
-            {!submitted && (
-              <div className="sm:hidden px-5 pb-3 shrink-0 border-b border-gray-100 dark:border-gray-800">
-                <HorizontalStepper currentStep={step} progress={progress} />
-              </div>
-            )}
-
-            {/* Two-column body */}
+            {/* Body — just the step content. No side panel: the progress
+                bar in the header is the only status signal now. */}
             <div className="flex flex-1 min-h-0 overflow-hidden">
-
-              {/* Sidebar */}
-              {!submitted && (
-                <aside className="hidden sm:flex flex-col w-[220px] shrink-0 border-r border-gray-100 dark:border-gray-800 bg-gray-50/40 dark:bg-gray-900/20 py-6 px-5 gap-5">
-                  <VerticalStepper currentStep={step} progress={progress} />
-                  <ProgressSummary progress={progress} category={category} />
-                </aside>
-              )}
 
               {/* Scrollable content */}
               <div className="flex-1 overflow-y-auto overscroll-contain">
-                <div className="px-6 sm:px-8 pt-6 pb-5">
+                <div className="px-5 sm:px-7 pt-5 pb-5">
                   <AnimatePresence mode="wait" initial={false}>
                     {submitted ? (
                       <motion.div key="done" {...slide(1)}>
@@ -504,6 +485,8 @@ useEffect(() => {
                                 setAadhaarData={setAadhaarData}
                                 onVerified={fetchKycStatus}
                                 popupRef={digilockerPopupRef}
+                                externalError={digilockerError}
+                                clearExternalError={() => setDigilockerError("")}
                               />
                             : <Step2GST docData={docData} setDocData={setDocData} />
                         )}
@@ -512,15 +495,6 @@ useEffect(() => {
                         )}
                         {step === 4 && (
                           <Step4Doc docData={docData} setDocData={setDocData} panData={panData} />
-                        )}
-                        {step === 5 && (
-                          <Step5Review
-                            panData={panData}
-                            aadhaarData={aadhaarData}
-                            bankData={bankData}
-                            docData={docData}
-                            category={category}
-                          />
                         )}
                       </motion.div>
                     )}
@@ -551,202 +525,74 @@ useEffect(() => {
 /* ─────────────────────────────────────────────────────────────────────
    HEADER — shows country + category badge
 ───────────────────────────────────────────────────────────────────── */
-function KYCHeader({ submitted, step, category, onClose ,countries}) {
+function KYCHeader({ submitted, step, category, progress, onClose }) {
   const catMeta = category ? CATEGORY_META[category] : null;
-  /* Display step as 1-based, skip step 0 in count */
-  const displayStep = step === 0 ? 1 : step;
-  const totalSteps  = 5;
+  const currentLabel = stepsForCategory(category).find(s => s.id === step)?.label;
+
+  /* Thin progress bar replaces the old sidebar/mobile steppers entirely —
+     one lightweight, always-accurate signal (based on the same `progress`
+     map the rest of the modal already uses) instead of a full step list. */
+  const doneCount  = Object.values(progress || {}).filter(Boolean).length;
+  const totalCount = Object.keys(progress || {}).length || 1;
+  const pct = submitted ? 100 : Math.round((doneCount / totalCount) * 100);
 
   return (
-    <div className="flex items-center justify-between px-5 sm:px-8 py-3.5 shrink-0 border-b border-gray-100 dark:border-gray-800">
-      <div className="flex items-center gap-3 min-w-0">
-        {/* Shield icon */}
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl shrink-0"
-          style={{ background: GRAD }}>
-          <ShieldCheck size={16} className="text-white" />
-        </div>
+    <div className="shrink-0 border-b border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-900/30">
+      <div className="flex items-center justify-between gap-4 px-5 sm:px-7 py-4">
+        <div className="flex items-center gap-3.5 min-w-0">
+          {/* Shield icon */}
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl shadow-sm"
+            style={{ background: GRAD, boxShadow: "0 4px 14px rgba(164,75,243,0.28)" }}>
+            <ShieldCheck size={17} className="text-white" />
+          </div>
 
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h2 className="text-[14px] font-semibold text-gray-900 dark:text-white leading-tight">
+          <div className="min-w-0">
+            <h2 className="text-[15px] font-bold text-gray-900 dark:text-white leading-tight">
               {submitted ? "Verification submitted" : "KYC verification"}
             </h2>
 
-            {/* Country pill */}
-            <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-semibold
-              bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400
-              px-2 py-0.5 rounded-full">
-                <img
-        src={`${process.env.NEXT_PUBLIC_AWS_BUCKET_URL}/${countries.flag}`}
-        alt={countries.name}
-        className="w-5 h-5 rounded-full object-cover"
-      />{countries.name}
-            </span>
+            <div className="flex items-center gap-2 mt-0.5">
+              <p className="text-[11.5px] text-gray-400 dark:text-gray-500 leading-none truncate">
+                {submitted
+                  ? "Documents are under review · 1–2 business days"
+                  : currentLabel
+                  ? `${currentLabel} · 256-bit encrypted`
+                  : "256-bit encrypted"}
+              </p>
 
-            {/* Category pill — shown once chosen */}
-            {catMeta && !submitted && (
-              <motion.span
-                initial={{ opacity:0, scale:0.85 }} animate={{ opacity:1, scale:1 }}
-                className="hidden sm:inline-flex items-center gap-1 text-[10px] font-semibold
-                  px-2 py-0.5 rounded-full"
-                style={{ background: catMeta.bg, color: catMeta.color }}>
-                <catMeta.icon size={10} />
-                {catMeta.label}
-              </motion.span>
-            )}
-          </div>
-
-          <p className="text-[11px] text-gray-400 dark:text-gray-500 leading-none mt-0.5">
-            {submitted
-              ? "Documents are under review · 1–2 business days"
-              : `Step ${displayStep} of ${totalSteps} · 256-bit encrypted`}
-          </p>
-        </div>
-      </div>
-
-      <button type="button" onClick={onClose} aria-label="Close KYC modal"
-        className="flex h-8 w-8 items-center justify-center rounded-full
-          text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800
-          transition cursor-pointer focus:outline-none shrink-0 ml-2">
-        <X size={15} />
-      </button>
-    </div>
-  );
-}
-
-/* ─────────────────────────────────────────────────────────────────────
-   VERTICAL STEPPER
-───────────────────────────────────────────────────────────────────── */
-function VerticalStepper({ currentStep, progress }) {
-  return (
-    <nav aria-label="KYC steps">
-      {STEPS.map((s, i) => {
-        const done   = progress[s.id] && s.id < currentStep;
-        const active = s.id === currentStep;
-        const last   = i === STEPS.length - 1;
-        return (
-          <div key={s.id} className="flex gap-3">
-            <div className="flex flex-col items-center">
-              <div
-                className={[
-                  "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold transition-all duration-300",
-                  (done || active) ? "text-white" : "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-400",
-                  active ? "ring-[3px] ring-violet-400/25 ring-offset-2 ring-offset-gray-50 dark:ring-offset-gray-900/20" : "",
-                ].join(" ")}
-                style={(done || active) ? { background: GRAD } : undefined}>
-                {done ? <CheckCircle2 size={13} strokeWidth={2.5} /> : s.id}
-              </div>
-              {!last && (
-                <div className="w-px flex-1 mt-1 mb-1 min-h-[20px] bg-gray-200 dark:bg-gray-700 overflow-hidden rounded-full">
-                  <motion.div className="w-full rounded-full" style={{ background: GRAD }}
-                    initial={{ height: "0%" }}
-                    animate={{ height: done ? "100%" : "0%" }}
-                    transition={{ duration: 0.45, ease: [0.16,1,0.3,1] }} />
-                </div>
-              )}
-            </div>
-            <div className="pb-5 pt-0.5">
-              <p className={[
-                "text-[12px] font-semibold leading-tight",
-                active ? "text-gray-900 dark:text-white"
-                : done  ? "text-gray-500 dark:text-gray-400"
-                :         "text-gray-300 dark:text-gray-600",
-              ].join(" ")}>{s.label}</p>
-              {active && (
-                <motion.p initial={{ opacity:0 }} animate={{ opacity:1 }}
-                  className="text-[10px] text-violet-500 dark:text-violet-400 mt-0.5">
-                  In progress
-                </motion.p>
+              {/* Category pill — shown once chosen. No country badge here
+                  by design: PAN/GST/Aadhaar already make the region obvious. */}
+              {catMeta && !submitted && (
+                <motion.span
+                  initial={{ opacity:0, scale:0.85 }} animate={{ opacity:1, scale:1 }}
+                  className="hidden sm:inline-flex shrink-0 items-center text-[9px] font-black
+                    uppercase tracking-wide px-1.5 py-[2px] rounded-full leading-none"
+                  style={{ background: catMeta.bg, color: catMeta.color }}>
+                  {catMeta.label}
+                </motion.span>
               )}
             </div>
           </div>
-        );
-      })}
-    </nav>
-  );
-}
-
-/* ─────────────────────────────────────────────────────────────────────
-   PROGRESS SUMMARY
-───────────────────────────────────────────────────────────────────── */
-function ProgressSummary({ progress, category }) {
-  const step2Label = category === "business" ? "GST Verified" : "Aadhaar Verified";
-  const step4Label = category === "business" ? "Document Uploaded" : "PAN Doc Uploaded";
-
-  const items = [
-    { key: 1, label: "PAN Verified"   },
-    { key: 2, label: step2Label       },
-    { key: 3, label: "Bank Verified"  },
-    { key: 4, label: step4Label       },
-  ];
-  const done = Object.values(progress).filter(Boolean).length;
-
-  return (
-    <div className="mt-auto">
-      <div className="rounded-xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 p-4">
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Progress</p>
-          <span className="text-[11px] font-bold text-violet-500">{done}/5</span>
         </div>
-        <div className="space-y-2 mb-3.5">
-          {items.map(it => (
-            <div key={it.key} className="flex items-center gap-2">
-              <div className={[
-                "flex h-4 w-4 shrink-0 items-center justify-center rounded-full",
-                progress[it.key] ? "text-white" : "bg-gray-100 dark:bg-gray-800",
-              ].join(" ")}
-                style={progress[it.key] ? { background: GRAD } : undefined}>
-                {progress[it.key]
-                  ? <CheckCircle2 size={9} strokeWidth={3} />
-                  : <div className="h-1.5 w-1.5 rounded-full bg-gray-300 dark:bg-gray-600" />}
-              </div>
-              <span className={[
-                "text-[11px] font-medium",
-                progress[it.key] ? "text-gray-700 dark:text-gray-300" : "text-gray-300 dark:text-gray-600",
-              ].join(" ")}>{it.label}</span>
-            </div>
-          ))}
-        </div>
-        <div className="h-1 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
-          <motion.div className="h-full rounded-full" style={{ background: GRAD }}
-            animate={{ width: `${(done / 5) * 100}%` }}
-            transition={{ duration: 0.5, ease:[0.16,1,0.3,1] }} />
-        </div>
+
+        <button type="button" onClick={onClose} aria-label="Close KYC modal"
+          className="flex h-8 w-8 items-center justify-center rounded-full
+            text-gray-400 hover:bg-white dark:hover:bg-gray-800 hover:text-gray-600
+            hover:shadow-sm transition cursor-pointer focus:outline-none shrink-0">
+          <X size={15} />
+        </button>
       </div>
-    </div>
-  );
-}
 
-/* ─────────────────────────────────────────────────────────────────────
-   HORIZONTAL STEPPER (mobile)
-───────────────────────────────────────────────────────────────────── */
-function HorizontalStepper({ currentStep, progress }) {
-  return (
-    <div className="flex items-center pt-2">
-      {STEPS.map((s, i) => {
-        const done   = progress[s.id] && s.id < currentStep;
-        const active = s.id === currentStep;
-        return (
-          <div key={s.id} className="flex items-center flex-1 min-w-0">
-            <div className={[
-              "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold",
-              (done || active) ? "text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-400",
-              active ? "ring-2 ring-violet-400/25 ring-offset-1 ring-offset-white dark:ring-offset-gray-950" : "",
-            ].join(" ")}
-              style={(done || active) ? { background: GRAD } : undefined}>
-              {done ? <CheckCircle2 size={11} /> : s.id}
-            </div>
-            {i < STEPS.length - 1 && (
-              <div className="flex-1 h-px mx-1.5 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800">
-                <motion.div className="h-full rounded-full" style={{ background: GRAD }}
-                  initial={{ width: "0%" }}
-                  animate={{ width: done ? "100%" : "0%" }}
-                  transition={{ duration: 0.4 }} />
-              </div>
-            )}
+      {!submitted && (
+        <div className="px-5 sm:px-7 pb-3.5">
+          <div className="h-[5px] rounded-full bg-gray-200/70 dark:bg-gray-800 overflow-hidden">
+            <motion.div className="h-full rounded-full"
+              style={{ background: GRAD }}
+              animate={{ width: `${pct}%` }}
+              transition={{ duration: 0.4, ease: [0.16,1,0.3,1] }} />
           </div>
-        );
-      })}
+        </div>
+      )}
     </div>
   );
 }
@@ -755,12 +601,16 @@ function HorizontalStepper({ currentStep, progress }) {
    FOOTER — back on ALL steps; step 0 back = cancel
 ───────────────────────────────────────────────────────────────────── */
 function KYCFooter({ step, loading, canAdvance, onBack, onNext, onSubmit }) {
-  const isReview = step === 5;
+  /* Documents (step 4) is now the last step — the old separate Review
+     screen just re-listed checkmarks the user had already seen once per
+     step, so it's gone. Submit lives directly on Documents instead, and
+     stays disabled until the upload actually completes. */
+  const isFinalStep = step === 4;
   const backLabel = step === 0 ? "Cancel" : "Back";
 
   return (
     <div className="shrink-0 border-t border-gray-100 dark:border-gray-800
-      px-5 sm:px-8 py-4 flex items-center justify-between gap-3
+      px-5 sm:px-7 py-4 flex items-center justify-between gap-3
       bg-white dark:bg-gray-950">
 
       {/* Back / Cancel — always visible */}
@@ -773,12 +623,13 @@ function KYCFooter({ step, loading, canAdvance, onBack, onNext, onSubmit }) {
         <ChevronLeft size={15} /> {backLabel}
       </button>
 
-      {isReview ? (
-        <motion.button type="button" onClick={onSubmit} disabled={loading}
-          whileHover={!loading ? { scale:1.02 } : undefined}
-          whileTap={!loading ? { scale:0.97 } : undefined}
+      {isFinalStep ? (
+        <motion.button type="button" onClick={onSubmit} disabled={loading || !canAdvance}
+          whileHover={(!loading && canAdvance) ? { scale:1.02 } : undefined}
+          whileTap={(!loading && canAdvance) ? { scale:0.97 } : undefined}
           className="inline-flex items-center gap-2 rounded-xl px-6 py-2.5
-            text-sm font-semibold text-white disabled:opacity-50
+            text-sm font-semibold text-white
+            disabled:opacity-40 disabled:cursor-not-allowed
             cursor-pointer focus:outline-none shadow-md shadow-violet-500/20"
           style={{ background: GRAD }}>
           {loading
@@ -792,7 +643,8 @@ function KYCFooter({ step, loading, canAdvance, onBack, onNext, onSubmit }) {
           className="inline-flex items-center gap-1.5 rounded-xl px-6 py-2.5
             text-sm font-semibold text-white
             disabled:opacity-40 disabled:cursor-not-allowed
-            cursor-pointer focus:outline-none shadow-md shadow-violet-500/15">
+            cursor-pointer focus:outline-none shadow-md shadow-violet-500/15"
+          style={{ background: GRAD }}>
           Continue <ChevronRight size={15} />
         </motion.button>
       )}
@@ -803,85 +655,97 @@ function KYCFooter({ step, loading, canAdvance, onBack, onNext, onSubmit }) {
 /* ════════════════════════════════════════════════════════════════════
    STEP 0 — CATEGORY SELECTION
 ════════════════════════════════════════════════════════════════════ */
+/* GST_QUESTION_OPTIONS keys map straight onto the existing "category"
+   state ("business" / "personal") so verifyPAN(), calculateActiveStep(),
+   goNext()'s GST-skip, and every other downstream check keep working
+   exactly as before — only the question asked to get there changed.
+   The card styling below intentionally reuses the same gradient-band +
+   icon-badge + accent-stripe language as PANCertificate / GSTCertificate
+   further down this file, so a selectable "card" here actually looks
+   like the certificate cards the rest of the flow already uses. */
+const GST_QUESTION_OPTIONS = [
+  {
+    key: "business",
+    icon: Building2,
+    eyebrow: "Yes",
+    title: "GST Registered",
+    sub: "We verify your PAN and GSTIN together.",
+    accent: "#0EA5E9",
+    grad: "linear-gradient(135deg,#F0F9FF 0%,#E0F2FE 60%,#F0F9FF 100%)",
+    badgeGrad: "linear-gradient(135deg,#E0F2FE,#BAE6FD)",
+    stripe: "linear-gradient(to right,#0EA5E9,#0284C7,#0EA5E9)",
+  },
+  {
+    key: "personal",
+    icon: User,
+    eyebrow: "No",
+    title: "Not GST Registered",
+    sub: "We verify your PAN, Aadhaar and bank details.",
+    accent: "#7C3AED",
+    grad: "linear-gradient(135deg,#FAF5FF 0%,#EDE9FE 60%,#FAF5FF 100%)",
+    badgeGrad: "linear-gradient(135deg,#EDE9FE,#DDD6FE)",
+    stripe: "linear-gradient(to right,#8B5CF6,#7C3AED,#8B5CF6)",
+  },
+];
+
 function Step0Category({ category, setCategory }) {
   return (
-    <StepShell icon={Shield} title="Select account type"
-      desc="Choose how you'll be using venuebook.in. This determines which documents we need to verify.">
-      <div className="max-w-md space-y-3">
-
-        {[
-          {
-            key: "personal",
-            icon: User,
-            label: "Personal account",
-            sub: "Individual venue owner or operator",
-            docs: ["PAN card", "Aadhaar (via DigiLocker)", "Bank account"],
-            accent: "#7C3AED",
-            accentBg: "#EDE9FE",
-            accentBorder: "border-violet-400",
-            activeBg: "bg-violet-50/70 dark:bg-violet-950/20",
-          },
-          {
-            key: "business",
-            icon: Building2,
-            label: "Business / Company",
-            sub: "Registered company or partnership firm",
-            docs: ["Company PAN", "GST registration", "Bank account"],
-            accent: "#0369A1",
-            accentBg: "#E0F2FE",
-            accentBorder: "border-sky-400",
-            activeBg: "bg-sky-50/70 dark:bg-sky-950/20",
-          },
-        ].map(opt => {
+    <StepShell icon={Shield} title="Is your listing GST registered?"
+      desc="This tells us exactly which documents to ask for next.">
+      <div className="w-full space-y-4">
+        {GST_QUESTION_OPTIONS.map(opt => {
           const selected = category === opt.key;
           return (
             <motion.button key={opt.key} type="button" onClick={() => setCategory(opt.key)}
-              whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}
+              aria-pressed={selected}
+              whileHover={{ y: -2 }} whileTap={{ scale: 0.99 }}
               className={[
-                "w-full p-5 rounded-2xl border-2 text-left transition-all duration-200",
-                selected
-                  ? `${opt.accentBorder} ${opt.activeBg}`
-                  : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600",
-              ].join(" ")}>
-              <div className="flex items-start gap-4">
-                {/* Icon */}
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl mt-0.5 transition-all"
-                  style={{ background: selected ? opt.accentBg : "#F3F4F6" }}>
-                  <opt.icon size={20} style={{ color: selected ? opt.accent : "#9CA3AF" }} />
-                </div>
+                "relative w-full rounded-2xl overflow-hidden text-left transition-shadow duration-200",
+                selected ? "ring-2" : "ring-1 ring-gray-200 dark:ring-gray-700 hover:ring-gray-300 dark:hover:ring-gray-600",
+              ].join(" ")}
+              style={selected
+                ? { boxShadow: `0 8px 28px ${opt.accent}26, 0 2px 8px rgba(0,0,0,0.06)`, "--tw-ring-color": opt.accent }
+                : undefined}>
 
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-[14px] font-bold text-gray-900 dark:text-white">{opt.label}</p>
-                    {selected && (
-                      <motion.div initial={{ scale:0 }} animate={{ scale:1 }}
-                        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full"
-                        style={{ background: opt.accent }}>
-                        <CheckCheck size={11} className="text-white" />
-                      </motion.div>
-                    )}
+              <div className="relative px-5 pt-4 pb-4" style={{ background: opt.grad }}>
+                <div className="flex items-center gap-3.5">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
+                    style={{ background: opt.badgeGrad, border: `1.5px solid ${opt.accent}33`, boxShadow: `0 2px 6px ${opt.accent}22` }}>
+                    <opt.icon size={20} style={{ color: opt.accent }} />
                   </div>
-                  <p className="text-[12px] text-gray-400 mt-0.5 mb-3">{opt.sub}</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {opt.docs.map(d => (
-                      <span key={d} className="text-[10px] font-semibold px-2 py-1 rounded-full"
-                        style={{
-                          background: selected ? opt.accentBg : "#F9FAFB",
-                          color: selected ? opt.accent : "#6B7280",
-                        }}>
-                        {d}
-                      </span>
-                    ))}
+
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[8px] font-black uppercase tracking-[0.18em] mb-0.5" style={{ color: opt.accent }}>
+                      {opt.eyebrow}
+                    </p>
+                    <p className="text-[15px] font-extrabold text-gray-900 dark:text-white leading-tight">
+                      {opt.title}
+                    </p>
+                    <p className="text-[11.5px] text-gray-500 dark:text-gray-400 mt-0.5 leading-snug">
+                      {opt.sub}
+                    </p>
                   </div>
+
+                  {selected ? (
+                    <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
+                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full"
+                      style={{ background: opt.accent }}>
+                      <CheckCircle2 size={14} className="text-white" strokeWidth={2.5} />
+                    </motion.div>
+                  ) : (
+                    <div className="h-6 w-6 shrink-0 rounded-full border-2 border-gray-300 dark:border-gray-600" />
+                  )}
                 </div>
               </div>
+
+              <div className="h-[3px]" style={{ background: opt.stripe }} />
             </motion.button>
           );
         })}
 
         <InfoNote>
-          Once submitted, account type can only be changed via support verification.
-          {" "}{COUNTRY.flag} KYC is mandatory for all Indian venue partners.
+          GST status can be updated later via support if your registration changes.
+          KYC verification is required for all venuebook.in venue partners.
         </InfoNote>
       </div>
     </StepShell>
@@ -896,12 +760,17 @@ function Step1PAN({ panData,docData, setPanData ,setDocData, category}) {
   const [phase, setPhase] = useState(panData ? "verified" : "idle");
   const [error, setError] = useState("");
 
+  const isBusiness = category === "business";
+  const gstShown = isBusiness && docData?.gstVerified ? docData?.gst_number : null;
+
   if (phase === "verified" && panData) {
     return (
-      <StepShell title="Company PAN verification" icon={CreditCard}
-        desc="Verified against the Income Tax Department database.">
+      <StepShell title={isBusiness ? "PAN & GST verification" : "PAN verification"} icon={CreditCard}
+        desc={gstShown
+          ? "Verified against the Income Tax Department and GSTN databases."
+          : "Verified against the Income Tax Department database."}>
         <div className="space-y-4">
-          <PANCertificate data={panData} />
+          <PANCertificate data={panData} gstNumber={gstShown} />
           <button type="button"
             onClick={() => { setPanData(null); setPhase("idle"); setPan(""); setError(""); }}
             className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-violet-500 transition cursor-pointer">
@@ -959,8 +828,10 @@ const handleVerify = async () => {
   }
 };
   return (
-    <StepShell title="Company PAN verification" icon={CreditCard}
-      desc="Enter your company's 10-digit PAN to verify with the Income Tax Department of India.">
+    <StepShell title={isBusiness ? "PAN & GST verification" : "PAN verification"} icon={CreditCard}
+      desc={isBusiness
+        ? "Enter your company's 10-digit PAN — we'll verify it and pull your GST registration together."
+        : "Enter your 10-digit PAN to verify with the Income Tax Department of India."}>
       <AnimatePresence mode="wait">
         {phase === "verifying" ? (
           <motion.div key="vfy" {...fadeUp}>
@@ -994,68 +865,42 @@ const handleVerify = async () => {
 }
 
 /* ─── PAN Certificate ────────────────────────────────────────────── */
-function PANCertificate({ data }) {
-  const isActive = data.status?.toLowerCase() === "active";
+/* PANCertificate/AadhaarCertificate/GSTCertificate/BankCertificate are
+   exported (in addition to being used internally by this modal's own
+   steps) so vendor/account/components/sections/KYCHubSection.jsx can
+   render the same gradient ID-card UI outside the wizard, fed either
+   real each_kyc_status() data or a static fallback when that data isn't
+   available yet — see that file's own comment for details. */
+export function PANCertificate({ data, gstNumber }) {
+  /* Display-only widening — the API returns "valid" for a good PAN, not
+     just "active", and this "tag" is purely cosmetic (never feeds the
+     backend-driven step resolution in calculateActiveStep). Without this
+     a valid PAN showed as a bare, un-flagged status here. */
+  const isActive = ["active", "valid", "verified"].includes((data.status || "").toLowerCase());
   const today = new Date().toLocaleDateString("en-IN", { day:"2-digit", month:"short", year:"numeric" });
 
   return (
-    <motion.div {...certAnim} className="rounded-2xl overflow-hidden"
-      style={{
-        boxShadow: "0 8px 32px rgba(245,158,11,0.14), 0 2px 8px rgba(0,0,0,0.07)",
-        border: "1.5px solid rgba(245,158,11,0.35)",
-      }}>
-      <div className="relative px-6 pt-5 pb-6"
-        style={{
-          background: "linear-gradient(135deg,#FFFDF5 0%,#FFF8E0 50%,#FFFDF5 100%)",
-          borderBottom: "1px solid rgba(245,158,11,0.2)",
-        }}>
-        <div className="absolute inset-0 pointer-events-none"
-          style={{ backgroundImage:`repeating-linear-gradient(-55deg,transparent 0,transparent 6px,rgba(245,158,11,0.04) 6px,rgba(245,158,11,0.04) 7px)` }} />
-        <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none select-none"
-          style={{ fontSize:"68px", opacity:0.045, lineHeight:1, color:"#92400E" }}>☸</div>
-
-        <div className="relative z-10 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-xl text-[22px]"
-              style={{ background:"linear-gradient(135deg,#FEF3C7,#FDE68A)", border:"1.5px solid rgba(245,158,11,0.3)", boxShadow:"0 2px 6px rgba(245,158,11,0.18)" }}>
-              🏛️
-            </div>
-            <div>
-              <p className="text-[8px] font-black uppercase tracking-[0.18em] text-amber-700 mb-0.5">
-                Income Tax Department · Government of India
-              </p>
-              <p className="text-[15px] font-extrabold text-amber-950 leading-tight">
-                PAN Verification Certificate
-              </p>
-              <p className="text-[9px] text-amber-700/70 font-medium mt-0.5">
-                Permanent Account Number · Ministry of Finance
-              </p>
-            </div>
-          </div>
-          <VerifiedSeal color="#10B981" label="VERIFIED" sub={["Income Tax","Department"]} />
-        </div>
-      </div>
-
-      {/* Tricolor stripe */}
-      <div className="flex h-[4px]">
-        <div className="flex-1" style={{ background:"#FF9933" }} />
-        <div className="flex-1 bg-white" />
-        <div className="flex-1" style={{ background:"#138808" }} />
-      </div>
-
-      <div className="bg-white dark:bg-gray-900 divide-y divide-gray-100 dark:divide-gray-800">
-        <DocRow label="Company name"       value={data.company_name}    primary />
-        <DocRow label="PAN number"         value={data.pan_number}      mono />
-        <DocRow label="Status">
-          <StatusBadge active={isActive} label={data.status} />
-        </DocRow>
-        {data.business_category   && <DocRow label="Business category"  value={data.business_category} />}
-        {data.registered_address  && <DocRow label="Registered address" value={data.registered_address} />}
-      </div>
-
-      <CertFooter color="#F59E0B" textColor="text-amber-800/60" iconColor="text-amber-500"
-        label="Verified via Income Tax Department, Government of India"
-        date={today} />
+    <motion.div {...certAnim}>
+      <IdCardFace
+        grad="linear-gradient(135deg,#B45309 0%,#D97706 45%,#92400E 100%)"
+        textColor="#FFFBEB"
+        chipGrad="linear-gradient(135deg,#FDE68A,#F59E0B)"
+        boxShadow="0 8px 32px rgba(245,158,11,0.16), 0 2px 8px rgba(0,0,0,0.07)"
+        border="1.5px solid rgba(245,158,11,0.35)"
+        eyebrow="Income Tax Department · Govt. of India"
+        issuer="Permanent Account Number"
+        numberLabel="PAN Number"
+        number={data.pan_number}
+        holderLabel="Company Name"
+        holder={data.company_name}
+        tag={isActive ? "Verified" : data.status}
+        fields={[
+          ...(data.business_category  ? [{ label: "Business category",  value: data.business_category }]  : []),
+          ...(gstNumber                ? [{ label: "GSTIN",              value: gstNumber }]                : []),
+          ...(data.registered_address ? [{ label: "Registered address", value: data.registered_address, wide: true }] : []),
+        ]}
+        footer={{ label: "Verified via Income Tax Department, Government of India", date: today }}
+      />
     </motion.div>
   );
 }
@@ -1066,84 +911,84 @@ function PANCertificate({ data }) {
    "Continue with DigiLocker" below — never automatically, never on
    mount, never on refresh.
 ════════════════════════════════════════════════════════════════════ */
-function Step2Aadhaar({ aadhaarData, setAadhaarData, onVerified, popupRef }) {
+function Step2Aadhaar({ aadhaarData, setAadhaarData, onVerified, popupRef, externalError, clearExternalError }) {
   const [phase, setPhase] = useState(
     aadhaarData && aadhaarData !== "verified" ? "verified" : "input"
   );
   const [error, setError] = useState("");
 
-  /* Poll while the popup is open so we notice completion even if the
-     callback page can't reach window.opener for some reason. */
+  /* IMPORTANT FIX: the line above only sets the *initial* phase, once,
+     on mount. When the DigiLocker success message comes back and the
+     parent modal re-fetches status, `aadhaarData` changes from null to
+     a real object — but without this effect the local `phase` state
+     never notices, so the screen stayed stuck showing the "Continue
+     with DigiLocker" / "awaiting" card even though verification had
+     actually succeeded. This effect keeps `phase` in sync with the
+     prop whenever it changes, not just at mount. */
+  useEffect(() => {
+    if (aadhaarData && aadhaarData !== "verified") {
+      setPhase("verified");
+      setError("");
+    }
+  }, [aadhaarData]);
+
+  /* Surfaces DIGILOCKER_FAILURE messages from the callback tab (see
+     KYCModal's root message listener). Without this, a failed
+     DigiLocker attempt left the UI stuck on the "awaiting" card with
+     no feedback, since nothing here ever heard about the failure. */
+  useEffect(() => {
+    if (!externalError) return;
+    setPhase("input");
+    setError(externalError);
+    clearExternalError?.();
+  }, [externalError, clearExternalError]);
+
+  /* Poll while the popup/tab is open so we notice completion even if
+     the callback page can't reach window.opener for some reason (e.g.
+     the user manually closes the tab after finishing). */
   useEffect(() => {
     if (phase !== "awaiting") return;
     const poll = setInterval(async () => {
       if (popupRef?.current && popupRef.current.closed) {
         clearInterval(poll);
-        // Popup closed — re-check status in case it succeeded.
+        popupRef.current = null;
+        // Tab closed — re-check status in case it succeeded.
         if (onVerified) await onVerified();
       }
     }, 1000);
     return () => clearInterval(poll);
   }, [phase, popupRef, onVerified]);
 
-// const handleDigilockerVerify = async () => {
-//   setError("");
+  const handleDigilockerVerify = async () => {
+    setError("");
 
-//   // Open synchronously to preserve the user-gesture context — do NOT
-//   // pass "noopener"/"noreferrer": we need window.opener intact so the
-//   // callback page's postMessage() can reach us, and we need the
-//   // window.open() return value (not null) to track/poll popup.closed.
-//   const popup = window.open("_blank", "digilocker", "width=700,height=800");
+    try {
+      const res = await initializeDigilocker();
+      const url = res?.data?.data?.url;
 
-//   if (!popup) {
-//     setError("Please allow popups for this site and try again.");
-//     return;
-//   }
+      if (!url) {
+        setError("Unable to initialize DigiLocker.");
+        return;
+      }
 
-//   try {
-//     const res = await initializeDigilocker();
-//     const url = res?.data?.data?.url;
+      // Opens a new tab, keeping window.opener intact (no "noopener"),
+      // which is required for the callback page's postMessage() to
+      // reach this window and for popupRef.current.close() to work.
+      const newTab = window.open(url, "_blank");
 
-//     if (url) {
-//       popup.location.href = url; // single, clean navigation — no write() race
-//       if (popupRef) popupRef.current = popup;
-//       setPhase("awaiting");
-//     } else {
-//       popup.close();
-//       setError("Unable to initialize DigiLocker. Please try again.");
-//     }
-//   } catch (e) {
-//     popup.close();
-//     setError(e?.message || "Something went wrong.");
-//   }
-// };
-const handleDigilockerVerify = async () => {
-  setError("");
+      if (!newTab) {
+        setError("Please allow popups for this site.");
+        return;
+      }
 
-  try {
-    const res = await initializeDigilocker();
-    const url = res?.data?.data?.url;
+      popupRef.current = newTab;
+      setPhase("awaiting");
 
-    if (!url) {
-      setError("Unable to initialize DigiLocker.");
-      return;
+    } catch (e) {
+      setError(e?.message || "Something went wrong.");
     }
+  };
 
-    // Opens a NEW TAB
-    const newTab = window.open(url, "_blank");
-
-    if (!newTab) {
-      setError("Please allow popups for this site.");
-      return;
-    }
-
-    popupRef.current = newTab;
-    setPhase("awaiting");
-
-  } catch (e) {
-    setError(e?.message || "Something went wrong.");
-  }
-};
   if (phase === "verified" && aadhaarData && aadhaarData !== "verified") {
     return (
       <StepShell title="Aadhaar verification" icon={Fingerprint}
@@ -1163,7 +1008,7 @@ const handleDigilockerVerify = async () => {
   return (
     <StepShell title="Aadhaar verification" icon={Fingerprint}
       desc="Securely verify your identity using DigiLocker — the official government document wallet.">
-      <div className="max-w-md space-y-5">
+      <div className="w-full space-y-5">
 
         {/* DigiLocker card */}
         <div className="relative overflow-hidden rounded-2xl border border-blue-200 dark:border-blue-800"
@@ -1238,65 +1083,31 @@ const handleDigilockerVerify = async () => {
 }
 
 /* ─── Aadhaar Certificate ────────────────────────────────────────── */
-function AadhaarCertificate({ data }) {
+export function AadhaarCertificate({ data }) {
   const today = new Date().toLocaleDateString("en-IN", { day:"2-digit", month:"short", year:"numeric" });
 
   return (
-    <motion.div {...certAnim} className="rounded-2xl overflow-hidden"
-      style={{
-        boxShadow: "0 8px 32px rgba(59,130,246,0.13), 0 2px 8px rgba(0,0,0,0.07)",
-        border: "1.5px solid rgba(59,130,246,0.3)",
-      }}>
-      <div className="flex">
-        {/* Vertical tricolor */}
-        <div className="w-[6px] shrink-0 flex flex-col">
-          <div className="flex-1" style={{ background:"#FF9933" }} />
-          <div className="flex-1 bg-white" />
-          <div className="flex-1" style={{ background:"#138808" }} />
-        </div>
-
-        <div className="flex-1 relative px-6 pt-5 pb-6"
-          style={{
-            background: "linear-gradient(135deg,#F0F7FF 0%,#DBEAFE 50%,#EFF6FF 100%)",
-            borderBottom: "1px solid rgba(59,130,246,0.2)",
-          }}>
-          <div className="absolute inset-0 pointer-events-none"
-            style={{ backgroundImage:`repeating-linear-gradient(60deg,transparent 0,transparent 5px,rgba(59,130,246,0.04) 5px,rgba(59,130,246,0.04) 6px)` }} />
-
-          <div className="relative z-10 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-xl"
-                style={{ background:"linear-gradient(135deg,#DBEAFE,#BFDBFE)", border:"1.5px solid rgba(59,130,246,0.25)", boxShadow:"0 2px 6px rgba(59,130,246,0.18)" }}>
-                <Fingerprint size={20} className="text-blue-700" />
-              </div>
-              <div>
-                <p className="text-[8px] font-black uppercase tracking-[0.18em] text-blue-800 mb-0.5">
-                  UIDAI · Government of India
-                </p>
-                <p className="text-[15px] font-extrabold text-blue-950 leading-tight">
-                  Aadhaar Identity Verification
-                </p>
-                <p className="text-[9px] text-blue-700/70 font-medium mt-0.5">
-                  Unique Identification Authority of India
-                </p>
-              </div>
-            </div>
-            <VerifiedSeal color="#3B82F6" label="VERIFIED" sub={["UIDAI","Verified"]} />
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white dark:bg-gray-900 divide-y divide-gray-100 dark:divide-gray-800">
-        <DocRow label="Full name"      value={data.full_name}      primary />
-        {data.dob    && <DocRow label="Date of birth" value={data.dob} />}
-        {data.gender && <DocRow label="Gender"        value={data.gender} />}
-        <DocRow label="Aadhaar number" value={data.aadhaar_number} mono />
-        {data.address && <DocRow label="Address"      value={data.address} />}
-      </div>
-
-      <CertFooter color="#3B82F6" textColor="text-blue-800/60" iconColor="text-blue-400"
-        label="Verified via UIDAI DigiLocker · Aadhaar is always masked"
-        date={today} />
+    <motion.div {...certAnim}>
+      <IdCardFace
+        grad="linear-gradient(135deg,#1D4ED8 0%,#2563EB 45%,#1E3A8A 100%)"
+        textColor="#EFF6FF"
+        chipGrad="linear-gradient(135deg,#FDE68A,#F59E0B)"
+        boxShadow="0 8px 32px rgba(59,130,246,0.15), 0 2px 8px rgba(0,0,0,0.07)"
+        border="1.5px solid rgba(59,130,246,0.3)"
+        eyebrow="UIDAI · Govt. of India"
+        issuer="Aadhaar Identity Verification"
+        numberLabel="Aadhaar Number"
+        number={data.aadhaar_number}
+        holderLabel="Name"
+        holder={data.full_name}
+        tag="Verified"
+        fields={[
+          ...(data.dob     ? [{ label: "Date of birth", value: data.dob }]    : []),
+          ...(data.gender  ? [{ label: "Gender",         value: data.gender }] : []),
+          ...(data.address ? [{ label: "Address",        value: data.address, wide: true }] : []),
+        ]}
+        footer={{ label: "Verified via UIDAI DigiLocker · Aadhaar is always masked", date: today }}
+      />
     </motion.div>
   );
 }
@@ -1388,57 +1199,30 @@ function Step2GST({ docData, setDocData }) {
 }
 
 /* ─── GST Certificate ────────────────────────────────────────────── */
-function GSTCertificate({ data }) {
+export function GSTCertificate({ data }) {
   const today = new Date().toLocaleDateString("en-IN", { day:"2-digit", month:"short", year:"numeric" });
 
   return (
-    <motion.div {...certAnim} className="rounded-2xl overflow-hidden"
-      style={{
-        boxShadow: "0 8px 32px rgba(14,165,233,0.12), 0 2px 8px rgba(0,0,0,0.07)",
-        border: "1.5px solid rgba(14,165,233,0.35)",
-      }}>
-      <div className="relative px-6 pt-5 pb-6"
-        style={{
-          background: "linear-gradient(135deg,#F0F9FF 0%,#E0F2FE 50%,#F0F9FF 100%)",
-          borderBottom: "1px solid rgba(14,165,233,0.2)",
-        }}>
-        <div className="absolute inset-0 pointer-events-none"
-          style={{ backgroundImage:`repeating-linear-gradient(45deg,transparent 0,transparent 8px,rgba(14,165,233,0.035) 8px,rgba(14,165,233,0.035) 9px)` }} />
-
-        <div className="relative z-10 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-xl text-[22px]"
-              style={{ background:"linear-gradient(135deg,#E0F2FE,#BAE6FD)", border:"1.5px solid rgba(14,165,233,0.3)", boxShadow:"0 2px 6px rgba(14,165,233,0.18)" }}>
-              🏢
-            </div>
-            <div>
-              <p className="text-[8px] font-black uppercase tracking-[0.18em] text-sky-800 mb-0.5">
-                GST Network (GSTN) · Government of India
-              </p>
-              <p className="text-[15px] font-extrabold text-sky-950 leading-tight">
-                GST Verification Certificate
-              </p>
-              <p className="text-[9px] text-sky-700/70 font-medium mt-0.5">
-                Goods and Services Tax · Ministry of Finance
-              </p>
-            </div>
-          </div>
-          <VerifiedSeal color="#0EA5E9" label="VERIFIED" sub={["GSTN","Portal"]} />
-        </div>
-      </div>
-
-      {/* Sky stripe */}
-      <div className="h-[3px]" style={{ background:"linear-gradient(to right,#0EA5E9,#0284C7,#0EA5E9)" }} />
-
-      <div className="bg-white dark:bg-gray-900 divide-y divide-gray-100 dark:divide-gray-800">
-        <DocRow label="GSTIN"        value={data?.gst_number}              mono primary />
-        <DocRow label="Legal name"   value={data?.company_name} />
-        <DocRow label="Trade name"   value={data?.company_name} />
-      </div>
-
-      <CertFooter color="#0EA5E9" textColor="text-sky-800/60" iconColor="text-sky-400"
-        label="Verified via GSTN portal · Ministry of Finance, Government of India"
-        date={today} />
+    <motion.div {...certAnim}>
+      {/* No extra fields here on purpose: the API's "trade name" is the
+          same value as "legal name" (data.company_name) for every GST
+          response we've seen — showing it twice would be exactly the
+          repeated content this redesign is meant to remove. */}
+      <IdCardFace
+        grad="linear-gradient(135deg,#0369A1 0%,#0EA5E9 45%,#075985 100%)"
+        textColor="#F0F9FF"
+        chipGrad="linear-gradient(135deg,#FDE68A,#F59E0B)"
+        boxShadow="0 8px 32px rgba(14,165,233,0.14), 0 2px 8px rgba(0,0,0,0.07)"
+        border="1.5px solid rgba(14,165,233,0.35)"
+        eyebrow="GST Network (GSTN) · Govt. of India"
+        issuer="GST Registration"
+        numberLabel="GSTIN"
+        number={data?.gst_number}
+        holderLabel="Legal Name"
+        holder={data?.company_name}
+        tag="Verified"
+        footer={{ label: "Verified via GSTN portal · Ministry of Finance, Government of India", date: today }}
+      />
     </motion.div>
   );
 }
@@ -1550,62 +1334,31 @@ function Step3Bank({ bankData, setBankData, onVerified }) {
 }
 
 /* ─── Bank Certificate ───────────────────────────────────────────── */
-function BankCertificate({ data }) {
+export function BankCertificate({ data }) {
   const isVerified = data.status?.toLowerCase() === "verified";
   const today = new Date().toLocaleDateString("en-IN", { day:"2-digit", month:"short", year:"numeric" });
 
   return (
-    <motion.div {...certAnim} className="rounded-2xl overflow-hidden"
-      style={{
-        boxShadow: "0 8px 32px rgba(16,185,129,0.12), 0 2px 8px rgba(0,0,0,0.07)",
-        border: "1.5px solid rgba(16,185,129,0.35)",
-      }}>
-      <div className="relative px-6 pt-5 pb-6"
-        style={{
-          background: "linear-gradient(135deg,#F4FDF8 0%,#DCFCE7 50%,#F4FDF8 100%)",
-          borderBottom: "1px solid rgba(16,185,129,0.2)",
-        }}>
-        <div className="absolute inset-0 pointer-events-none"
-          style={{ backgroundImage:`repeating-linear-gradient(30deg,transparent 0,transparent 8px,rgba(16,185,129,0.04) 8px,rgba(16,185,129,0.04) 9px)` }} />
-
-        <div className="relative z-10 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-xl"
-              style={{ background:"linear-gradient(135deg,#DCFCE7,#A7F3D0)", border:"1.5px solid rgba(16,185,129,0.25)", boxShadow:"0 2px 6px rgba(16,185,129,0.18)" }}>
-              <Landmark size={20} className="text-emerald-700" />
-            </div>
-            <div>
-              <p className="text-[8px] font-black uppercase tracking-[0.18em] text-emerald-800 mb-0.5">
-                {data.bank_name ?? "Bank"} · Account Verification
-              </p>
-              <p className="text-[15px] font-extrabold text-emerald-950 leading-tight">
-                Account Verification Certificate
-              </p>
-              <p className="text-[9px] text-emerald-700/70 font-medium mt-0.5">
-                Penny-Drop Verification · RBI Compliant
-              </p>
-            </div>
-          </div>
-          <VerifiedSeal color="#10B981" label="VERIFIED" sub={["Bank Acct","Verified"]} />
-        </div>
-      </div>
-
-      <div className="h-[3px]" style={{ background:"linear-gradient(to right,#10B981,#059669,#10B981)" }} />
-
-      <div className="bg-white dark:bg-gray-900 divide-y divide-gray-100 dark:divide-gray-800">
-        <DocRow label="Bank"           value={data.bank_name}      primary />
-        <DocRow label="Account holder" value={data.account_holder} />
-        <DocRow label="Account number" value={data.account_masked} mono />
-        <DocRow label="IFSC code"      value={data.ifsc}           mono />
-        {data.branch && <DocRow label="Branch"        value={data.branch} />}
-        <DocRow label="Status">
-          <StatusBadge active={isVerified} label={data.status} />
-        </DocRow>
-      </div>
-
-      <CertFooter color="#10B981" textColor="text-emerald-800/60" iconColor="text-emerald-500"
-        label="Verified via penny-drop · No debit was made to this account"
-        date={today} />
+    <motion.div {...certAnim}>
+      <IdCardFace
+        grad="linear-gradient(135deg,#047857 0%,#10B981 45%,#065F46 100%)"
+        textColor="#ECFDF5"
+        chipGrad="linear-gradient(135deg,#FDE68A,#F59E0B)"
+        boxShadow="0 8px 32px rgba(16,185,129,0.14), 0 2px 8px rgba(0,0,0,0.07)"
+        border="1.5px solid rgba(16,185,129,0.35)"
+        eyebrow="Penny-Drop Verification · RBI Compliant"
+        issuer={data.bank_name ?? "Bank Account"}
+        numberLabel="Account Number"
+        number={data.account_masked}
+        holderLabel="Account Holder"
+        holder={data.account_holder}
+        tag={isVerified ? "Verified" : data.status}
+        fields={[
+          { label: "IFSC code", value: data.ifsc },
+          ...(data.branch ? [{ label: "Branch", value: data.branch }] : []),
+        ]}
+        footer={{ label: "Verified via penny-drop · No debit was made to this account", date: today }}
+      />
     </motion.div>
   );
 }
@@ -1728,86 +1481,16 @@ Upload <strong>any ONE</strong> of the following documents to verify your proper
   Water Bill is optional and may be requested if additional verification is required.
 </p>
 </InfoNote>
+
+            {phase === "done" && (docData?.file || docData?.fileName) && (
+              <p className="text-[11px] text-gray-400 dark:text-gray-500 leading-relaxed">
+                By submitting you confirm all information provided is accurate and authorise
+                venuebook.in to verify your identity for compliance purposes under Indian law.
+              </p>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
-    </StepShell>
-  );
-}
-
-/* ════════════════════════════════════════════════════════════════════
-   STEP 5 — REVIEW & SUBMIT
-════════════════════════════════════════════════════════════════════ */
-function Step5Review({ panData, aadhaarData, bankData, docData, category }) {
-  const step2Label = category === "business" ? "GST verified" : "Aadhaar verified";
-  const checks = [
-    { key:1, label:"Company PAN verified",   icon:CreditCard,  done:!!panData },
-    { key:2, label:step2Label,                icon:Fingerprint, done: category === "business" ? !!docData?.gstVerified : !!aadhaarData },
-    { key:3, label:"Bank account verified",  icon:Landmark,    done:!!bankData },
-    { key:4, label:"Property Verification Document",   icon:Upload,      done:!!(docData?.file || docData?.fileName) },
-  ];
-  const allDone = checks.every(c => c.done);
-
-  return (
-    <StepShell title="Review & submit" icon={ShieldCheck}
-      desc="Review all verified details before submitting your KYC for approval.">
-
-      {/* Status banner */}
-      <div className={[
-        "flex items-center gap-3 rounded-xl px-5 py-4 mb-5",
-        allDone
-          ? "bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/30"
-          : "border border-gray-100 dark:border-gray-800",
-      ].join(" ")}
-        style={!allDone ? { background:GRAD_SOFT } : undefined}>
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
-          style={{ background: allDone ? "linear-gradient(135deg,#10b981,#059669)" : GRAD }}>
-          <ShieldCheck size={17} className="text-white" />
-        </div>
-        <div>
-          <p className={[
-            "text-[13.5px] font-bold",
-            allDone ? "text-emerald-800 dark:text-emerald-300" : "text-violet-800 dark:text-violet-300",
-          ].join(" ")}>
-            {allDone ? "Ready for venuebook.in review" : "Verification in progress"}
-          </p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            {checks.filter(c=>c.done).length} of {checks.length} verifications completed
-          </p>
-        </div>
-      </div>
-
-      {/* Checklist */}
-      <div className="rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden mb-5">
-        {checks.map((c, i) => (
-          <div key={c.key}
-            className={["flex items-center gap-3 px-4 py-3",
-              i < checks.length-1 ? "border-b border-gray-50 dark:border-gray-800/60" : ""].join(" ")}>
-            <div className={["flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
-              c.done ? "text-white" : "bg-gray-100 dark:bg-gray-800"].join(" ")}
-              style={c.done ? { background:GRAD } : undefined}>
-              <c.icon size={14} className={c.done ? "text-white" : "text-gray-400 dark:text-gray-500"} />
-            </div>
-            <span className={["text-[13px] font-medium flex-1",
-              c.done ? "text-gray-800 dark:text-gray-200" : "text-gray-400 dark:text-gray-500"].join(" ")}>
-              {c.label}
-            </span>
-            {c.done ? (
-              <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
-                <CheckCircle2 size={14} />
-                <span className="text-[11px] font-bold">Complete</span>
-              </div>
-            ) : (
-              <span className="text-[11px] font-medium text-amber-500">Pending</span>
-            )}
-          </div>
-        ))}
-      </div>
-
-      <p className="text-[11px] text-gray-400 dark:text-gray-500 leading-relaxed">
-        By submitting you confirm all information is accurate and authorise venuebook.in to verify
-        your business identity for compliance purposes under Indian law.
-      </p>
     </StepShell>
   );
 }
@@ -1861,15 +1544,15 @@ function SubmittedView({ onClose }) {
 
 function StepShell({ icon: Icon, title, desc, children }) {
   return (
-    <div className="pb-6">
-      <div className="flex items-start gap-4 mb-8">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl mt-0.5"
+    <div className="pb-4">
+      <div className="flex items-start gap-3.5 mb-5">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl mt-0.5"
           style={{ background:GRAD_SOFT }}>
-          <Icon size={20} className="text-violet-600 dark:text-violet-400" />
+          <Icon size={18} className="text-violet-600 dark:text-violet-400" />
         </div>
-        <div>
-          <h3 className="text-[18px] font-bold text-gray-900 dark:text-white leading-tight">{title}</h3>
-          <p className="text-sm text-gray-400 dark:text-gray-500 mt-1 leading-snug max-w-lg">{desc}</p>
+        <div className="min-w-0">
+          <h3 className="text-[16px] font-bold text-gray-900 dark:text-white leading-tight">{title}</h3>
+          <p className="text-[13px] text-gray-400 dark:text-gray-500 mt-1 leading-snug max-w-lg">{desc}</p>
         </div>
       </div>
       {children}
@@ -1877,70 +1560,133 @@ function StepShell({ icon: Icon, title, desc, children }) {
   );
 }
 
-function DocRow({ label, value, children, primary=false, mono=false }) {
-  return (
-    <div className="flex items-stretch divide-x divide-gray-100 dark:divide-gray-800">
-      <div className="flex items-center w-36 shrink-0 px-5 py-2.5 bg-gray-50/80 dark:bg-gray-800/30">
-        <span className="text-[9.5px] font-bold uppercase tracking-[0.08em] text-gray-400 dark:text-gray-500 leading-tight">
-          {label}
-        </span>
-      </div>
-      <div className={[
-        "flex-1 px-5 py-2.5",
-        primary ? "text-[13px] font-bold text-gray-900 dark:text-white" : "text-[12px] font-semibold text-gray-700 dark:text-gray-300",
-        mono ? "font-mono tracking-[0.1em]" : "",
-      ].join(" ")}>
-        {children ?? value}
-      </div>
-    </div>
-  );
-}
+/* ─────────────────────────────────────────────────────────────────────
+   ID CARD FACE — the whole certificate now lives inside this one card:
+   headline number + holder up top, any remaining details as compact
+   rows further down, verification provenance as a footer strip — all
+   on the same gradient, nothing repeated, no separate white table
+   underneath. Sized to its content rather than a fixed aspect ratio,
+   since "everything on one card" means variable-length values (an
+   address, a business category) that a physical ID-card shape can't
+   actually hold.
 
-/* Reusable verification seal */
-function VerifiedSeal({ color, label, sub }) {
-  return (
-    <div className="flex flex-col items-center shrink-0 gap-1.5">
-      <div className="relative flex items-center justify-center rounded-full"
-        style={{ width:62, height:62,
-          background:`radial-gradient(circle at 38% 38%, #ffffff 40%, ${color}22 100%)`,
-          border:`2px solid ${color}`,
-          boxShadow:`0 3px 12px ${color}33` }}>
-        <div className="absolute rounded-full pointer-events-none"
-          style={{ inset:4, border:`1px dashed ${color}55` }} />
-        <CheckCircle2 size={30} style={{ color }} className="relative z-10" strokeWidth={2} />
-      </div>
-      <div className="text-center">
-        <p className="text-[8px] font-black uppercase tracking-[0.16em] leading-none mb-0.5"
-          style={{ color }}>{label}</p>
-        <p className="text-[7.5px] font-medium uppercase tracking-[0.06em] leading-snug text-gray-400">
-          {sub[0]}<br/>{sub[1]}
-        </p>
-      </div>
-    </div>
-  );
-}
+   Deliberately NOT a pixel copy of an actual PAN card or a bank debit
+   card: no Ashoka Emblem / State-of-India insignia, no card-network
+   logo (Visa/RuPay/etc.), no fabricated expiry/CVV. Those specific
+   elements are what make a real PAN card or debit card a legally
+   protected / regulated document design — reproducing them exactly
+   risks looking like a forged ID rather than "verified data, nicely
+   presented." This keeps the card *language* (emboss, chip, sheen,
+   holder line) without claiming to *be* the real thing.
+───────────────────────────────────────────────────────────────────── */
+function IdCardFace({ grad, textColor, chipGrad, eyebrow, issuer, numberLabel, number, holderLabel, holder, tag, fields = [], footer, boxShadow, border }) {
+  const rowBorder = `${textColor}26`;
 
-/* Status badge — active/inactive */
-function StatusBadge({ active, label }) {
-  return (
-    <span className={`inline-flex items-center gap-2 text-[12px] font-bold ${active ? "text-emerald-700" : "text-red-600"}`}>
-      <span className={`h-2 w-2 rounded-full ${active ? "bg-emerald-500" : "bg-red-500"}`} />
-      {label}
-    </span>
-  );
-}
+  /* Full width at every breakpoint, mobile included — per explicit
+     correction, no width cap on phones anymore. "Small on mobile" now
+     comes entirely from compact type/spacing (see the tightened header
+     block and field grid below), not from constraining the card's
+     footprint. Height is intrinsic on every breakpoint too — no
+     max-height, no internal scroll — so nothing is ever clipped or
+     hidden behind a scrollbar regardless of field count.
 
-/* Certificate footer bar */
-function CertFooter({ color, textColor, iconColor, label, date }) {
+     boxShadow/border live here (not on a wrapper) so the card doesn't
+     need a second element duplicating its own rounding/shadow. */
   return (
-    <div className="flex items-center justify-between px-6 py-2.5"
-      style={{ borderTop:`1px solid ${color}22`,
-        background:`linear-gradient(135deg,${color}06,${color}0a)` }}>
-      <div className="flex items-center gap-2">
-        <Shield size={10} className={`${iconColor} shrink-0`} />
-        <p className={`text-[9px] ${textColor} font-medium`}>{label}</p>
+    <div className="relative w-full
+      overflow-hidden rounded-2xl flex flex-col"
+      style={{ background: grad, boxShadow, border }}>
+      {/* faint security-print texture */}
+      <div className="absolute inset-0 pointer-events-none opacity-[0.07]"
+        style={{ backgroundImage: `repeating-linear-gradient(115deg, ${textColor} 0px, ${textColor} 1px, transparent 1px, transparent 9px)` }} />
+      {/* soft sheen */}
+      <div className="absolute -top-12 -right-10 h-40 w-40 rounded-full pointer-events-none"
+        style={{ background: textColor, opacity: 0.12, filter: "blur(28px)" }} />
+
+      <div className="relative p-3.5 pb-0 shrink-0">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[7.5px] font-black uppercase tracking-[0.16em] opacity-75 break-words" style={{ color: textColor }}>
+              {eyebrow}
+            </p>
+            <p className="text-[11.5px] font-extrabold leading-tight mt-0.5 break-words" style={{ color: textColor }}>
+              {issuer}
+            </p>
+          </div>
+          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full"
+            style={{ background: "rgba(255,255,255,0.18)" }}>
+            <CheckCircle2 size={13} style={{ color: textColor }} strokeWidth={2.5} />
+          </div>
+        </div>
+
+        <div className="mt-2.5">
+          <p className="text-[7.5px] font-bold uppercase tracking-[0.14em] opacity-60 mb-1" style={{ color: textColor }}>
+            {numberLabel}
+          </p>
+          <div className="flex items-center gap-2.5">
+            <div className="relative h-6 w-9 shrink-0 rounded-[9px] overflow-hidden"
+              style={{ background: chipGrad, boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.2)" }}>
+              <svg viewBox="0 0 36 24" className="absolute inset-0 h-full w-full" fill="none">
+                <rect x="10" y="7.5" width="16" height="9" rx="2" stroke="rgba(0,0,0,0.4)" strokeWidth="1" />
+                <line x1="18" y1="1.5" x2="18" y2="7.5" stroke="rgba(0,0,0,0.4)" strokeWidth="1" />
+                <line x1="18" y1="16.5" x2="18" y2="22.5" stroke="rgba(0,0,0,0.4)" strokeWidth="1" />
+                <line x1="1.5" y1="12" x2="10" y2="12" stroke="rgba(0,0,0,0.4)" strokeWidth="1" />
+                <line x1="26" y1="12" x2="34.5" y2="12" stroke="rgba(0,0,0,0.4)" strokeWidth="1" />
+                <line x1="1.5" y1="1.5" x2="10" y2="7.5" stroke="rgba(0,0,0,0.4)" strokeWidth="1" />
+                <line x1="34.5" y1="1.5" x2="26" y2="7.5" stroke="rgba(0,0,0,0.4)" strokeWidth="1" />
+                <line x1="1.5" y1="22.5" x2="10" y2="16.5" stroke="rgba(0,0,0,0.4)" strokeWidth="1" />
+                <line x1="34.5" y1="22.5" x2="26" y2="16.5" stroke="rgba(0,0,0,0.4)" strokeWidth="1" />
+              </svg>
+            </div>
+            <p className="text-[15px] font-bold font-mono tracking-[0.1em] truncate min-w-0" style={{ color: textColor }}>
+              {number || "— — — — — — — — — —"}
+            </p>
+            {tag && (
+              <span className="shrink-0 ml-auto inline-flex items-center rounded-full px-2 py-[3px] text-[7.5px] font-bold uppercase tracking-wide"
+                style={{ background: "rgba(255,255,255,0.18)", color: textColor }}>
+                {tag}
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-2 min-w-0 pb-2.5">
+          <p className="text-[7.5px] font-bold uppercase tracking-[0.14em] opacity-60" style={{ color: textColor }}>
+            {holderLabel}
+          </p>
+          <p className="text-[12px] font-semibold truncate" style={{ color: textColor }}>
+            {holder || "—"}
+          </p>
+        </div>
       </div>
-      <p className="text-[9px] text-gray-400 font-mono shrink-0">{date}</p>
+
+      {fields.length > 0 && (
+        <div className="relative px-3.5 py-2.5" style={{ borderTop: `1px solid ${rowBorder}` }}>
+          <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+            {fields.map(f => (
+              <div key={f.label} className={`min-w-0 ${f.wide ? "col-span-2" : ""}`}>
+                <p className="text-[7.5px] font-bold uppercase tracking-wide opacity-60 mb-0.5" style={{ color: textColor }}>
+                  {f.label}
+                </p>
+                <p className="text-[11px] font-semibold leading-snug break-words" style={{ color: textColor }}>
+                  {f.value}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {footer && (
+        <div className="relative shrink-0 flex items-center justify-between gap-3 px-3.5 py-2"
+          style={{ borderTop: `1px solid ${rowBorder}`, background: "rgba(0,0,0,0.08)" }}>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <Shield size={10} style={{ color: textColor, opacity: 0.7 }} className="shrink-0" />
+            <p className="text-[9px] truncate" style={{ color: textColor, opacity: 0.75 }}>{footer.label}</p>
+          </div>
+          <p className="text-[9px] font-mono shrink-0" style={{ color: textColor, opacity: 0.6 }}>{footer.date}</p>
+        </div>
+      )}
     </div>
   );
 }
