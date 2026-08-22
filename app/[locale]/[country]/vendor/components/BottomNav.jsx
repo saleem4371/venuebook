@@ -20,7 +20,7 @@ import Link                                  from "next/link";
 import {
   LayoutDashboard, Building2, CalendarDays,
   ClipboardList, MoreHorizontal, X,
-  Layers, Package, BarChart3, Settings,
+  Layers, Package, BarChart3, Settings, Megaphone,
 } from "lucide-react";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useUI }                             from "@/context/VendorUIContext";
@@ -113,6 +113,7 @@ export default function BottomDock() {
       ]
     : []),
 
+  { label: "Ads", href: `${base}/ads`, icon: Megaphone },
   { label: "Reports", href: `${base}/reports`, icon: BarChart3 },
   { label: "Settings", href: `${base}/settings`, icon: Settings },
 ], [base, settingsMap]);

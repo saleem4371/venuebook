@@ -90,13 +90,13 @@ function VendorAuthGuard({ children }) {
       }
       } catch (_) {}
 
-    if (!isListed) {
-      router.replace(`/${locale}/${country}/list`);
-    }
+    // if (!isListed) {
+    //   router.replace(`/${locale}/${country}/list`);
+    // }
   }, [loading, isLoggedIn, isListed, locale, country, router]);
 
   if (loading) return null;
-  if (!isLoggedIn || !isListed) return null;
+  if (!isLoggedIn) return null;
 
   return children;
 }
