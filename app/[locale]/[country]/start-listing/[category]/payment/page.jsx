@@ -1,5 +1,4 @@
 "use client";
-
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
@@ -10,39 +9,27 @@ import {
   MessageSquare, CalendarCheck, Lock,
   MapPin, ChevronRight, BadgeCheck, FileText, Info,
 } from "lucide-react";
-
 import lightLogo from "@/assets/logo.svg";
 import darkLogo  from "@/assets/logo.png";
 import { CATEGORY_TINTS } from "@/config/categoryConfig";
-
-
 import {
-  cashfree_subscription,
   cashfree_plans,
   razorpay_subscription,
   stripe_subscription,
   verifyRazorpaySubscription
 } from "@/services/payment.service";
-
-
 import { last_parent_id } from "@/services/listing.service";
 import termsData from "@/data/terms_and_conditions.json";
-
 import { useCategory } from "@/context/CategoryContext";
 import { Exo_2 } from "next/font/google";
 import { currency_icon,formatPrice , getCountry} from '@/lib/currency_format'
-
-
-
 // ─────────────────────────────────────────────────────────────────────────────
 //  Config
 // ─────────────────────────────────────────────────────────────────────────────
-
 const CAT_KEY = {
   venue: "venues", farmstay: "farmstays", studio: "studios",
   rental: "rentals", workspace: "workspaces", experience: "experiences",
 };
-
 const CAT_META = {
   venue:      { label: "Venue",      emoji: "🏛️" },
   farmstay:   { label: "Farmstay",   emoji: "🌾" },
@@ -51,7 +38,6 @@ const CAT_META = {
   workspace:  { label: "Workspace",  emoji: "💻" },
   experience: { label: "Experience", emoji: "⭐" },
 };
-
 const BOOKING_MODES = [
   {
     key:   "enquiry",
@@ -78,7 +64,6 @@ const BOOKING_MODES = [
     color: "#10b981",
   },
 ];
-
 const PLANS = [
   {
     key:         "starter",
@@ -111,7 +96,6 @@ const PLANS = [
     badge:       null,
   },
 ];
-
 // Payment methods & gateway by region
 const PAYMENT_CONFIG = {
   in: {
@@ -125,19 +109,15 @@ const PAYMENT_CONFIG = {
     secureMsg: "Payments secured by Stripe · venuebook.in never stores card details",
   },
 };
-
 // ─────────────────────────────────────────────────────────────────────────────
 //  Razorpay checkout script loader
 //  Razorpay doesn't ship an npm SDK for client-side checkout — it's loaded via
 //  a <script> tag that exposes `window.Razorpay`. We load it once and reuse it.
 // ─────────────────────────────────────────────────────────────────────────────
-
 let razorpayScriptPromise = null;
-
 function loadRazorpayScript() {
   if (typeof window === "undefined") return Promise.resolve(false);
   if (window.Razorpay) return Promise.resolve(true);
-
   if (!razorpayScriptPromise) {
     razorpayScriptPromise = new Promise((resolve) => {
       const script = document.createElement("script");
@@ -150,23 +130,19 @@ function loadRazorpayScript() {
   }
   return razorpayScriptPromise;
 }
-
 // ─────────────────────────────────────────────────────────────────────────────
 //  Page
 // ─────────────────────────────────────────────────────────────────────────────
-
 export default function PaymentPage() {
   const params   = useParams();
   const router   = useRouter();
   const locale   = params?.locale   || "en";
   const country  = params?.country  || "in";
   const category = params?.category || "venue";
-
   const tintKey    = CAT_KEY[category] || "venues";
   const tint       = CATEGORY_TINTS[tintKey] || CATEGORY_TINTS.venues;
   const catMeta    = CAT_META[category] || CAT_META.venue;
   const payConfig  = PAYMENT_CONFIG[country] || PAYMENT_CONFIG.in;
-
   const [isDark,          setIsDark]         = useState(false);
   const [listingInfo,     setListingInfo]    = useState(null);
   const [selectedModes,   setSelectedModes]  = useState(new Set(["enquiry"]));
@@ -177,40 +153,39 @@ export default function PaymentPage() {
   const [couponDiscount,  setCouponDiscount] = useState(0);
   const [agreed,          setAgreed]         = useState(false);
   const [activating,      setActivating]     = useState(false);
+  const [quantity,        setQuantity]       = useState(1);
   const [showTermsModal,     setShowTermsModal]     = useState(false);
   const [mobileExpanded,     setMobileExpanded]     = useState(false);
-
     const [loading, setLoading] = useState(false);
+    const countrys = getCountry() || {};
 
-    const countrys = getCountry();
-  console.log(countrys.id)
-
-
-useEffect(() => {
-  const handlePopState = () => {
-    router.replace(`/${locale}/${country}/home`);
-  };
-
-  window.addEventListener("popstate", handlePopState);
-
-  return () => {
-    window.removeEventListener("popstate", handlePopState);
-  };
-}, [router, locale, country]);
+  // ── Hard-block browser back navigation on this page ──
+  // Instead of letting the user navigate back and then redirecting them to
+  // /home (which causes a visible flash/jump), we trap the back gesture by
+  // continuously re-pushing the current URL onto the history stack. The user
+  // never actually leaves this page via back/forward.
+  useEffect(() => {
+    // Seed an extra history entry so the very first back press is absorbed.
+    window.history.pushState(null, "", window.location.href);
+    const handlePopState = () => {
+      window.history.pushState(null, "", window.location.href);
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, []);
 
    const { activeCategory } = useCategory();
-
  
-
   const [plans,  setPlans] = useState([]);
   const [parentId,  setParentId] = useState('');
 useEffect(() => {
   const filtered = plans.filter(
     (p) => String(p.plan_title) === billing
   );
-
   if (filtered.length) {
-    setSelectedPlan(filtered[0].id);
+    setSelectedPlan(filtered[0].plan_id);
   }
 }, [plans, billing]);
   // Dark mode sync
@@ -221,59 +196,44 @@ useEffect(() => {
     obs.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
     return () => obs.disconnect();
   }, []);
-
   // Read listing snapshot
   useEffect(() => {
     try {
       const raw = localStorage.getItem("vb_pending_" + category);
       if (raw) setListingInfo(JSON.parse(raw));
     } catch (_) {}
-
     load_plan()
   }, [category]);
-
 const load_plan = async () => {
   try {
     const parents = await last_parent_id(category);
-
     const parentIdData = parents?.data;
-
     if (!parentIdData) return;
-
     setParentId(parentIdData);
-
     const plan = await cashfree_plans(parentIdData , category);
-
     setPlans(plan?.data || []);
   } catch (error) {
     console.error("Failed to load plans:", error);
   }
 };
-
 useEffect(() => {
   if (!parentId) return;
-
   const fetchPlans = async () => {
     const plan = await cashfree_plans(parentId , category);
     setPlans(plan.data);
   };
-
   fetchPlans();
 }, [parentId]);
-
   // Pricing
  const visiblePlans = plans.filter(
   (p) => String(p.plan_title) === billing
 );
-
 const plan =
   visiblePlans.find((p) => p.id === selectedPlan) ||
   visiblePlans[0];
-
 const basePrice    = Number(plan?.offer_amount || plan?.amount || 0);
 const maxVenue    = Number(plan?.max_venue);
 const percentage    = Number(plan?.percentage || 0);
-
 // ── Plan type flags — drive whether the payment gateway is required ──
 // 1. Free plan:       ₹0 subscription + 0% commission  → no gateway, straight to dashboard
 // 2. Paid plan:        subscription amount > 0 (commission % may or may not be set) → go through gateway
@@ -282,25 +242,25 @@ const isFreePlan       = basePrice === 0 && percentage === 0;
 const isCommissionPlan = basePrice === 0 && percentage > 0;
 const isPaidPlan       = basePrice > 0;
 const skipPaymentGateway = isFreePlan || isCommissionPlan;
-
 // For annual plans the API returns the yearly charge; derive per-month for display.
-const perMonth     = billing === "2" && basePrice > 0 ? Math.round(basePrice / 12) : basePrice;
-const subtotal     = Math.max(0, basePrice);
-const gst          = Math.round(subtotal * 0.18);
-const total        = subtotal + gst;           // actual charge: annual or monthly incl. GST
-// annualTotal is the basePrice itself when billing === "2" (API already returns yearly amount)
-const annualTotal  = billing === "2" ? basePrice : 0;
-
+// quantity scales the per-unit basePrice up before GST is split out.
+// Plan prices are GST-inclusive: the number from the API is the final charge,
+// so GST is extracted from it rather than added on top.
+const quantityPrice = basePrice * quantity;
+const perMonth     = billing === "2" && quantityPrice > 0 ? Math.round(quantityPrice / 12) : quantityPrice;
+const total        = Math.max(0, quantityPrice);      // actual charge: annual or monthly, GST-inclusive
+const subtotal      = Math.round(total / 1.18);         // price excl. GST, for the breakdown line
+const gst           = total - subtotal;                 // GST portion already inside `total`
+// annualTotal is the (quantity-scaled) basePrice when billing === "2" — already GST-inclusive
+const annualTotal  = billing === "2" ? quantityPrice : 0;
 // Max discount % across annual plans — for the toggle label
 const annualDiscount = (() => {
   const annualPlans = plans.filter((p) => String(p.plan_title) === "2");
   const discounts   = annualPlans.map((p) => Number(p.discount || 0)).filter((d) => d > 0);
   return discounts.length ? Math.max(...discounts) : 0;
 })();
-
 const fmt = (n) =>
   n === 0 ? "₹0" : `₹${n.toLocaleString("en-IN")}`;
-
   const toggleMode = useCallback((key) => {
     if (key === "enquiry") return; // Enquiry is mandatory and cannot be unchecked
     setSelectedModes((prev) => {
@@ -313,7 +273,6 @@ const fmt = (n) =>
       return next;
     });
   }, []);
-
   const applyCoupon = () => {
     const code = coupon.trim().toUpperCase();
     if (code === "VB2024" || code === "VBFREE") {
@@ -324,24 +283,29 @@ const fmt = (n) =>
       setCouponStatus("err");
     }
   };
-
   const handleActivate = () => {
     if (!agreed || activating) return;
     setActivating(true);
-
     // Free plan (₹0 + 0%) or Commission plan (₹0 + %) — no payment required
     if (skipPaymentGateway) {
       activateWithoutPayment();
       return;
     }
-
     // Paid plan — India goes through Razorpay
     razorpay_checkout(1);
   };
-
-  // Activates the listing directly (Free plan or Commission-only plan) without
-  // opening any payment gateway, then sends the user to their dashboard.
-  const activateWithoutPayment = async () => {
+  // Activates the listing directly — without opening Razorpay or Stripe —
+  // then routes the user onward.
+  // paymentType tags *why* the gateway was skipped, so it's distinguishable
+  // in storage/analytics later, and also decides where we send the user:
+  //  - "no_payment_required": Free or Commission-only plan (nothing to charge)
+  //                           → straight to the dashboard, same as before.
+  //  - "payment_skipped":     user explicitly chose "Skip Payment" on a plan
+  //                           that does have a charge attached
+  //                           → the same subscription-success page the paid
+  //                             Razorpay flow lands on, so the confirmation
+  //                             experience is consistent either way.
+  const activateWithoutPayment = async (paymentType = "no_payment_required") => {
     try {
       const payload = {
         selected: 1,
@@ -350,100 +314,30 @@ const fmt = (n) =>
         selectedModes: Array.from(selectedModes),
         coupon,
         billing,
+        quantity,
         parent_venue_id: parentId,
         category,
       };
-
-      await cashfree_subscription(payload);
-
-      try { localStorage.setItem("vb_payment_type", "no_payment_required"); } catch (_) {}
+      await razorpay_subscription(payload);
+      try { localStorage.setItem("vb_payment_type", paymentType); } catch (_) {}
       try { localStorage.removeItem("vb_pending_" + category); } catch (_) {}
-
-      router.push("/" + locale + "/" + country + "/vendor/dashboard");
+      if (paymentType === "payment_skipped") {
+        router.push(
+          "/" + locale + "/" + country +
+          "/start-listing/venue/subscription-success?payment_status=skipped"
+        );
+      } else {
+        router.push("/" + locale + "/" + country + "/vendor/dashboard");
+      }
     } catch (error) {
       console.error("Activation Error:", error);
     } finally {
       setActivating(false);
     }
   };
-
-  // ── Razorpay checkout (India / country id 2) ─────────────────────────────
-  // Expects the backend `razorpay_subscription` endpoint to return either:
-  //   { data: { key_id, amount, currency, order_id, notes... } }        (one-time order)
-  // or
-  //   { data: { key_id, amount, currency, subscription_id, notes... } } (recurring subscription)
-  // Only one of order_id / subscription_id needs to be present.
-  // const razorpay_checkout = async (selected) => { 
-  //   try {
-  //     const payload = {
-  //       selected: selected,
-  //       selectedPlan: selectedPlan,
-  //       agreed: agreed,
-  //       selectedModes: Array.from(selectedModes),
-  //       coupon: coupon,
-  //       billing: billing,
-  //       parent_venue_id: parentId,
-  //       category: category,
-  //     };
-  //     const res = await razorpay_subscription(payload);
-  //     const order = res?.data;
-
-  //     if (!order?.key_id || (!order?.order_id && !order?.subscription_id)) {
-  //       throw new Error("Razorpay order could not be created");
-  //     }
-
-  //     // Persist payment type so success page can show the right variant
-  //     try { localStorage.setItem("vb_payment_type", selected === 0 ? "pay_later" : "pay_now"); } catch (_) {}
-
-  //     const scriptReady = await loadRazorpayScript();
-  //     if (!scriptReady || !window.Razorpay) {
-  //       throw new Error("Razorpay checkout script failed to load");
-  //     }
-
-  //     const options = {
-  //       key: order.key_id,
-  //       amount: order.amount,
-  //       currency: order.currency || "INR",
-  //       name: "venuebook.in",
-  //       description: plan?.plan_name ? `${plan.plan_name} plan subscription` : "Subscription",
-  //       order_id: order.order_id,
-  //       subscription_id: order.subscription_id,
-  //       prefill: {
-  //         name: listingInfo?.ownerName || listingInfo?.name || "",
-  //         email: listingInfo?.email || "",
-  //         contact: listingInfo?.phone || "",
-  //       },
-  //       theme: { color: tint.hex },
-  //       handler: function () {
-  //         // Payment succeeded — Razorpay's checkout confirms this client-side
-  //         // via this callback (unlike Cashfree's redirect-based flow).
-  //         try { localStorage.removeItem("vb_pending_" + category); } catch (_) {}
-  //         setActivating(false);
-  //         router.push("/" + locale + "/" + country + "/vendor/dashboard");
-  //       },
-  //       modal: {
-  //         ondismiss: function () {
-  //           // User closed the checkout without paying
-  //           setActivating(false);
-  //         },
-  //       },
-  //     };
-
-  //     const rzp = new window.Razorpay(options);
-  //     rzp.on("payment.failed", function (response) {
-  //       console.error("Razorpay payment failed:", response?.error);
-  //       setActivating(false);
-  //     });
-  //     rzp.open();
-  //   } catch (error) {
-  //     console.error("Razorpay Error:", error);
-  //     setActivating(false);
-  //   }
-  // };
   const razorpay_checkout = async (selected) => {
   try {
     setActivating(true);
-
     const payload = {
       selected,
       selectedPlan,
@@ -451,13 +345,12 @@ const fmt = (n) =>
       selectedModes: Array.from(selectedModes),
       coupon,
       billing,
+      quantity,
       parent_venue_id: parentId,
       category,
     };
-
     const res = await razorpay_subscription(payload);
     const order = res.data;
-
     if (
       !order?.success ||
       !order?.key_id ||
@@ -465,33 +358,24 @@ const fmt = (n) =>
     ) {
       throw new Error("Unable to create Razorpay subscription");
     }
-
     const scriptReady = await loadRazorpayScript();
-
     if (!scriptReady) {
       throw new Error("Razorpay SDK failed to load");
     }
-
     const options = {
       key: order.key_id,
-
       subscription_id: order.subscription_id,
-
       name: "VenueBook",
-
       description: plan?.plan_name || "Subscription",
-
       prefill: {
         name: listingInfo?.ownerName || "",
         email: listingInfo?.email || "",
         contact: listingInfo?.phone || "",
       },
-
       theme: {
         color: tint.hex,
       },
    
-
   handler: async function (response) {
     try {
       const verifyPayload = {
@@ -499,14 +383,10 @@ const fmt = (n) =>
         subscription_id: response.razorpay_subscription_id,
         signature: response.razorpay_signature,
       };
-
       const verify = await verifyRazorpaySubscription(verifyPayload);
-
       if (verify.data.success) {
         localStorage.removeItem("vb_pending_" + category);
-
          router.push("/" + locale + "/" + country + "/start-listing/venue/subscription-success?subscription_id="+verify.data.subscription_id);
-
       } else {
         alert("Payment verification failed.");
       }
@@ -517,66 +397,53 @@ const fmt = (n) =>
       setActivating(false);
     }
   },
-
   modal: {
     ondismiss() {
       setActivating(false);
     },
   },
 };
-
     const rzp = new window.Razorpay(options);
-
     rzp.on("payment.failed", function (response) {
       console.log(response.error);
       setActivating(false);
     });
-
     rzp.open();
   } catch (e) {
     console.log(e);
     setActivating(false);
   }
 };
-
-  const handlePayLater = () => {
+  // Explicit "Skip Payment" action — activates the listing immediately
+  // without opening Razorpay or Stripe, regardless of plan price or country.
+  // The subscription/commission terms still apply; this only defers the
+  // checkout step itself.
+  const handleSkipPayment = () => {
     if (!agreed || activating) return;
-
-    if (countrys?.id === 2) {
-      razorpay_checkout(0);
-    } else {
-      // Stripe checkout doesn't have a distinct "pay later" mode in this flow —
-      // fall back to the standard Stripe subscription checkout.
-      handleSubscribe();
-    }
+    setActivating(true);
+    activateWithoutPayment("payment_skipped");
   };
-
   const openTerms  = () => setShowTermsModal(true);
   const closeTerms = () => setShowTermsModal(false);
   const acceptTerms = () => { setAgreed(true); setShowTermsModal(false); };
-
    const handleSubscribe = async () => {
     if (!agreed || activating) return;
-
     // Free plan (₹0 + 0%) or Commission plan (₹0 + %) — no Stripe checkout required
     if (skipPaymentGateway) {
       setActivating(true);
       await activateWithoutPayment();
       return;
     }
-
     try {
       setLoading(true);
-
       const res = await stripe_subscription({
          selectedPlan,
     category,
     parent_venue_id: parentId,
     selectedModes: Array.from(selectedModes),
+    quantity,
       });
-
    
-
       if (res.data.success) {
         window.location.href = res.data.checkout_url;
       }
@@ -587,38 +454,37 @@ const fmt = (n) =>
       setLoading(false);
     }
   };
-
-
+  // Single source of truth for which gateway flow drives the primary CTA —
+  // India (id 2) → Razorpay (handleActivate), everywhere else → Stripe (handleSubscribe).
+  const handlePrimaryCta = countrys?.id === 2 ? handleActivate : handleSubscribe;
   const summaryProps = {
     plan, billing, basePrice, perMonth, gst, total, annualTotal, selectedModes,
     agreed, activating,
     isFreePlan, isCommissionPlan, isPaidPlan,
+    quantity, onIncreaseQty: () => setQuantity((q) => Math.min(20, q + 1)),
+    onDecreaseQty: () => setQuantity((q) => Math.max(1, q - 1)),
     onActivate:   handleActivate,
-    onPayLater:   handlePayLater,
+    onPayLater:   handleSkipPayment,
     onOpenTerms:  openTerms,
     tint, fmt, payConfig,loading,
   handleSubscribe,
+  handlePrimaryCta,
   countrys,
+  subtotal
   };
-
-
-
  //check Year Enabled 
  const hasAnnualPlans = plans.some(
   p => String(p.plan_title) === "2"
 );
-
   return (
     <>
       <div className="min-h-screen bg-[#f7f7f9] dark:bg-gray-950">
-
         {/* ════════════════════════════════════════════════════════════
             HEADER — matches WizardShell header exactly
         ════════════════════════════════════════════════════════════ */}
         <header className="sticky top-0 z-40 w-full bg-white dark:bg-gray-950 border-b border-gray-200/60 dark:border-gray-800/60">
           <div className="w-full px-5 sm:px-10 py-3.5 sm:py-4">
             <div className="flex items-center gap-3 sm:gap-6">
-
               <Link
                 href={"/" + locale + "/" + country + "/home"}
                 aria-label="venuebook.in home"
@@ -632,12 +498,9 @@ const fmt = (n) =>
                   priority
                 />
               </Link>
-
-
             </div>
           </div>
         </header>
-
         {/* ════════════════════════════════════════════════════════════
             LISTING SUMMARY STRIP
         ════════════════════════════════════════════════════════════ */}
@@ -662,7 +525,6 @@ const fmt = (n) =>
               >
                 {catMeta.emoji}
               </div>
-
               {/* Info */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap mb-0.5">
@@ -686,7 +548,6 @@ const fmt = (n) =>
                   Choose a plan to activate your listing
                 </p>
               </div>
-
               {/* Submitted badge + trust note */}
               <div className="hidden sm:flex flex-col items-end gap-1.5 flex-shrink-0">
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border border-emerald-100 dark:border-emerald-800/40">
@@ -700,16 +561,13 @@ const fmt = (n) =>
             </motion.div>
           </div>
         </div>
-
         {/* ════════════════════════════════════════════════════════════
             MAIN GRID
         ════════════════════════════════════════════════════════════ */}
         <main className="max-w-6xl mx-auto px-5 sm:px-10 pt-7 sm:pt-8 pb-44 lg:pb-14">
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_330px] gap-6 xl:gap-10 items-start">
-
             {/* ── LEFT ──────────────────────────────────────────── */}
             <div className="space-y-8 sm:space-y-9 min-w-0">
-
               {/* Booking mode */}
               <motion.section
                 initial={{ opacity: 0, y: 12 }}
@@ -729,7 +587,6 @@ const fmt = (n) =>
                     </p>
                   </div>
                 </div>
-
                 <div className="grid grid-cols-3 gap-2.5">
                   {BOOKING_MODES.map((mode) => {
                     const active    = selectedModes.has(mode.key);
@@ -772,7 +629,6 @@ const fmt = (n) =>
                             {active && <Check size={7} strokeWidth={3.5} className="text-white" />}
                           </span>
                         )}
-
                         {/* Icon bubble */}
                         <span
                           className="inline-flex w-9 h-9 rounded-2xl items-center justify-center mb-3 transition-all duration-200"
@@ -783,7 +639,6 @@ const fmt = (n) =>
                         >
                           <mode.Icon size={16} style={{ color: active ? mode.color : "#9ca3af" }} />
                         </span>
-
                         <p className={[
                           "text-[13px] font-bold leading-tight",
                           active ? "text-gray-900 dark:text-white" : "text-gray-600 dark:text-gray-400",
@@ -798,7 +653,6 @@ const fmt = (n) =>
                   })}
                 </div>
               </motion.section>
-
               {/* Plan selector */}
               <motion.section
                 initial={{ opacity: 0, y: 12 }}
@@ -818,7 +672,6 @@ const fmt = (n) =>
                       </p>
                     </div>
                   </div>
-
                   {/* Billing toggle — hidden when only a single billing cycle (plan_title "1") exists for this plan set */}
                   {hasAnnualPlans && (
                   <div className="flex items-center p-1 rounded-xl bg-gray-100/80 dark:bg-gray-800/80 flex-shrink-0 gap-0.5">
@@ -855,7 +708,6 @@ const fmt = (n) =>
                   </div>
                   )}
                 </div>
-
                 {category === "venue" ? (
                   /* ── Venue: single plan display (no selection) ── */
                   (() => {
@@ -868,11 +720,8 @@ const fmt = (n) =>
                     
                     //New Updates
                     const percentage = Number(p.percentage || 0);
-
 const isPercentagePlan = rawPrice === 0 && percentage > 0;
 const isFreePlan = rawPrice === 0 && percentage === 0;
-
-
                     return (
                       <motion.div
                         key={p.id}
@@ -900,27 +749,14 @@ const isFreePlan = rawPrice === 0 && percentage === 0;
                                 </span>
                               )}
                             </div>
-
                             <div className="flex items-center gap-6 flex-wrap">
                               <div className="flex items-center gap-1.5">
-                                <span className="text-[11px] text-gray-400">Commission</span>
-                                <span
-                                  className="text-[11px] font-extrabold px-2 py-0.5 rounded-full"
-                                  style={{ color: tint.hex, background: tint.light }}
-                                >
-                                  {p.fee}
-                                </span>
+                                <span className="text-[11px] text-gray-400">{p.description}</span>
+                                <span className="text-[11px] font-bold text-gray-800 dark:text-gray-200"> </span>
                               </div>
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-[11px] text-gray-400">Listings</span>
-                                <span className="text-[11px] font-bold text-gray-800 dark:text-gray-200">{p.listings}</span>
-                              </div>
-                              {p.highlight && (
-                                <span className="text-[11px] text-gray-400">{p.highlight}</span>
-                              )}
+                             
                             </div>
                           </div>
-
                           {/* Right: price */}
                           <div className="text-end flex-shrink-0">
                             {rawPrice === 0  ? (
@@ -928,14 +764,14 @@ const isFreePlan = rawPrice === 0 && percentage === 0;
                             ) : billing === "2" ? (
                               <>
                                 <div className="flex items-baseline gap-0.5 justify-end leading-none">
-                                  <span className="text-[14px] font-semibold text-gray-400 mb-0.5">₹</span>
+                                  <span className="text-[14px] font-semibold text-gray-400 mb-0.5">{currency_icon(country)}</span>
                                   <span className="text-[30px] font-extrabold text-gray-900 dark:text-white">
                                     {annualPrice.toLocaleString("en-IN")}
                                   </span>
                                   <span className="text-xs text-gray-400 ms-1">/year</span>
                                 </div>
                                 <p className="text-[11px] text-gray-400 mt-1">
-                                  ₹{price.toLocaleString("en-IN")}/month
+                                  {currency_icon(country)}{price.toLocaleString("en-IN")}/month
                                   {saving > 0 && (
                                     <span className="ml-1.5 text-emerald-500 font-bold">· Save {saving}%</span>
                                   )}
@@ -944,14 +780,14 @@ const isFreePlan = rawPrice === 0 && percentage === 0;
                             ) : (
                               <>
                                 <div className="flex items-baseline gap-0.5 justify-end leading-none">
-                                  <span className="text-[14px] font-semibold text-gray-400 mb-0.5">₹</span>
+                                  <span className="text-[14px] font-semibold text-gray-400 mb-0.5">{currency_icon(country)}</span>
                                   <span className="text-[30px] font-extrabold text-gray-900 dark:text-white">
                                     {price.toLocaleString("en-IN")}
                                   </span>
                                   <span className="text-xs text-gray-400 ms-1">/month</span>
                                 </div>
                                 <p className="text-[11px] text-gray-400 mt-1">
-                                  ₹{annualPrice.toLocaleString("en-IN")} per year
+                                  {currency_icon(country)}{annualPrice.toLocaleString("en-IN")} per year
                                 </p>
                               </>
                             )}
@@ -969,9 +805,6 @@ const isFreePlan = rawPrice === 0 && percentage === 0;
                       const annualPrice = billing === "2" ? rawPrice : rawPrice * 12;
                       const active      = selectedPlan === p.id;
                       const saving      = p.discount > 0 ? p.discount : 0;
-                      // FIX: these were previously undefined in this scope (only existed in the
-                      // venue single-plan block above), causing a ReferenceError for non-venue
-                      // categories. Now computed per-plan here.
                       const percentage       = Number(p.percentage || 0);
                       const isPercentagePlan = rawPrice === 0 && percentage > 0;
                       const isFreePlan       = rawPrice === 0 && percentage === 0;
@@ -1022,7 +855,6 @@ const isFreePlan = rawPrice === 0 && percentage === 0;
         Commission
       </span>
     </div>
-
     <p className="text-[10px] text-gray-400 mt-1">
       Platform commission on every booking
     </p>
@@ -1032,7 +864,6 @@ const isFreePlan = rawPrice === 0 && percentage === 0;
     <span className="text-[26px] font-extrabold text-gray-900 dark:text-white">
       Free
     </span>
-
     <p className="text-[10px] text-gray-400 mt-1">
       No subscription fee
     </p>
@@ -1040,23 +871,23 @@ const isFreePlan = rawPrice === 0 && percentage === 0;
 ) : billing === "2" ? (
                               <>
                                 <div className="flex items-baseline gap-0.5 leading-none">
-                                  <span className="text-[13px] font-semibold text-gray-400 mb-0.5">₹</span>
+                                  <span className="text-[13px] font-semibold text-gray-400 mb-0.5">{currency_icon(country)}</span>
                                   <span className="text-[26px] font-extrabold text-gray-900 dark:text-white">{annualPrice.toLocaleString("en-IN")}</span>
                                   <span className="text-xs text-gray-400 ms-0.5">/year</span>
                                 </div>
                                 <p className="text-[10px] text-gray-400 mt-1">
-                                  ₹{price.toLocaleString("en-IN")}/month
+                                  {currency_icon(country)}{price.toLocaleString("en-IN")}/month
                                   {saving > 0 && <span className="ml-1.5 text-emerald-500 font-bold">· Save {saving}%</span>}
                                 </p>
                               </>
                             ) : (
                               <>
                                 <div className="flex items-baseline gap-0.5 leading-none">
-                                  <span className="text-[13px] font-semibold text-gray-400 mb-0.5">₹</span>
+                                  <span className="text-[13px] font-semibold text-gray-400 mb-0.5">{currency_icon(country)}</span>
                                   <span className="text-[26px] font-extrabold text-gray-900 dark:text-white">{price.toLocaleString("en-IN")}</span>
                                   <span className="text-xs text-gray-400 ms-0.5">/month</span>
                                 </div>
-                                <p className="text-[10px] text-gray-400 mt-1">₹{annualPrice.toLocaleString("en-IN")} per year</p>
+                                <p className="text-[10px] text-gray-400 mt-1">{currency_icon(country)}{annualPrice.toLocaleString("en-IN")} per year</p>
                               </>
                             )}
                           </div>
@@ -1078,13 +909,10 @@ const isFreePlan = rawPrice === 0 && percentage === 0;
                     })}
                   </div>
                 )}
-
                 <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-2.5 leading-relaxed">
-                  All service charges are exclusive of 18% GST. Marketplace TCS will be deducted as per government mandates.
+                  All service charges are inclusive of 18% GST. Marketplace TCS will be deducted as per government mandates.
                 </p>
               </motion.section>
-
-
               {/* Marketplace Fee & Settlement Logic — venue only */}
               {category === "venue" && (
                 <motion.section
@@ -1118,7 +946,6 @@ const isFreePlan = rawPrice === 0 && percentage === 0;
                   </div>
                 </motion.section>
               )}
-
               {/* Payment methods */}
               <motion.section
                 initial={{ opacity: 0, y: 10 }}
@@ -1141,9 +968,7 @@ const isFreePlan = rawPrice === 0 && percentage === 0;
                   {payConfig.secureMsg}
                 </p>
               </motion.section>
-
             </div>
-
             {/* ── RIGHT: sticky summary (desktop) ───────────────── */}
             <motion.aside
               initial={{ opacity: 0, y: 14 }}
@@ -1153,15 +978,10 @@ const isFreePlan = rawPrice === 0 && percentage === 0;
             >
               <SummaryPanel {...summaryProps} />
             </motion.aside>
-
           </div>
         </main>
-
-
       </div>
-
       {/* ════════════════════════════════════════════════════════════
-          {/* ════════════════════════════════════════════════════════════
           TERMS & CONDITIONS MODAL
       ════════════════════════════════════════════════════════════ */}
       <TermsModal
@@ -1184,39 +1004,74 @@ const isFreePlan = rawPrice === 0 && percentage === 0;
     </>
   );
 }
+// ─────────────────────────────────────────────────────────────────────────────
+//  Standard button hover/tap animation used across every primary CTA so the
+//  whole page feels consistent (matches the plan-card motion values above).
+// ─────────────────────────────────────────────────────────────────────────────
+const CTA_HOVER = { y: -1, transition: { duration: 0.15 } };
+const CTA_TAP   = { scale: 0.97 };
 
+// Shared label/spinner swap so every CTA animates the same way when
+// `activating` toggles — cross-fades + slides instead of an abrupt swap.
+function CtaContent({ activating, label }) {
+  return (
+    <AnimatePresence mode="wait" initial={false}>
+      {activating ? (
+        <motion.span
+          key="processing"
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -4 }}
+          transition={{ duration: 0.18 }}
+          className="flex items-center justify-center gap-2"
+        >
+          <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          Processing…
+        </motion.span>
+      ) : (
+        <motion.span
+          key="label"
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -4 }}
+          transition={{ duration: 0.18 }}
+          className="flex items-center justify-center gap-2"
+        >
+          <Lock size={14} strokeWidth={2.5} className="flex-shrink-0" />
+          {label}
+        </motion.span>
+      )}
+    </AnimatePresence>
+  );
+}
 // ─────────────────────────────────────────────────────────────────────────────
 //  Summary Panel (desktop right column)
 // ─────────────────────────────────────────────────────────────────────────────
-
 function SummaryPanel({
   plan, billing, basePrice, perMonth, gst, total, annualTotal,
   selectedModes, agreed, activating,
   isFreePlan, isCommissionPlan, isPaidPlan,
-  onActivate, onPayLater, onOpenTerms,handleSubscribe, tint, fmt, payConfig,loading,countrys
+  quantity, onIncreaseQty, onDecreaseQty,
+  onActivate, onPayLater, onOpenTerms, handleSubscribe, handlePrimaryCta, tint, fmt, payConfig, loading, countrys ,
+  subtotal
 }) {
   const isAnnual      = billing === "2";
   const isFree        = basePrice === 0;
-  const annualGrand   = annualTotal > 0 ? annualTotal + Math.round(annualTotal * 0.18) : 0;
+  const annualGrand   = annualTotal;   // annualTotal is already GST-inclusive
   const billingPeriod = isAnnual && basePrice > 0 ? "Billed annually" : "Billed monthly";
-
   // Display price in plan row header
-  // Annual: show yearly total big; Monthly: show monthly
-  const displayPrice  = isFree ? "Free" : isAnnual ? formatPrice(basePrice) + "/year" : formatPrice(basePrice) + "/month";
+  // Annual: show yearly total big; Monthly: show monthly — both already scaled by quantity and GST-inclusive
+  const displayPrice  = isFree ? "Free" : isAnnual ? formatPrice(annualGrand) + "/year" : formatPrice(total) + "/month";
   const displaySub    = isFree ? null : isAnnual
     ? formatPrice(perMonth) + "/month · billed annually"
     : billingPeriod;
-
   const gateway = payConfig?.gateway || "Razorpay";
-
   // CTA label: Free plan → "Activate Free", Commission-only plan → "Activate",
   // Paid plan → "Pay & Activate" (unchanged design/behaviour for paid plans)
   const ctaLabel = isFreePlan ? "Activate Free" : isCommissionPlan ? "Activate" : "Pay & Activate";
   
-
   return (
     <div className="space-y-3">
-
       {/* ── Main Card ────────────────────────────────────────────── */}
       <div
         className="rounded-2xl bg-white dark:bg-gray-900 overflow-hidden"
@@ -1230,9 +1085,7 @@ function SummaryPanel({
           className="h-[3px] w-full"
           style={{ background: "linear-gradient(90deg, " + tint.hex + ", " + tint.hex + "40)" }}
         />
-
         <div className="px-5 pt-4 pb-5 space-y-4">
-
           {/* ── Plan header ── */}
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
@@ -1251,14 +1104,52 @@ function SummaryPanel({
                 </p>
               )}
             </div>
-            <p
+            <motion.p
+              key={displayPrice}
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2 }}
               className="text-[16px] font-extrabold flex-shrink-0 leading-tight"
               style={{ color: tint.hex }}
             >
               {displayPrice}
-            </p>
+            </motion.p>
           </div>
-
+          {/* ── Quantity stepper ── */}
+          {!isFree && (
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400">Quantity</p>
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={onDecreaseQty}
+                  disabled={quantity <= 1}
+                  aria-label="Decrease quantity"
+                  className="w-7 h-7 rounded-full border border-gray-200 dark:border-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600 disabled:opacity-30 disabled:cursor-not-allowed transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+                >
+                  <span className="text-[15px] font-bold leading-none">−</span>
+                </button>
+                <motion.span
+                  key={quantity}
+                  initial={{ opacity: 0, scale: 0.7 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.15 }}
+                  className="text-[13px] font-bold text-gray-900 dark:text-white w-5 text-center tabular-nums"
+                >
+                  {quantity}
+                </motion.span>
+                <button
+                  type="button"
+                  onClick={onIncreaseQty}
+                  disabled={quantity >= 20}
+                  aria-label="Increase quantity"
+                  className="w-7 h-7 rounded-full border border-gray-200 dark:border-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600 disabled:opacity-30 disabled:cursor-not-allowed transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+                >
+                  <span className="text-[15px] font-bold leading-none">+</span>
+                </button>
+              </div>
+            </div>
+          )}
           {/* ── Booking modes ── */}
           {selectedModes.size > 0 && (
             <div>
@@ -1283,28 +1174,25 @@ function SummaryPanel({
               </div>
             </div>
           )}
-
           {/* ── Divider ── */}
           <div className="h-px bg-gray-100 dark:bg-gray-800" />
-
           {/* ── Price breakdown ── */}
           <div className="space-y-2.5">
             <div className="flex items-center justify-between text-[12px]">
               <span className="text-gray-400 dark:text-gray-500">
-                Subscription{isAnnual && !isFree ? " (annual)" : ""}
+                Subscription{isAnnual && !isFree ? " (annual)" : ""}{!isFree && quantity > 1 ? ` × ${quantity}` : ""}
               </span>
               <span className="font-semibold text-gray-700 dark:text-gray-200">
-                {isFree ? "Free" : formatPrice(basePrice)}
+                {isFree ? "Free" : formatPrice(subtotal)}
               </span>
             </div>
             {!isFree && (
               <div className="flex items-center justify-between text-[12px]">
-                <span className="text-gray-400 dark:text-gray-500">GST (18%)</span>
-                <span className="font-semibold text-gray-700 dark:text-gray-200">+ {formatPrice(gst)}</span>
+                <span className="text-gray-400 dark:text-gray-500">GST (18%, included)</span>
+                <span className="font-semibold text-gray-700 dark:text-gray-200">{formatPrice(gst)}</span>
               </div>
             )}
           </div>
-
           {/* ── Grand Total ── */}
           <div
             className="rounded-xl px-4 py-3.5"
@@ -1322,12 +1210,16 @@ function SummaryPanel({
                 )}
               </div>
               <div className="text-end">
-                <p
+                <motion.p
+                  key={isFree ? "free" : isAnnual ? annualGrand : total}
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2 }}
                   className="text-[22px] font-extrabold leading-tight tracking-tight"
                   style={{ color: tint.hex }}
                 >
                   {isFree ? "Free" : isAnnual ? formatPrice(annualGrand) : formatPrice(total)}
-                </p>
+                </motion.p>
                 {!isFree && (
                   <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">
                     {isAnnual ? "per year" : "per month"}
@@ -1336,10 +1228,8 @@ function SummaryPanel({
               </div>
             </div>
           </div>
-
         </div>
       </div>
-
       {/* ── T&C checkbox ── */}
       <button
         type="button"
@@ -1364,24 +1254,24 @@ function SummaryPanel({
           and authorise venuebook.in split-settlements.
         </p>
       </button>
-
       {/* ── Primary CTA ──
-          India (country id 2) → Razorpay checkout via onActivate.
-          Everywhere else → Stripe checkout via handleSubscribe.
-          (Fixed: this used to read `country` here while the parent only ever
-          passed `countrys`, so the check was always false and every user —
-          India included — silently fell through to the Stripe button.) */}
-      { countrys?.id === 2 ? (
-      <button
+          Merged into a single motion.button. India (id 2) routes through
+          Razorpay (onActivate); everywhere else through Stripe
+          (handleSubscribe) — resolved once as `handlePrimaryCta`. Uses the
+          same hover/tap motion values as the plan cards above for a
+          consistent, standard feel across the page. */}
+      <motion.button
         type="button"
         disabled={!agreed || activating}
-        onClick={onActivate}
+        onClick={handlePrimaryCta}
+        whileHover={agreed && !activating ? CTA_HOVER : undefined}
+        whileTap={agreed && !activating ? CTA_TAP : undefined}
         className={[
           "w-full flex items-center justify-center gap-2 py-4 rounded-xl",
-          "text-[15px] font-bold text-white transition-all duration-150",
+          "text-[15px] font-bold text-white transition-colors duration-150",
           "focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2",
           agreed && !activating
-            ? "hover:opacity-90 active:scale-[0.98] shadow-lg shadow-violet-200/50 dark:shadow-violet-950/40"
+            ? "shadow-lg shadow-violet-200/50 dark:shadow-violet-950/40"
             : "opacity-40 cursor-not-allowed shadow-none",
         ].join(" ")}
         style={{
@@ -1390,72 +1280,17 @@ function SummaryPanel({
             : "#9ca3af",
         }}
       >
-        {activating ? (
-          <>
-            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            Processing…
-          </>
-        ) : (
-          <>
-            <Lock size={14} strokeWidth={2.5} className="flex-shrink-0" />
-            {ctaLabel}
-          </>
-        )}
-      </button>
-) : (
-
-
-      <button
-        type="button"
-        disabled={!agreed || activating}
-        onClick={handleSubscribe}
-        className={[
-          "w-full flex items-center justify-center gap-2 py-4 rounded-xl",
-          "text-[15px] font-bold text-white transition-all duration-150",
-          "focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2",
-          agreed && !activating
-            ? "hover:opacity-90 active:scale-[0.98] shadow-lg shadow-violet-200/50 dark:shadow-violet-950/40"
-            : "opacity-40 cursor-not-allowed shadow-none",
-        ].join(" ")}
-        style={{
-          background: agreed && !activating
-            ? "linear-gradient(135deg, #a44bf3 0%, #499ce8 100%)"
-            : "#9ca3af",
-        }}
-      >
-        {activating ? (
-          <>
-            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            Processing…
-          </>
-        ) : (
-          <>
-            <Lock size={14} strokeWidth={2.5} className="flex-shrink-0" />
-            {ctaLabel}
-          </>
-        )}
-      </button>
-)}
-
-
-
-      {/* <button
-      onClick={handleSubscribe}
-      disabled={loading}
-      className="bg-blue-600 text-white px-5 py-2 rounded"
-    >
-      {loading ? "Please wait..." : "Stripe Subscribe"}
-    </button> */}
-
-      {/* ── Pay Later ── */}
+        <CtaContent activating={activating} label={ctaLabel} />
+      </motion.button>
+      {/* ── Skip Payment ── */}
       <button
         type="button"
         onClick={onPayLater}
-        className="w-full py-2.5 text-[13px] font-medium text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 rounded-xl"
+        disabled={!agreed || activating}
+        className="w-full py-2.5 text-[13px] font-medium text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 rounded-xl"
       >
-        Pay Later
+        Skip Payment · activate now, pay later
       </button>
-
       {/* ── Trust badges ── */}
       <div className="flex items-center justify-center gap-5 pt-0.5">
         {[
@@ -1469,38 +1304,28 @@ function SummaryPanel({
           </div>
         ))}
       </div>
-
     </div>
   );
 }
-
 // ─────────────────────────────────────────────────────────────────────────────
 //  Mobile Fixed Bottom Pay Bar
 // ─────────────────────────────────────────────────────────────────────────────
-
 function MobilePayBar({
   plan, billing, basePrice, perMonth, gst, total, annualTotal,
   selectedModes, agreed, activating,
   isFreePlan, isCommissionPlan, isPaidPlan,
-  onActivate, onPayLater, onOpenTerms, handleSubscribe, tint, fmt, payConfig, countrys,
+  quantity, onIncreaseQty, onDecreaseQty,
+  onActivate, onPayLater, onOpenTerms, handleSubscribe, handlePrimaryCta, tint, fmt, payConfig, countrys, subtotal,
   expanded, onToggleExpand
 }) {
   const isAnnual    = billing === "2";
   const isFree      = basePrice === 0;
-  const annualGrand = annualTotal > 0 ? annualTotal + Math.round(annualTotal * 0.18) : 0;
+  const annualGrand = annualTotal;   // annualTotal is already GST-inclusive
   const displayAmt  = isFree ? "Free" : isAnnual ? formatPrice(annualGrand) : formatPrice(total);
   const period      = isFree ? "" : isAnnual ? "/year" : "/month";
-
   // CTA label: Free plan → "Activate Free", Commission-only plan → "Activate",
   // Paid plan → "Pay & Activate" (unchanged design/behaviour for paid plans)
   const ctaLabel = isFreePlan ? "Activate Free" : isCommissionPlan ? "Activate" : "Pay & Activate";
-
-  // Mirror the desktop gateway split: India (id 2) → Razorpay (onActivate),
-  // everywhere else → Stripe (handleSubscribe). Previously this always used
-  // onActivate regardless of country, so mobile Stripe users never actually
-  // hit the Stripe checkout.
-  const handlePrimaryCta = countrys?.id === 2 ? onActivate : handleSubscribe;
-
   return (
     <div className="lg:hidden fixed bottom-0 inset-x-0 z-40">
       {/* Backdrop */}
@@ -1517,9 +1342,7 @@ function MobilePayBar({
           />
         )}
       </AnimatePresence>
-
       <div className="relative bg-white dark:bg-gray-950 border-t border-gray-200/70 dark:border-gray-800/60 shadow-2xl shadow-black/10">
-
         {/* ── Expandable summary ── */}
         <AnimatePresence>
           {expanded && (
@@ -1532,6 +1355,35 @@ function MobilePayBar({
               className="overflow-hidden"
             >
               <div className="px-5 pt-5 pb-2 space-y-4 max-h-[55vh] overflow-y-auto">
+                {/* Quantity stepper */}
+                {!isFree && (
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400">Quantity</p>
+                    <div className="flex items-center gap-2.5">
+                      <button
+                        type="button"
+                        onClick={onDecreaseQty}
+                        disabled={quantity <= 1}
+                        aria-label="Decrease quantity"
+                        className="w-7 h-7 rounded-full border border-gray-200 dark:border-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 disabled:opacity-30 disabled:cursor-not-allowed focus:outline-none"
+                      >
+                        <span className="text-[15px] font-bold leading-none">−</span>
+                      </button>
+                      <span className="text-[13px] font-bold text-gray-900 dark:text-white w-5 text-center tabular-nums">
+                        {quantity}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={onIncreaseQty}
+                        disabled={quantity >= 20}
+                        aria-label="Increase quantity"
+                        className="w-7 h-7 rounded-full border border-gray-200 dark:border-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 disabled:opacity-30 disabled:cursor-not-allowed focus:outline-none"
+                      >
+                        <span className="text-[15px] font-bold leading-none">+</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
                 {/* Booking modes */}
                 {selectedModes.size > 0 && (
                   <div>
@@ -1552,23 +1404,21 @@ function MobilePayBar({
                     </div>
                   </div>
                 )}
-
                 {/* Price breakdown */}
                 <div className="space-y-2.5">
                   <div className="flex justify-between text-[12px]">
-                    <span className="text-gray-400">Subscription{isAnnual && !isFree ? " (annual)" : ""}</span>
+                    <span className="text-gray-400">Subscription{isAnnual && !isFree ? " (annual)" : ""}{!isFree && quantity > 1 ? ` × ${quantity}` : ""}</span>
                     <span className="font-semibold text-gray-700 dark:text-gray-200">
-                      {isFree ? "Free" : formatPrice(basePrice)}
+                      {isFree ? "Free" : formatPrice(subtotal)}
                     </span>
                   </div>
                   {!isFree && (
                     <div className="flex justify-between text-[12px]">
-                      <span className="text-gray-400">GST (18%)</span>
-                      <span className="font-semibold text-gray-700 dark:text-gray-200">+ {formatPrice(gst)}</span>
+                      <span className="text-gray-400">GST (18%, included)</span>
+                      <span className="font-semibold text-gray-700 dark:text-gray-200">{formatPrice(gst)}</span>
                     </div>
                   )}
                 </div>
-
                 {/* Grand total row */}
                 <div
                   className="rounded-xl px-4 py-3"
@@ -1595,7 +1445,6 @@ function MobilePayBar({
             </motion.div>
           )}
         </AnimatePresence>
-
         {/* ── Fixed bottom actions ── */}
         <div
           className="px-5 pt-3.5"
@@ -1623,15 +1472,15 @@ function MobilePayBar({
               }}
             >
               {expanded ? "Hide" : "Details"}
-              <ChevronRight
-                size={11}
-                strokeWidth={2.5}
-                className="transition-transform"
-                style={{ transform: expanded ? "rotate(-90deg)" : "rotate(90deg)" }}
-              />
+              <motion.span
+                animate={{ rotate: expanded ? -90 : 90 }}
+                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                className="inline-flex"
+              >
+                <ChevronRight size={11} strokeWidth={2.5} />
+              </motion.span>
             </button>
           </div>
-
           {/* T&C */}
           <button
             type="button"
@@ -1652,26 +1501,28 @@ function MobilePayBar({
               {agreed ? "Terms accepted ✓" : "I accept the terms & conditions"}
             </span>
           </button>
-
           {/* CTAs */}
           <div className="flex gap-2.5">
             <button
               type="button"
               onClick={onPayLater}
-              className="flex-1 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-[13px] font-semibold text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-900 hover:border-gray-300 transition-all focus:outline-none active:scale-[0.97]"
+              disabled={!agreed || activating}
+              className="flex-1 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-[13px] font-semibold text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-900 hover:border-gray-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all focus:outline-none active:scale-[0.97]"
             >
-              Pay Later
+              Skip Payment
             </button>
-            <button
+            <motion.button
               type="button"
               disabled={!agreed || activating}
               onClick={handlePrimaryCta}
+              whileHover={agreed && !activating ? CTA_HOVER : undefined}
+              whileTap={agreed && !activating ? CTA_TAP : undefined}
               className={[
                 "flex-[2] flex items-center justify-center gap-2 py-3 rounded-xl",
-                "text-[14px] font-bold text-white transition-all",
+                "text-[14px] font-bold text-white transition-colors",
                 "focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500",
                 agreed && !activating
-                  ? "hover:opacity-90 active:scale-[0.98] shadow-lg shadow-violet-200/50"
+                  ? "shadow-lg shadow-violet-200/50"
                   : "opacity-40 cursor-not-allowed",
               ].join(" ")}
               style={{
@@ -1680,28 +1531,21 @@ function MobilePayBar({
                   : "#9ca3af",
               }}
             >
-              {activating ? (
-                <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Processing…</>
-              ) : (
-                <><Lock size={14} strokeWidth={2.5} /> {ctaLabel}</>
-              )}
-            </button>
+              <CtaContent activating={activating} label={ctaLabel} />
+            </motion.button>
           </div>
         </div>
       </div>
     </div>
   );
 }
-
 // ─────────────────────────────────────────────────────────────────────────────
 //  Terms & Conditions Modal
 // ─────────────────────────────────────────────────────────────────────────────
-
 function TermsModal({ open, onClose, onAccept , basePrice , annualTotal, maxVenue}) {
   const scrollRef = useRef(null);
   const [scrolled, setScrolled] = useState(false);
   const [atBottom, setAtBottom] = useState(false);
-
   // Lock body scroll while modal is open
   useEffect(() => {
     if (open) {
@@ -1711,7 +1555,6 @@ function TermsModal({ open, onClose, onAccept , basePrice , annualTotal, maxVenu
     }
     return () => { document.body.style.overflow = ""; };
   }, [open]);
-
   // Track scroll position for fade shadows
   const handleScroll = useCallback(() => {
     const el = scrollRef.current;
@@ -1727,10 +1570,8 @@ const replaceValue = (value) => {
     recurring_payment: basePrice,//parentData?.recurring_payment ?? "",
     total_price: basePrice,//parentData?.total_price ?? 0,
   };
-
   return String(value || "").replace(/\{\{(.*?)\}\}/g, (_, key) => data[key.trim()] ?? "");
 };
-
   return (
     <AnimatePresence>
       {open && (
@@ -1746,7 +1587,6 @@ const replaceValue = (value) => {
             onClick={onClose}
             aria-hidden="true"
           />
-
           {/* Modal panel — 760px wide, 85vh tall */}
           <motion.div
             key="modal"
@@ -1761,7 +1601,6 @@ const replaceValue = (value) => {
             aria-labelledby="terms-modal-title"
           >
             <div className="flex flex-col h-full rounded-2xl border border-gray-200/60 dark:border-gray-700/60 bg-white dark:bg-gray-900 shadow-2xl shadow-black/15 dark:shadow-black/50 overflow-hidden">
-
               {/* ── Header ── */}
               <div className="flex-shrink-0 flex items-center justify-between px-6 border-b border-gray-100 dark:border-gray-800" style={{ height: "64px" }}>
                 <div className="flex items-center gap-2.5">
@@ -1786,7 +1625,6 @@ const replaceValue = (value) => {
                   <X size={14} />
                 </button>
               </div>
-
               {/* ── Scrollable body ── */}
               <div className="relative flex-1 min-h-0">
                 {/* Scroll shadows */}
@@ -1798,7 +1636,6 @@ const replaceValue = (value) => {
                   className="pointer-events-none absolute bottom-0 inset-x-0 h-6 z-10 transition-opacity duration-200"
                   style={{ background: "linear-gradient(to top, white, transparent)", opacity: atBottom ? 0 : 1 }}
                 />
-
                 <div
                   ref={scrollRef}
                   onScroll={handleScroll}
@@ -1807,12 +1644,10 @@ const replaceValue = (value) => {
                 >
                   {termsData.sections.map((section, si) => (
                     <div key={section.number} style={{ marginTop: si === 0 ? 0 : "22px" }}>
-
                       {/* Section divider */}
                       {si > 0 && (
                         <div className="h-px bg-gray-100 dark:bg-gray-800" style={{ marginBottom: "20px" }} />
                       )}
-
                       {/* Section heading */}
                       <h3
                         className="font-semibold"
@@ -1820,7 +1655,6 @@ const replaceValue = (value) => {
                       >
                         {section.number}. {section.title}
                       </h3>
-
                       {/* Clauses */}
                       <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                         {section.clauses.map((clause) => (
@@ -1839,7 +1673,6 @@ const replaceValue = (value) => {
                                 {clause.text}
                               </p>
                             </div>
-
                             {/* Tables */}
                             {clause.tables?.map((table) => (
                               <div
@@ -1890,7 +1723,6 @@ const replaceValue = (value) => {
                   ))}
                 </div>
               </div>
-
               {/* ── Footer ── */}
               <div
                 className="flex-shrink-0 flex items-center gap-3 px-6 border-t border-gray-100 dark:border-gray-800"
@@ -1913,7 +1745,6 @@ const replaceValue = (value) => {
                   Accept &amp; Close
                 </button>
               </div>
-
             </div>
           </motion.div>
         </>
