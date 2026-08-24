@@ -68,7 +68,7 @@ function launchConfetti(canvas) {
 }
 
 // ─── Status states ───────────────────────────────────────────────────────────
-// "loading" | "success_paid" | "success_later" | "failed"
+// "loading" | "success_paid" | "success_later" | "success_skipped" | "failed"
 
 export default function SuccessPage() {
   const searchParams = useSearchParams();
@@ -83,116 +83,90 @@ export default function SuccessPage() {
   const canvasRef = useRef(null);
   const cleanupRef = useRef(null);
 
-  // useEffect(() => {
-  //   const verify = async () => {
-  //     try {
-  //       const subscriptionId = searchParams.get("subscription_id");
-
-  //        const sessionId = searchParams.get("session_id");
-
-  //       if (!subscriptionId) {
-  //         setStatus("failed");
-  //         setMessage("Invalid subscription link.");
-  //         return;
-  //       }
-
-  //       const res = await verify_subscription(subscriptionId);
-  //       const subscriptionStatus = res?.data?.subscription_status || res?.subscription_status;
-
-  //       if (subscriptionStatus === "ACTIVE" || subscriptionStatus === "BANK_APPROVAL_PENDING") {
-  //         localStorage.removeItem("vb_pending_category");
-
-  //         let payType = "pay_now";
-  //         try { payType = localStorage.getItem("vb_payment_type") || "pay_now"; } catch (_) {}
-  //         try { localStorage.removeItem("vb_payment_type"); } catch (_) {}
-
-  //         if (payType === "pay_later") {
-  //           setMessage("Your listing is saved. Complete payment anytime from your dashboard.");
-  //           setStatus("success_later");
-  //         } else {
-  //           setMessage("Your listing is now live on venuebook.in!");
-  //           setStatus("success_paid");
-  //         }
-
-  //         setTimeout(() => {
-  //           router.push(`/${locale}/${country}/vendor/dashboard`);
-  //         }, payType === "pay_later" ? 6000 : 5000);
-  //       } else {
-  //         setStatus("failed");
-  //         setMessage("Subscription is not active yet. Please try again or contact support.");
-  //       }
-  //     } catch (err) {
-  //       setStatus("failed");
-  //       setMessage("Verification failed. Please try again.");
-  //     }
-  //   };
-
-  //   verify();
-  // }, [searchParams, router, locale, country]);
-
   useEffect(() => {
-  const verify = async () => {
-    try {
-      const subscriptionId = searchParams.get("subscription_id");
-      const sessionId = searchParams.get("session_id");
+    const verify = async () => {
+      try {
+        // ── Payment was explicitly skipped ──
+        // The payment page routes here with `payment_status=skipped` and no
+        // subscription_id/session_id, since nothing was ever charged and
+        // there is nothing to verify with Razorpay or Stripe. Short-circuit
+        // straight to the "skipped" success state instead of treating the
+        // missing ids as an invalid link.
+        const paymentStatus = searchParams.get("payment_status");
+        if (paymentStatus === "skipped") {
+          localStorage.removeItem("vb_pending_category");
+          localStorage.removeItem("vb_payment_type");
 
-      // Neither exists
-      if (!subscriptionId && !sessionId) {
-        setStatus("failed");
-        setMessage("Invalid subscription link.");
-        return;
-      }
-
-      let res;
-
-      if (subscriptionId) {
-        // Verify using subscription ID
-        // res = await verify_subscription(subscriptionId);
-        res = await verify_razorpay_subscription(subscriptionId);
-      } else if (sessionId) {
-        // Verify Stripe Checkout Session
-        res = await verify_stripe_subscription(sessionId);
-      }
-
-      const subscriptionStatus =
-        res?.data?.subscription_status || res?.subscription_status|| res?.data.status;
-
-      if (
-        subscriptionStatus === "ACTIVE" || subscriptionStatus === "active" ||
-        subscriptionStatus === "BANK_APPROVAL_PENDING"
-      ) {
-        localStorage.removeItem("vb_pending_category");
-
-        let payType = localStorage.getItem("vb_payment_type") || "pay_now";
-        localStorage.removeItem("vb_payment_type");
-
-        if (payType === "pay_later") {
           setMessage(
-            "Your listing is saved. Complete payment anytime from your dashboard."
+            "Your listing is now active. Complete payment anytime from your dashboard."
           );
-          setStatus("success_later");
-        } else {
-          setMessage("Your listing is now live on venuebook.in!");
-          setStatus("success_paid");
+          setStatus("success_skipped");
+
+          setTimeout(() => {
+            router.push(`/${locale}/${country}/vendor/dashboard`);
+          }, 6000);
+          return;
         }
 
-        setTimeout(() => {
-          router.push(`/${locale}/${country}/vendor/dashboard`);
-        }, payType === "pay_later" ? 6000 : 5000);
-      } else {
-        setStatus("failed");
-        setMessage(
-          "Subscription is not active yet. Please try again or contact support."
-        );
-      }
-    } catch (err) {
-      setStatus("failed");
-      setMessage("Verification failed. Please try again.");
-    }
-  };
+        const subscriptionId = searchParams.get("subscription_id");
+        const sessionId = searchParams.get("session_id");
 
-  verify();
-}, [searchParams, router, locale, country]);
+        // Neither exists
+        if (!subscriptionId && !sessionId) {
+          setStatus("failed");
+          setMessage("Invalid subscription link.");
+          return;
+        }
+
+        let res;
+
+        if (subscriptionId) {
+          // Verify using subscription ID
+          res = await verify_razorpay_subscription(subscriptionId);
+        } else if (sessionId) {
+          // Verify Stripe Checkout Session
+          res = await verify_stripe_subscription(sessionId);
+        }
+
+        const subscriptionStatus =
+          res?.data?.subscription_status || res?.subscription_status|| res?.data.status;
+
+        if (
+          subscriptionStatus === "ACTIVE" || subscriptionStatus === "active" ||
+          subscriptionStatus === "BANK_APPROVAL_PENDING"
+        ) {
+          localStorage.removeItem("vb_pending_category");
+
+          let payType = localStorage.getItem("vb_payment_type") || "pay_now";
+          localStorage.removeItem("vb_payment_type");
+
+          if (payType === "pay_later") {
+            setMessage(
+              "Your listing is saved. Complete payment anytime from your dashboard."
+            );
+            setStatus("success_later");
+          } else {
+            setMessage("Your listing is now live on venuebook.in!");
+            setStatus("success_paid");
+          }
+
+          setTimeout(() => {
+            router.push(`/${locale}/${country}/vendor/dashboard`);
+          }, payType === "pay_later" ? 6000 : 5000);
+        } else {
+          setStatus("failed");
+          setMessage(
+            "Subscription is not active yet. Please try again or contact support."
+          );
+        }
+      } catch (err) {
+        setStatus("failed");
+        setMessage("Verification failed. Please try again.");
+      }
+    };
+
+    verify();
+  }, [searchParams, router, locale, country]);
 
   // Trigger confetti when paid success
   useEffect(() => {
@@ -225,7 +199,7 @@ export default function SuccessPage() {
       )}
 
       {/* Subtle background glow */}
-      {(status === "success_paid" || status === "success_later") && (
+      {(status === "success_paid" || status === "success_later" || status === "success_skipped") && (
         <div
           className="pointer-events-none fixed inset-0 z-0"
           style={{
@@ -236,11 +210,22 @@ export default function SuccessPage() {
         />
       )}
 
-      <div className="relative z-10 w-full max-w-sm text-center">
+      {/* ── Standard entrance: every resolved state (not the loading spinner)
+          fades + slides up together, so switching between success/failed
+          states always feels the same rather than each one inventing its
+          own motion. ── */}
+      <div
+        key={status}
+        className={[
+          "relative z-10 w-full text-center",
+          status === "success_later" || status === "success_skipped" ? "max-w-[400px] text-left" : "max-w-sm",
+          status !== "loading" ? "animate-successEnter" : "",
+        ].join(" ")}
+      >
 
         {/* ── LOADING ── */}
         {status === "loading" && (
-          <div className="space-y-6">
+          <div className="space-y-6 text-center">
             <div className="flex justify-center">
               <div className="relative w-20 h-20">
                 <div className="absolute inset-0 rounded-full border-4 border-gray-100" />
@@ -345,9 +330,9 @@ export default function SuccessPage() {
           </div>
         )}
 
-        {/* ── SUCCESS — PAY LATER ── */}
+        {/* ── SUCCESS — PAY LATER (future billing cycle didn't collect) ── */}
         {status === "success_later" && (
-          <div className="space-y-5 text-left" style={{ maxWidth: "400px" }}>
+          <div className="space-y-5">
             {/* Icon + heading */}
             <div className="flex flex-col items-center text-center gap-3">
               <div
@@ -458,6 +443,113 @@ export default function SuccessPage() {
           </div>
         )}
 
+        {/* ── SUCCESS — PAYMENT SKIPPED ──
+            Reached when the user explicitly clicked "Skip Payment" on the
+            payment page — nothing was charged and no gateway subscription
+            was verified, so this renders straight from the redirect with
+            no verification step and no invented due-amount/date. */}
+        {status === "success_skipped" && (
+          <div className="space-y-5">
+            {/* Icon + heading */}
+            <div className="flex flex-col items-center text-center gap-3">
+              <div
+                className="w-20 h-20 rounded-full flex items-center justify-center"
+                style={{
+                  background: "rgba(73,156,232,0.08)",
+                  border: "2px solid rgba(73,156,232,0.2)",
+                  animation: "pop 0.4s cubic-bezier(0.16,1,0.3,1) forwards",
+                }}
+              >
+                <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+                  <circle cx="18" cy="18" r="13" stroke="#499ce8" strokeWidth="2" />
+                  <path
+                    d="M11 18.5l4.5 4.5L25 13"
+                    stroke="#499ce8"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    style={{ animation: "draw 0.5s 0.2s ease forwards", strokeDasharray: 30, strokeDashoffset: 30 }}
+                  />
+                </svg>
+              </div>
+
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-widest text-blue-400 mb-1">
+                  Listing Active
+                </p>
+                <h1 className="text-[24px] font-bold text-gray-900 leading-snug">
+                  You&apos;re live — payment skipped for now.
+                </h1>
+                <p className="text-sm text-gray-500 mt-2 leading-relaxed">
+                  Your listing is active and visible to guests. Complete payment anytime from your dashboard.
+                </p>
+              </div>
+            </div>
+
+            {/* Status badges */}
+            <div className="rounded-2xl border border-blue-100 bg-blue-50/60 px-4 py-4">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-emerald-50 border border-emerald-200 text-emerald-700">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
+                  Listing Active
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-amber-50 border border-amber-200 text-amber-700">
+                  Payment Skipped
+                </span>
+              </div>
+            </div>
+
+            {/* What's next */}
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2.5">
+                What&apos;s Next
+              </p>
+              <div className="space-y-2">
+                {[
+                  { icon: "📋", title: "Listing Saved", body: "Your listing details are securely stored and visible to guests." },
+                  { icon: "💳", title: "Pay When Ready", body: "Complete payment from your dashboard whenever you're ready." },
+                  { icon: "🚀", title: "Instant Boost", body: "Your listing gets priority placement once payment clears." },
+                ].map(({ icon, title, body }) => (
+                  <div key={title} className="flex items-start gap-3 rounded-xl bg-white border border-gray-100 px-4 py-3.5">
+                    <span className="text-base leading-none mt-0.5">{icon}</span>
+                    <div>
+                      <p className="text-[13px] font-semibold text-gray-800">{title}</p>
+                      <p className="text-[12px] text-gray-500 mt-0.5 leading-snug">{body}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Complete your profile */}
+            <div className="rounded-2xl border border-violet-100 bg-violet-50/50 px-4 py-4">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-lg bg-violet-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="text-sm">✨</span>
+                </div>
+                <div>
+                  <p className="text-[13px] font-semibold text-violet-900">Complete your profile</p>
+                  <p className="text-[12px] text-violet-700/80 mt-1 leading-relaxed">
+                    Take this time to perfect your profile and add high-quality photos to maximize your bookings.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* CTA */}
+            <div className="space-y-2.5">
+              <button
+                onClick={goToDashboard}
+                className="w-full py-3.5 rounded-xl font-bold text-white text-[15px] transition-all hover:opacity-90 active:scale-[0.98]"
+                style={{ background: "linear-gradient(135deg, #499ce8, #6366f1)" }}
+              >
+                Go to Dashboard →
+              </button>
+              <p className="text-xs text-gray-400 text-center">Redirecting automatically in a few seconds…</p>
+            </div>
+          </div>
+        )}
+
         {/* ── FAILED ── */}
         {status === "failed" && (
           <div className="space-y-6">
@@ -500,6 +592,13 @@ export default function SuccessPage() {
         }
         @keyframes draw {
           to { stroke-dashoffset: 0; }
+        }
+        @keyframes successEnter {
+          0%   { opacity: 0; transform: translateY(14px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+        .animate-successEnter {
+          animation: successEnter 0.45s cubic-bezier(0.16,1,0.3,1) forwards;
         }
       `}</style>
     </div>
