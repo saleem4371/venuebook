@@ -185,7 +185,7 @@ useEffect(() => {
     (p) => String(p.plan_title) === billing
   );
   if (filtered.length) {
-    setSelectedPlan(filtered[0].plan_id);
+    setSelectedPlan(filtered[0].id);
   }
 }, [plans, billing]);
   // Dark mode sync
@@ -335,9 +335,1566 @@ const fmt = (n) =>
       setActivating(false);
     }
   };
-  const razorpay_checkout = async (selected) => {
+//   const razorpay_checkout = async (selected) => {
+//   try {
+//     setActivating(true);
+//     const payload = {
+//       selected,
+//       selectedPlan,
+//       agreed,
+//       selectedModes: Array.from(selectedModes),
+//       coupon,
+//       billing,
+//       quantity,
+//       parent_venue_id: parentId,
+//       category,
+//     };
+//     const res = await razorpay_subscription(payload);
+//     const order = res.data;
+//     if (
+//       !order?.success ||
+//       !order?.key_id ||
+//       !order?.subscription_id
+//     ) {
+//       throw new Error("Unable to create Razorpay subscription");
+//     }
+//     const scriptReady = await loadRazorpayScript();
+//     if (!scriptReady) {
+//       throw new Error("Razorpay SDK failed to load");
+//     }
+//     const options = {
+//       key: order.key_id,
+//       subscription_id: order.subscription_id,
+//       name: "VenueBook",
+//       description: plan?.plan_name || "Subscription",
+//       prefill: {
+//         name: listingInfo?.ownerName || "",
+//         email: listingInfo?.email || "",
+//         contact: listingInfo?.phone || "",
+//       },
+//       theme: {
+//         color: tint.hex,
+//       },
+   
+//   handler: async function (response) {
+//     try {
+//       const verifyPayload = {
+//         payment_id: response.razorpay_payment_id,
+//         subscription_id: response.razorpay_subscription_id,
+//         signature: response.razorpay_signature,
+//       };
+//       const verify = await verifyRazorpaySubscription(verifyPayload);
+//       if (verify.data.success) {
+//         localStorage.removeItem("vb_pending_" + category);
+//          router.push("/" + locale + "/" + country + "/start-listing/venue/subscription-success?subscription_id="+verify.data.subscription_id);
+//       } else {
+//         alert("Payment verification failed.");
+//       }
+//     } catch (err) {
+//       console.error(err);
+//       alert("Unable to verify payment.");
+//     } finally {
+//       setActivating(false);
+//     }
+//   },
+//   modal: {
+//     ondismiss() {
+//       setActivating(false);
+//     },
+//   },
+// };
+//     const rzp = new window.Razorpay(options);
+//     rzp.on("payment.failed", function (response) {
+//       console.log(response.error);
+//       setActivating(false);
+//     });
+//     rzp.open();
+//   } catch (e) {
+//     console.log(e);
+//     setActivating(false);
+//   }
+// };
+  // Explicit "Skip Payment" action — activates the listing immediately
+  // without opening Razorpay or Stripe, regardless of plan price or country.
+  // The subscription/commission terms still apply; this only defers the
+  // checkout step itself.
+  
+// const razorpay_checkout = async (selected) => {
+//   let paymentWindow = null;
+//   let messageHandler = null;
+//   let popupChecker = null;
+
+//   try {
+//     setActivating(true);
+
+//     const payload = {
+//       selected,
+//       selectedPlan,
+//       agreed,
+//       selectedModes: Array.from(selectedModes),
+//       coupon,
+//       billing,
+//       quantity,
+//       parent_venue_id: parentId,
+//       category,
+//     };
+
+//     const res = await razorpay_subscription(payload);
+//     const data = res.data;
+
+//     console.log("Razorpay response:", data);
+
+//     if (
+//       !data?.success ||
+//       !data?.subscription?.payment_link_url
+//     ) {
+//       throw new Error(
+//         data?.message ||
+//           "Unable to create Razorpay payment link"
+//       );
+//     }
+
+//     /*
+//      * Save pending subscription
+//      */
+//     localStorage.setItem(
+//       "vb_pending_subscription",
+//       JSON.stringify({
+//         subscription_id: data.subscription.id,
+//         subscription_code:
+//           data.subscription.subscription_code,
+//         payment_link_id:
+//           data.subscription.payment_link_id,
+//         category,
+//         amount:
+//           data.pricing?.total_amount || 0,
+//         currency:
+//           data.pricing?.currency || "INR",
+//       })
+//     );
+
+//     /*
+//      * Listen for Razorpay callback message
+//      */
+//     messageHandler = (event) => {
+
+//       // Security check
+//       const allowedOrigin =
+//         process.env.NEXT_PUBLIC_API_URL ||
+//         "https://api.venuebook.in";
+
+//       /*
+//        * The callback page is hosted on api.venuebook.in,
+//        * so message origin will be API origin.
+//        */
+//       if (
+//         event.origin !== allowedOrigin
+//       ) {
+//         console.warn(
+//           "Ignored message from:",
+//           event.origin
+//         );
+
+//         return;
+//       }
+
+//       const data = event.data;
+
+//       if (
+//         data?.type !==
+//         "RAZORPAY_PAYMENT_RESULT"
+//       ) {
+//         return;
+//       }
+
+//       console.log(
+//         "Razorpay payment result:",
+//         data
+//       );
+
+//       /*
+//        * Remove listener
+//        */
+//       window.removeEventListener(
+//         "message",
+//         messageHandler
+//       );
+
+//       if (popupChecker) {
+//         clearInterval(popupChecker);
+//       }
+
+//       /*
+//        * Payment successful
+//        */
+//       if (data.success) {
+
+//         setActivating(false);
+
+//         /*
+//          * Close popup if still open
+//          */
+//         if (
+//           paymentWindow &&
+//           !paymentWindow.closed
+//         ) {
+//           paymentWindow.close();
+//         }
+
+//         /*
+//          * Redirect parent VenueBook page
+//          */
+//         router.push(
+//           `/${locale}/${country}/start-listing/venue/subscription-success` +
+//           `?subscription_id=${encodeURIComponent(
+//             data.subscription_id
+//           )}` +
+//           `&status=${encodeURIComponent(
+//             data.status
+//           )}` +
+//           `&payment_id=${encodeURIComponent(
+//             data.payment_id || ""
+//           )}`
+//         );
+
+//       } else {
+
+//         setActivating(false);
+
+//         if (
+//           paymentWindow &&
+//           !paymentWindow.closed
+//         ) {
+//           paymentWindow.close();
+//         }
+
+//         alert(
+//           "Payment could not be confirmed."
+//         );
+//       }
+//     };
+
+//     window.addEventListener(
+//       "message",
+//       messageHandler
+//     );
+
+//     /*
+//      * Open Razorpay popup
+//      */
+//     paymentWindow = window.open(
+//       data.subscription.payment_link_url,
+//       "RazorpayPayment",
+//       [
+//         "width=500",
+//         "height=750",
+//         "left=500",
+//         "top=100",
+//         "resizable=yes",
+//         "scrollbars=yes",
+//       ].join(",")
+//     );
+
+//     /*
+//      * Popup blocked
+//      */
+//     if (!paymentWindow) {
+
+//       window.removeEventListener(
+//         "message",
+//         messageHandler
+//       );
+
+//       throw new Error(
+//         "Popup blocked. Please allow popups for VenueBook."
+//       );
+//     }
+
+//     paymentWindow.focus();
+
+//     /*
+//      * Detect user manually closing popup
+//      */
+//     popupChecker = setInterval(() => {
+
+//       if (
+//         paymentWindow &&
+//         paymentWindow.closed
+//       ) {
+
+//         clearInterval(popupChecker);
+
+//         window.removeEventListener(
+//           "message",
+//           messageHandler
+//         );
+
+//         setActivating(false);
+
+//         console.log(
+//           "Razorpay popup closed by user"
+//         );
+//       }
+
+//     }, 1000);
+
+//   } catch (error) {
+
+//     console.error(
+//       "Razorpay checkout error:",
+//       error
+//     );
+
+//     if (popupChecker) {
+//       clearInterval(popupChecker);
+//     }
+
+//     if (messageHandler) {
+//       window.removeEventListener(
+//         "message",
+//         messageHandler
+//       );
+//     }
+
+//     if (
+//       paymentWindow &&
+//       !paymentWindow.closed
+//     ) {
+//       paymentWindow.close();
+//     }
+
+//     setActivating(false);
+
+//     alert(
+//       error?.message ||
+//         "Unable to open Razorpay payment page."
+//     );
+//   }
+// };
+// const razorpay_checkout = async (selected) => {
+//   let paymentWindow = null;
+//   let popupChecker = null;
+//   let messageHandler = null;
+
+//   try {
+//     setActivating(true);
+
+//     const payload = {
+//       selected,
+//       selectedPlan,
+//       agreed,
+//       selectedModes: Array.from(selectedModes),
+//       coupon,
+//       billing,
+//       quantity,
+//       parent_venue_id: parentId,
+//       category,
+//     };
+
+//     const res = await razorpay_subscription(payload);
+//     const data = res.data;
+
+//     console.log("Razorpay response:", data);
+
+//     if (
+//       !data?.success ||
+//       !data?.subscription?.payment_link_url
+//     ) {
+//       throw new Error(
+//         data?.message ||
+//           "Unable to create Razorpay payment link"
+//       );
+//     }
+
+//     const paymentUrl =
+//       data.subscription.payment_link_url;
+
+//     /*
+//      * Save pending subscription
+//      */
+//     localStorage.setItem(
+//       "vb_pending_subscription",
+//       JSON.stringify({
+//         subscription_id: data.subscription.id,
+//         subscription_code:
+//           data.subscription.subscription_code,
+//         payment_link_id:
+//           data.subscription.payment_link_id,
+//         category,
+//         amount:
+//           data.pricing?.total_amount || 0,
+//         currency:
+//           data.pricing?.currency || "INR",
+//       })
+//     );
+
+//     /*
+//      * Listen for callback result
+//      */
+//     messageHandler = (event) => {
+//       console.log(
+//         "Razorpay message received:",
+//         event
+//       );
+
+//       /*
+//        * Security check
+//        *
+//        * Your callback page is hosted on:
+//        * https://api.venuebook.in
+//        */
+//       const allowedOrigin =
+//         process.env.NEXT_PUBLIC_API_URL ||
+//         "https://api.venuebook.in";
+
+//       if (event.origin !== allowedOrigin) {
+//         console.warn(
+//           "Ignored message from:",
+//           event.origin
+//         );
+//         return;
+//       }
+
+//       const paymentData = event.data;
+
+//       if (
+//         paymentData?.type !==
+//         "RAZORPAY_PAYMENT_RESULT"
+//       ) {
+//         return;
+//       }
+
+//       console.log(
+//         "Razorpay payment result:",
+//         paymentData
+//       );
+
+//       //  console.log(
+//       //   "Razorpay Signatuire result:",
+//       //   signature_id
+//       // );
+
+//       /*
+//        * Remove listener
+//        */
+//       window.removeEventListener(
+//         "message",
+//         messageHandler
+//       );
+
+//       /*
+//        * Stop popup checker
+//        */
+//       if (popupChecker) {
+//         clearInterval(popupChecker);
+//       }
+
+//       /*
+//        * Close Razorpay popup
+//        */
+//       if (
+//         paymentWindow &&
+//         !paymentWindow.closed
+//       ) {
+//         paymentWindow.close();
+//       }
+
+//       /*
+//        * Payment successful
+//        */
+//       if (paymentData.success) {
+//         setActivating(false);
+
+//         const subscriptionId =
+//           paymentData.subscription_id || "";
+
+//         const status =
+//           paymentData.status || "paid";
+
+//         const paymentId =
+//           paymentData.payment_id || "";
+          
+//           const signature_id =
+//           paymentData.signature_id || "";
+
+          
+
+//         /*
+//          * Final success URL
+//          */
+//         const successUrl =
+//           `/${locale}/${country}` +
+//           `/start-listing/venue/subscription-success` +
+//           `?subscription_id=${encodeURIComponent(
+//             subscriptionId
+//           )}` +
+//           `&status=${encodeURIComponent(
+//             status
+//           )}` +
+//           `&payment_id=${encodeURIComponent(
+//             paymentId
+//           )}`+
+//           `&signature_id=${encodeURIComponent(
+//             signature_id
+//           )}`;
+
+//         console.log(
+//           "Redirecting to:",
+//           successUrl
+//         );
+
+//         router.push(successUrl);
+
+//         return;
+//       }
+
+//       /*
+//        * Payment failed
+//        */
+//       setActivating(false);
+
+//       alert(
+//         "Payment could not be confirmed."
+//       );
+//     };
+
+//     window.addEventListener(
+//       "message",
+//       messageHandler
+//     );
+
+//     /*
+//      * Open Razorpay popup
+//      */
+//     paymentWindow = window.open(
+//       paymentUrl,
+//       "RazorpayPayment",
+//       [
+//         "width=500",
+//         "height=750",
+//         "left=500",
+//         "top=100",
+//         "resizable=yes",
+//         "scrollbars=yes",
+//         "status=no",
+//         "toolbar=no",
+//         "menubar=no",
+//       ].join(",")
+//     );
+
+//     /*
+//      * Popup blocked
+//      */
+//     if (!paymentWindow) {
+//       window.removeEventListener(
+//         "message",
+//         messageHandler
+//       );
+
+//       throw new Error(
+//         "Popup blocked. Please allow popups for VenueBook."
+//       );
+//     }
+
+//     paymentWindow.focus();
+
+//     /*
+//      * Check whether user manually
+//      * closed the popup.
+//      */
+//     popupChecker = setInterval(() => {
+//       if (
+//         paymentWindow &&
+//         paymentWindow.closed
+//       ) {
+//         clearInterval(popupChecker);
+
+//         window.removeEventListener(
+//           "message",
+//           messageHandler
+//         );
+
+//         setActivating(false);
+
+//         console.log(
+//           "Razorpay popup closed by user"
+//         );
+//       }
+//     }, 1000);
+
+//   } catch (error) {
+//     console.error(
+//       "Razorpay checkout error:",
+//       error
+//     );
+
+//     if (popupChecker) {
+//       clearInterval(popupChecker);
+//     }
+
+//     if (messageHandler) {
+//       window.removeEventListener(
+//         "message",
+//         messageHandler
+//       );
+//     }
+
+//     if (
+//       paymentWindow &&
+//       !paymentWindow.closed
+//     ) {
+//       paymentWindow.close();
+//     }
+
+//     setActivating(false);
+
+//     alert(
+//       error?.message ||
+//         "Unable to open Razorpay payment page."
+//     );
+//   }
+// };
+
+// const razorpay_checkout = async (selected) => {
+//   let messageHandler = null;
+
+//   try {
+//     setActivating(true);
+
+//     // =========================================================
+//     // 1. Payload
+//     // =========================================================
+
+//     const payload = {
+//       selected,
+//       selectedPlan,
+//       agreed,
+//       selectedModes: Array.from(selectedModes),
+//       coupon,
+//       billing,
+//       quantity,
+//       parent_venue_id: parentId,
+//       category,
+//     };
+
+//     // =========================================================
+//     // 2. Create Razorpay authorization order
+//     // =========================================================
+
+//     const res = await razorpay_subscription(payload);
+
+//     const data = res.data;
+
+//     console.log("Razorpay authorization response:", data);
+
+//     if (
+//       !data?.success ||
+//       !data?.key_id ||
+//       !data?.order?.id
+//     ) {
+//       throw new Error(
+//         data?.message ||
+//           "Unable to create Razorpay authorization order"
+//       );
+//     }
+
+//     const razorpayOrderId =
+//       data.order.id;
+
+//     const localSubscriptionId =
+//       data.subscription?.id || "";
+
+//     const subscriptionCode =
+//       data.subscription?.subscription_code || "";
+
+//     const customerId =
+//       data.customer?.id || "";
+
+//     // =========================================================
+//     // 3. Save pending subscription
+//     // =========================================================
+
+//     localStorage.setItem(
+//       "vb_pending_subscription",
+//       JSON.stringify({
+//         subscription_id:
+//           localSubscriptionId,
+
+//         subscription_code:
+//           subscriptionCode,
+
+//         razorpay_order_id:
+//           razorpayOrderId,
+
+//         razorpay_customer_id:
+//           customerId,
+
+//         category,
+
+//         quantity,
+
+//         amount:
+//           data.pricing?.total_amount || 0,
+
+//         currency:
+//           data.pricing?.currency || "INR",
+//       })
+//     );
+
+//     // =========================================================
+//     // 4. Load Razorpay SDK
+//     // =========================================================
+
+//     const scriptReady =
+//       await loadRazorpayScript();
+
+//     if (!scriptReady) {
+//       throw new Error(
+//         "Razorpay SDK failed to load"
+//       );
+//     }
+
+//     // =========================================================
+//     // 5. Razorpay Checkout
+//     // =========================================================
+
+//     const options = {
+//       key: data.key_id,
+
+//       order_id: razorpayOrderId,
+
+//       amount:
+//         data.order.amount,
+
+//       currency:
+//         data.order.currency || "INR",
+
+//       name: "VenueBook",
+
+//       description:
+//         "VenueBook Recurring Subscription",
+
+//       // ---------------------------------------------------------
+//       // Customer details
+//       // ---------------------------------------------------------
+
+//       prefill: {
+//         name:
+//           listingInfo?.ownerName ||
+//           "",
+
+//         email:
+//           listingInfo?.email ||
+//           "",
+
+//         contact:
+//           listingInfo?.phone ||
+//           "",
+//       },
+
+//       // ---------------------------------------------------------
+//       // Recurring authorization
+//       // ---------------------------------------------------------
+
+//       recurring: true,
+
+//       customer_id:
+//         customerId,
+
+//       // ---------------------------------------------------------
+//       // Theme
+//       // ---------------------------------------------------------
+
+//       theme: {
+//         color:
+//           tint?.hex ||
+//           "#a44bf3",
+//       },
+
+//       // ---------------------------------------------------------
+//       // Modal
+//       // ---------------------------------------------------------
+
+//       modal: {
+//         escape: true,
+
+//         ondismiss: function () {
+//           console.log(
+//             "Razorpay Checkout closed"
+//           );
+
+//           setActivating(false);
+//         },
+//       },
+
+//       // =========================================================
+//       // 6. Successful authorization
+//       // =========================================================
+
+//       handler: async function (response) {
+//         try {
+//           console.log(
+//             "Razorpay success response:",
+//             response
+//           );
+
+//           const paymentId =
+//             response?.razorpay_payment_id ||
+//             "";
+
+//           const orderId =
+//             response?.razorpay_order_id ||
+//             razorpayOrderId;
+
+//           const signature =
+//             response?.razorpay_signature ||
+//             "";
+            
+            
+
+//           if (
+//             !paymentId ||
+//             !orderId ||
+//             !signature
+//           ) {
+//             throw new Error(
+//               "Incomplete Razorpay payment response"
+//             );
+//           }
+
+//           const tokenId =
+//       response.razorpay_token_id ||
+//       response.token_id ||
+//       null;
+
+//     console.log("Payment ID:", paymentId);
+//     console.log("Order ID:", orderId);
+//     console.log("Signature:", signature);
+//     console.log("Token ID:", tokenId);
+
+//     if (!tokenId) {
+//       console.error(
+//         "Razorpay token ID was not returned"
+//       );
+
+//       // Do NOT mark recurring subscription active
+//       return;
+//     }
+
+//     await saveRazorpayToken({
+//       subscription_table_id:
+//         data.subscription.id,
+
+//       payment_id: paymentId,
+
+//       order_id: orderId,
+
+//       signature,
+
+//       token_id: tokenId,
+//     });
+
+//           // =====================================================
+//           // 7. Verify payment on backend
+//           // =====================================================
+
+//           const verifyPayload = {
+//             payment_id:
+//               paymentId,
+
+//             order_id:
+//               orderId,
+
+//             signature:
+//               signature,
+
+//             subscription_id:
+//               subscriptionCode,
+//             subscription_table_id:
+//               localSubscriptionId,
+//           };
+
+//           console.log(
+//             "Verifying Razorpay:",
+//             verifyPayload
+//           );
+
+//           const verify =
+//             await verifyRazorpaySubscription(
+//               verifyPayload
+//             );
+
+//           console.log(
+//             "Razorpay verification:",
+//             verify?.data
+//           );
+
+//           if (
+//             !verify?.data?.success
+//           ) {
+//             throw new Error(
+//               verify?.data?.message ||
+//                 "Payment verification failed"
+//             );
+//           }
+
+//           // =====================================================
+//           // 8. Remove pending data
+//           // =====================================================
+
+//           localStorage.removeItem(
+//             "vb_pending_subscription"
+//           );
+
+//           localStorage.removeItem(
+//             "vb_payment_type"
+//           );
+
+//           localStorage.removeItem(
+//             "vb_pending_category"
+//           );
+
+//           // =====================================================
+//           // 9. Get subscription ID
+//           // =====================================================
+
+//           const subscriptionId =
+//             verify?.data?.subscription_id ||
+//             localSubscriptionId;
+
+//           const status =
+//             verify?.data?.status ||
+//             "paid";
+
+//           const verifiedPaymentId =
+//             verify?.data?.payment_id ||
+//             paymentId;
+
+//           // =====================================================
+//           // 10. Success URL
+//           // =====================================================
+
+//           const successUrl =
+//             `/${locale}/${country}` +
+//             `/start-listing/venue/subscription-success` +
+//             `?subscription_id=${encodeURIComponent(
+//               subscriptionId
+//             )}` +
+//             `&status=${encodeURIComponent(
+//               status
+//             )}` +
+//             `&payment_id=${encodeURIComponent(
+//               verifiedPaymentId
+//             )}`;
+
+//           console.log(
+//             "Redirecting to:",
+//             successUrl
+//           );
+
+//           setActivating(false);
+
+//           router.push(
+//             successUrl
+//           );
+
+//         } catch (error) {
+//           console.error(
+//             "Razorpay verification error:",
+//             error
+//           );
+
+//           setActivating(false);
+
+//           alert(
+//             error?.message ||
+//               "Unable to verify payment."
+//           );
+//         }
+//       },
+//     };
+
+//     // =========================================================
+//     // 11. Create Razorpay instance
+//     // =========================================================
+
+//     const rzp =
+//       new window.Razorpay(
+//         options
+//       );
+
+//     // =========================================================
+//     // 12. Payment failed
+//     // =========================================================
+
+//     rzp.on(
+//       "payment.failed",
+//       function (response) {
+//         console.error(
+//           "Razorpay payment failed:",
+//           response?.error
+//         );
+
+//         setActivating(false);
+
+//         alert(
+//           response?.error?.description ||
+//             "Payment failed. Please try again."
+//         );
+//       }
+//     );
+
+//     // =========================================================
+//     // 13. Open Razorpay popup
+//     // =========================================================
+
+//     rzp.open();
+
+//   } catch (error) {
+//     console.error(
+//       "Razorpay checkout error:",
+//       error
+//     );
+
+//     setActivating(false);
+
+//     alert(
+//       error?.message ||
+//         "Unable to open Razorpay payment page."
+//     );
+//   }
+// };
+// const razorpay_checkout = async (selected) => {
+//   let rzp = null;
+
+//   try {
+//     setActivating(true);
+
+//     // =========================================================
+//     // 1. Payload
+//     // =========================================================
+
+//     const payload = {
+//       selected,
+//       selectedPlan,
+//       agreed,
+//       selectedModes: Array.from(selectedModes),
+//       coupon,
+//       billing,
+//       quantity,
+//       parent_venue_id: parentId,
+//       category,
+//     };
+
+//     // =========================================================
+//     // 2. Create Razorpay authorization order
+//     // =========================================================
+
+//     const res = await razorpay_subscription(payload);
+//     const data = res?.data;
+
+//     console.log(
+//       "Razorpay authorization response:",
+//       data
+//     );
+
+//     if (
+//       !data?.success ||
+//       !data?.key_id ||
+//       !data?.order?.id
+//     ) {
+//       throw new Error(
+//         data?.message ||
+//           "Unable to create Razorpay authorization order"
+//       );
+//     }
+
+//     const razorpayOrderId =
+//       data.order.id;
+
+//     const localSubscriptionId =
+//       data.subscription?.id || "";
+
+//     const subscriptionCode =
+//       data.subscription?.subscription_code || "";
+
+//     const customerId =
+//       data.customer?.id || "";
+
+//     if (!localSubscriptionId) {
+//       throw new Error(
+//         "Local subscription ID is missing"
+//       );
+//     }
+
+//     // =========================================================
+//     // 3. Save pending subscription
+//     // =========================================================
+
+//     localStorage.setItem(
+//       "vb_pending_subscription",
+//       JSON.stringify({
+//         subscription_id:
+//           localSubscriptionId,
+
+//         subscription_code:
+//           subscriptionCode,
+
+//         razorpay_order_id:
+//           razorpayOrderId,
+
+//         razorpay_customer_id:
+//           customerId,
+
+//         category,
+
+//         quantity,
+
+//         amount:
+//           data.pricing?.total_amount || 0,
+
+//         currency:
+//           data.pricing?.currency || "INR",
+//       })
+//     );
+
+//     // =========================================================
+//     // 4. Load Razorpay SDK
+//     // =========================================================
+
+//     const scriptReady =
+//       await loadRazorpayScript();
+
+//     if (!scriptReady) {
+//       throw new Error(
+//         "Razorpay SDK failed to load"
+//       );
+//     }
+
+//     if (!window.Razorpay) {
+//       throw new Error(
+//         "Razorpay SDK is not available"
+//       );
+//     }
+
+//     // =========================================================
+//     // 5. Razorpay Checkout options
+//     // =========================================================
+
+//     const options = {
+//       key: data.key_id,
+
+//       order_id: razorpayOrderId,
+
+//       amount:
+//         Number(data.order.amount),
+
+//       currency:
+//         data.order.currency || "INR",
+
+//       name: "VenueBook",
+
+//       description:
+//         "VenueBook Recurring Subscription",
+
+//       // =======================================================
+//       // IMPORTANT: Recurring authorization
+//       // =======================================================
+
+//       recurring: true,
+
+//       customer_id:
+//         customerId || undefined,
+
+//       // =======================================================
+//       // Customer
+//       // =======================================================
+
+//       prefill: {
+//         name:
+//           listingInfo?.ownerName ||
+//           "",
+
+//         email:
+//           listingInfo?.email ||
+//           "",
+
+//         contact:
+//           listingInfo?.phone ||
+//           "",
+//       },
+
+//       // =======================================================
+//       // Theme
+//       // =======================================================
+
+//       theme: {
+//         color:
+//           tint?.hex ||
+//           "#a44bf3",
+//       },
+
+//       // =======================================================
+//       // Modal
+//       // =======================================================
+
+//       modal: {
+//         escape: true,
+
+//         confirm_close: true,
+
+//         ondismiss: function () {
+//           console.log(
+//             "Razorpay Checkout closed"
+//           );
+
+//           setActivating(false);
+//         },
+//       },
+
+//       // =======================================================
+//       // SUCCESS
+//       // =======================================================
+
+//       handler: async function (response) {
+//         try {
+//           console.log(
+//             "================================"
+//           );
+
+//           console.log(
+//             "Razorpay SUCCESS RESPONSE"
+//           );
+
+//           console.log(
+//             response
+//           );
+
+//           console.log(
+//             "================================"
+//           );
+
+//           const paymentId =
+//             response?.razorpay_payment_id ||
+//             "";
+
+//           const orderId =
+//             response?.razorpay_order_id ||
+//             razorpayOrderId;
+
+//           const signature =
+//             response?.razorpay_signature ||
+//             "";
+
+//           // =====================================================
+//           // Token
+//           // =====================================================
+
+//           const tokenId =
+//             response?.razorpay_token_id ||
+//             response?.token_id ||
+//             response?.razorpay_token ||
+//             null;
+
+//           console.log(
+//             "Payment ID:",
+//             paymentId
+//           );
+
+//           console.log(
+//             "Order ID:",
+//             orderId
+//           );
+
+//           console.log(
+//             "Signature:",
+//             signature
+//           );
+
+//           console.log(
+//             "Token ID:",
+//             tokenId
+//           );
+
+//           // =====================================================
+//           // Validate basic Razorpay response
+//           // =====================================================
+
+//           if (
+//             !paymentId ||
+//             !orderId ||
+//             !signature
+//           ) {
+//             throw new Error(
+//               "Incomplete Razorpay payment response"
+//             );
+//           }
+
+//           // =====================================================
+//           // IMPORTANT
+//           //
+//           // First verify payment signature on backend.
+//           // Do NOT save token before verification.
+//           // =====================================================
+
+//           const verifyPayload = {
+//             payment_id:
+//               paymentId,
+
+//             order_id:
+//               orderId,
+
+//             signature:
+//               signature,
+
+//             // This is YOUR local subscription code
+//             subscription_id:
+//               subscriptionCode,
+
+//             // This is YOUR DB ID
+//             subscription_table_id:
+//               localSubscriptionId,
+
+//             // Token may be null depending on
+//             // Razorpay response.
+//             token_id:
+//               tokenId,
+//           };
+
+//           console.log(
+//             "Verifying Razorpay:",
+//             verifyPayload
+//           );
+
+//           const verify =
+//             await verifyRazorpaySubscription(
+//               verifyPayload
+//             );
+
+//           console.log(
+//             "Razorpay verification response:",
+//             verify?.data
+//           );
+
+//           if (
+//             !verify?.data?.success
+//           ) {
+//             throw new Error(
+//               verify?.data?.message ||
+//                 "Payment verification failed"
+//             );
+//           }
+
+//           // =====================================================
+//           // Get token from verification response
+//           //
+//           // Backend may receive/store it through webhook/API.
+//           // =====================================================
+
+//           const verifiedTokenId =
+//             verify?.data?.token_id ||
+//             tokenId ||
+//             null;
+
+//           console.log(
+//             "Verified Token ID:",
+//             verifiedTokenId
+//           );
+
+//           // =====================================================
+//           // Save token ONLY if one was actually returned
+//           // =====================================================
+
+//           if (verifiedTokenId) {
+//             try {
+//               const tokenResponse =
+//                 await saveRazorpayToken({
+//                   subscription_table_id:
+//                     localSubscriptionId,
+
+//                   payment_id:
+//                     paymentId,
+
+//                   order_id:
+//                     orderId,
+
+//                   signature:
+//                     signature,
+
+//                   token_id:
+//                     verifiedTokenId,
+//                 });
+
+//               console.log(
+//                 "Razorpay token saved:",
+//                 tokenResponse?.data ||
+//                   tokenResponse
+//               );
+//             } catch (tokenError) {
+//               console.error(
+//                 "Failed to save Razorpay token:",
+//                 tokenError
+//               );
+
+//               /*
+//                * Do not immediately fail the payment here.
+//                *
+//                * The authorization payment itself has already
+//                * been verified. Token information may also arrive
+//                * through Razorpay webhook/API.
+//                */
+//             }
+//           } else {
+//             console.warn(
+//               "Razorpay token ID not available in Checkout response."
+//             );
+
+//             /*
+//              * Do NOT generate a token yourself.
+//              *
+//              * Do NOT use payment_id as token_id.
+//              *
+//              * The backend/webhook should obtain the token
+//              * according to the Razorpay recurring flow.
+//              */
+//           }
+
+//           // =====================================================
+//           // Remove pending subscription
+//           // =====================================================
+
+//           localStorage.removeItem(
+//             "vb_pending_subscription"
+//           );
+
+//           localStorage.removeItem(
+//             "vb_payment_type"
+//           );
+
+//           localStorage.removeItem(
+//             "vb_pending_category"
+//           );
+
+//           // =====================================================
+//           // Final subscription ID
+//           // =====================================================
+
+//           const subscriptionId =
+//             verify?.data?.subscription_id ||
+//             localSubscriptionId;
+
+//           // =====================================================
+//           // Final status
+//           // =====================================================
+
+//           const status =
+//             verify?.data?.status ||
+//             "paid";
+
+//           // =====================================================
+//           // Final payment ID
+//           // =====================================================
+
+//           const verifiedPaymentId =
+//             verify?.data?.payment_id ||
+//             paymentId;
+
+//           // =====================================================
+//           // Redirect
+//           // =====================================================
+
+//           const successUrl =
+//             `/${locale}/${country}` +
+//             `/start-listing/venue/subscription-success` +
+//             `?subscription_id=${encodeURIComponent(
+//               subscriptionId
+//             )}` +
+//             `&status=${encodeURIComponent(
+//               status
+//             )}` +
+//             `&payment_id=${encodeURIComponent(
+//               verifiedPaymentId
+//             )}`;
+
+//           console.log(
+//             "Redirecting to:",
+//             successUrl
+//           );
+
+//           setActivating(false);
+
+//           router.push(
+//             successUrl
+//           );
+
+//         } catch (error) {
+//           console.error(
+//             "Razorpay verification error:",
+//             error
+//           );
+
+//           setActivating(false);
+
+//           alert(
+//             error?.message ||
+//               "Unable to verify payment."
+//           );
+//         }
+//       },
+//     };
+
+//     // =========================================================
+//     // 6. Create Razorpay instance
+//     // =========================================================
+
+//     rzp =
+//       new window.Razorpay(options);
+
+//     // =========================================================
+//     // 7. Payment failed
+//     // =========================================================
+
+//     rzp.on(
+//       "payment.failed",
+//       function (response) {
+//         console.error(
+//           "Razorpay payment failed:",
+//           response?.error
+//         );
+
+//         setActivating(false);
+
+//         alert(
+//           response?.error?.description ||
+//             "Payment failed. Please try again."
+//         );
+//       }
+//     );
+
+//     // =========================================================
+//     // 8. Open Checkout
+//     // =========================================================
+
+//     rzp.open();
+
+//   } catch (error) {
+//     console.error(
+//       "Razorpay checkout error:",
+//       error
+//     );
+
+//     setActivating(false);
+
+//     alert(
+//       error?.message ||
+//         "Unable to open Razorpay payment page."
+//     );
+//   }
+// };
+const razorpay_checkout = async (selected) => {
   try {
     setActivating(true);
+
     const payload = {
       selected,
       selectedPlan,
@@ -349,75 +1906,120 @@ const fmt = (n) =>
       parent_venue_id: parentId,
       category,
     };
+
+    // Backend creates: Razorpay Customer -> Razorpay Order (with token
+    // intent) -> local subscription row. Token itself is NOT returned here.
     const res = await razorpay_subscription(payload);
-    const order = res.data;
-    if (
-      !order?.success ||
-      !order?.key_id ||
-      !order?.subscription_id
-    ) {
-      throw new Error("Unable to create Razorpay subscription");
+    const data = res?.data;
+
+    if (!data?.success || !data?.key_id || !data?.order?.id) {
+      throw new Error(data?.message || "Unable to create payment order");
     }
+
     const scriptReady = await loadRazorpayScript();
-    if (!scriptReady) {
+    if (!scriptReady || !window.Razorpay) {
       throw new Error("Razorpay SDK failed to load");
     }
+
+    // Keep a pending record in case the user closes the tab mid-flow —
+    // lets you reconcile status on next visit / via webhook.
+    localStorage.setItem(
+      "vb_pending_subscription",
+      JSON.stringify({
+        subscription_id: data.subscription?.id || "",
+        subscription_code: data.subscription?.subscription_code || "",
+        razorpay_order_id: data.order.id,
+        razorpay_customer_id: data.customer?.id || "",
+        category,
+        quantity,
+        amount: data.pricing?.total_amount || 0,
+        currency: data.pricing?.currency || "INR",
+      })
+    );
+
     const options = {
-      key: order.key_id,
-      subscription_id: order.subscription_id,
+      key: data.key_id,
+      order_id: data.order.id,
+      amount: Number(data.order.amount),
+      currency: data.order.currency || "INR",
       name: "VenueBook",
-      description: plan?.plan_name || "Subscription",
+      description: "VenueBook Recurring Subscription",
+      // Tells Razorpay this order is a token-registration charge, not a
+      // one-off payment — required for later auto-debits.
+      recurring: true,
+      customer_id: data.customer?.id || undefined,
       prefill: {
         name: listingInfo?.ownerName || "",
         email: listingInfo?.email || "",
         contact: listingInfo?.phone || "",
       },
-      theme: {
-        color: tint.hex,
+      theme: { color: tint?.hex || "#a44bf3" },
+      modal: {
+        escape: true,
+        confirm_close: true,
+        ondismiss: () => setActivating(false),
       },
-   
-  handler: async function (response) {
-    try {
-      const verifyPayload = {
-        payment_id: response.razorpay_payment_id,
-        subscription_id: response.razorpay_subscription_id,
-        signature: response.razorpay_signature,
-      };
-      const verify = await verifyRazorpaySubscription(verifyPayload);
-      if (verify.data.success) {
-        localStorage.removeItem("vb_pending_" + category);
-         router.push("/" + locale + "/" + country + "/start-listing/venue/subscription-success?subscription_id="+verify.data.subscription_id);
-      } else {
-        alert("Payment verification failed.");
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Unable to verify payment.");
-    } finally {
-      setActivating(false);
-    }
-  },
-  modal: {
-    ondismiss() {
-      setActivating(false);
-    },
-  },
-};
+      // IMPORTANT: this handler only ever receives payment_id / order_id /
+      // signature. Never look for a token here — it does not exist client
+      // side. Token retrieval happens on the backend via webhook or a
+      // server-to-server Payment Fetch call inside verifyRazorpaySubscription.
+      handler: async (response) => {
+        try {
+          const { razorpay_payment_id, razorpay_order_id, razorpay_signature } = response;
+
+          if (!razorpay_payment_id || !razorpay_order_id || !razorpay_signature) {
+            throw new Error("Incomplete Razorpay payment response");
+          }
+
+          const verify = await verifyRazorpaySubscription({
+            payment_id: razorpay_payment_id,
+            order_id: razorpay_order_id,
+            signature: razorpay_signature,
+            subscription_id: data.subscription?.subscription_code,
+            subscription_table_id: data.subscription?.id,
+          });
+
+          if (!verify?.data?.success) {
+            throw new Error(verify?.data?.message || "Payment verification failed");
+          }
+
+          localStorage.removeItem("vb_pending_subscription");
+          localStorage.removeItem("vb_payment_type");
+          localStorage.removeItem("vb_pending_category");
+
+          const subscriptionId = verify.data.subscription_id || data.subscription?.id;
+          const status = verify.data.status || "paid";
+          const paymentId = verify.data.payment_id || razorpay_payment_id;
+
+          setActivating(false);
+          router.push(
+            `/${locale}/${country}/start-listing/venue/subscription-success` +
+            `?subscription_id=${encodeURIComponent(subscriptionId)}` +
+            `&status=${encodeURIComponent(status)}` +
+            `&payment_id=${encodeURIComponent(paymentId)}`
+          );
+        } catch (error) {
+          console.error("Razorpay verification error:", error);
+          setActivating(false);
+          alert(error?.message || "Unable to verify payment.");
+        }
+      },
+    };
+
     const rzp = new window.Razorpay(options);
-    rzp.on("payment.failed", function (response) {
-      console.log(response.error);
+    rzp.on("payment.failed", (response) => {
+      console.error("Razorpay payment failed:", response?.error);
       setActivating(false);
+      alert(response?.error?.description || "Payment failed. Please try again.");
     });
     rzp.open();
-  } catch (e) {
-    console.log(e);
+  } catch (error) {
+    console.error("Razorpay checkout error:", error);
     setActivating(false);
+    alert(error?.message || "Unable to open Razorpay payment page.");
   }
 };
-  // Explicit "Skip Payment" action — activates the listing immediately
-  // without opening Razorpay or Stripe, regardless of plan price or country.
-  // The subscription/commission terms still apply; this only defers the
-  // checkout step itself.
+
   const handleSkipPayment = () => {
     if (!agreed || activating) return;
     setActivating(true);
