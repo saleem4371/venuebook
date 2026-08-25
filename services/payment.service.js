@@ -74,12 +74,32 @@ export const verifyRazorpaySubscription = (payload) => {
   return api.post(`/razorpay/subscription/verify`,payload);
 };
 
-export const verify_razorpay_subscription = (id) => {
-  return api.get(`/razorpay/verify_subscription/${id}`);
+// export const verify_razorpay_subscription = (id,data,paymentId) => {
+//   return api.get(`/razorpay/verify_subscription/${id}?signature=${data}&paymentId=${paymentId}`);
+// };
+
+export const verify_razorpay_subscription = (
+  id,
+  signature,
+  paymentId
+) => {
+  return api.get(
+    `/razorpay/verify_subscription/${encodeURIComponent(id)}`,
+    {
+      params: {
+        signature,
+        paymentId,
+      },
+    }
+  );
 };
 
 export const editBookingRequest = (payload) => {
   return api.post(`/booking/editBookingRequest`,payload);
+};
+
+export const upgradeDowngradePlan = (payload) => {
+  return api.patch(`/razorpay/subscription/quantity`,payload);
 };
 
  
