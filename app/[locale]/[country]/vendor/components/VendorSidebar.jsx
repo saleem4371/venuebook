@@ -184,6 +184,7 @@ export default function VendorSidebar() {
         legacyPaths: [],
       },
       { label: "Addons", href: `${base}/addons`, icon: Layers, legacyPaths: [] },
+       { label: "Ads", href: `${base}/ads`, icon: Megaphone, legacyPaths: [] },
 
       // Only include Packages if paxPricing exists
       ...(settingsMap?.paxPricing
