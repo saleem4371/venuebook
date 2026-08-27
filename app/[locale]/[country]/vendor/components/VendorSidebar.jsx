@@ -30,6 +30,7 @@ import {
   BarChart2,
   Package,
   Layers,
+  Megaphone,
   Settings,
   Bell,
   MessageSquareText,
@@ -183,11 +184,14 @@ export default function VendorSidebar() {
         legacyPaths: [],
       },
       { label: "Addons", href: `${base}/addons`, icon: Layers, legacyPaths: [] },
+       { label: "Ads", href: `${base}/ads`, icon: Megaphone, legacyPaths: [] },
 
       // Only include Packages if paxPricing exists
       ...(settingsMap?.paxPricing
         ? [{ label: "Packages", href: `${base}/package`, icon: Package, legacyPaths: [] }]
         : []),
+
+      { label: "Ads", href: `${base}/ads`, icon: Megaphone, legacyPaths: [] },
 
       { label: "Settings", href: `${base}/settings`, icon: Settings, legacyPaths: [] },
       { label: "Reports", href: `${base}/reports`, icon: BarChart2, legacyPaths: [] },
