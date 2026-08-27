@@ -1,6 +1,6 @@
 'use client'
 
-import { usePWAInstall } from '../lib/pwa/hooks'
+import { usePWAInstall } from '@/lib/pwa/hooks'
 import { useState } from 'react'
 
 export default function PWAInstallPrompt() {
@@ -12,56 +12,25 @@ export default function PWAInstallPrompt() {
   }
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        bottom: '20px',
-        right: '20px',
-        backgroundColor: '#000',
-        color: '#fff',
-        padding: '16px 24px',
-        borderRadius: '8px',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '12px',
-        zIndex: 9999,
-        maxWidth: '400px',
-      }}
-    >
-      <div style={{ flex: 1 }}>
-        <p style={{ margin: '0 0 8px 0', fontWeight: 'bold' }}>
+    <div className="fixed bottom-5 right-5 z-[9999] max-w-[400px] p-4 rounded-2xl bg-white/95 text-gray-900 shadow-xl border border-gray-200/80 dark:bg-gray-900/95 dark:text-white dark:border-white/10 dark:shadow-2xl flex items-center gap-3 backdrop-blur-md transition-colors duration-200">
+      <div className="flex-1 min-w-0">
+        <p className="font-bold text-sm text-gray-900 dark:text-white">
           Install App
         </p>
-        <p style={{ margin: 0, fontSize: '14px', opacity: 0.8 }}>
-          Add our app to your home screen
+        <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
+          Add venuebook to your home screen
         </p>
       </div>
       <button
         onClick={() => install()}
-        style={{
-          backgroundColor: '#007AFF',
-          color: '#fff',
-          border: 'none',
-          padding: '8px 16px',
-          borderRadius: '4px',
-          cursor: 'pointer',
-          fontWeight: '600',
-          whiteSpace: 'nowrap',
-        }}
+        className="bg-purple-600 hover:bg-purple-500 active:scale-95 text-white px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all shadow-md shadow-purple-600/25"
       >
         Install
       </button>
       <button
         onClick={() => setDismissed(true)}
-        style={{
-          background: 'none',
-          border: 'none',
-          color: '#fff',
-          fontSize: '20px',
-          cursor: 'pointer',
-          padding: '0',
-        }}
+        className="text-gray-400 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800 p-1 rounded-lg transition-colors text-base"
+        aria-label="Close"
       >
         ✕
       </button>
