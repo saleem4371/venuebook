@@ -33,8 +33,8 @@ export const resetPasswordApi = async (data) => {
 };
 
 /* SOCIAL LOGIN (Google/Facebook placeholder) */
-export const socialLoginApi = async (provider, token) => {
-  return api.post(`/auth/social-login`, { provider, token });
+export const socialLoginApi = async (provider, token, commPrefs) => {
+  return api.post(`/auth/social-login`, { provider, token, communicationPreferences: commPrefs });
 };
 
 export const getUserApi = () => {
