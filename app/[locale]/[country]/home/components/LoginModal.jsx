@@ -25,10 +25,12 @@ import {
   validateOtp,
 } from "@/lib/validation";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useGoogleLogin } from "@react-oauth/google";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/context/AuthContext";
 import { useRegion } from "@/hooks/useRegion";
+import { isAppStandalone } from "@/lib/pwa/pwaUtils";
 
 /* ─────────────────────────────────────────────────────────────────── */
 /*  LoginModal                                                          */
@@ -88,6 +90,11 @@ const [googleProfile, setGoogleProfile] = useState(null);
       sessionStorage.setItem("redirectAfterLogin", currentPath);
     }
   }, [open]);
+
+  const [isPwaStandalone, setIsPwaStandalone] = useState(false);
+  useEffect(() => {
+    setIsPwaStandalone(isAppStandalone());
+  }, []);
 
   // Login
 
@@ -938,17 +945,31 @@ router.push(redirectPath);
                 )}
 
                 {/* Terms */}
-                <p className="mt-6 text-xs text-gray-400 dark:text-gray-500 leading-relaxed">
-                  {t("termsText")}{" "}
-                  <span className="underline cursor-pointer hover:text-gray-600 dark:hover:text-gray-300">
-                   {t("termsOfService")}
-                  </span>{" "}
-                  {t("and")}{" "}
-                  <span className="underline cursor-pointer hover:text-gray-600 dark:hover:text-gray-300">
-                    {t("privacyPolicy")}
-                  </span>
-                  .
-                </p>
+                {isPwaStandalone ? (
+                  <p className="mt-6 text-xs text-gray-400 dark:text-gray-500 leading-relaxed">
+                    By continuing, you agree to our{" "}
+                    <Link href="#" className="underline cursor-pointer hover:text-gray-600 dark:hover:text-gray-300">
+                      Terms of Service
+                    </Link>
+                    {", "}
+                    <Link href="#" className="underline cursor-pointer hover:text-gray-600 dark:hover:text-gray-300">
+                      Privacy Policy
+                    </Link>
+                    , and opt-in to install your native venuebook dashboard.
+                  </p>
+                ) : (
+                  <p className="mt-6 text-xs text-gray-400 dark:text-gray-500 leading-relaxed">
+                    {t("termsText")}{" "}
+                    <span className="underline cursor-pointer hover:text-gray-600 dark:hover:text-gray-300">
+                     {t("termsOfService")}
+                    </span>{" "}
+                    {t("and")}{" "}
+                    <span className="underline cursor-pointer hover:text-gray-600 dark:hover:text-gray-300">
+                      {t("privacyPolicy")}
+                    </span>
+                    .
+                  </p>
+                )}
               </div>
             </div>
           </motion.div>

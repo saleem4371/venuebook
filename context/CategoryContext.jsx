@@ -30,11 +30,17 @@ export function CategoryProvider({ children, initialCategory }) {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const saved = localStorage.getItem("activeCategory");
+    const loadFromStorage = () => {
+      const saved = localStorage.getItem("activeCategory");
+      if (saved && CATEGORIES[saved]) {
+        setActiveCategoryRaw(saved);
+      }
+    };
 
-    if (saved && CATEGORIES[saved]) {
-      setActiveCategoryRaw(saved);
-    }
+    loadFromStorage();
+
+    window.addEventListener("activeCategoryChanged", loadFromStorage);
+    return () => window.removeEventListener("activeCategoryChanged", loadFromStorage);
   }, []);
 
   // Save category to localStorage

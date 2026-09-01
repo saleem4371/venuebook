@@ -11,6 +11,7 @@ export function UIProvider({ children }) {
   const [showReels,          setShowReels]          = useState(false);
   const [compareOpen,        setCompareOpen]        = useState(false);
   const [categorySheetOpen,  setCategorySheetOpen]  = useState(false);
+  const [pwaLogin,           setPwaLogin]           = useState(false);
 
   /* Set by a page (e.g. Messages full-screen thread on mobile) to hide the
      site Navbar + BottomMenu without touching their own internals. Always
@@ -34,6 +35,8 @@ export function UIProvider({ children }) {
         setCompareOpen,
         categorySheetOpen,
         setCategorySheetOpen,
+        pwaLogin,
+        setPwaLogin,
         hideSiteChrome,
         setHideSiteChrome,
         hideBottomMenu,

@@ -15,6 +15,7 @@ import { useAuth }               from "@/context/AuthContext";
 import { CategoryProvider }      from "@/context/CategoryContext";
 import { useCategory }           from "@/context/CategoryContext";
 import { MobileReelsProvider, useMobileReels } from "@/context/MobileReelsContext";
+import OnboardingGate from "@/components/shared/OnboardingGate";
 
 import { country_of_category } from "@/services/global.service";
 import { connectSocket }        from "@/lib/socket";
@@ -168,6 +169,7 @@ export default function ClientLayout({ children }) {
           <CategoryProvider>
             <MobileReelsProvider>
 
+              <OnboardingGate />
               {/* Checkout owns its own header (back button + step title) and
                   has nothing for the global nav/bottom bar to do mid-booking,
                   so both are hidden on this route entirely — not just the
