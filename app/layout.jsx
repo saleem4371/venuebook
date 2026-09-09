@@ -3,7 +3,6 @@ import Script from "next/script";
 import { ToastProvider } from "../components/ToastProvider";
 import ServiceWorkerProvider from "@/components/ServiceWorkerProvider";
 import PWABottomSheets from "@/components/PWABottomSheets";
-import PWAInstallToast from "@/components/PWAInstallToast";
 import { ModalProvider } from "@/context/ModalContext";
 import {
   Plus_Jakarta_Sans,
@@ -112,7 +111,6 @@ export default async function RootLayout({ children }) {
         <ServiceWorkerProvider>
           <ModalProvider>
             <PWABottomSheets />
-            <PWAInstallToast />
             <ToastProvider position="bottom-center">
               {children}
             </ToastProvider>
