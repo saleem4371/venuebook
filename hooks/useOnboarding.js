@@ -6,6 +6,19 @@ const ONBOARDING_KEY = "vb_onboarding_completed";
 
 const COOKIE_PREFS_KEY = "vb_cookie_prefs";
 
+export function isCookieConsentPending() {
+  if (typeof window === "undefined") return false;
+  if (window.__vbCookieConsentPending === false) return false;
+  if (window.__vbCookieConsentPending === true) return true;
+  try {
+    const isCompleted = localStorage.getItem(ONBOARDING_KEY) === "1";
+    const hasPrefs = localStorage.getItem(COOKIE_PREFS_KEY) !== null;
+    return !isCompleted && !hasPrefs;
+  } catch {
+    return false;
+  }
+}
+
 export function useOnboarding() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -13,8 +26,17 @@ export function useOnboarding() {
   useEffect(() => {
     try {
       const isCompleted = localStorage.getItem(ONBOARDING_KEY) === "1";
-      if (!isCompleted) {
+      const hasPrefs = localStorage.getItem(COOKIE_PREFS_KEY) !== null;
+      if (!isCompleted && !hasPrefs) {
         setShowOnboarding(true);
+        if (typeof window !== "undefined") {
+          window.__vbCookieConsentPending = true;
+          window.dispatchEvent(new CustomEvent("vb-cookie-consent-pending"));
+        }
+      } else {
+        if (typeof window !== "undefined") {
+          window.__vbCookieConsentPending = false;
+        }
       }
     } catch {
       // In case of privacy mode or SSR, default to not showing
@@ -26,6 +48,10 @@ export function useOnboarding() {
   const completeOnboarding = () => {
     try {
       localStorage.setItem(ONBOARDING_KEY, "1");
+      if (typeof window !== "undefined") {
+        window.__vbCookieConsentPending = false;
+        window.dispatchEvent(new CustomEvent("vb-cookie-consent-completed"));
+      }
     } catch {
       // Ignore
     }

@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
+import { isEligibleForPWAInstall } from "@/lib/pwa/pwaUtils";
+import { isCookieConsentPending } from "@/hooks/useOnboarding";
 
 const SESSION_KEY = "vb_onboarding_seen";
 const LS_KEY = "vb_onboarding_last_seen";
@@ -10,6 +12,7 @@ const COOLDOWN = 24 * 60 * 60 * 1000;
 function shouldShowOnboarding() {
   try {
     if (sessionStorage.getItem(SESSION_KEY)) return false;
+    if (localStorage.getItem("vb_pwa_installed") === "true") return false;
     const ts = localStorage.getItem(LS_KEY);
     if (ts && Date.now() - Number(ts) < COOLDOWN) return false;
     return true;
@@ -45,7 +48,10 @@ function Overlay({ open, onClose, children }) {
   const [mobile, setMobile] = useState(false);
 
   useEffect(() => {
-    setMobile(window.innerWidth < 768);
+    const checkMobile = () => setMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
   useEffect(() => {
@@ -117,6 +123,7 @@ function Overlay({ open, onClose, children }) {
         right: 24,
         zIndex: 9991,
         width: 420,
+        maxWidth: "calc(100vw - 48px)",
         opacity: visible ? 1 : 0,
         transform: visible ? "translateY(0)" : "translateY(20px)",
         transition: "opacity 0.3s ease, transform 0.3s cubic-bezier(0.22,1,0.36,1)",
@@ -195,6 +202,10 @@ function InstallSheet({ onDone, directOpen = false }) {
   }, [onDone]);
 
   const handleInstall = useCallback(async () => {
+    if (showFallback) {
+      dismiss();
+      return;
+    }
     const promptEvt = installEvent || window.__pwaInstallEvent;
     if (promptEvt) {
       promptEvt.prompt();
@@ -202,13 +213,15 @@ function InstallSheet({ onDone, directOpen = false }) {
       window.__pwaInstallEvent = null;
       if (outcome === "accepted") {
         window.__pwaInstalled = true;
+        try {
+          localStorage.setItem("vb_pwa_installed", "true");
+        } catch {}
       }
-      setOpen(false);
-      setTimeout(() => onDone?.(), 400);
+      dismiss();
     } else {
       setShowFallback(true);
     }
-  }, [installEvent, onDone]);
+  }, [installEvent, showFallback, dismiss]);
 
   return (
     <Overlay open={open} onClose={dismiss}>
@@ -391,19 +404,60 @@ export function PWABottomSheets() {
 
   useEffect(() => {
     setMounted(true);
-    if (shouldShowOnboarding()) {
-      markOnboardingSeen();
-      setPhase("notify");
-    } else {
+
+    // Rule: NEVER display on desktop/laptop screens
+    if (!isEligibleForPWAInstall()) {
       setPhase("done");
+      return;
     }
 
-    const handleOpenGuide = () => {
-      setPhase("install");
+    let delayTimer = null;
+
+    const startPWA = () => {
+      if (isEligibleForPWAInstall() && shouldShowOnboarding()) {
+        markOnboardingSeen();
+        setPhase("notify");
+      } else {
+        setPhase("done");
+      }
     };
 
-    window.addEventListener("pwa-open-install-guide", handleOpenGuide);
-    return () => window.removeEventListener("pwa-open-install-guide", handleOpenGuide);
+    // Rule: If cookie consent is pending, wait until cookie interaction completes
+    if (isCookieConsentPending()) {
+      const handleCookieCompleted = () => {
+        delayTimer = setTimeout(() => {
+          startPWA();
+        }, 800);
+      };
+      window.addEventListener("vb-cookie-consent-completed", handleCookieCompleted, { once: true });
+
+      const handleOpenGuide = () => {
+        if (isEligibleForPWAInstall()) {
+          setPhase("install");
+        }
+      };
+      window.addEventListener("pwa-open-install-guide", handleOpenGuide);
+
+      return () => {
+        window.removeEventListener("vb-cookie-consent-completed", handleCookieCompleted);
+        window.removeEventListener("pwa-open-install-guide", handleOpenGuide);
+        clearTimeout(delayTimer);
+      };
+    } else {
+      startPWA();
+
+      const handleOpenGuide = () => {
+        if (isEligibleForPWAInstall()) {
+          setPhase("install");
+        }
+      };
+      window.addEventListener("pwa-open-install-guide", handleOpenGuide);
+
+      return () => {
+        window.removeEventListener("pwa-open-install-guide", handleOpenGuide);
+        clearTimeout(delayTimer);
+      };
+    }
   }, []);
 
   if (!mounted || phase === null || phase === "done") return null;

@@ -22,10 +22,21 @@ export default function OnboardingFlow({ onComplete, loadCookiePreferences, save
     setCookieAction(action);
     if (action === "accept") {
       saveCookiePreferences({ required: true, analytics: true, marketing: true });
-      if (window.innerWidth >= 768) setView("category");
     } else if (action === "reject") {
       saveCookiePreferences({ required: true, analytics: false, marketing: false });
-      if (window.innerWidth >= 768) setView("category");
+    } else if (action === "manage") {
+      setDraftPrefs(loadCookiePreferences());
+      setView("preferences");
+    }
+  };
+
+  const handleDesktopCookieSelect = (action) => {
+    if (action === "accept") {
+      saveCookiePreferences({ required: true, analytics: true, marketing: true });
+      onComplete();
+    } else if (action === "reject") {
+      saveCookiePreferences({ required: true, analytics: false, marketing: false });
+      onComplete();
     } else if (action === "manage") {
       setDraftPrefs(loadCookiePreferences());
       setView("preferences");
@@ -35,11 +46,12 @@ export default function OnboardingFlow({ onComplete, loadCookiePreferences, save
   const handleSavePreferences = () => {
     saveCookiePreferences(draftPrefs);
     setCookieAction("manage");
-    if (window.innerWidth >= 768) {
-      setView("category");
-    } else {
-      setView("main");
-    }
+    setView("main");
+  };
+
+  const handleDesktopSavePreferences = () => {
+    saveCookiePreferences(draftPrefs);
+    onComplete();
   };
 
   const handleConfirm = () => {
@@ -379,7 +391,7 @@ export default function OnboardingFlow({ onComplete, loadCookiePreferences, save
               </div>
               <div className="flex gap-3 mt-6">
                 <button
-                  onClick={() => handleCookieSelect("accept")}
+                  onClick={() => handleDesktopCookieSelect("accept")}
                   className={`flex-1 py-2.5 px-2 text-sm font-medium rounded-xl border transition-colors ${
                     cookieAction === "accept" || cookieAction === null
                       ? "bg-purple-600 border-purple-600 text-white"
@@ -389,7 +401,7 @@ export default function OnboardingFlow({ onComplete, loadCookiePreferences, save
                   Accept
                 </button>
                 <button
-                  onClick={() => handleCookieSelect("reject")}
+                  onClick={() => handleDesktopCookieSelect("reject")}
                   className={`flex-1 py-2.5 px-2 text-sm font-medium rounded-xl border transition-colors ${
                     cookieAction === "reject"
                       ? "bg-purple-600 border-purple-600 text-white"
@@ -399,7 +411,7 @@ export default function OnboardingFlow({ onComplete, loadCookiePreferences, save
                   Reject
                 </button>
                 <button
-                  onClick={() => handleCookieSelect("manage")}
+                  onClick={() => handleDesktopCookieSelect("manage")}
                   className={`flex-1 py-2.5 px-2 text-sm font-medium rounded-xl border transition-colors ${
                     cookieAction === "manage"
                       ? "bg-purple-600 border-purple-600 text-white"
@@ -460,7 +472,7 @@ export default function OnboardingFlow({ onComplete, loadCookiePreferences, save
               </div>
 
               <button
-                onClick={handleSavePreferences}
+                onClick={handleDesktopSavePreferences}
                 className="w-full py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center transition-all bg-purple-600 hover:bg-purple-700 text-white shadow-sm hover:shadow active:scale-[0.98]"
               >
                 Save Preferences
