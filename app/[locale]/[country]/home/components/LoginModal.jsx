@@ -32,6 +32,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useRegion } from "@/hooks/useRegion";
 import { isAppStandalone } from "@/lib/pwa/pwaUtils";
 import { usePWAInstall } from "@/lib/pwa/hooks";
+import { useModal } from "@/context/ModalContext";
 
 /* ─────────────────────────────────────────────────────────────────── */
 /*  LoginModal                                                          */
@@ -41,6 +42,7 @@ import { usePWAInstall } from "@/lib/pwa/hooks";
 // When provided, it replaces the default router.push("/") redirect so callers
 // can route the user wherever makes sense in their context.
 export default function LoginModal({ open, setOpen, onSuccess }) {
+  const { requestModal, releaseModal, canShow } = useModal();
 
   const { install, isInstallable } = usePWAInstall();
   const [optInPwa, setOptInPwa] = useState(false);
@@ -52,7 +54,21 @@ export default function LoginModal({ open, setOpen, onSuccess }) {
   const [phone, setPhone] = useState("");
   const [step, setStep] = useState("number"); // number | otp //
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
-  const close = () => setOpen(false);
+  const close = () => {
+    releaseModal("auth");
+    setOpen(false);
+  };
+
+  useEffect(() => {
+    if (open) {
+      requestModal("auth");
+    } else {
+      releaseModal("auth");
+    }
+    return () => {
+      releaseModal("auth");
+    };
+  }, [open, requestModal, releaseModal]);
 
   const [fpEmail, setFpEmail] = useState("");
   const [fpStep, setFpStep] = useState("email"); // email | sent
@@ -67,7 +83,7 @@ const [googleProfile, setGoogleProfile] = useState(null);
 
   /* Strict body scroll lock */
   useEffect(() => {
-    if (open) {
+    if (open && canShow("auth")) {
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "";
@@ -75,7 +91,7 @@ const [googleProfile, setGoogleProfile] = useState(null);
     return () => {
       document.body.style.overflow = "";
     };
-  }, [open]);
+  }, [open, canShow]);
 
   /* ESC to close */
   useEffect(() => {
@@ -499,7 +515,7 @@ router.push(redirectPath);
 
   return (
     <AnimatePresence>
-      {open && (
+      {open && canShow("auth") && (
         <Fragment key="login-root">
           {/* Backdrop */}
           <motion.div

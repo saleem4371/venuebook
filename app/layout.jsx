@@ -4,6 +4,7 @@ import { ToastProvider } from "../components/ToastProvider";
 import ServiceWorkerProvider from "@/components/ServiceWorkerProvider";
 import PWABottomSheets from "@/components/PWABottomSheets";
 import PWAInstallToast from "@/components/PWAInstallToast";
+import { ModalProvider } from "@/context/ModalContext";
 import {
   Plus_Jakarta_Sans,
   Noto_Sans_Devanagari,
@@ -109,11 +110,13 @@ export default async function RootLayout({ children }) {
         className="min-h-screen bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 antialiased font-sans"
       >
         <ServiceWorkerProvider>
-          <PWABottomSheets />
-          <PWAInstallToast />
-          <ToastProvider position="bottom-center">
-            {children}
-          </ToastProvider>
+          <ModalProvider>
+            <PWABottomSheets />
+            <PWAInstallToast />
+            <ToastProvider position="bottom-center">
+              {children}
+            </ToastProvider>
+          </ModalProvider>
         </ServiceWorkerProvider>
 
         <Script id="pwa-install-listener" strategy="beforeInteractive">{`

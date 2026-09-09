@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { isEligibleForPWAInstall } from "@/lib/pwa/pwaUtils";
 import { isCookieConsentPending } from "@/hooks/useOnboarding";
+import { useModal } from "@/context/ModalContext";
 
 const SESSION_KEY = "vb_onboarding_seen";
 const LS_KEY = "vb_onboarding_last_seen";
@@ -399,71 +400,66 @@ function NotificationSheet({ onDone }) {
 }
 
 export function PWABottomSheets() {
+  const { requestModal, releaseModal, canShow } = useModal();
   const [phase, setPhase] = useState(null);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
 
-    // Rule: NEVER display on desktop/laptop screens
-    if (!isEligibleForPWAInstall()) {
+    if (!isEligibleForPWAInstall() || !shouldShowOnboarding()) {
       setPhase("done");
       return;
     }
 
-    let delayTimer = null;
+    requestModal("pwa");
 
-    const startPWA = () => {
+    return () => {
+      releaseModal("pwa");
+    };
+  }, [requestModal, releaseModal]);
+
+  useEffect(() => {
+    if (canShow("pwa")) {
       if (isEligibleForPWAInstall() && shouldShowOnboarding()) {
-        markOnboardingSeen();
-        setPhase("notify");
+        if (!phase || phase === "waiting") {
+          markOnboardingSeen();
+          setPhase("notify");
+        }
       } else {
         setPhase("done");
+        releaseModal("pwa");
+      }
+    }
+  }, [canShow, phase, releaseModal]);
+
+  useEffect(() => {
+    const handleOpenGuide = () => {
+      if (isEligibleForPWAInstall()) {
+        requestModal("pwa");
+        setPhase("install");
       }
     };
+    window.addEventListener("pwa-open-install-guide", handleOpenGuide);
+    return () => {
+      window.removeEventListener("pwa-open-install-guide", handleOpenGuide);
+    };
+  }, [requestModal]);
 
-    // Rule: If cookie consent is pending, wait until cookie interaction completes
-    if (isCookieConsentPending()) {
-      const handleCookieCompleted = () => {
-        delayTimer = setTimeout(() => {
-          startPWA();
-        }, 800);
-      };
-      window.addEventListener("vb-cookie-consent-completed", handleCookieCompleted, { once: true });
-
-      const handleOpenGuide = () => {
-        if (isEligibleForPWAInstall()) {
-          setPhase("install");
-        }
-      };
-      window.addEventListener("pwa-open-install-guide", handleOpenGuide);
-
-      return () => {
-        window.removeEventListener("vb-cookie-consent-completed", handleCookieCompleted);
-        window.removeEventListener("pwa-open-install-guide", handleOpenGuide);
-        clearTimeout(delayTimer);
-      };
-    } else {
-      startPWA();
-
-      const handleOpenGuide = () => {
-        if (isEligibleForPWAInstall()) {
-          setPhase("install");
-        }
-      };
-      window.addEventListener("pwa-open-install-guide", handleOpenGuide);
-
-      return () => {
-        window.removeEventListener("pwa-open-install-guide", handleOpenGuide);
-        clearTimeout(delayTimer);
-      };
-    }
-  }, []);
-
-  if (!mounted || phase === null || phase === "done") return null;
+  if (!mounted || phase === null || phase === "done" || !canShow("pwa")) return null;
 
   if (phase === "notify") return <NotificationSheet onDone={() => setPhase("install")} />;
-  if (phase === "install") return <InstallSheet onDone={() => setPhase("done")} directOpen={true} />;
+  if (phase === "install") {
+    return (
+      <InstallSheet
+        onDone={() => {
+          setPhase("done");
+          releaseModal("pwa");
+        }}
+        directOpen={true}
+      />
+    );
+  }
   return null;
 }
 

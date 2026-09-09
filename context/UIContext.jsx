@@ -1,22 +1,32 @@
 "use client";
 
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState, useCallback } from "react";
+import { useModal } from "@/context/ModalContext";
 
 const UIContext = createContext();
 
 export function UIProvider({ children }) {
-  const [loginOpen,          setLoginOpen]          = useState(false);
+  const { requestModal, releaseModal, canShow } = useModal();
+  const [loginRequested,     setLoginRequested]     = useState(false);
   const [filterOpen,         setFilterOpen]         = useState(false);
   const [showMap,            setShowMap]            = useState(false);
   const [showReels,          setShowReels]          = useState(false);
   const [compareOpen,        setCompareOpen]        = useState(false);
   const [categorySheetOpen,  setCategorySheetOpen]  = useState(false);
   const [pwaLogin,           setPwaLogin]           = useState(false);
-
-  /* Set by a page (e.g. Messages full-screen thread on mobile) to hide the
-     site Navbar + BottomMenu without touching their own internals. Always
-     reset back to false by the caller on unmount / condition change. */
   const [hideSiteChrome,     setHideSiteChrome]     = useState(false);
+
+  const setLoginOpen = useCallback((open) => {
+    if (open) {
+      setLoginRequested(true);
+      requestModal("auth");
+    } else {
+      setLoginRequested(false);
+      releaseModal("auth");
+    }
+  }, [requestModal, releaseModal]);
+
+  const loginOpen = loginRequested && canShow("auth");
 
   const hideBottomMenu = showMap || showReels || filterOpen || compareOpen || hideSiteChrome;
 

@@ -6,6 +6,7 @@ import lightLogo from "@/assets/logo.svg";
 import darkLogo from "@/assets/logo.png";
 import { Check, ChevronRight, Lock, ChevronLeft, Building2, TreePine, MapPin, X } from "lucide-react";
 import { detectUserLocation, getStoredLocation } from "@/hooks/usePreferredLocation";
+import { useModal } from "@/context/ModalContext";
 
 const DEFAULT_CITIES = {
   IN: ["Mangalore", "Kalaburagi", "Bengaluru", "Mumbai"],
@@ -13,6 +14,7 @@ const DEFAULT_CITIES = {
 };
 
 export default function OnboardingFlow({ onComplete, loadCookiePreferences, saveCookiePreferences, getSavedCookieAction }) {
+  const { requestModal, releaseModal } = useModal();
   const [cookieAction, setCookieAction] = useState(null);
   const [locationCountry, setLocationCountry] = useState("IN");
   const [locationCity, setLocationCity] = useState("");
@@ -207,6 +209,7 @@ export default function OnboardingFlow({ onComplete, loadCookiePreferences, save
     } else if (action === "reject") {
       saveCookiePreferences({ required: true, analytics: false, marketing: false }, "reject");
     } else if (action === "manage") {
+      requestModal("cookie_preferences");
       setDraftPrefs(loadCookiePreferences());
       setView("preferences");
     }
@@ -215,6 +218,7 @@ export default function OnboardingFlow({ onComplete, loadCookiePreferences, save
   const handleSavePreferences = () => {
     saveCookiePreferences(draftPrefs, "manage");
     setCookieAction("manage");
+    releaseModal("cookie_preferences");
     setView("main");
   };
 
@@ -281,7 +285,10 @@ export default function OnboardingFlow({ onComplete, loadCookiePreferences, save
         <header className="flex items-center justify-center p-5 border-b border-gray-100 dark:border-gray-800 shrink-0 relative">
           {view === "preferences" && (
             <button
-              onClick={() => setView("main")}
+              onClick={() => {
+                releaseModal("cookie_preferences");
+                setView("main");
+              }}
               className="absolute left-4 p-2 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             >
               <ChevronLeft size={20} />
