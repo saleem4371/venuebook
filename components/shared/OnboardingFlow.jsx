@@ -1,29 +1,211 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import lightLogo from "@/assets/logo.svg";
 import darkLogo from "@/assets/logo.png";
 import { Check, ChevronRight, Lock, ChevronLeft, Building2, TreePine, MapPin, X } from "lucide-react";
+import { detectUserLocation, getStoredLocation } from "@/hooks/usePreferredLocation";
 
-export default function OnboardingFlow({ onComplete, loadCookiePreferences, saveCookiePreferences }) {
+const DEFAULT_CITIES = {
+  IN: ["Mangalore", "Kalaburagi", "Bengaluru", "Mumbai"],
+  AE: ["Dubai", "Abu Dhabi", "Sharjah"],
+};
+
+export default function OnboardingFlow({ onComplete, loadCookiePreferences, saveCookiePreferences, getSavedCookieAction }) {
   const [cookieAction, setCookieAction] = useState(null);
-  const [locationCountry, setLocationCountry] = useState("");
+  const [locationCountry, setLocationCountry] = useState("IN");
   const [locationCity, setLocationCity] = useState("");
+  const [locationData, setLocationData] = useState(null);
+  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+  const [isEditingLocation, setIsEditingLocation] = useState(false);
 
-  const [view, setView] = useState("main"); // "main", "preferences", "category"
+  const [view, setView] = useState("main");
   const [draftPrefs, setDraftPrefs] = useState({ required: true, analytics: false, marketing: false });
   const [animatingCategory, setAnimatingCategory] = useState(null);
 
-  const isLocationComplete = locationCountry !== "" && locationCity !== "";
-  const isSetupComplete = cookieAction !== null && isLocationComplete;
+  const cookieConsentResolved = cookieAction !== null;
+  const isLocationComplete = !isLoadingLocation && (
+    (locationCountry !== "" && locationCity !== "") ||
+    (!isEditingLocation && !!locationData)
+  );
+  const isSetupComplete = cookieConsentResolved && isLocationComplete;
+
+  const saveResolvedLocation = (loc) => {
+    if (!loc) return;
+    try {
+      localStorage.setItem("vb_onboarding_location", JSON.stringify(loc));
+      if (loc.city) {
+        localStorage.setItem("vb_preferred_location", loc.city);
+      } else if (loc.label) {
+        localStorage.setItem("vb_preferred_location", loc.label);
+      }
+      const code = (loc.countryCode || "in").toLowerCase();
+      localStorage.setItem(
+        `vb_preferred_location_${code}`,
+        JSON.stringify({
+          label: loc.label,
+          lat: loc.lat || null,
+          lng: loc.lng || null,
+        })
+      );
+      localStorage.setItem(
+        `vb_preferred_location_source_${code}`,
+        loc.source || "ip"
+      );
+      if (loc.countryCode) {
+        localStorage.setItem("vb_ip_country", code);
+      }
+      window.dispatchEvent(
+        new CustomEvent("vb:preferred-location-change", {
+          detail: {
+            countryCode: code,
+            loc: { label: loc.label, lat: loc.lat, lng: loc.lng },
+          },
+        })
+      );
+    } catch {
+      // Ignore
+    }
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const initLocation = async () => {
+      let saved = null;
+      try {
+        const raw = localStorage.getItem("vb_onboarding_location");
+        if (raw) {
+          saved = JSON.parse(raw);
+        }
+      } catch {
+        // Ignore
+      }
+
+      if (!saved) {
+        try {
+          const prefCity = localStorage.getItem("vb_preferred_location");
+          const storedIn = getStoredLocation("in");
+          const storedAe = getStoredLocation("ae");
+          const stored = storedIn || storedAe;
+          if (prefCity || stored) {
+            const countryCode = storedIn ? "IN" : storedAe ? "AE" : "IN";
+            const countryName = countryCode === "AE" ? "UAE" : "India";
+            const city = prefCity || stored?.label?.split(",")?.[0]?.trim() || "";
+            saved = {
+              city,
+              country: countryName,
+              countryCode,
+              label: stored?.label || (city ? `${city}, ${countryName}` : countryName),
+              source: "manual",
+            };
+          }
+        } catch {
+          // Ignore
+        }
+      }
+
+      if (saved && (saved.city || saved.country || saved.label)) {
+        if (!isMounted) return;
+        setLocationData(saved);
+        setLocationCountry(saved.countryCode || "IN");
+        setLocationCity(saved.city || "");
+        setIsEditingLocation(false);
+        setIsLoadingLocation(false);
+        return;
+      }
+
+      setIsLoadingLocation(true);
+      const detected = await detectUserLocation(3500);
+
+      if (!isMounted) return;
+
+      if (detected && (detected.city || detected.country)) {
+        setLocationData(detected);
+        setLocationCountry(detected.countryCode || "IN");
+        setLocationCity(detected.city || "");
+        setIsEditingLocation(false);
+        setIsLoadingLocation(false);
+        saveResolvedLocation(detected);
+      } else {
+        setIsLoadingLocation(false);
+        setIsEditingLocation(true);
+      }
+    };
+
+    initLocation();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleCountryChange = (e) => {
+    const newCountry = e.target.value;
+    setLocationCountry(newCountry);
+    setLocationCity("");
+  };
+
+  const handleCityChange = (e) => {
+    const newCity = e.target.value;
+    setLocationCity(newCity);
+    if (newCity && locationCountry) {
+      const countryName = locationCountry === "AE" ? "UAE" : "India";
+      const manualLoc = {
+        city: newCity,
+        country: countryName,
+        countryCode: locationCountry,
+        label: `${newCity}, ${countryName}`,
+        source: "manual",
+      };
+      setLocationData(manualLoc);
+      saveResolvedLocation(manualLoc);
+    }
+  };
+
+  const handleClearCity = () => {
+    setLocationCity("");
+    if (locationData && locationData.source === "manual") {
+      setLocationData(null);
+    }
+  };
+
+  const currentRegionCities = DEFAULT_CITIES[locationCountry] || DEFAULT_CITIES.IN;
+  const cityOptions = locationCity && !currentRegionCities.includes(locationCity)
+    ? [locationCity, ...currentRegionCities]
+    : currentRegionCities;
+
+  useEffect(() => {
+    if (getSavedCookieAction) {
+      const saved = getSavedCookieAction();
+      if (saved) {
+        setCookieAction(saved);
+        return;
+      }
+    }
+    try {
+      const action = localStorage.getItem("vb_cookie_action");
+      if (action) {
+        setCookieAction(action);
+      } else {
+        const saved = localStorage.getItem("vb_cookie_prefs");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed.analytics && parsed.marketing) setCookieAction("accept");
+          else if (!parsed.analytics && !parsed.marketing) setCookieAction("reject");
+          else setCookieAction("manage");
+        }
+      }
+    } catch {}
+  }, [getSavedCookieAction]);
 
   const handleCookieSelect = (action) => {
     setCookieAction(action);
     if (action === "accept") {
-      saveCookiePreferences({ required: true, analytics: true, marketing: true });
+      saveCookiePreferences({ required: true, analytics: true, marketing: true }, "accept");
     } else if (action === "reject") {
-      saveCookiePreferences({ required: true, analytics: false, marketing: false });
+      saveCookiePreferences({ required: true, analytics: false, marketing: false }, "reject");
     } else if (action === "manage") {
       setDraftPrefs(loadCookiePreferences());
       setView("preferences");
@@ -31,13 +213,16 @@ export default function OnboardingFlow({ onComplete, loadCookiePreferences, save
   };
 
   const handleSavePreferences = () => {
-    saveCookiePreferences(draftPrefs);
+    saveCookiePreferences(draftPrefs, "manage");
     setCookieAction("manage");
     setView("main");
   };
 
   const handleConfirm = () => {
     if (isSetupComplete) {
+      if (locationData) {
+        saveResolvedLocation(locationData);
+      }
       setView("category");
     }
   };
@@ -56,9 +241,6 @@ export default function OnboardingFlow({ onComplete, loadCookiePreferences, save
         const buttonEl = e.currentTarget;
         const rect = buttonEl.getBoundingClientRect();
         
-        // Calculate delta to the center of the 5th bottom-nav item
-        // Bottom nav is 5 equal columns, so 5th item center is at 90% of screen width.
-        // Height is 68px, so center is ~34px from bottom.
         const targetX = window.innerWidth * 0.9;
         const targetY = window.innerHeight - 34;
 
@@ -72,7 +254,7 @@ export default function OnboardingFlow({ onComplete, loadCookiePreferences, save
           localStorage.setItem("activeCategory", "farmstays");
           window.dispatchEvent(new Event("activeCategoryChanged"));
           onComplete();
-        }, 600); // Wait for animation
+        }, 600);
       } else {
         localStorage.setItem("activeCategory", "farmstays");
         window.dispatchEvent(new Event("activeCategoryChanged"));
@@ -165,94 +347,175 @@ export default function OnboardingFlow({ onComplete, loadCookiePreferences, save
               </div>
 
               <section className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-                <div className="mb-3 flex items-center gap-2">
-                  <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] text-white ${isLocationComplete ? 'bg-green-500' : 'bg-purple-600'}`}>
-                    {isLocationComplete ? <Check size={12} /> : "1"}
-                  </span>
-                  <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Location</h2>
-                </div>
-
-                <div className="flex flex-row gap-3 ml-7">
-                  <div className="flex-1">
-                    <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wide">Region</label>
-                    <div className="relative">
-                      <select 
-                        value={locationCountry}
-                        onChange={(e) => setLocationCountry(e.target.value)}
-                        className="w-full appearance-none rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/50 pl-3 pr-8 py-2 text-sm font-medium text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-colors"
-                      >
-                        <option value="" disabled>Select Region</option>
-                        <option value="IN">IN India</option>
-                      </select>
-                      <ChevronRight className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none rotate-90" size={14} strokeWidth={2.5} />
-                    </div>
+                <div className="mb-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] text-white transition-colors ${isLocationComplete ? 'bg-green-500' : 'bg-purple-600'}`}>
+                      {isLocationComplete ? <Check size={12} /> : "1"}
+                    </span>
+                    <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Location</h2>
                   </div>
-                  <div className="flex-1">
-                    <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wide">Location</label>
-                    <div className="relative">
-                      <select 
-                        value={locationCity}
-                        onChange={(e) => setLocationCity(e.target.value)}
-                        className="w-full appearance-none rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/50 pl-8 pr-8 py-2 text-sm font-medium text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-colors"
+
+                  {!isLoadingLocation && locationData && !isEditingLocation && (
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingLocation(true)}
+                      className="text-xs font-semibold text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 hover:underline transition-colors"
+                    >
+                      Change
+                    </button>
+                  )}
+
+                  {isEditingLocation && locationData && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLocationCountry(locationData.countryCode || "IN");
+                          setLocationCity(locationData.city || "");
+                          setIsEditingLocation(false);
+                        }}
+                        className="text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
                       >
-                        <option value="" disabled>Select City</option>
-                        <option value="Mangalore">Mangalore</option>
-                        <option value="Kalaburagi">Kalaburagi</option>
-                      </select>
-                      <MapPin className="absolute left-2.5 top-1/2 -translate-y-1/2 text-purple-600 pointer-events-none" size={14} strokeWidth={2.5} />
-                      {locationCity ? (
-                        <button 
-                          onClick={() => setLocationCity("")} 
-                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+                        Cancel
+                      </button>
+                      {locationCountry && locationCity && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const countryName = locationCountry === "AE" ? "UAE" : "India";
+                            const manualLoc = {
+                              city: locationCity,
+                              country: countryName,
+                              countryCode: locationCountry,
+                              label: `${locationCity}, ${countryName}`,
+                              source: "manual",
+                            };
+                            setLocationData(manualLoc);
+                            saveResolvedLocation(manualLoc);
+                            setIsEditingLocation(false);
+                          }}
+                          className="text-xs font-semibold text-purple-600 dark:text-purple-400 hover:underline transition-colors"
                         >
-                          <X size={14} strokeWidth={2.5} />
+                          Done
                         </button>
-                      ) : (
-                        <ChevronRight className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none rotate-90" size={14} strokeWidth={2.5} />
                       )}
                     </div>
-                  </div>
+                  )}
+                </div>
+
+                <div className="ml-7">
+                  {isLoadingLocation ? (
+                    <div className="flex items-center gap-2.5 py-2 text-sm text-gray-500 dark:text-gray-400">
+                      <div className="w-4 h-4 border-2 border-purple-600 border-t-transparent rounded-full animate-spin shrink-0" />
+                      <span>Detecting your location...</span>
+                    </div>
+                  ) : !isEditingLocation && locationData ? (
+                    <div className="flex items-center justify-between py-2 px-3 bg-white dark:bg-gray-900/60 rounded-lg border border-gray-200 dark:border-gray-700">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <MapPin className="text-purple-600 shrink-0" size={16} />
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
+                            {locationData.label || (locationData.city ? `${locationData.city}, ${locationData.country}` : locationData.country)}
+                          </p>
+                          <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                            {locationData.source === "manual" ? "Selected location" : "Auto-detected"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-row gap-3">
+                      <div className="flex-1">
+                        <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wide">Region</label>
+                        <div className="relative">
+                          <select 
+                            value={locationCountry}
+                            onChange={handleCountryChange}
+                            className="w-full appearance-none rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/50 pl-3 pr-8 py-2 text-sm font-medium text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-colors"
+                          >
+                            <option value="" disabled>Select Region</option>
+                            <option value="IN">IN India</option>
+                            <option value="AE">AE UAE</option>
+                          </select>
+                          <ChevronRight className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none rotate-90" size={14} strokeWidth={2.5} />
+                        </div>
+                      </div>
+                      <div className="flex-1">
+                        <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wide">Location</label>
+                        <div className="relative">
+                          <select 
+                            value={locationCity}
+                            onChange={handleCityChange}
+                            className="w-full appearance-none rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/50 pl-8 pr-8 py-2 text-sm font-medium text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-colors"
+                          >
+                            <option value="" disabled>Select City</option>
+                            {cityOptions.map((c) => (
+                              <option key={c} value={c}>{c}</option>
+                            ))}
+                          </select>
+                          <MapPin className="absolute left-2.5 top-1/2 -translate-y-1/2 text-purple-600 pointer-events-none" size={14} strokeWidth={2.5} />
+                          {locationCity ? (
+                            <button 
+                              type="button"
+                              onClick={handleClearCity} 
+                              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+                            >
+                              <X size={14} strokeWidth={2.5} />
+                            </button>
+                          ) : (
+                            <ChevronRight className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none rotate-90" size={14} strokeWidth={2.5} />
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </section>
 
-              <section 
-                className={`bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 border transition-opacity duration-300 ${
-                  isLocationComplete ? "opacity-100 border-gray-200 dark:border-gray-700" : "opacity-40 border-gray-200 dark:border-gray-700 pointer-events-none grayscale-[50%]"
-                }`}
-              >
-                <div className="mb-3 flex items-center gap-2">
-                  <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] text-white ${cookieAction ? 'bg-green-500' : (isLocationComplete ? 'bg-purple-600' : 'bg-gray-400')}`}>
-                    {cookieAction ? <Check size={12} /> : "2"}
-                  </span>
-                  <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Cookies Setting</h2>
+              <section className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+                <div className="mb-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] text-white transition-colors ${cookieConsentResolved ? 'bg-green-500' : 'bg-purple-600'}`}>
+                      {cookieConsentResolved ? <Check size={12} /> : "2"}
+                    </span>
+                    <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Cookies Setting</h2>
+                  </div>
+                  {cookieConsentResolved && (
+                    <span className="text-[11px] font-medium text-green-600 dark:text-green-400">
+                      Saved
+                    </span>
+                  )}
                 </div>
                 
                 <div className="flex flex-row items-center gap-2 ml-7">
                   <button
+                    type="button"
                     onClick={() => handleCookieSelect("accept")}
                     className={`flex-1 py-2 px-1 text-xs font-medium rounded-lg border transition-colors ${
                       cookieAction === "accept"
-                        ? "bg-purple-600 border-purple-600 text-white"
+                        ? "bg-purple-600 border-purple-600 text-white shadow-sm"
                         : "bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
                     }`}
                   >
                     Accept
                   </button>
                   <button
+                    type="button"
                     onClick={() => handleCookieSelect("reject")}
                     className={`flex-1 py-2 px-1 text-xs font-medium rounded-lg border transition-colors ${
                       cookieAction === "reject"
-                        ? "bg-purple-600 border-purple-600 text-white"
+                        ? "bg-purple-600 border-purple-600 text-white shadow-sm"
                         : "bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
                     }`}
                   >
                     Reject
                   </button>
                   <button
+                    type="button"
                     onClick={() => handleCookieSelect("manage")}
                     className={`flex-1 py-2 px-1 text-xs font-medium rounded-lg border transition-colors ${
                       cookieAction === "manage"
-                        ? "bg-purple-600 border-purple-600 text-white"
+                        ? "bg-purple-600 border-purple-600 text-white shadow-sm"
                         : "bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
                     }`}
                   >

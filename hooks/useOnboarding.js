@@ -11,9 +11,8 @@ export function isCookieConsentPending() {
   if (window.__vbCookieConsentPending === false) return false;
   if (window.__vbCookieConsentPending === true) return true;
   try {
-    const isCompleted = localStorage.getItem(ONBOARDING_KEY) === "1";
     const hasPrefs = localStorage.getItem(COOKIE_PREFS_KEY) !== null;
-    return !isCompleted && !hasPrefs;
+    return !hasPrefs;
   } catch {
     return false;
   }
@@ -27,8 +26,10 @@ export function useOnboarding() {
     try {
       const isCompleted = localStorage.getItem(ONBOARDING_KEY) === "1";
       const hasPrefs = localStorage.getItem(COOKIE_PREFS_KEY) !== null;
-      if (!isCompleted && !hasPrefs) {
+      if (!isCompleted) {
         setShowOnboarding(true);
+      }
+      if (!hasPrefs) {
         if (typeof window !== "undefined") {
           window.__vbCookieConsentPending = true;
           window.dispatchEvent(new CustomEvent("vb-cookie-consent-pending"));
@@ -68,13 +69,37 @@ export function useOnboarding() {
     return { required: true, analytics: false, marketing: false };
   };
 
-  const saveCookiePreferences = (prefs) => {
+  const getSavedCookieAction = () => {
+    try {
+      const action = localStorage.getItem("vb_cookie_action");
+      if (action) return action;
+      const saved = localStorage.getItem(COOKIE_PREFS_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.analytics && parsed.marketing) return "accept";
+        if (!parsed.analytics && !parsed.marketing) return "reject";
+        return "manage";
+      }
+    } catch {
+      // Ignore
+    }
+    return null;
+  };
+
+  const saveCookiePreferences = (prefs, action = null) => {
     try {
       localStorage.setItem(COOKIE_PREFS_KEY, JSON.stringify({ ...prefs, required: true }));
+      if (action) {
+        localStorage.setItem("vb_cookie_action", action);
+      }
+      if (typeof window !== "undefined") {
+        window.__vbCookieConsentPending = false;
+        window.dispatchEvent(new CustomEvent("vb-cookie-consent-completed"));
+      }
     } catch {
       // Ignore
     }
   };
 
-  return { showOnboarding, completeOnboarding, isInitialized, loadCookiePreferences, saveCookiePreferences };
+  return { showOnboarding, completeOnboarding, isInitialized, loadCookiePreferences, saveCookiePreferences, getSavedCookieAction };
 }

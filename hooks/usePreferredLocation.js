@@ -63,6 +63,41 @@ export function getStoredLocationIsAutoDetected(countryCode) {
   }
 }
 
+export async function detectUserLocation(timeoutMs = 3500) {
+  if (typeof window === "undefined") return null;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch("https://ipapi.co/json/", {
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data || data.error) return null;
+
+    const city = data.city || "";
+    const country = data.country_name || (data.country_code === "IN" ? "India" : data.country_code || "");
+    const countryCode = (data.country_code || "IN").toUpperCase();
+    const region = data.region || "";
+    const label = city && country ? `${city}, ${country}` : (city || country || "India");
+
+    return {
+      city,
+      country,
+      countryCode,
+      region,
+      label,
+      lat: data.latitude || null,
+      lng: data.longitude || null,
+      source: "ip",
+    };
+  } catch {
+    clearTimeout(timeoutId);
+    return null;
+  }
+}
+
 async function detectIPLocation() {
   try {
     const res = await fetch("https://ipapi.co/json/");

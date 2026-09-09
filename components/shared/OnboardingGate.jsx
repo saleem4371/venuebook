@@ -5,13 +5,20 @@ import OnboardingFlow from "./OnboardingFlow";
 import { AnimatePresence } from "framer-motion";
 
 export default function OnboardingGate() {
-  const { showOnboarding, completeOnboarding, isInitialized, loadCookiePreferences, saveCookiePreferences } = useOnboarding();
+  const { showOnboarding, completeOnboarding, isInitialized, loadCookiePreferences, saveCookiePreferences, getSavedCookieAction } = useOnboarding();
 
   if (!isInitialized) return null;
 
   return (
     <AnimatePresence>
-      {showOnboarding && <OnboardingFlow onComplete={completeOnboarding} loadCookiePreferences={loadCookiePreferences} saveCookiePreferences={saveCookiePreferences} />}
+      {showOnboarding && (
+        <OnboardingFlow 
+          onComplete={completeOnboarding} 
+          loadCookiePreferences={loadCookiePreferences} 
+          saveCookiePreferences={saveCookiePreferences}
+          getSavedCookieAction={getSavedCookieAction}
+        />
+      )}
     </AnimatePresence>
   );
 }
