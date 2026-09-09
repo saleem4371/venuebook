@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import lightLogo from "@/assets/logo.svg";
 import darkLogo from "@/assets/logo.png";
-import { Check, ChevronRight, Lock, ChevronLeft, Building2, TreePine, MapPin, X } from "lucide-react";
+import { Check, ChevronRight, Lock, ChevronLeft, MapPin, X } from "lucide-react";
 import { detectUserLocation, getStoredLocation } from "@/hooks/usePreferredLocation";
 import { useModal } from "@/context/ModalContext";
 
@@ -24,7 +24,6 @@ export default function OnboardingFlow({ onComplete, loadCookiePreferences, save
 
   const [view, setView] = useState("main");
   const [draftPrefs, setDraftPrefs] = useState({ required: true, analytics: false, marketing: false });
-  const [animatingCategory, setAnimatingCategory] = useState(null);
 
   const cookieConsentResolved = cookieAction !== null;
   const isLocationComplete = !isLoadingLocation && (
@@ -202,68 +201,57 @@ export default function OnboardingFlow({ onComplete, loadCookiePreferences, save
     } catch {}
   }, [getSavedCookieAction]);
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        if (view === "preferences") {
+          releaseModal("cookie_preferences");
+          setView("main");
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [view, releaseModal]);
+
   const handleCookieSelect = (action) => {
-    setCookieAction(action);
-    if (action === "accept") {
-      saveCookiePreferences({ required: true, analytics: true, marketing: true }, "accept");
-    } else if (action === "reject") {
-      saveCookiePreferences({ required: true, analytics: false, marketing: false }, "reject");
-    } else if (action === "manage") {
-      requestModal("cookie_preferences");
-      setDraftPrefs(loadCookiePreferences());
-      setView("preferences");
+    try {
+      setCookieAction(action);
+      if (action === "accept") {
+        saveCookiePreferences({ required: true, analytics: true, marketing: true }, "accept");
+      } else if (action === "reject") {
+        saveCookiePreferences({ required: true, analytics: false, marketing: false }, "reject");
+      } else if (action === "manage") {
+        requestModal("cookie_preferences");
+        setDraftPrefs(loadCookiePreferences());
+        setView("preferences");
+      }
+    } catch {
+      // In case of storage errors, action remains active in memory
     }
   };
 
   const handleSavePreferences = () => {
-    saveCookiePreferences(draftPrefs, "manage");
-    setCookieAction("manage");
+    try {
+      saveCookiePreferences(draftPrefs, "manage");
+      setCookieAction("manage");
+    } catch {}
     releaseModal("cookie_preferences");
     setView("main");
   };
 
-  const handleConfirm = () => {
+  const handleContinue = () => {
     if (isSetupComplete) {
       if (locationData) {
         saveResolvedLocation(locationData);
       }
-      setView("category");
-    }
-  };
-
-  const [animProps, setAnimProps] = useState({});
-
-  const handleCategorySelect = (cat, e) => {
-    if (cat === "venues") {
-      localStorage.setItem("activeCategory", "venues");
-      window.dispatchEvent(new Event("activeCategoryChanged"));
-      onComplete();
-    } else if (cat === "farmstays") {
-      const isMobile = window.innerWidth < 768;
-      
-      if (isMobile) {
-        const buttonEl = e.currentTarget;
-        const rect = buttonEl.getBoundingClientRect();
-        
-        const targetX = window.innerWidth * 0.9;
-        const targetY = window.innerHeight - 34;
-
-        const deltaX = targetX - (rect.left + rect.width / 2);
-        const deltaY = targetY - (rect.top + rect.height / 2);
-
-        setAnimProps({ x: deltaX, y: deltaY, scale: 0.15, opacity: 0 });
-        setAnimatingCategory("farmstays");
-        
-        setTimeout(() => {
-          localStorage.setItem("activeCategory", "farmstays");
+      try {
+        if (!localStorage.getItem("activeCategory")) {
+          localStorage.setItem("activeCategory", "venues");
           window.dispatchEvent(new Event("activeCategoryChanged"));
-          onComplete();
-        }, 600);
-      } else {
-        localStorage.setItem("activeCategory", "farmstays");
-        window.dispatchEvent(new Event("activeCategoryChanged"));
-        onComplete();
-      }
+        }
+      } catch {}
+      onComplete();
     }
   };
 
@@ -276,6 +264,9 @@ export default function OnboardingFlow({ onComplete, loadCookiePreferences, save
       className="fixed inset-0 z-[999990] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 transition-colors duration-300"
     >
       <motion.div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="onboarding-heading"
         initial={{ scale: 0.95, opacity: 0, y: 20 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.95, opacity: 0, y: 20 }}
@@ -285,6 +276,8 @@ export default function OnboardingFlow({ onComplete, loadCookiePreferences, save
         <header className="flex items-center justify-center p-5 border-b border-gray-100 dark:border-gray-800 shrink-0 relative">
           {view === "preferences" && (
             <button
+              type="button"
+              aria-label="Back to onboarding"
               onClick={() => {
                 releaseModal("cookie_preferences");
                 setView("main");
@@ -308,46 +301,13 @@ export default function OnboardingFlow({ onComplete, loadCookiePreferences, save
           />
         </header>
 
-        <div className={`p-6 flex flex-col gap-6 ${animatingCategory ? "overflow-visible" : "overflow-y-auto"}`}>
-          {view === "category" ? (
-            <>
-              <div className="text-center space-y-1 mb-6">
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Switch Category</h1>
-                <p className="text-gray-500 dark:text-gray-400 text-sm">
-                  Choose what you're looking for
-                </p>
-              </div>
-
-              <div className="flex flex-row justify-center gap-4 px-2">
-                <button
-                  onClick={(e) => handleCategorySelect("venues", e)}
-                  className="flex-1 max-w-[160px] flex flex-col items-center justify-center p-6 rounded-[24px] bg-gray-50 dark:bg-gray-800/80 border-2 border-transparent hover:bg-gray-100 dark:hover:bg-gray-700 transition-all group"
-                >
-                  <div className="bg-violet-500 text-white p-4 rounded-[20px] mb-4 group-hover:scale-105 transition-transform shadow-sm">
-                    <Building2 size={32} strokeWidth={1.5} />
-                  </div>
-                  <span className="text-base font-semibold text-gray-700 dark:text-gray-200">venue</span>
-                </button>
-
-                <div className="relative flex-1 max-w-[160px]">
-                  <motion.button
-                    onClick={(e) => handleCategorySelect("farmstays", e)}
-                    animate={animatingCategory === "farmstays" ? animProps : {}}
-                    transition={{ duration: 0.6, ease: [0.32, 0.72, 0, 1] }}
-                    className={`w-full flex flex-col items-center justify-center p-6 rounded-[24px] border-2 border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-all group relative ${animatingCategory === "farmstays" ? "z-[9999]" : "z-50"}`}
-                  >
-                    <div className="bg-emerald-500 text-white p-4 rounded-[20px] mb-4 group-hover:scale-105 transition-transform shadow-sm">
-                      <TreePine size={32} strokeWidth={1.5} />
-                    </div>
-                    <span className="text-base font-semibold text-emerald-600 dark:text-emerald-400">farmstay</span>
-                  </motion.button>
-                </div>
-              </div>
-            </>
-          ) : view === "main" ? (
+        <div className="p-6 flex flex-col gap-6 overflow-y-auto">
+          {view === "main" ? (
             <>
               <div className="text-center space-y-1">
-                <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Welcome to Venuebook</h1>
+                <h1 id="onboarding-heading" className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                  Welcome to Venuebook
+                </h1>
                 <p className="text-gray-500 dark:text-gray-400 text-sm">
                   Let's set up your preferences.
                 </p>
@@ -359,7 +319,7 @@ export default function OnboardingFlow({ onComplete, loadCookiePreferences, save
                     <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] text-white transition-colors ${isLocationComplete ? 'bg-green-500' : 'bg-purple-600'}`}>
                       {isLocationComplete ? <Check size={12} /> : "1"}
                     </span>
-                    <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Location</h2>
+                    <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Your Location</h2>
                   </div>
 
                   {!isLoadingLocation && locationData && !isEditingLocation && (
@@ -433,9 +393,12 @@ export default function OnboardingFlow({ onComplete, loadCookiePreferences, save
                   ) : (
                     <div className="flex flex-row gap-3">
                       <div className="flex-1">
-                        <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wide">Region</label>
+                        <label htmlFor="onboarding-region" className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wide">
+                          Region
+                        </label>
                         <div className="relative">
                           <select 
+                            id="onboarding-region"
                             value={locationCountry}
                             onChange={handleCountryChange}
                             className="w-full appearance-none rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/50 pl-3 pr-8 py-2 text-sm font-medium text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-colors"
@@ -448,9 +411,12 @@ export default function OnboardingFlow({ onComplete, loadCookiePreferences, save
                         </div>
                       </div>
                       <div className="flex-1">
-                        <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wide">Location</label>
+                        <label htmlFor="onboarding-city" className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wide">
+                          Location
+                        </label>
                         <div className="relative">
                           <select 
+                            id="onboarding-city"
                             value={locationCity}
                             onChange={handleCityChange}
                             className="w-full appearance-none rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/50 pl-8 pr-8 py-2 text-sm font-medium text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-colors"
@@ -464,6 +430,7 @@ export default function OnboardingFlow({ onComplete, loadCookiePreferences, save
                           {locationCity ? (
                             <button 
                               type="button"
+                              aria-label="Clear city selection"
                               onClick={handleClearCity} 
                               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
                             >
@@ -498,7 +465,7 @@ export default function OnboardingFlow({ onComplete, loadCookiePreferences, save
                   <button
                     type="button"
                     onClick={() => handleCookieSelect("accept")}
-                    className={`flex-1 py-2 px-1 text-xs font-medium rounded-lg border transition-colors ${
+                    className={`flex-1 py-2 px-1 text-xs font-medium rounded-lg border transition-colors cursor-pointer ${
                       cookieAction === "accept"
                         ? "bg-purple-600 border-purple-600 text-white shadow-sm"
                         : "bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
@@ -509,7 +476,7 @@ export default function OnboardingFlow({ onComplete, loadCookiePreferences, save
                   <button
                     type="button"
                     onClick={() => handleCookieSelect("reject")}
-                    className={`flex-1 py-2 px-1 text-xs font-medium rounded-lg border transition-colors ${
+                    className={`flex-1 py-2 px-1 text-xs font-medium rounded-lg border transition-colors cursor-pointer ${
                       cookieAction === "reject"
                         ? "bg-purple-600 border-purple-600 text-white shadow-sm"
                         : "bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
@@ -520,7 +487,7 @@ export default function OnboardingFlow({ onComplete, loadCookiePreferences, save
                   <button
                     type="button"
                     onClick={() => handleCookieSelect("manage")}
-                    className={`flex-1 py-2 px-1 text-xs font-medium rounded-lg border transition-colors ${
+                    className={`flex-1 py-2 px-1 text-xs font-medium rounded-lg border transition-colors cursor-pointer ${
                       cookieAction === "manage"
                         ? "bg-purple-600 border-purple-600 text-white shadow-sm"
                         : "bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
@@ -565,8 +532,12 @@ export default function OnboardingFlow({ onComplete, loadCookiePreferences, save
                       </p>
                     </div>
                     <button
+                      type="button"
+                      role="switch"
+                      aria-checked={draftPrefs.analytics}
+                      aria-label="Toggle Analytics cookies"
                       onClick={() => setDraftPrefs({ ...draftPrefs, analytics: !draftPrefs.analytics })}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 ${draftPrefs.analytics ? 'bg-purple-600' : 'bg-gray-300 dark:bg-gray-600'}`}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 cursor-pointer ${draftPrefs.analytics ? 'bg-purple-600' : 'bg-gray-300 dark:bg-gray-600'}`}
                     >
                       <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${draftPrefs.analytics ? 'translate-x-6' : 'translate-x-1'}`} />
                     </button>
@@ -582,8 +553,12 @@ export default function OnboardingFlow({ onComplete, loadCookiePreferences, save
                       </p>
                     </div>
                     <button
+                      type="button"
+                      role="switch"
+                      aria-checked={draftPrefs.marketing}
+                      aria-label="Toggle Marketing cookies"
                       onClick={() => setDraftPrefs({ ...draftPrefs, marketing: !draftPrefs.marketing })}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 ${draftPrefs.marketing ? 'bg-purple-600' : 'bg-gray-300 dark:bg-gray-600'}`}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 cursor-pointer ${draftPrefs.marketing ? 'bg-purple-600' : 'bg-gray-300 dark:bg-gray-600'}`}
                     >
                       <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${draftPrefs.marketing ? 'translate-x-6' : 'translate-x-1'}`} />
                     </button>
@@ -594,31 +569,31 @@ export default function OnboardingFlow({ onComplete, loadCookiePreferences, save
           )}
         </div>
 
-        {view !== "category" && (
-          <div className="p-5 border-t border-gray-100 dark:border-gray-800 shrink-0 bg-gray-50/50 dark:bg-gray-900/50">
-            {view === "main" ? (
-              <button
-                onClick={handleConfirm}
-                disabled={!isSetupComplete}
-                className={`w-full py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all ${
-                  isSetupComplete 
-                    ? "bg-purple-600 hover:bg-purple-700 text-white shadow-md hover:shadow-lg active:scale-[0.98]" 
-                    : "bg-gray-200 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed"
-                }`}
-              >
-                CONFIRM
-                <ChevronRight size={18} />
-              </button>
-            ) : (
-              <button
-                onClick={handleSavePreferences}
-                className="w-full py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all bg-purple-600 hover:bg-purple-700 text-white shadow-md hover:shadow-lg active:scale-[0.98]"
-              >
-                Save Preferences
-              </button>
-            )}
-          </div>
-        )}
+        <div className="p-5 border-t border-gray-100 dark:border-gray-800 shrink-0 bg-gray-50/50 dark:bg-gray-900/50">
+          {view === "main" ? (
+            <button
+              type="button"
+              onClick={handleContinue}
+              disabled={!isSetupComplete}
+              className={`w-full py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all ${
+                isSetupComplete 
+                  ? "bg-purple-600 hover:bg-purple-700 text-white shadow-md hover:shadow-lg active:scale-[0.98] cursor-pointer" 
+                  : "bg-gray-200 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed"
+              }`}
+            >
+              Continue
+              <ChevronRight size={18} />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleSavePreferences}
+              className="w-full py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all bg-purple-600 hover:bg-purple-700 text-white shadow-md hover:shadow-lg active:scale-[0.98] cursor-pointer"
+            >
+              Save Preferences
+            </button>
+          )}
+        </div>
       </motion.div>
     </motion.div>
   );
