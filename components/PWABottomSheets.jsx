@@ -2,41 +2,37 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
+import { isEligibleForPWAInstall, supportsPWAInstall, isIosSafari, isAppStandalone } from "@/lib/pwa/pwaUtils";
+import { useModal } from "@/context/ModalContext";
 
-const SESSION_KEY = "vb_onboarding_seen";
-const LS_KEY = "vb_onboarding_last_seen";
+const PWA_DISMISSED_SESSION = "vb_pwa_dismissed";
+const PWA_DISMISSED_TIME = "vb_pwa_dismissed_at";
+const LEGACY_SESSION_KEY = "vb_onboarding_seen";
+const LEGACY_LS_KEY = "vb_onboarding_last_seen";
 const COOLDOWN = 24 * 60 * 60 * 1000;
 
-function shouldShowOnboarding() {
+function shouldShowPwaPrompt() {
   try {
-    if (sessionStorage.getItem(SESSION_KEY)) return false;
-    const ts = localStorage.getItem(LS_KEY);
+    if (sessionStorage.getItem(PWA_DISMISSED_SESSION) === "true") return false;
+    if (sessionStorage.getItem(LEGACY_SESSION_KEY) === "true") return false;
+    if (localStorage.getItem("vb_pwa_installed") === "true") return false;
+
+    const ts = localStorage.getItem(PWA_DISMISSED_TIME) || localStorage.getItem(LEGACY_LS_KEY);
     if (ts && Date.now() - Number(ts) < COOLDOWN) return false;
+
     return true;
   } catch {
     return true;
   }
 }
 
-function markOnboardingSeen() {
+function markPwaDismissed() {
   try {
-    sessionStorage.setItem(SESSION_KEY, "true");
-    localStorage.setItem(LS_KEY, String(Date.now()));
+    sessionStorage.setItem(PWA_DISMISSED_SESSION, "true");
+    sessionStorage.setItem(LEGACY_SESSION_KEY, "true");
+    localStorage.setItem(PWA_DISMISSED_TIME, String(Date.now()));
+    localStorage.setItem(LEGACY_LS_KEY, String(Date.now()));
   } catch {}
-}
-
-function isStandalone() {
-  if (typeof window === "undefined") return false;
-  return (
-    window.matchMedia("(display-mode: standalone)").matches ||
-    window.navigator.standalone === true
-  );
-}
-
-function isIosSafari() {
-  if (typeof window === "undefined") return false;
-  const ua = navigator.userAgent;
-  return /iphone|ipad|ipod/i.test(ua) && /safari/i.test(ua) && !/chrome|crios|fxios/i.test(ua);
 }
 
 function Overlay({ open, onClose, children }) {
@@ -45,7 +41,10 @@ function Overlay({ open, onClose, children }) {
   const [mobile, setMobile] = useState(false);
 
   useEffect(() => {
-    setMobile(window.innerWidth < 768);
+    const checkMobile = () => setMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
   useEffect(() => {
@@ -117,6 +116,7 @@ function Overlay({ open, onClose, children }) {
         right: 24,
         zIndex: 9991,
         width: 420,
+        maxWidth: "calc(100vw - 48px)",
         opacity: visible ? 1 : 0,
         transform: visible ? "translateY(0)" : "translateY(20px)",
         transition: "opacity 0.3s ease, transform 0.3s cubic-bezier(0.22,1,0.36,1)",
@@ -131,70 +131,33 @@ function Overlay({ open, onClose, children }) {
   );
 }
 
-function InstallSheet({ onDone, directOpen = false }) {
-  const [open, setOpen] = useState(directOpen);
+function InstallSheet({ onDone, onDismiss, onInstalled }) {
+  const [open, setOpen] = useState(true);
   const [installEvent, setInstallEvent] = useState(null);
   const [showFallback, setShowFallback] = useState(false);
   const ios = isIosSafari();
-  const timerRef = useRef(null);
 
   useEffect(() => {
-    if (directOpen) {
-      setOpen(true);
-      return;
-    }
-
-    if (isStandalone()) {
-      onDone?.();
-      return;
-    }
-
-    if (window.__pwaInstallEvent) {
+    if (typeof window !== "undefined" && window.__pwaInstallEvent) {
       setInstallEvent(window.__pwaInstallEvent);
     }
-
-    const onPrompt = (e) => {
-      e.preventDefault();
-      window.__pwaInstallEvent = e;
-      setInstallEvent(e);
+    const onInstallable = () => {
+      setInstallEvent(window.__pwaInstallEvent);
     };
-
-    window.addEventListener("beforeinstallprompt", onPrompt);
-
-    if (ios) {
-      timerRef.current = setTimeout(() => setOpen(true), 800);
-    } else if (window.__pwaInstallEvent) {
-      timerRef.current = setTimeout(() => setOpen(true), 800);
-    } else {
-      timerRef.current = setTimeout(() => {
-        if (window.__pwaInstallEvent) {
-          setInstallEvent(window.__pwaInstallEvent);
-          setOpen(true);
-        } else {
-          onDone?.();
-        }
-      }, 2000);
-    }
-
-    return () => {
-      window.removeEventListener("beforeinstallprompt", onPrompt);
-      clearTimeout(timerRef.current);
-    };
-  }, [onDone, ios, directOpen]);
-
-  useEffect(() => {
-    if (!installEvent || open) return;
-    clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => setOpen(true), 800);
-    return () => clearTimeout(timerRef.current);
-  }, [installEvent, open]);
+    window.addEventListener("pwa-installable", onInstallable);
+    return () => window.removeEventListener("pwa-installable", onInstallable);
+  }, []);
 
   const dismiss = useCallback(() => {
     setOpen(false);
-    setTimeout(() => onDone?.(), 400);
-  }, [onDone]);
+    onDismiss ? onDismiss() : onDone?.();
+  }, [onDismiss, onDone]);
 
   const handleInstall = useCallback(async () => {
+    if (showFallback || ios) {
+      dismiss();
+      return;
+    }
     const promptEvt = installEvent || window.__pwaInstallEvent;
     if (promptEvt) {
       promptEvt.prompt();
@@ -202,13 +165,14 @@ function InstallSheet({ onDone, directOpen = false }) {
       window.__pwaInstallEvent = null;
       if (outcome === "accepted") {
         window.__pwaInstalled = true;
+        onInstalled ? onInstalled() : dismiss();
+      } else {
+        dismiss();
       }
-      setOpen(false);
-      setTimeout(() => onDone?.(), 400);
     } else {
       setShowFallback(true);
     }
-  }, [installEvent, onDone]);
+  }, [installEvent, showFallback, dismiss, ios, onInstalled]);
 
   return (
     <Overlay open={open} onClose={dismiss}>
@@ -269,7 +233,7 @@ function InstallSheet({ onDone, directOpen = false }) {
           onClick={handleInstall}
           className="w-full py-3.5 rounded-2xl text-sm font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 shadow-lg shadow-purple-600/30 hover:from-purple-500 hover:to-indigo-500 active:scale-[0.98] transition-all cursor-pointer"
         >
-          {showFallback ? "Got it" : "Install App"}
+          {showFallback || ios ? "Got it" : "Install App"}
         </button>
 
         <button
@@ -283,7 +247,7 @@ function InstallSheet({ onDone, directOpen = false }) {
   );
 }
 
-function NotificationSheet({ onDone }) {
+function NotificationSheet({ onDone, onDismiss }) {
   const [open, setOpen] = useState(false);
   const [permission, setPermission] = useState(null);
 
@@ -300,24 +264,21 @@ function NotificationSheet({ onDone }) {
       return;
     }
 
-    const t = setTimeout(() => setOpen(true), 800);
-    return () => clearTimeout(t);
+    setOpen(true);
   }, [onDone]);
 
   const dismiss = useCallback(() => {
     setOpen(false);
-    setTimeout(() => onDone?.(), 400);
-  }, [onDone]);
+    onDismiss ? onDismiss() : onDone?.();
+  }, [onDismiss, onDone]);
 
   const handleEnable = useCallback(async () => {
     setOpen(false);
-    setTimeout(async () => {
-      try {
-        await Notification.requestPermission();
-      } catch {} finally {
-        onDone?.();
-      }
-    }, 400);
+    try {
+      await Notification.requestPermission();
+    } catch {} finally {
+      onDone?.();
+    }
   }, [onDone]);
 
   if (permission !== "default") return null;
@@ -386,31 +347,103 @@ function NotificationSheet({ onDone }) {
 }
 
 export function PWABottomSheets() {
+  const { requestModal, releaseModal, canShow, requestedModals } = useModal();
   const [phase, setPhase] = useState(null);
+  const [hasInstallEvent, setHasInstallEvent] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    if (shouldShowOnboarding()) {
-      markOnboardingSeen();
-      setPhase("notify");
-    } else {
-      setPhase("done");
+
+    if (typeof window !== "undefined" && window.__pwaInstallEvent) {
+      setHasInstallEvent(true);
     }
 
-    const handleOpenGuide = () => {
-      setPhase("install");
+    const onInstallable = () => setHasInstallEvent(true);
+    const onInstalled = () => {
+      setPhase("done");
+      releaseModal("pwa");
     };
 
+    window.addEventListener("pwa-installable", onInstallable);
+    window.addEventListener("pwa-installed", onInstalled);
+
+    return () => {
+      window.removeEventListener("pwa-installable", onInstallable);
+      window.removeEventListener("pwa-installed", onInstalled);
+    };
+  }, [releaseModal]);
+
+  const handleDismiss = useCallback(() => {
+    markPwaDismissed();
+    setPhase("done");
+    releaseModal("pwa");
+  }, [releaseModal]);
+
+  const handleInstalled = useCallback(() => {
+    try {
+      localStorage.setItem("vb_pwa_installed", "true");
+    } catch {}
+    setPhase("done");
+    releaseModal("pwa");
+  }, [releaseModal]);
+
+  useEffect(() => {
+    if (!mounted || phase === "done") return;
+
+    if (!isEligibleForPWAInstall() || !shouldShowPwaPrompt()) {
+      if (phase !== null) setPhase("done");
+      releaseModal("pwa");
+      return;
+    }
+
+    const higherPriorityActive = Boolean(
+      requestedModals?.onboarding ||
+      requestedModals?.cookie_preferences ||
+      requestedModals?.auth ||
+      (typeof window !== "undefined" && localStorage.getItem("vb_onboarding_completed") !== "1")
+    );
+
+    if (higherPriorityActive) {
+      if (phase === "install") {
+        releaseModal("pwa");
+      }
+      return;
+    }
+
+    if (!supportsPWAInstall()) {
+      return;
+    }
+
+    requestModal("pwa");
+    setPhase("install");
+  }, [mounted, phase, requestedModals, hasInstallEvent, requestModal, releaseModal]);
+
+  useEffect(() => {
+    const handleOpenGuide = () => {
+      if (isEligibleForPWAInstall()) {
+        requestModal("pwa");
+        setPhase("install");
+      }
+    };
     window.addEventListener("pwa-open-install-guide", handleOpenGuide);
-    return () => window.removeEventListener("pwa-open-install-guide", handleOpenGuide);
-  }, []);
+    return () => {
+      window.removeEventListener("pwa-open-install-guide", handleOpenGuide);
+    };
+  }, [requestModal]);
 
-  if (!mounted || phase === null || phase === "done") return null;
+  if (!mounted || phase !== "install" || !canShow("pwa")) return null;
 
-  if (phase === "notify") return <NotificationSheet onDone={() => setPhase("install")} />;
-  if (phase === "install") return <InstallSheet onDone={() => setPhase("done")} directOpen={true} />;
-  return null;
+  return (
+    <InstallSheet
+      onDone={() => {
+        setPhase("done");
+        releaseModal("pwa");
+      }}
+      onDismiss={handleDismiss}
+      onInstalled={handleInstalled}
+    />
+  );
 }
 
 export default PWABottomSheets;
