@@ -138,10 +138,25 @@ function ConversationCard({ conv, isActive, onClick }) {
 }
 
 /* ── Main component ────────────────────────────────────────────── */
-export default function ConversationList({ conversations, activeId, onSelect, onBack }) {
+export default function ConversationList({
+  conversations,
+  activeId,
+  initialCategory = "all",
+  onSelect,
+  onBack,
+  onCategoryChange,
+}) {
   const t = useTranslations("messages");
   const [search,   setSearch]   = useState("");
-  const [category, setCategory] = useState("all");
+  const [category, setCategory] = useState(
+    initialCategory && MESSAGE_CATEGORIES.includes(initialCategory) ? initialCategory : "all"
+  );
+
+  useEffect(() => {
+    if (initialCategory && MESSAGE_CATEGORIES.includes(initialCategory)) {
+      setCategory(initialCategory);
+    }
+  }, [initialCategory]);
 
   /* ── Category tab scroll state ──────────────────────────────── */
   const tabsRef        = useRef(null);
@@ -167,6 +182,20 @@ export default function ConversationList({ conversations, activeId, onSelect, on
     obs.observe(el);
     return () => { el.removeEventListener("scroll", syncArrows); obs.disconnect(); };
   }, [syncArrows]);
+
+  useEffect(() => {
+    if (category && tabsRef.current) {
+      const activeBtn = tabsRef.current.querySelector(`[data-category="${category}"]`);
+      if (activeBtn) {
+        activeBtn.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+      }
+    }
+  }, [category]);
+
+  const handleCategoryClick = (key) => {
+    setCategory(key);
+    onCategoryChange?.(key);
+  };
 
   const scrollStart = () => tabsRef.current?.scrollBy({ left: -110, behavior: "smooth" });
   const scrollEnd   = () => tabsRef.current?.scrollBy({ left:  110, behavior: "smooth" });
@@ -305,7 +334,8 @@ export default function ConversationList({ conversations, activeId, onSelect, on
             return (
               <button
                 key={key}
-                onClick={() => setCategory(key)}
+                data-category={key}
+                onClick={() => handleCategoryClick(key)}
                 className={[
                   "relative flex items-center gap-1.5 px-3 py-2.5 md:px-3.5 md:py-3 text-[12px] md:text-[13px] font-medium",
                   "whitespace-nowrap shrink-0 border-b-2 -mb-px transition-colors",

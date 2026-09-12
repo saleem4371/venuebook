@@ -24,13 +24,14 @@
    full-bleed route, so this page only owns its own fill-height.
 ══════════════════════════════════════════════════════════════════ */
 
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState, useMemo } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { MessageCircle } from "lucide-react";
 
 import ConversationList   from "./components/ConversationList";
 import ChatThread         from "./components/ChatThread";
+import { MOCK_CATEGORIES, MOCK_CONVERSATIONS } from "./_data";
 
 import { all_messages } from '@/services/chat.service'
 
@@ -68,16 +69,43 @@ function MessagesInner() {
   const activeId   = searchParams.get("conversation");
   const activeConv = chats.find((c) => String(c.id) === activeId) ?? null;
 
+  /* Active category tab from URL (?tab=support or ?category=support) */
+  const tabParam = searchParams.get("tab") || searchParams.get("category");
+  const initialCategory = useMemo(() => {
+    if (tabParam && MOCK_CATEGORIES.some((c) => c.key === tabParam.toLowerCase())) {
+      return tabParam.toLowerCase();
+    }
+    return "all";
+  }, [tabParam]);
+
+  const handleCategoryChange = useCallback(
+    (newCategory) => {
+      const p = new URLSearchParams(searchParams);
+      if (newCategory === "all") {
+        p.delete("tab");
+        p.delete("category");
+      } else {
+        p.set("tab", newCategory);
+      }
+      router.replace(`${pathname}?${p.toString()}`, { scroll: false });
+    },
+    [pathname, router, searchParams],
+  );
+
   useEffect(() => {
     const fetchData = async () => {
       try {
         // API call
         const res = await all_messages();
-        setChat(res?.data?.data || []);
+        const data = res?.data?.data;
+        if (Array.isArray(data) && data.length > 0) {
+          setChat(data);
+        } else {
+          setChat(MOCK_CONVERSATIONS);
+        }
       } catch (err) {
         console.error(err);
-      } finally {
-        // if (interval) clearInterval(interval);
+        setChat(MOCK_CONVERSATIONS);
       }
     };
 
@@ -140,6 +168,8 @@ function MessagesInner() {
         <ConversationList
           conversations={chats}
           activeId={activeId}
+          initialCategory={initialCategory}
+          onCategoryChange={handleCategoryChange}
           onSelect={handleSelect}
           onBack={handleGoBack}
         />

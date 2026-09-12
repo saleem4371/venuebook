@@ -11,6 +11,7 @@ import { useAuth }     from "@/context/AuthContext";
 import { useUI }       from "@/context/UIContext";
 import LogoutConfirmationModal from "@/components/shared/LogoutConfirmationModal";
 import LogoutOverlay           from "@/components/shared/LogoutOverlay";
+import SupportModal           from "@/components/shared/SupportModal";
 
 import { POINTS_PER_INR, getMembershipTier } from "@/config/checkoutConfig";
 import { computeMockWalletPoints } from "@/app/[locale]/[country]/profile/data/mockProfileData";
@@ -154,6 +155,7 @@ export default function UserDropdown({ onOpenRegionModal , tier}) {
 
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [loggingOut,    setLoggingOut]    = useState(false);
+  const [supportOpen,   setSupportOpen]   = useState(false);
 
   // Real tier/points — same source Profile/Account Settings use, so this
   // badge can never show a different tier than the rest of the app does.
@@ -289,12 +291,14 @@ export default function UserDropdown({ onOpenRegionModal , tier}) {
                 onLogout={handleLogoutClick}
                 onVendor={handleVendor}
                 onRegion={handleRegion}
+                onSupport={() => { closeAll(); setSupportOpen(true); }}
               />
             ) : (
               <LoggedOutMenu
                 onLogin={handleLogin}
                 onVendor={handleVendor}
                 onRegion={handleRegion}
+                onSupport={() => { closeAll(); setSupportOpen(true); }}
               />
             )}
           </motion.div>
@@ -309,6 +313,11 @@ export default function UserDropdown({ onOpenRegionModal , tier}) {
 
       {/* Full-screen overlay — covers everything while logout processes */}
       <LogoutOverlay open={loggingOut} />
+
+      <SupportModal
+        open={supportOpen}
+        onClose={() => setSupportOpen(false)}
+      />
     </div>
   );
 }
@@ -316,13 +325,16 @@ export default function UserDropdown({ onOpenRegionModal , tier}) {
 /* ─────────────────────────────────────────────────────────────────────
    GUEST MENU
 ───────────────────────────────────────────────────────────────────── */
-function LoggedOutMenu({ onLogin, onVendor, onRegion }) {
+function LoggedOutMenu({ onLogin, onVendor, onRegion, onSupport }) {
   const t = useTranslations("header");
   return (
     <nav aria-label="Guest menu">
       <ul className="py-1.5" role="none">
         <li role="none">
           <MenuItem icon={<BuildingIcon />} label={t("list_property")} onClick={onVendor} />
+        </li>
+        <li role="none">
+          <MenuItem icon={<LifeBuoyIcon />} label="Support" onClick={onSupport} />
         </li>
         <li role="none">
           <MenuItem icon={<GlobeIcon />} label={t("region_language")} onClick={onRegion} />
@@ -341,7 +353,17 @@ function LoggedOutMenu({ onLogin, onVendor, onRegion }) {
    Account actions only. Membership is handled by MembershipWidget in
    the header (visible at all breakpoints — no duplicate needed here).
 ───────────────────────────────────────────────────────────────────── */
-function LoggedInMenu({ user, isListed, locale, country, onClose, onLogout, onVendor, onRegion }) {
+function LoggedInMenu({
+  user,
+  isListed,
+  locale,
+  country,
+  onClose,
+  onLogout,
+  onVendor,
+  onRegion,
+  onSupport,
+}) {
   const t    = useTranslations("header");
   const base = `/${locale}/${country}`;
 
@@ -425,6 +447,9 @@ function LoggedInMenu({ user, isListed, locale, country, onClose, onLogout, onVe
         </li>
         <li role="none">
           <MenuItem icon={<SettingsIcon />} label={t("account_settings")}  href={`${base}/account/settings`}  onClick={onClose} />
+        </li>
+        <li role="none">
+          <MenuItem icon={<LifeBuoyIcon />} label="Support" onClick={onSupport} />
         </li>
         <li role="none">
           <MenuItem icon={<GlobeIcon />}  label={t("region_language")} onClick={onRegion} />
@@ -540,6 +565,18 @@ function PersonIcon({ className }) {
       strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <circle cx="12" cy="8" r="4" />
       <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+    </svg>
+  );
+}
+function LifeBuoyIcon() {
+  return (
+    <svg {...iconProps}>
+      <circle cx="12" cy="12" r="10" />
+      <circle cx="12" cy="12" r="4" />
+      <line x1="4.93" y1="4.93" x2="9.17" y2="9.17" />
+      <line x1="14.83" y1="14.83" x2="19.07" y2="19.07" />
+      <line x1="14.83" y1="9.17" x2="19.07" y2="4.93" />
+      <line x1="4.93" y1="19.07" x2="9.17" y2="14.83" />
     </svg>
   );
 }
