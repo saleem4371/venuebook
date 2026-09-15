@@ -70,6 +70,7 @@ import { GhostButton, PrimaryButton, SecondaryButton, StatusBadge } from "./ui";
 import { computeBookingTotals } from "../../data/bookingMath";
 import { MOCK_CANCELLATION_TIERS, CATEGORY_COLORS } from "../../data/mockProfileData";
 import dayjs from "dayjs";
+import SupportModal from "@/components/shared/SupportModal";
 import { PaxBookingView } from "./PaxBookingView";
 import {
   createOrder,
@@ -1026,6 +1027,8 @@ function CancelTab({ t, categoryColor, isFarmstay, diffDays, refundPercent, book
    SIDEBAR — Quick Actions / Countdown / Need Help
    ═══════════════════════════════════════════════════════════════════════ */
 function Sidebar({ t, b, categoryColor, isFarmstay, daysLeft, locale, country, onInvoice }) {
+  const [supportModalOpen, setSupportModalOpen] = useState(false);
+
   return (
     <div className="space-y-4">
       <Card title={t("manageView.sidebar.quickActionsTitle")}>
@@ -1057,7 +1060,7 @@ function Sidebar({ t, b, categoryColor, isFarmstay, daysLeft, locale, country, o
       </div>
 
       <Card title={t("manageView.sidebar.helpTitle")}>
-        <GhostButton as={Link} href={`/${locale}/${country}/messages`} className="w-full justify-start">
+        <GhostButton onClick={() => setSupportModalOpen(true)} className="w-full justify-start">
           <LifeBuoy size={14} />
           {t("manageView.sidebar.contactSupport")}
         </GhostButton>
@@ -1066,6 +1069,11 @@ function Sidebar({ t, b, categoryColor, isFarmstay, daysLeft, locale, country, o
           {t("manageView.sidebar.viewFaq")}
         </GhostButton>
       </Card>
+
+      <SupportModal
+        open={supportModalOpen}
+        onClose={() => setSupportModalOpen(false)}
+      />
     </div>
   );
 }

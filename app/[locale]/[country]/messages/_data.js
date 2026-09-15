@@ -30,7 +30,7 @@ export const MOCK_CONVERSATIONS = [
     contact: { name: "The Grand Pavilion", initials: "GP", color: "from-violet-500 to-purple-400", isOnline: true },
     venue:   "The Grand Pavilion",
     subject: "Wedding Reception #VB-24815",
-    lastMessage: "Great — the décor team will arrive by 2 PM on the 15th.",
+    lastMessage: "Great, the decor team will arrive by 2 PM on the 15th.",
     time:    "10:42 AM",
     unread:  2,
     pinned:  true,
@@ -40,7 +40,7 @@ export const MOCK_CONVERSATIONS = [
       { id: "m3", role: "me",   text: "What time can the decoration team access the hall?", time: "9:08 AM",  date: "Today" },
       { id: "m4", role: "them", text: "Setup access opens at 2 PM. Your coordinator will be on site to assist.", time: "9:12 AM", date: "Today", sender: "Host" },
       { id: "m5", role: "me",   text: "Perfect. And is in-house catering included in the package?", time: "10:30 AM", date: "Today" },
-      { id: "m6", role: "them", text: "Great — the décor team will arrive by 2 PM on the 15th.", time: "10:42 AM", date: "Today", sender: "Host" },
+      { id: "m6", role: "them", text: "Great, the decor team will arrive by 2 PM on the 15th.", time: "10:42 AM", date: "Today", sender: "Host" },
     ],
   },
   {

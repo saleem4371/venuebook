@@ -19,6 +19,7 @@ import RegionLanguageModal from "../../home/components/RegionLanguageModal";
 import { useAuth } from "@/context/AuthContext";
 import LogoutConfirmationModal from "@/components/shared/LogoutConfirmationModal";
 import LogoutOverlay           from "@/components/shared/LogoutOverlay";
+import SupportModal           from "@/components/shared/SupportModal";
 
 import { useSocket } from "@/context/SocketContext";
 import { getAvatarColor } from "@/lib/avatar";
@@ -187,6 +188,7 @@ function AvatarArea({
   onRegion,
   onLogout,
   onSwitchToCustomer,
+  onSupport,
   notifications,
   logout
 }) {
@@ -347,6 +349,16 @@ function AvatarArea({
                   onClick={() => setShowProfile(false)}
                 />
               </li>
+              <li role="none">
+                <MenuItem
+                  icon={<HeadphonesIcon />}
+                  label="Support"
+                  onClick={() => {
+                    setShowProfile(false);
+                    onSupport?.();
+                  }}
+                />
+              </li>
 
               {/* ── Switch to Customer — tablet + mobile only (<1024px)
                   Desktop: visible as a standalone button in the header.
@@ -418,6 +430,7 @@ export default function PremiumNavbar() {
   const [regionOpen,      setRegionOpen]      = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [logoutLoading,   setLogoutLoading]   = useState(false);
+  const [supportOpen,     setSupportOpen]     = useState(false);
   const [mounted,         setMounted]         = useState(false);
   const [switchLoading,   setSwitchLoading]   = useState(false);
   const [subscriptionData,   setSubscriptionData]   = useState({});
@@ -481,6 +494,10 @@ const { status } = useSocket();
     },
     onLogout: () => { setShowProfile(false); setShowLogoutModal(true); },
     onSwitchToCustomer: goCustomer,
+    onSupport: () => {
+      setShowProfile(false);
+      setSupportOpen(true);
+    },
 };
 
 
@@ -688,6 +705,12 @@ setSubscriptionData(subscription.data[0])
 
       {/* Full-screen overlay — covers everything while logout processes */}
       <LogoutOverlay open={logoutLoading} />
+
+      <SupportModal
+        open={supportOpen}
+        onClose={() => setSupportOpen(false)}
+        defaultMessagePath={`${base}/messages?tab=support`}
+      />
     </>
   );
 }
@@ -1098,6 +1121,14 @@ function TeamIcon() {
       <circle cx="9" cy="7" r="4" />
       <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
       <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  );
+}
+function HeadphonesIcon({ className }) {
+  return (
+    <svg className={className} width="16" height="16" {...P}>
+      <path d="M3 18v-6a9 9 0 0 1 18 0v6" />
+      <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z" />
     </svg>
   );
 }

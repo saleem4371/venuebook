@@ -21,9 +21,11 @@ import {
   LayoutDashboard, Building2, CalendarDays,
   ClipboardList, MoreHorizontal, X,
   Layers, Package, BarChart3, Settings, Megaphone,
+  Headphones,
 } from "lucide-react";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useUI }                             from "@/context/VendorUIContext";
+import SupportModal                          from "@/components/shared/SupportModal";
 
 import {
   globalSetting,
@@ -39,6 +41,7 @@ export default function BottomDock() {
 
   const [showMore,    setShowMore]    = useState(false);
   const [dockVisible, setDockVisible] = useState(true);
+  const [supportOpen, setSupportOpen] = useState(false);
 
     // Setting consdtion 
   
@@ -116,6 +119,7 @@ export default function BottomDock() {
   { label: "Ads", href: `${base}/ads`, icon: Megaphone },
   { label: "Reports", href: `${base}/reports`, icon: BarChart3 },
   { label: "Settings", href: `${base}/settings`, icon: Settings },
+  { label: "Support", action: "support", icon: Headphones },
 ], [base, settingsMap]);
 
   /* ── Scroll-hide ────────────────────────────────────── */
@@ -338,6 +342,28 @@ export default function BottomDock() {
               <div className="px-4 pb-2 grid grid-cols-4 gap-2">
                 {moreLinks.map((item) => {
                   const Icon   = item.icon;
+                  if (item.action === "support") {
+                    return (
+                      <button
+                        key={item.label}
+                        type="button"
+                        onClick={() => {
+                          setShowMore(false);
+                          setSupportOpen(true);
+                        }}
+                        className="flex flex-col items-center gap-2.5 py-5 px-1 rounded-2xl transition-all bg-gray-50 dark:bg-white/[0.04] border border-transparent hover:bg-gray-100 dark:hover:bg-white/[0.07] cursor-pointer"
+                      >
+                        <Icon
+                          size={22}
+                          strokeWidth={1.6}
+                          className="text-gray-500 dark:text-gray-400"
+                        />
+                        <span className="text-[11px] font-medium leading-tight text-center text-gray-600 dark:text-gray-400">
+                          {item.label}
+                        </span>
+                      </button>
+                    );
+                  }
                   const active = pathname.startsWith(item.href);
                   return (
                     <Link
@@ -377,6 +403,12 @@ export default function BottomDock() {
           </>
         )}
       </AnimatePresence>
+
+      <SupportModal
+        open={supportOpen}
+        onClose={() => setSupportOpen(false)}
+        defaultMessagePath={`${base}/messages?tab=support`}
+      />
     </>
   );
 }

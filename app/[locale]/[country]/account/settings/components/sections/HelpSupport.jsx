@@ -8,16 +8,19 @@
  * page that doesn't exist.
  */
 
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { IconHelpCircle, IconMessageCircle, IconChevronRight } from "@tabler/icons-react";
 
 import { useToast } from "@/components/ToastProvider";
+import SupportModal from "@/components/shared/SupportModal";
 import { SettingsCard, CardHeading } from "../ui";
 
 export default function HelpSupport() {
   const t = useTranslations("accountSettings.help");
   const tCommon = useTranslations("accountSettings.common");
   const toast = useToast();
+  const [supportModalOpen, setSupportModalOpen] = useState(false);
 
   const comingSoon = () => toast.info(tCommon("comingSoon"));
 
@@ -45,7 +48,7 @@ export default function HelpSupport() {
 
         <button
           type="button"
-          onClick={comingSoon}
+          onClick={() => setSupportModalOpen(true)}
           className="w-full flex items-center justify-between gap-3 rounded-2xl border border-gray-100 dark:border-gray-800 px-4 py-4 hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors text-left"
         >
           <span className="flex items-center gap-3 min-w-0">
@@ -60,6 +63,11 @@ export default function HelpSupport() {
           <IconChevronRight size={16} className="shrink-0 text-gray-300 dark:text-gray-600 rtl:rotate-180" />
         </button>
       </div>
+
+      <SupportModal
+        open={supportModalOpen}
+        onClose={() => setSupportModalOpen(false)}
+      />
     </SettingsCard>
   );
 }

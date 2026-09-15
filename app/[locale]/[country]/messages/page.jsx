@@ -27,7 +27,7 @@ import { MessageCircle, X } from "lucide-react";
 import { useUI } from "@/context/UIContext";
 import ConversationList from "./components/ConversationList";
 import ChatThread       from "./components/ChatThread";
-import { MOCK_CONVERSATIONS } from "./_data";
+import { MOCK_CONVERSATIONS, MESSAGE_CATEGORIES } from "./_data";
 
 import { all_messages, send_messages, mark_read } from '@/services/chat.service'
 import { useRealtime } from "@/context/RealtimeContext";
@@ -118,6 +118,29 @@ function MessagesInner() {
   const [chats, setChat]     = useState([]);
   const [loading, setLoading] = useState(true);
   const [toasts, setToasts]   = useState([]);
+
+  /* Active category tab from URL (?tab=support or ?category=support) */
+  const tabParam = searchParams.get("tab") || searchParams.get("category");
+  const initialCategory = useMemo(() => {
+    if (tabParam && MESSAGE_CATEGORIES.includes(tabParam.toLowerCase())) {
+      return tabParam.toLowerCase();
+    }
+    return "all";
+  }, [tabParam]);
+
+  const handleCategoryChange = useCallback(
+    (newCategory) => {
+      const p = new URLSearchParams(searchParams);
+      if (newCategory === "all") {
+        p.delete("tab");
+        p.delete("category");
+      } else {
+        p.set("tab", newCategory);
+      }
+      router.replace(`${pathname}?${p.toString()}`, { scroll: false });
+    },
+    [pathname, router, searchParams],
+  );
 
   /* Active conversation from URL */
   const activeId   = searchParams.get("conversation");
@@ -211,9 +234,15 @@ function MessagesInner() {
   const fetchChats = useCallback(async () => {
     try {
       const res = await all_messages();
-      setChat(res?.data?.data || []);
+      const data = res?.data?.data;
+      if (Array.isArray(data) && data.length > 0) {
+        setChat(data);
+      } else {
+        setChat(MOCK_CONVERSATIONS);
+      }
     } catch (err) {
       console.error(err);
+      setChat(MOCK_CONVERSATIONS);
     } finally {
       setLoading(false);
     }
@@ -313,6 +342,8 @@ function MessagesInner() {
             <ConversationList
               conversations={chats}
               activeId={activeId}
+              initialCategory={initialCategory}
+              onCategoryChange={handleCategoryChange}
               onSelect={handleSelect}
               onBack={handleGoBack}
             />

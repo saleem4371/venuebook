@@ -125,7 +125,7 @@ export const MOCK_CONVERSATIONS = [
     pinned:  false,
     messages: [
       { id: "m1", role: "them", text: "Hello! I wanted to check on the floral arrangements for our anniversary dinner.", time: "8:00 AM", date: "Today" },
-      { id: "m2", role: "me",   text: "Hi Sunita! Our décor team has confirmed white orchids and candle centrepieces as requested.", time: "8:30 AM", date: "Today" },
+      { id: "m2", role: "me",   text: "Hi Sunita! Our decor team has confirmed white orchids and candle centrepieces as requested.", time: "8:30 AM", date: "Today" },
       { id: "m3", role: "them", text: "We've confirmed the floral arrangement. Thank you!", time: "9:00 AM", date: "Today" },
     ],
   },

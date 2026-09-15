@@ -34,12 +34,14 @@ import {
   Settings,
   Bell,
   MessageSquareText,
+  Headphones,
 } from "lucide-react";
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { useVendorCategory } from "@/context/VendorCategoryContext";
 import { CATEGORY_COLORS } from "@/config/categoryConfig";
 import { Panel, IconBadge, CategoryIcon } from "./VendorCategoryNavigator";
+import SupportModal from "@/components/shared/SupportModal";
 
 import { useRealtime } from "@/context/RealtimeContext";
 import { getnotification } from "@/services/global.service";
@@ -107,8 +109,9 @@ export default function VendorSidebar() {
   const [settingsMap, setSettingsMap] = useState({});
   const [allNotification, setAllNotification] = useState([]);
   const [reservationCount, setReservationCount] = useState(0);
-  const [showNotif, setShowNotif] = useState(false);
   const [showCategory, setShowCategory] = useState(false);
+  const [showNotif, setShowNotif] = useState(false);
+  const [supportOpen, setSupportOpen] = useState(false);
 
   const notifAreaRef = useRef(null);
   useClickOutside(notifAreaRef, useCallback(() => setShowNotif(false), []));
@@ -308,6 +311,19 @@ export default function VendorSidebar() {
         </div>
       )}
 
+      {/* ── Support — docked footer item ───────────────────────── */}
+      <div className="relative px-2 pt-2 border-t border-gray-100 dark:border-gray-800/60">
+        <button
+          type="button"
+          onClick={() => setSupportOpen(true)}
+          aria-label="Support"
+          className="relative w-full flex flex-col items-center justify-center gap-1 rounded-xl py-2.5 transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/60 text-gray-500 dark:text-gray-400 hover:bg-gray-100/70 dark:hover:bg-gray-800/50 hover:text-gray-800 dark:hover:text-gray-200"
+        >
+          <Headphones size={18} />
+          <span className="text-[10.5px] font-medium leading-tight">Support</span>
+        </button>
+      </div>
+
       {/* ── Notification bell — footer item ─────────────────── */}
       <div
         ref={notifAreaRef}
@@ -403,6 +419,12 @@ export default function VendorSidebar() {
           )}
         </AnimatePresence>
       </div>
+
+      <SupportModal
+        open={supportOpen}
+        onClose={() => setSupportOpen(false)}
+        defaultMessagePath={`${base}/messages?tab=support`}
+      />
     </aside>
   );
 }
